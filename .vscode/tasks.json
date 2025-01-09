@@ -25,7 +25,6 @@
         "-no-bounds-check",
         "-disable-assert",
         "-no-type-assert",
-        "-debug",
       ],
       "problemMatcher": []
     }

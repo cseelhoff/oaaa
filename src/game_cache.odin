@@ -26,7 +26,7 @@ Game_Cache :: struct {
 	cur_player:               ^Player,
 	seed:                     int,
 	//canal_state:              int, //array of bools / bit_set is probably best
-	canals_open:							CANALS_OPEN, //[CANALS_COUNT]bool,
+	canals_open:              CANALS_OPEN, //[CANALS_COUNT]bool,
 	step_id:                  int,
 	answers_remaining:        int,
 	selected_action:          int,
@@ -36,7 +36,7 @@ Game_Cache :: struct {
 	is_bomber_cache_current:  bool,
 	is_fighter_cache_current: bool,
 	clear_needed:             bool,
-	use_selected_action:       bool,
+	use_selected_action:      bool,
 }
 
 initialize_map_constants :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -96,6 +96,7 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	}
 	for &land, i in gc.lands {
 		land_state := &gs.land_states[i]
+		load_territory_from_state(&land.territory, &land_state.territory_state)
 		gc.players[land_state.owner].income_per_turn += land.value
 		land.owner = &gc.players[land_state.owner]
 		land.factory_prod = land_state.factory_prod
@@ -112,11 +113,14 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 			for army in land.idle_armies[player.index] {
 				land.team_units[player.team.index] += army
 			}
+			for plane in land.idle_planes[player.index] {
+				land.team_units[player.team.index] += plane
+			}
 		}
-		load_territory_from_state(&land.territory, &land_state.territory_state)
 	}
 	for &sea, i in gc.seas {
 		sea_state := &gs.sea_states[i]
+		load_territory_from_state(&sea.territory, &sea_state.territory_state)
 		sea.idle_ships = sea_state.idle_ships
 		sea.active_ships = sea_state.active_ships
 		sea.team_units = {}
@@ -124,8 +128,10 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 			for ship in sea.idle_ships[player.index] {
 				sea.team_units[player.team.index] += ship
 			}
+			for plane in sea.idle_planes[player.index] {
+				sea.team_units[player.team.index] += plane
+			}
 		}
-		load_territory_from_state(&sea.territory, &sea_state.territory_state)
 	}
 	count_sea_unit_totals(gc)
 	load_open_canals(gc)
@@ -154,7 +160,7 @@ count_sea_unit_totals :: proc(gc: ^Game_Cache) {
 		sea.enemy_fighters_total = 0
 		sea.enemy_submarines_total = 0
 		sea.enemy_destroyer_total = 0
-		sea.enemy_blockade_total = 0		
+		sea.enemy_blockade_total = 0
 		for enemy in sa.slice(&gc.cur_player.team.enemy_players) {
 			sea.enemy_fighters_total += sea.idle_planes[enemy.index][Idle_Plane.FIGHTER]
 			sea.enemy_submarines_total += sea.idle_ships[enemy.index][Idle_Ship.SUB]
@@ -172,11 +178,10 @@ count_sea_unit_totals :: proc(gc: ^Game_Cache) {
 		}
 	}
 }
-load_open_canals :: proc (gc: ^Game_Cache) {
+load_open_canals :: proc(gc: ^Game_Cache) {
 	gc.canals_open = {}
 	for canal, canal_idx in Canal_Lands {
-		if canal[0].owner.team == gc.cur_player.team &&
-		   canal[1].owner.team == gc.cur_player.team {
+		if canal[0].owner.team == gc.cur_player.team && canal[1].owner.team == gc.cur_player.team {
 			gc.canals_open += {Canal_ID(canal_idx)}
 		}
 	}

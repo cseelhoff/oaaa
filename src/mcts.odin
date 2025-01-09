@@ -5,11 +5,13 @@ import "core:math"
 
 EXPLORATION_CONSTANT :: 1.414
 
+Children :: [dynamic]^MCTSNode
+
 MCTSNode :: struct {
 	state:    Game_State,
 	action:   int,
 	parent:   ^MCTSNode,
-	children: [dynamic]^MCTSNode,
+	children: Children,
 	visits:   int,
 	value:    f64,
 }
@@ -32,23 +34,29 @@ create_node :: proc(state: ^Game_State, action: int, parent: ^MCTSNode) -> ^MCTS
 //   free(node);
 // }
 
-select_best_leaf :: proc(node: ^MCTSNode) -> ^MCTSNode {
-	best_value: f64 = -999999.0
-	best_child: ^MCTSNode = node
-	for child in node.children {
-		uct_value: f64 =
-			child.value / f64(child.visits + 1) +
-			EXPLORATION_CONSTANT *
-				math.sqrt(math.ln_f64(f64(node.visits + 1)) / f64(child.visits + 1))
-		if uct_value > best_value {
-			best_value = uct_value
-			best_child = child
+select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
+	node = root_node
+	for len(node.children) > 0 {
+		best_value: f64 = -999999.0
+		best_child: ^MCTSNode = nil
+		children := node.children
+		children_len := len(children)
+		for child in node.children {
+			uct_value: f64 =
+				child.value / f64(child.visits + 1) +
+				EXPLORATION_CONSTANT *
+					math.sqrt(math.ln_f64(f64(node.visits + 1)) / f64(child.visits + 1))
+			if uct_value > best_value {
+				best_value = uct_value
+				best_child = child
+			}
 		}
+		node = best_child
 	}
-	return best_child
+	return node
 }
 
-PRINT_INTERVAL :: 5
+PRINT_INTERVAL :: 500
 //import "core:math/rand"
 mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 	root := create_node(initial_state, 0, nil)
@@ -60,7 +68,8 @@ mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 		node := select_best_leaf(root)
 		if !is_terminal_state(&node.state) {
 			expand_node(node)
-			node = node.children[RANDOM_NUMBERS[GLOBAL_RANDOM_SEED] % len(node.children)]
+			children_len := len(node.children)
+			node = node.children[RANDOM_NUMBERS[GLOBAL_RANDOM_SEED] % children_len]
 			GLOBAL_RANDOM_SEED = (GLOBAL_RANDOM_SEED + 1) % RANDOM_MAX
 		}
 		result: f64 = random_play_until_terminal(&node.state)
@@ -179,10 +188,10 @@ print_top_action_sequences :: proc() {
 		}
 	}
 }
+MAX_PRINT_DEPTH :: 40
 
 print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if node == nil do return
-	MAX_PRINT_DEPTH := 40
 	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
 	if node.parent != nil {
 		fmt.print(PLAYER_DATA[node.parent.state.cur_player].color)
@@ -193,9 +202,9 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 		fmt.println(DEF_COLOR)
 	}
 	best_index := 0
-	best_value :f64= 0.0
-	for i in 0 ..< len(node.children) {
-		new_value := node.children[i].value / f64(node.children[i].visits)
+	best_value: f64 = 0.0
+	for child, i in node.children {
+		new_value := child.value / f64(child.visits)
 		if new_value > best_value {
 			best_value = new_value
 			best_index = i
@@ -224,12 +233,12 @@ print_mcts_tree2 :: proc(node: ^MCTSNode, depth: uint) {
 
 // Public function to print the MCTS tree starting from the root
 print_mcts :: proc(root: ^MCTSNode) {
-	// Action_Sequence current_sequence = {0};
-	// for (uint i = 0; i < MAX_ACTION_SEQUENCES; i++) {
+	//  current_sequence: Action_Sequence = {}
+	// for i in 0..<MAX_ACTION_SEQUENCES {
 	//   action_sequence_values[i] = 0;
 	//   action_sequence_visits[i] = 0;
 	// }
-	// print_mcts_tree(root, 0, current_sequence, 0);
+	// print_mcts_tree(root, 0, &current_sequence, 0);
 	print_mcts_tree3(root, 0)
 	// print_top_action_sequences();
 }

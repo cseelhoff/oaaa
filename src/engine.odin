@@ -8,7 +8,7 @@ GLOBAL_TICK := 0
 when ODIN_DEBUG {
 	debug_checks :: proc(gc: ^Game_Cache) {
 		GLOBAL_TICK += 1
-		// if GLOBAL_TICK >= 431370 {
+		// if GLOBAL_TICK >= 35 {
 		// 	fmt.println("Enable Print")
 		// 	//print_game_state(gc)
 		// 	gc.actually_print = true
@@ -252,7 +252,11 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 is_terminal_state :: proc(game_state: ^Game_State) -> bool {
 	// Return true if the game is over
 	score := evaluate_state(game_state)
-	return score > 0.99 || score < 0.01
+	// return score > 0.99 || score < 0.01
+	if score > 0.99 || score < 0.01 {
+		return true
+	}
+	return false
 }
 
 evaluate_state :: proc(gs: ^Game_State) -> f64 {
