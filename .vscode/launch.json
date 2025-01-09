@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+      {
+          "name": "Debug",
+          "type": "lldb",
+          "request": "launch",
+          "program": "${workspaceFolder}/bin/main",
+          "args": [],
+          "cwd": "${workspaceFolder}",
+          "preLaunchTask": "build-debug"
+      },
+      {
+          "name": "Release",
+          "type": "lldb",
+          "request": "launch",
+          "program": "${workspaceFolder}/bin/main",
+          "args": [],
+          "cwd": "${workspaceFolder}",
+          "preLaunchTask": "build-release"
+      }
+  ]
+}

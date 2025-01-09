@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-debug",
+      "type": "process",
+      "command": "odin",
+      "args": [
+        "build",
+        "src",
+        "-out:bin/main",
+        "-debug"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "build-release",
+      "type": "process",
+      "command": "odin",
+      "args": [
+        "build",
+        "src",
+        "-out:bin/main",
+        "-o:aggressive",
+        "-no-bounds-check",
+        "-disable-assert",
+        "-no-type-assert",
+        "-debug",
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

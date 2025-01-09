@@ -1,0 +1,7 @@
+// filepath: /home/nixos/odin2/.vscode/extensions.json
+{
+  "recommendations": [
+    "DanielGavin.ols",
+    "vadimcn.vscode-lldb"
+  ]
+}
