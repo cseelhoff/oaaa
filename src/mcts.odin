@@ -3,7 +3,8 @@ package oaaa
 import "core:fmt"
 import "core:math"
 
-EXPLORATION_CONSTANT :: 1.414
+//EXPLORATION_CONSTANT :: 1.414
+EXPLORATION_CONSTANT :: 0.3
 
 Children :: [dynamic]^MCTSNode
 
@@ -56,7 +57,7 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 	return node
 }
 
-PRINT_INTERVAL :: 500
+PRINT_INTERVAL :: 5000
 //import "core:math/rand"
 mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 	root := create_node(initial_state, 0, nil)

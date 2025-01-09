@@ -208,12 +208,11 @@ get_attacker_hits :: proc(gc: ^Game_Cache, attacker_damage: int) -> (attacker_hi
 	if gc.answers_remaining <= 1 {
 		if gc.cur_player.team.enemy_team.index in gc.unlucky_teams { 	// attacker is lucky
 			attacker_hits += 0 < attacker_damage % DICE_SIDES ? 1 : 0 // no dice, round up
+			return
 		}
-	} else {
-		attacker_hits +=
-			RANDOM_NUMBERS[gc.seed] % DICE_SIDES < attacker_damage % DICE_SIDES ? 1 : 0
-		gc.seed = (gc.seed + 1) % RANDOM_MAX
 	}
+	attacker_hits += RANDOM_NUMBERS[gc.seed] % DICE_SIDES < attacker_damage % DICE_SIDES ? 1 : 0
+	gc.seed = (gc.seed + 1) % RANDOM_MAX
 	return
 }
 
@@ -222,12 +221,11 @@ get_defender_hits :: proc(gc: ^Game_Cache, defender_damage: int) -> (defender_hi
 	if gc.answers_remaining <= 1 {
 		if gc.cur_player.team.index in gc.unlucky_teams { 	// attacker is unlucky
 			defender_hits += 0 < defender_damage % DICE_SIDES ? 1 : 0 // no dice, round up
+			return
 		}
-	} else {
-		defender_hits +=
-			RANDOM_NUMBERS[gc.seed] % DICE_SIDES < defender_damage % DICE_SIDES ? 1 : 0
-		gc.seed = (gc.seed + 1) % RANDOM_MAX
 	}
+	defender_hits += RANDOM_NUMBERS[gc.seed] % DICE_SIDES < defender_damage % DICE_SIDES ? 1 : 0
+	gc.seed = (gc.seed + 1) % RANDOM_MAX
 	return
 }
 
@@ -384,7 +382,6 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				fmt.eprintln("resolve_land_battles: MAX_COMBAT_ROUNDS reached", combat_rounds)
 				print_game_state(gc)
 			}
-			assert(combat_rounds < MAX_COMBAT_ROUNDS)
 			if src_land.combat_status == .MID_COMBAT {
 				build_land_retreat_options(gc, &src_land)
 				dst_air_idx := get_retreat_input(gc, &src_land) or_return
