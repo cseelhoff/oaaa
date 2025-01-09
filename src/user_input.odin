@@ -40,7 +40,7 @@ get_retreat_input :: proc(
 	dst_air_idx: Air_ID,
 	ok: bool,
 ) {
-	// debug_checks(gc)
+	debug_checks(gc)
 	dst_air_idx = Air_ID(gc.valid_actions.data[0])
 	if gc.valid_actions.len > 1 {
 		if gc.answers_remaining == 0 do return dst_air_idx, false
@@ -76,7 +76,7 @@ get_move_input :: proc(
 	dst_air_idx: Air_ID,
 	ok: bool,
 ) {
-	// debug_checks(gc)
+	debug_checks(gc)
 	dst_air_idx = Air_ID(gc.valid_actions.data[0])
 	if gc.valid_actions.len > 1 {
 		if gc.answers_remaining == 0 do return dst_air_idx, false
@@ -140,7 +140,7 @@ print_buy_prompt :: proc(gc: ^Game_Cache, src_air: ^Territory) {
 }
 
 get_buy_input :: proc(gc: ^Game_Cache, src_air: ^Territory) -> (action: Buy_Action, ok: bool) {
-	// debug_checks(gc)
+	debug_checks(gc)
 	action = action_idx_to_buy(gc.valid_actions.data[0])
 	if gc.valid_actions.len > 1 {
 		if gc.answers_remaining == 0 do return .SKIP_BUY, false

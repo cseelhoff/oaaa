@@ -252,6 +252,7 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				replace_ship(gc, &src_sea, ship, Transport_Unloaded[ship])
 			}
 		}
+		if gc.clear_needed do clear_move_history(gc)
 	}
 	return true
 }

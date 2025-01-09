@@ -135,6 +135,7 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	}
 	count_sea_unit_totals(gc)
 	load_open_canals(gc)
+	debug_checks(gc)
 }
 
 load_territory_from_state :: proc(territory: ^Territory, ts: ^Territory_State) {
