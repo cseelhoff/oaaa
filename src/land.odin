@@ -15,27 +15,28 @@ SA_Adjacent_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, ^Sea)
 Land_Data :: struct {
 	name:  string,
 	owner: string,
-	value: int,
+	value: u8,
 }
 
 Mid_Lands :: sa.Small_Array(MAX_PATHS_TO_LAND, ^Land)
-
+Idle_Armies :: [PLAYERS_COUNT]Idle_Army_For_Player
+Active_Armies :: [len(Active_Army)]u8
 Land :: struct {
 	using territory:    Territory,
-	idle_armies:        [PLAYERS_COUNT]Idle_Army_For_Player,
-	active_armies:      [len(Active_Army)]int,
-	owner:              ^Player,
-	factory_dmg:        int,
-	factory_prod:       int,
-	max_bombards:       int,
-	builds_left:        int,
+	idle_armies:        Idle_Armies,
+	active_armies:      Active_Armies,
 	lands_2_moves_away: sa.Small_Array(LANDS_COUNT, Land_2_Moves_Away),
 	seas_2_moves_away:  sa.Small_Array(SEAS_COUNT, L2S_2_Moves_Away),
 	adjacent_seas:      SA_Adjacent_L2S,
 	original_owner:     ^Player,
-	value:              int,
-	land_distances:     [LANDS_COUNT]int,
+	land_distances:     [LANDS_COUNT]u8,
+	owner:              ^Player,
 	land_index:         Land_ID,
+	value:              u8,
+	factory_dmg:        u8,
+	factory_prod:       u8,
+	max_bombards:       u8,
+	builds_left:        u8,
 }
 
 Land_2_Moves_Away :: struct {
@@ -48,7 +49,7 @@ L2S_2_Moves_Away :: struct {
 	mid_lands: Mid_Lands,
 }
 
-Land_ID :: enum {
+Land_ID :: enum u8 {
 	Washington,
 	London,
 	Berlin,

@@ -12,7 +12,7 @@ Skipped_Buys :: [len(Buy_Action)]bool
 Territory :: struct {
 	name:                       string,
 	idle_planes:                [PLAYERS_COUNT]Idle_Plane_For_Player,
-	active_planes:              [len(Active_Plane)]int,
+	active_planes:              [len(Active_Plane)]u8,
 	air_distances:              [TERRITORIES_COUNT]u8,
 	skipped_moves:              [TERRITORIES_COUNT]bool, // Maybe this should be a bitset at the gc level
 	skipped_buys:               Skipped_Buys,
@@ -30,7 +30,7 @@ Territory :: struct {
 	airs_4_moves_away:          SA_Territory_Pointers,
 	airs_5_moves_away:          SA_Territory_Pointers,
 	airs_6_moves_away:          SA_Territory_Pointers,
-	team_units:                 [TEAMS_COUNT]int,
+	team_units:                 [TEAMS_COUNT]u8,
 	territory_index:            Air_ID,
 	can_fighter_land_here:      bool, //bitset?
 	can_fighter_land_in_1_move: bool,

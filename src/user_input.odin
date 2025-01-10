@@ -48,9 +48,9 @@ get_retreat_input :: proc(
 			print_retreat_prompt(gc, src_air)
 			dst_air_idx = Air_ID(get_user_input(gc))
 		} else {
-			if gc.actually_print do print_retreat_prompt(gc, src_air)
+			if ACTUALLY_PRINT do print_retreat_prompt(gc, src_air)
 			dst_air_idx = Air_ID(get_ai_input(gc))
-			if gc.actually_print {
+			if ACTUALLY_PRINT {
 				fmt.println("AI Action:", dst_air_idx)
 			}
 		}
@@ -84,9 +84,9 @@ get_move_input :: proc(
 			print_move_prompt(gc, unit_name, src_air)
 			dst_air_idx = Air_ID(get_user_input(gc))
 		} else {
-			if gc.actually_print do print_move_prompt(gc, unit_name, src_air)
+			if ACTUALLY_PRINT do print_move_prompt(gc, unit_name, src_air)
 			dst_air_idx = Air_ID(get_ai_input(gc))
-			if gc.actually_print {
+			if ACTUALLY_PRINT {
 				fmt.println("AI Action:", dst_air_idx)
 			}
 		}
@@ -95,7 +95,7 @@ get_move_input :: proc(
 	return dst_air_idx, true
 }
 
-get_user_input :: proc(gc: ^Game_Cache) -> (user_input: int = 0) {
+get_user_input :: proc(gc: ^Game_Cache) -> (user_input: u8 = 0) {
 	buffer: [10]byte
 	fmt.print("Enter a number between 0 and 255: ")
 	n, err := os.read(os.stdin, buffer[:])
@@ -104,7 +104,7 @@ get_user_input :: proc(gc: ^Game_Cache) -> (user_input: int = 0) {
 		return
 	}
 	input_str := string(buffer[:n])
-	int_input := strconv.atoi(input_str)
+	int_input := u8(strconv.atoi(input_str))
 	_, found := slice.linear_search(sa.slice(&gc.valid_actions), int_input)
 	if !found {
 		fmt.eprintln("Invalid input ", int_input)
@@ -113,7 +113,7 @@ get_user_input :: proc(gc: ^Game_Cache) -> (user_input: int = 0) {
 	return int_input
 }
 
-get_ai_input :: proc(gc: ^Game_Cache) -> (ai_input: int) {
+get_ai_input :: proc(gc: ^Game_Cache) -> (ai_input: u8) {
 	gc.answers_remaining -= 1
 	if !gc.use_selected_action || gc.selected_action >= MAX_VALID_ACTIONS {
 		//fmt.eprintln("Invalid input ", gc.selected_action)
@@ -148,9 +148,9 @@ get_buy_input :: proc(gc: ^Game_Cache, src_air: ^Territory) -> (action: Buy_Acti
 			print_buy_prompt(gc, src_air)
 			action = action_idx_to_buy(get_user_input(gc))
 		} else {
-			if gc.actually_print do print_buy_prompt(gc, src_air)
+			if ACTUALLY_PRINT do print_buy_prompt(gc, src_air)
 			action = action_idx_to_buy(get_ai_input(gc))
-			if gc.actually_print {
+			if ACTUALLY_PRINT {
 				fmt.println("AI Action:", action)
 			}
 		}
@@ -191,7 +191,7 @@ print_game_state :: proc(gc: ^Game_Cache) {
 				}
 			}
 			for &player in gc.players {
-				if &player == gc.cur_player do continue
+				// if &player == gc.cur_player do continue
 				fmt.print(PLAYER_DATA[player.index].color)
 				for army, army_idx in land.idle_armies[player.index] {
 					if army > 0 {
@@ -219,7 +219,7 @@ print_game_state :: proc(gc: ^Game_Cache) {
 				}
 			}
 			for &player in gc.players {
-				if &player == gc.cur_player do continue
+				// if &player == gc.cur_player do continue
 				fmt.print(PLAYER_DATA[player.index].color)
 				for ship, ship_idx in sea.idle_ships[player.index] {
 					if ship > 0 {

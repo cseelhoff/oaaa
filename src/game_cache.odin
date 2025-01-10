@@ -12,27 +12,27 @@ SA_Land_Pointers :: sa.Small_Array(LANDS_COUNT, ^Land)
 SA_Player_Pointers :: sa.Small_Array(PLAYERS_COUNT, ^Player)
 CANALS_OPEN :: bit_set[Canal_ID;u8]
 UNLUCKY_TEAMS :: bit_set[Team_ID;u8]
-VALID_ACTIONS_SA :: sa.Small_Array(MAX_VALID_ACTIONS, int)
+VALID_ACTIONS_SA :: sa.Small_Array(MAX_VALID_ACTIONS, u8)
 
 Game_Cache :: struct {
 	//state:             Game_State,
-	teams:                    Teams,
 	seas:                     Seas,
 	lands:                    Lands,
-	players:                  Players,
-	territories:              Territory_Pointers,
 	valid_actions:            VALID_ACTIONS_SA,
-	unlucky_teams:            UNLUCKY_TEAMS,
+	territories:              Territory_Pointers,
+	players:                  Players,
+	teams:                    Teams,
 	cur_player:               ^Player,
-	seed:                     int,
+	seed:                     u16,
 	//canal_state:              int, //array of bools / bit_set is probably best
+	// step_id:                  int,
+	answers_remaining:        u16,
+	max_loops:                u16,
 	canals_open:              CANALS_OPEN, //[CANALS_COUNT]bool,
-	step_id:                  int,
-	answers_remaining:        int,
-	selected_action:          int,
-	max_loops:                int,
-	user_input:               int,
-	actually_print:           bool,
+	unlucky_teams:            UNLUCKY_TEAMS,
+	selected_action:          u8,
+	// user_input:               int,
+	// actually_print:           bool,
 	is_bomber_cache_current:  bool,
 	is_fighter_cache_current: bool,
 	clear_needed:             bool,
@@ -62,13 +62,13 @@ initialize_map_constants :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 save_cache_to_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	gs.seed = gc.seed
-	gs.cur_player = int(gc.cur_player.index)
+	gs.cur_player = u8(gc.cur_player.index)
 	for &player, i in gc.players {
 		gs.money[i] = player.money
 	}
 	for &land, i in gc.lands {
 		land_state := &gs.land_states[i]
-		land_state.owner = int(land.owner.index)
+		land_state.owner = u8(land.owner.index)
 		land_state.factory_prod = land.factory_prod
 		land_state.factory_dmg = land.factory_dmg
 		land_state.max_bombards = land.max_bombards

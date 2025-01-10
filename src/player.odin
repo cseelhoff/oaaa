@@ -25,14 +25,15 @@ PLAYER_DATA := [?]Player_Data {
 DEF_COLOR :: "\033[1;0m"
 
 Players :: [PLAYERS_COUNT]Player
+Factory_Locations :: sa.Small_Array(LANDS_COUNT, ^Land)
+
 Player :: struct {
-	factory_locations:  sa.Small_Array(LANDS_COUNT, ^Land),
+	factory_locations:  Factory_Locations,
 	capital:            ^Land,
 	team:               ^Team,
-	money:              int,
-	income_per_turn:    int,
-	total_player_units: int,
 	index:              Player_ID,
+	money:              u8,
+	income_per_turn:    u8,
 }
 
 TEAM_STRINGS := [?]string{"Allies", "Axis"}
@@ -44,7 +45,7 @@ Team :: struct {
 	players:       SA_Player_Pointers,
 	enemy_players: SA_Player_Pointers,
 	enemy_team:    ^Team, // not an array, since assumption is 2 teams
-	is_allied:     [PLAYERS_COUNT]bool,
+	// is_allied:     [PLAYERS_COUNT]bool,
 }
 
 Player_ID :: enum {
@@ -60,10 +61,10 @@ Team_ID :: enum {
 	Axis,
 }
 
-get_player_idx_from_string :: proc(player_name: string) -> (player_idx: int, ok: bool) {
+get_player_idx_from_string :: proc(player_name: string) -> (player_idx: u8, ok: bool) {
 	for player, player_idx in PLAYER_DATA {
 		if strings.compare(player.name, player_name) == 0 {
-			return player_idx, true
+			return u8(player_idx), true
 		}
 	}
 	fmt.eprintln("Error: Player not found: %s\n", player_name)
@@ -82,12 +83,12 @@ initialize_teams :: proc(teams: ^Teams, players: ^Players) {
 		for &player, player_idx in players {
 			if strings.compare(PLAYER_DATA[player_idx].team, TEAM_STRINGS[team_idx]) == 0 {
 				sa.push(&team.players, &player)
-				team.is_allied[player_idx] = true
+				// team.is_allied[player_idx] = true
 				player.team = &team
 				player.index = Player_ID(player_idx)
 			} else {
 				sa.push(&team.enemy_players, &player)
-				team.is_allied[player_idx] = false
+				// team.is_allied[player_idx] = false
 			}
 		}
 	}

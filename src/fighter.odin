@@ -171,7 +171,7 @@ land_next_fighter_in_air :: proc(
 	if carrier_now_empty(gc, dst_air_idx) {
 		valid_move_index := slice.linear_search(
 			sa.slice(&gc.valid_actions),
-			int(dst_air_idx),
+			u8(dst_air_idx),
 		) or_return
 		sa.unordered_remove(&gc.valid_actions, valid_move_index)
 	}

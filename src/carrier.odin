@@ -5,7 +5,7 @@ import sa "core:container/small_array"
 CARRIER_MAX_FIGHTERS :: 2
 
 carry_allied_fighters::proc(gc: ^Game_Cache, src_sea: ^Sea, dst_sea: ^Sea) {
-  fighters_remaining := CARRIER_MAX_FIGHTERS
+  fighters_remaining :u8= CARRIER_MAX_FIGHTERS
   for player in sa.slice(&gc.cur_player.team.players) {
     if player == gc.cur_player do continue
 		fighters_to_move := src_sea.idle_planes[player.index][Idle_Plane.FIGHTER]
@@ -21,8 +21,8 @@ carry_allied_fighters::proc(gc: ^Game_Cache, src_sea: ^Sea, dst_sea: ^Sea) {
 }
 
 is_carrier_available :: proc(gc: ^Game_Cache, dst_sea: ^Sea) -> bool {
-	carriers := 0
-	fighters := 0
+	carriers :u8= 0
+	fighters :u8= 0
 	for player in sa.slice(&gc.cur_player.team.players) {
 		carriers += dst_sea.idle_ships[player.index][Idle_Ship.CARRIER]
 		fighters += dst_sea.idle_planes[player.index][Idle_Plane.FIGHTER]

@@ -45,6 +45,6 @@ add_valid_aagun_moves :: proc(gc: ^Game_Cache, src_land: ^Land) {
 		   dst_land.owner.team != gc.cur_player.team {
 			continue
 		}
-		sa.push(&gc.valid_actions, int(dst_land.territory_index))
+		sa.push(&gc.valid_actions, u8(dst_land.territory_index))
 	}
 }

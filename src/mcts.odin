@@ -3,23 +3,23 @@ package oaaa
 import "core:fmt"
 import "core:math"
 
-//EXPLORATION_CONSTANT :: 1.414
-EXPLORATION_CONSTANT :: 0.3
+// EXPLORATION_CONSTANT :: 1.414
+EXPLORATION_CONSTANT :: 0.5
 
 Children :: [dynamic]^MCTSNode
 
 MCTSNode :: struct {
 	state:    Game_State,
-	action:   int,
-	parent:   ^MCTSNode,
 	children: Children,
-	visits:   int,
+	parent:   ^MCTSNode,
 	value:    f64,
+	visits:   int,
+	action:   u8,
 }
 
 check5 := false
 
-create_node :: proc(state: ^Game_State, action: int, parent: ^MCTSNode) -> ^MCTSNode {
+create_node :: proc(state: ^Game_State, action: u8, parent: ^MCTSNode) -> ^MCTSNode {
 	node := new(MCTSNode)
 	node.state = state^ //memcopy
 	node.action = action
@@ -57,7 +57,7 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 	return node
 }
 
-PRINT_INTERVAL :: 5000
+PRINT_INTERVAL :: 10000
 //import "core:math/rand"
 mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 	root := create_node(initial_state, 0, nil)
@@ -91,7 +91,7 @@ expand_node :: proc(node: ^MCTSNode) {
 	num_actions := 0
 	actions := get_possible_actions(&node.state)
 	for next_action in sa.slice(&actions) {
-		if next_action > MAX_ACTIONS {
+		if next_action > MAX_VALID_ACTIONS {
 			fmt.eprintln("Invalid action ", next_action)
 		}
 		//new_state := clone_state(&node.state)
@@ -102,7 +102,7 @@ expand_node :: proc(node: ^MCTSNode) {
 }
 MAX_ACTION_SEQUENCES :: 20
 MAX_ACTIONS :: 1000
-Action_Sequence :: [MAX_ACTIONS]int
+Action_Sequence :: [MAX_ACTIONS]u8
 action_sequences := [MAX_ACTION_SEQUENCES]Action_Sequence{}
 action_sequence_lengths := [MAX_ACTION_SEQUENCES]int{}
 action_sequence_visits := [MAX_ACTION_SEQUENCES]int{}
@@ -129,7 +129,7 @@ update_top_action_sequences :: proc(
 	}
 }
 
-copy_full_array :: proc(src: ^[MAX_ACTIONS]int, dest: ^[MAX_ACTIONS]int) {
+copy_full_array :: proc(src: ^[MAX_ACTIONS]u8, dest: ^[MAX_ACTIONS]u8) {
 	for i in 0 ..< MAX_ACTIONS {
 		dest[i] = src[i]
 	}
@@ -196,7 +196,14 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
 	if node.parent != nil {
 		fmt.print(PLAYER_DATA[node.parent.state.cur_player].color)
-		fmt.print("Action: ", node.action)
+		fmt.print("Action: ")
+		if node.action < LANDS_COUNT {
+			fmt.print(LANDS_DATA[node.action].name)
+		} else if node.action < TERRITORIES_COUNT {
+			fmt.print(SEAS_DATA[node.action - LANDS_COUNT])
+		} else {
+			fmt.print(Buy_Action(node.action - TERRITORIES_COUNT))
+		}
 		fmt.print(", Visits: ", node.visits)
 		fmt.print(", Value: ", node.value)
 		fmt.print(", Avg:", node.value / f64(node.visits))
@@ -244,7 +251,7 @@ print_mcts :: proc(root: ^MCTSNode) {
 	// print_top_action_sequences();
 }
 
-select_best_action :: proc(root: ^MCTSNode) -> int {
+select_best_action :: proc(root: ^MCTSNode) -> u8 {
 	best_child: ^MCTSNode = nil
 	best_value: f64 = -999999.0
 	for child in root.children {

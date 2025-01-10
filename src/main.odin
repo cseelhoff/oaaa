@@ -6,7 +6,7 @@ import "core:strconv"
 
 main :: proc() {
 	fmt.println("Starting CAAA")
-	iterations := 1_000_000
+	iterations := 100_000_000
 	if len(os.args) >= 2 {
 		iterations, _ = strconv.parse_int(os.args[1])
 	}
@@ -22,8 +22,9 @@ main :: proc() {
 	load_default_game_state(&game_state)
 	//save_json(game_state, "game_state.json")
 	//load_game_data(&game_state, "game_state.json")
+
 	load_cache_from_state(&game_cache, &game_state)
-	game_cache.answers_remaining = 100000
+	game_cache.answers_remaining = 65000
 	game_cache.seed = 2	
 
 	// PLAYER_DATA[0].is_human = true

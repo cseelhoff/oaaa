@@ -189,7 +189,7 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: ^Sea, max_distance: 
 			   dst_sea.combat_status != .PRE_COMBAT { 	// transport needs escort
 			continue
 		}
-		sa.push(&gc.valid_actions, int(dst_sea.territory_index))
+		sa.push(&gc.valid_actions, u8(dst_sea.territory_index))
 	}
 	if max_distance == 1 do return
 	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
@@ -203,7 +203,7 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: ^Sea, max_distance: 
 		}
 		for mid_sea in sa.slice(&dst_sea_2_away.mid_seas) {
 			if (!mid_sea.sea_path_blocked) {
-				sa.push(&gc.valid_actions, int(dst_sea_2_away.sea.territory_index))
+				sa.push(&gc.valid_actions, u8(dst_sea_2_away.sea.territory_index))
 				break
 			}
 		}
@@ -212,7 +212,7 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: ^Sea, max_distance: 
 
 add_valid_unload_moves :: proc(gc: ^Game_Cache, src_sea: ^Sea) {
 	for dst_land in sa.slice(&src_sea.adjacent_lands) {
-		sa.push(&gc.valid_actions, int(dst_land.territory_index))
+		sa.push(&gc.valid_actions, u8(dst_land.territory_index))
 	}
 }
 

@@ -34,7 +34,7 @@ Idle_Ship_Names := [?]string {
 	Idle_Ship.BS_DAMAGED  = "BS_DAMAGED",
 }
 
-COST_IDLE_SHIP := [?]int {
+COST_IDLE_SHIP := [?]u8 {
 	Idle_Ship.TRANS_EMPTY = Cost_Buy[Buy_Action.BUY_TRANS],
 	Idle_Ship.TRANS_1I    = Cost_Buy[Buy_Action.BUY_TRANS],
 	Idle_Ship.TRANS_1A    = Cost_Buy[Buy_Action.BUY_TRANS],
@@ -404,7 +404,7 @@ add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship) 
 		if src_sea.skipped_moves[dst_sea.territory_index] {
 			continue
 		}
-		sa.push(&gc.valid_actions, int(dst_sea.territory_index))
+		sa.push(&gc.valid_actions, u8(dst_sea.territory_index))
 	}
 	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
 	for &dst_sea_2_away in sa.slice(
@@ -416,7 +416,7 @@ add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship) 
 		for mid_sea in sa.slice(&dst_sea_2_away.mid_seas) {
 			if mid_sea.enemy_destroyer_total > 0 do continue
 			if ship != Active_Ship.SUB_UNMOVED && mid_sea.sea_path_blocked do continue
-			sa.push(&gc.valid_actions, int(dst_sea_2_away.sea.territory_index))
+			sa.push(&gc.valid_actions, u8(dst_sea_2_away.sea.territory_index))
 			break
 		}
 	}

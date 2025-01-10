@@ -54,7 +54,7 @@ Buy_Active_Army := [?]Active_Army {
 	Buy_Action.BUY_AAGUN = .AAGUN_0_MOVES,
 }
 
-Cost_Buy := [?]int {
+Cost_Buy := [?]u8 {
 	Buy_Action.SKIP_BUY       = 0,
 	Buy_Action.BUY_INF        = 3,
 	Buy_Action.BUY_ARTY       = 4,
@@ -88,7 +88,7 @@ Buy_Names := [?]string {
 	Buy_Action.BUY_BATTLESHIP = "BUY_BATTLESHIP",
 }
 
-get_factory_buy :: proc(gc: ^Game_Cache) -> (action: int, ok: bool) {
+get_factory_buy :: proc(gc: ^Game_Cache) -> (action: u8, ok: bool) {
 	action = gc.valid_actions.data[0]
 	if gc.valid_actions.len > 1 {
 		if gc.answers_remaining == 0 do return action, false
@@ -111,7 +111,7 @@ get_factory_buy :: proc(gc: ^Game_Cache) -> (action: int, ok: bool) {
 	return action, true
 }
 
-update_factory_history :: proc(gc: ^Game_Cache, action: int) {
+update_factory_history :: proc(gc: ^Game_Cache, action: u8) {
 	for {
 		assert(gc.valid_actions.len > 0)
 		valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
@@ -132,16 +132,16 @@ update_buy_history :: proc(gc: ^Game_Cache, src_air: ^Territory, action: Buy_Act
 	}
 }
 
-buy_to_action_idx :: proc(action: Buy_Action) -> int {
-	return int(action) + TERRITORIES_COUNT
+buy_to_action_idx :: proc(action: Buy_Action) -> u8 {
+	return u8(action) + TERRITORIES_COUNT
 }
 
-action_idx_to_buy :: proc(action: int) -> Buy_Action {
+action_idx_to_buy :: proc(action: u8) -> Buy_Action {
 	return Buy_Action(action - TERRITORIES_COUNT)
 }
 
 add_buy_if_not_skipped :: proc(gc: ^Game_Cache, src_air: ^Territory, action: Buy_Action) {
-	if !src_air.skipped_buys[int(action)] {
+	if !src_air.skipped_buys[u8(action)] {
 		sa.push(&gc.valid_actions, buy_to_action_idx(action))
 	}
 }

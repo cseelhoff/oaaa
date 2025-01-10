@@ -5,6 +5,7 @@ import "core:mem"
 import "core:slice"
 
 GLOBAL_TICK := 0
+ACTUALLY_PRINT := false
 when ODIN_DEBUG {
 	debug_checks :: proc(gc: ^Game_Cache) {
 		GLOBAL_TICK += 1
@@ -13,9 +14,8 @@ when ODIN_DEBUG {
 		// 	//print_game_state(gc)
 		// 	gc.actually_print = true
 		// } else do return
-		gc.step_id += 1
 		for sea in gc.seas {
-			team_idles: [2]int = {0, 0}
+			team_idles: [2]u8 = {0, 0}
 			for ship, ship_idx in sea.active_ships {
 				if ship < 0 {
 					fmt.eprintln("Negative active ships")
@@ -51,7 +51,7 @@ when ODIN_DEBUG {
 			}
 		}
 		for land in gc.lands {
-			team_idles: [2]int = {0, 0}
+			team_idles: [2]u8 = {0, 0}
 			for army, army_idx in land.active_armies {
 				if army < 0 {
 					fmt.eprintln("Negative active armies")
@@ -94,29 +94,46 @@ when ODIN_DEBUG {
 	debug_checks :: proc(gc: ^Game_Cache) {}
 }
 play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
+	debug_checks(gc)
 	move_unmoved_planes(gc) or_return // move before carriers for more options
+	debug_checks(gc)
 	move_combat_ships(gc) or_return
+	debug_checks(gc)
 	stage_transports(gc) or_return
+	debug_checks(gc)
 	move_armies(gc) or_return
+	debug_checks(gc)
 	move_transports(gc) or_return
+	debug_checks(gc)
 	resolve_sea_battles(gc) or_return
+	debug_checks(gc)
 	unload_transports(gc) or_return
+	debug_checks(gc)
 	resolve_land_battles(gc) or_return
+	debug_checks(gc)
 	move_aa_guns(gc) or_return
+	debug_checks(gc)
 	land_fighter_units(gc) or_return
+	debug_checks(gc)
 	land_bomber_units(gc) or_return
+	debug_checks(gc)
 	buy_units(gc) or_return
+	debug_checks(gc)
 	//crash_air_units(gc) or_return
 	buy_factory(gc) or_return
+	debug_checks(gc)
 	reset_units_fully(gc)
+	debug_checks(gc)
 	collect_money(gc)
+	debug_checks(gc)
 	rotate_turns(gc)
+	debug_checks(gc)
 	return true
 }
 
 add_move_if_not_skipped :: proc(gc: ^Game_Cache, src_air: ^Territory, dst_air: ^Territory) {
 	if !src_air.skipped_moves[dst_air.territory_index] {
-		sa.push(&gc.valid_actions, int(dst_air.territory_index))
+		sa.push(&gc.valid_actions, u8(dst_air.territory_index))
 	}
 }
 
@@ -150,7 +167,7 @@ clear_move_history :: proc(gc: ^Game_Cache) {
 
 reset_valid_moves :: proc(gc: ^Game_Cache, territory: ^Territory) { 	// -> (dst_air_idx: int) {
 	gc.valid_actions.len = 1
-	gc.valid_actions.data[0] = int(territory.territory_index)
+	gc.valid_actions.data[0] = u8(territory.territory_index)
 }
 
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -164,7 +181,7 @@ buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		   land.skipped_moves[land.territory_index] {
 			continue
 		}
-		sa.push(&gc.valid_actions, int(land.territory_index))
+		sa.push(&gc.valid_actions, u8(land.territory_index))
 	}
 	for (gc.cur_player.money < FACTORY_COST) {
 		factory_land_idx := get_factory_buy(gc) or_return
@@ -221,6 +238,7 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		land.active_planes[Active_Plane.FIGHTER_UNMOVED] = idle_planes[Idle_Plane.FIGHTER]
 		land.active_planes[Active_Plane.BOMBER_UNMOVED] = idle_planes[Idle_Plane.BOMBER]
 	}
+
 	for &sea in gc.seas {
 		sea.combat_status = .NO_COMBAT
 		mem.zero_slice(sea.skipped_moves[:])
@@ -265,27 +283,27 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 	enemy_score := 1
 	for player, player_idx in PLAYER_DATA {
 		if player.team == PLAYER_DATA[gs.cur_player].team {
-			allied_score += gs.money[player_idx]
+			allied_score += int(gs.money[player_idx])
 		} else {
-			enemy_score += gs.money[player_idx]
+			enemy_score += int(gs.money[player_idx])
 		}
 	}
 	for player, player_idx in PLAYER_DATA {
 		mil_cost := 0
 		for land in gs.land_states {
 			for army in Idle_Army {
-				mil_cost += land.idle_armies[player_idx][army] * COST_IDLE_ARMY[army]
+				mil_cost += int(land.idle_armies[player_idx][army]) * int(COST_IDLE_ARMY[army])
 			}
 			for plane in Idle_Plane {
-				mil_cost += land.idle_planes[player_idx][plane] * COST_IDLE_PLANE[plane]
+				mil_cost += int(land.idle_planes[player_idx][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
 		for sea in gs.sea_states {
 			for ship in Idle_Ship {
-				mil_cost += sea.idle_ships[player_idx][ship] * COST_IDLE_SHIP[ship]
+				mil_cost += int(sea.idle_ships[player_idx][ship]) * int(COST_IDLE_SHIP[ship])
 			}
 			for plane in Idle_Plane {
-				mil_cost += sea.idle_planes[player_idx][plane] * COST_IDLE_PLANE[plane]
+				mil_cost += int(sea.idle_planes[player_idx][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
 		if player.team == PLAYER_DATA[gs.cur_player].team {
@@ -305,27 +323,27 @@ evaluate_cache :: proc(gc: ^Game_Cache) -> f64 {
 	enemy_score := 1
 	for player in gc.players {
 		if player.team == gc.cur_player.team {
-			allied_score += player.money
+			allied_score += int(player.money)
 		} else {
-			enemy_score += player.money
+			enemy_score += int(player.money)
 		}
 	}
 	for player in gc.players {
 		mil_cost := 0
 		for land in gc.lands {
 			for army in Idle_Army {
-				mil_cost += land.idle_armies[player.index][army] * COST_IDLE_ARMY[army]
+				mil_cost += int(land.idle_armies[player.index][army]) * int(COST_IDLE_ARMY[army])
 			}
 			for plane in Idle_Plane {
-				mil_cost += land.idle_planes[player.index][plane] * COST_IDLE_PLANE[plane]
+				mil_cost += int(land.idle_planes[player.index][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
 		for sea in gc.seas {
 			for ship in Idle_Ship {
-				mil_cost += sea.idle_ships[player.index][ship] * COST_IDLE_SHIP[ship]
+				mil_cost += int(sea.idle_ships[player.index][ship]) * int(COST_IDLE_SHIP[ship])
 			}
 			for plane in Idle_Plane {
-				mil_cost += sea.idle_planes[player.index][plane] * COST_IDLE_PLANE[plane]
+				mil_cost += int(sea.idle_planes[player.index][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
 		if player.team == gc.cur_player.team {
@@ -344,12 +362,13 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 	gc: Game_Cache
 	ok := initialize_map_constants(&gc)
 	load_cache_from_state(&gc, gs)
-	gc.answers_remaining = 100000
-	gc.seed = rand.int_max(RANDOM_MAX)
+	gc.answers_remaining = 65000
+	gc.seed = u16(rand.int_max(RANDOM_MAX))
 	//use_selected_action = false;
 	score := evaluate_cache(&gc)
 	max_loops := 1000
 	// clear_move_history();
+	debug_checks(&gc)
 	for (score > 0.01 && score < 0.99 && max_loops > 0) {
 		max_loops -= 1
 		// printf("max_loops: %d\n", max_loops);
@@ -361,7 +380,9 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 		// if (max_loops % 100 == 0) {
 		//   printf("max_loops: %d\n", max_loops);
 		// }
+		debug_checks(&gc)
 		play_full_turn(&gc) or_break
+		debug_checks(&gc)
 		score = evaluate_cache(&gc)
 	}
 	score = evaluate_cache(&gc)
@@ -387,7 +408,7 @@ get_possible_actions :: proc(gs: ^Game_State) -> VALID_ACTIONS_SA {
 	return gc.valid_actions
 }
 
-apply_action :: proc(gs: ^Game_State, action: int) {
+apply_action :: proc(gs: ^Game_State, action: u8) {
 	// Apply the action to the game state
 	gc: Game_Cache
 	ok := initialize_map_constants(&gc)

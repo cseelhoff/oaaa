@@ -14,7 +14,7 @@ Idle_Plane_Names := [?]string {
 	Idle_Plane.BOMBER  = "BOMBER",
 }
 
-COST_IDLE_PLANE := [?]int {
+COST_IDLE_PLANE := [?]u8 {
 	Idle_Plane.FIGHTER = Cost_Buy[Buy_Action.BUY_FIGHTER],
 	Idle_Plane.BOMBER  = Cost_Buy[Buy_Action.BUY_BOMBER],
 }
@@ -99,7 +99,7 @@ move_unmoved_planes :: proc(gc: ^Game_Cache) -> (ok: bool) {
 }
 
 move_plane_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
-		gc.clear_needed = false
+	gc.clear_needed = false
 	for &src_air in gc.territories {
 		move_plane_air(gc, src_air, plane) or_return
 	}
@@ -108,7 +108,7 @@ move_plane_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
 }
 
 move_plane_air :: proc(gc: ^Game_Cache, src_air: ^Territory, plane: Active_Plane) -> (ok: bool) {
-		if src_air.active_planes[plane] == 0 do return true
+	if src_air.active_planes[plane] == 0 do return true
 	refresh_plane_can_land_here(gc, plane)
 	reset_valid_moves(gc, src_air)
 	add_valid_plane_moves(gc, src_air, plane)
@@ -125,12 +125,12 @@ move_next_plane_in_air :: proc(
 ) -> (
 	ok: bool,
 ) {
-		dst_air_idx := get_move_input(gc, Active_Plane_Names[plane], src_air) or_return
+	dst_air_idx := get_move_input(gc, Active_Plane_Names[plane], src_air) or_return
 	dst_air := gc.territories[dst_air_idx]
 	if skip_plane(src_air, dst_air, plane, gc.cur_player.team.enemy_team.index) do return true
 	plane_after_move := plane_enemy_checks(gc, src_air, dst_air, plane)
 	move_single_plane(dst_air, plane_after_move, gc.cur_player, plane, src_air)
-		return true
+	return true
 }
 
 skip_plane :: proc(
@@ -158,9 +158,8 @@ move_single_plane :: proc(
 	dst_air.idle_planes[player.index][Active_Plane_To_Idle[dst_unit]] += 1
 	dst_air.team_units[player.team.index] += 1
 	src_air.active_planes[src_unit] -= 1
-	src_air.idle_planes[player.index][Active_Plane_To_Idle[dst_unit]] -= 1
+	src_air.idle_planes[player.index][Active_Plane_To_Idle[src_unit]] -= 1
 	src_air.team_units[player.team.index] -= 1
-	src_air.active_planes[src_unit] -= 1
 }
 
 plane_enemy_checks :: proc(

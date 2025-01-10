@@ -20,14 +20,14 @@ Seas_2_Moves_Away :: sa.Small_Array(SEAS_COUNT, Sea_2_Moves_Away)
 Sea :: struct {
 	using territory:        Territory,
 	idle_ships:             [PLAYERS_COUNT]Idle_Sea_For_Player,
-	active_ships:           [len(Active_Ship)]int,
+	active_ships:           [len(Active_Ship)]u8,
 	canal_paths:            Canal_Paths,
-	enemy_destroyer_total:  int,
-	enemy_submarines_total: int,
-	enemy_blockade_total:   int,
-	allied_carriers:        int,
-	enemy_fighters_total:   int,
 	sea_index:              Sea_ID,
+	enemy_destroyer_total:  u8,
+	enemy_submarines_total: u8,
+	enemy_blockade_total:   u8,
+	allied_carriers:        u8,
+	enemy_fighters_total:   u8,
 	sea_path_blocked:       bool,
 	sub_path_blocked:       bool,
 }
@@ -58,7 +58,7 @@ Canal_ID :: enum {
 	Pacific_Baltic,
 }
 
-SEAS_DATA :: [?]string{"Pacific", "Atlantic", "Baltic"}
+SEAS_DATA := [?]string{"Pacific", "Atlantic", "Baltic"}
 SEA_CONNECTIONS :: [?][2]string{{"Pacific", "Atlantic"}, {"Atlantic", "Baltic"}}
 CANALS := [?]Canal{{lands = {"Moscow", "Moscow"}, seas = {"Pacific", "Baltic"}}}
 Canal_Lands: [CANALS_COUNT][2]^Land

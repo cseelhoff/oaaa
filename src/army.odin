@@ -11,7 +11,7 @@ Idle_Army :: enum {
 	AAGUN,
 }
 
-COST_IDLE_ARMY := [?]int {
+COST_IDLE_ARMY := [?]u8 {
 	Idle_Army.INF   = Cost_Buy[Buy_Action.BUY_INF],
 	Idle_Army.ARTY  = Cost_Buy[Buy_Action.BUY_ARTY],
 	Idle_Army.TANK  = Cost_Buy[Buy_Action.BUY_TANK],
@@ -183,7 +183,7 @@ is_boat_available :: proc(
 add_if_boat_available :: proc(gc: ^Game_Cache, src_land: ^Land, dst_sea: ^Sea, army: Active_Army) {
 	if is_boat_available(gc, src_land, dst_sea, army) {
 		if !src_land.skipped_moves[dst_sea.territory_index] {
-			sa.push(&gc.valid_actions, int(dst_sea.territory_index))
+			sa.push(&gc.valid_actions, u8(dst_sea.territory_index))
 		}
 	}
 }
@@ -198,7 +198,7 @@ are_midlands_blocked :: proc(mid_lands: ^Mid_Lands, enemy_team_idx: Team_ID) -> 
 add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: ^Land, army: Active_Army) {
 	for dst_land in sa.slice(&src_land.adjacent_lands) {
 		if src_land.skipped_moves[dst_land.territory_index] do continue
-		sa.push(&gc.valid_actions, int(dst_land.territory_index))
+		sa.push(&gc.valid_actions, u8(dst_land.territory_index))
 	}
 	for dst_sea in sa.slice(&src_land.adjacent_seas) {
 		add_if_boat_available(gc, src_land, dst_sea, army)
@@ -212,7 +212,7 @@ add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: ^Land, army: Active_Ar
 		   are_midlands_blocked(&dst_land_2_away.mid_lands, enemy_team_idx) {
 			continue
 		}
-		sa.push(&gc.valid_actions, int(dst_land_2_away.land.territory_index))
+		sa.push(&gc.valid_actions, u8(dst_land_2_away.land.territory_index))
 	}
 	// check for moving from land to sea (two moves away)
 	for &dst_sea_2_away in sa.slice(&src_land.seas_2_moves_away) {
@@ -249,7 +249,7 @@ check_load_transport :: proc(
 	dst_sea := get_sea(gc, dst_air_idx)
 	load_available_transport(army, src_land, dst_sea, gc.cur_player)
 	if is_boat_available(gc, src_land, dst_sea, army) do return true
-	action_idx, found := slice.linear_search(sa.slice(&gc.valid_actions), int(dst_air_idx))
+	action_idx, found := slice.linear_search(sa.slice(&gc.valid_actions), u8(dst_air_idx))
 	if !found {
 		fmt.eprintln("Error: Previous action not found in list")
 		return false
