@@ -202,7 +202,7 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 		} else if node.action < TERRITORIES_COUNT {
 			fmt.print(SEAS_DATA[node.action - LANDS_COUNT])
 		} else {
-			fmt.print(Buy_Action(node.action - TERRITORIES_COUNT))
+			fmt.print(Buy_Names[node.action - TERRITORIES_COUNT])
 		}
 		fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
 		fmt.print(", Visits:", node.visits)

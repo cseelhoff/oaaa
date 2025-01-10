@@ -149,7 +149,7 @@ add_buy_if_not_skipped :: proc(gc: ^Game_Cache, src_air: ^Territory, action: Buy
 buy_sea_units :: proc(gc: ^Game_Cache, land: ^Land) -> (ok: bool) {
 	for dst_sea in sa.slice(&land.adjacent_seas) {
 		for (land.builds_left > 0 && !dst_sea.skipped_buys[Buy_Action.SKIP_BUY]) {
-						repair_cost := max(0, 1 + land.factory_dmg - land.builds_left)
+			repair_cost := u8(max(0, 1 + int(land.factory_dmg) - int(land.builds_left)))
 			gc.valid_actions.len = 1
 			if gc.cur_player.money >= Cost_Buy[Buy_Action.BUY_FIGHTER] + repair_cost &&
 			   dst_sea.can_fighter_land_here {
@@ -166,7 +166,16 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: ^Land) -> (ok: bool) {
 			}
 			land.builds_left -= 1
 			land.factory_dmg -= repair_cost
-			gc.cur_player.money -= Cost_Buy[action] + repair_cost
+			// buy_cost := Cost_Buy[action]
+			// fmt.printf(
+			// 	"Buying %s for %d. Repair cost: %d  Starting money: %d  Ending money:",
+			// 	Buy_Names[action],
+			// 	buy_cost,
+			// 	repair_cost,
+			// 	gc.cur_player.money,
+			// )
+			gc.cur_player.money -= (Cost_Buy[action] + repair_cost)
+			// fmt.println(gc.cur_player.money)
 			if action == .BUY_FIGHTER {
 				dst_sea.active_planes[Active_Plane.FIGHTER_0_MOVES] += 1
 				dst_sea.idle_planes[gc.cur_player.index][Idle_Plane.FIGHTER] += 1
@@ -192,7 +201,7 @@ clear_buy_history :: proc(gc: ^Game_Cache, land: ^Land) {
 
 buy_land_units :: proc(gc: ^Game_Cache, land: ^Land) -> (ok: bool) {
 	for (land.builds_left > 0) {
-		repair_cost := max(0, 1 + land.factory_dmg - land.builds_left)
+		repair_cost := u8(max(0, 1 + int(land.factory_dmg) - int(land.builds_left)))
 		gc.valid_actions.len = 1
 		for buy_plane in Valid_Air_Buys {
 			if gc.cur_player.money < Cost_Buy[buy_plane] + repair_cost do continue
