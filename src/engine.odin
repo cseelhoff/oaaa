@@ -131,19 +131,19 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-add_move_if_not_skipped :: proc(gc: ^Game_Cache, src_air: ^Territory, dst_air: ^Territory) {
+add_move_if_not_skipped :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 	if !src_air.skipped_moves[dst_air.territory_index] {
 		sa.push(&gc.valid_actions, u8(dst_air.territory_index))
 	}
 }
 
-update_move_history :: proc(gc: ^Game_Cache, src_air: ^Territory, dst_air_idx: Air_ID) {
+update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air_idx: Air_ID) {
 	// get a list of newly skipped valid_actions
 	for {
 		assert(gc.valid_actions.len > 0)
 		valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
 		if Air_ID(valid_action) == dst_air_idx do return
-		src_air.skipped_moves[valid_action] = true
+		gc.skipped_moves[src_air] += {src_air}
 		gc.clear_needed = true
 		//apply_skip(gc, src_air, gc.territories[valid_action])
 		gc.valid_actions.len -= 1
@@ -165,13 +165,13 @@ clear_move_history :: proc(gc: ^Game_Cache) {
 	gc.clear_needed = false
 }
 
-reset_valid_moves :: proc(gc: ^Game_Cache, territory: ^Territory) { 	// -> (dst_air_idx: int) {
+reset_valid_moves :: proc(gc: ^Game_Cache, territory: Air_ID) { 	// -> (dst_air_idx: int) {
 	gc.valid_actions.len = 1
-	gc.valid_actions.data[0] = u8(territory.territory_index)
+	gc.valid_actions.data[0] = u8(territory)
 }
 
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	if gc.cur_player.money < FACTORY_COST do return true
+	if gc.money[gc.cur_player] < FACTORY_COST do return true
 	gc.valid_actions.len = 1
 	gc.valid_actions.data[0] = buy_to_action_idx(.SKIP_BUY)
 	for land in gc.lands {
@@ -183,10 +183,10 @@ buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		}
 		sa.push(&gc.valid_actions, u8(land.territory_index))
 	}
-	for (gc.cur_player.money < FACTORY_COST) {
+	for gc.money[gc.cur_player] < FACTORY_COST {
 		factory_land_idx := get_factory_buy(gc) or_return
 		if factory_land_idx == buy_to_action_idx(.SKIP_BUY) do return true
-		gc.cur_player.money -= FACTORY_COST
+		gc.money[gc.cur_player] -= FACTORY_COST
 		factory_land := &gc.lands[factory_land_idx]
 		factory_land.factory_prod = factory_land.value
 		sa.push(&gc.cur_player.factory_locations, factory_land)
@@ -209,8 +209,8 @@ reset_units_fully :: proc(gc: ^Game_Cache) {
 }
 
 collect_money :: proc(gc: ^Game_Cache) {
-	if gc.cur_player.capital.owner == gc.cur_player {
-		gc.cur_player.money += gc.cur_player.income_per_turn
+	if gc.owner[mm.capital[gc.cur_player]] == gc.cur_player {
+		gc.money[gc.cur_player] += gc.cur_player.income_per_turn
 	}
 }
 
@@ -335,7 +335,8 @@ evaluate_cache :: proc(gc: ^Game_Cache) -> f64 {
 				mil_cost += int(land.idle_armies[player.index][army]) * int(COST_IDLE_ARMY[army])
 			}
 			for plane in Idle_Plane {
-				mil_cost += int(land.idle_planes[player.index][plane]) * int(COST_IDLE_PLANE[plane])
+				mil_cost +=
+					int(land.idle_planes[player.index][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
 		for sea in gc.seas {
@@ -358,17 +359,17 @@ evaluate_cache :: proc(gc: ^Game_Cache) -> f64 {
 }
 
 import "core:math/rand"
-random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
-	gc: Game_Cache
-	ok := initialize_map_constants(&gc)
-	load_cache_from_state(&gc, gs)
+random_play_until_terminal :: proc(gc: ^Game_Cache, gs: ^Game_State) -> f64 {
+	// gc: Game_Cache
+	// ok := initialize_map_constants(gc)
+	load_cache_from_state(gc, gs)
 	gc.answers_remaining = 65000
 	gc.seed = u16(rand.int_max(RANDOM_MAX))
 	//use_selected_action = false;
-	score := evaluate_cache(&gc)
+	score := evaluate_cache(gc)
 	max_loops := 1000
 	// clear_move_history();
-	debug_checks(&gc)
+	debug_checks(gc)
 	for (score > 0.01 && score < 0.99 && max_loops > 0) {
 		max_loops -= 1
 		// printf("max_loops: %d\n", max_loops);
@@ -380,19 +381,19 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 		// if (max_loops % 100 == 0) {
 		//   printf("max_loops: %d\n", max_loops);
 		// }
-		debug_checks(&gc)
-		play_full_turn(&gc) or_break
-		debug_checks(&gc)
-		score = evaluate_cache(&gc)
+		debug_checks(gc)
+		play_full_turn(gc) or_break
+		debug_checks(gc)
+		score = evaluate_cache(gc)
 	}
-	score = evaluate_cache(&gc)
+	score = evaluate_cache(gc)
 	if int(gc.cur_player.index) % 2 == 1 {
 		score = 1 - score
 	}
 	return score
 }
 
-get_possible_actions :: proc(gs: ^Game_State) -> VALID_ACTIONS_SA {
+get_possible_actions :: proc(gs: ^Game_State) -> SA_Valid_Actions {
 	// Return the list of possible actions from the given state
 	gc: Game_Cache
 	// set unlucky teams

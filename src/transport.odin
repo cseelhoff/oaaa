@@ -110,17 +110,17 @@ stage_trans_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
 	return true
 }
 
-stage_trans_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship) -> (ok: bool) {
-	if src_sea.active_ships[ship] == 0 do return true
+stage_trans_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
+	if gc.active_ships[src_sea][ship] == 0 do return true
 	reset_valid_moves(gc, src_sea)
 	add_valid_transport_moves(gc, src_sea, 2)
-	for src_sea.active_ships[ship] > 0 {
+	for gc.active_ships[src_sea][ship] > 0 {
 		stage_next_ship_in_sea(gc, src_sea, ship) or_return
 	}
 	return true
 }
 
-stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship) -> (ok: bool) {
+stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
 	dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], src_sea) or_return
 	dst_sea_idx := get_sea_id(dst_air_idx)
 	// sea_distance := src_sea.canal_paths[gc.canal_state].sea_distance[dst_sea_idx]
@@ -138,11 +138,11 @@ stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship
 
 skip_empty_transports :: proc(gc: ^Game_Cache) {
 	for &src_sea in gc.seas {
-		src_sea.active_ships[Active_Ship.TRANS_EMPTY_0_MOVES] +=
-			src_sea.active_ships[Active_Ship.TRANS_EMPTY_1_MOVES] +
-			src_sea.active_ships[Active_Ship.TRANS_EMPTY_2_MOVES]
-		src_sea.active_ships[Active_Ship.TRANS_EMPTY_1_MOVES] = 0
-		src_sea.active_ships[Active_Ship.TRANS_EMPTY_2_MOVES] = 0
+		gc.active_ships[src_sea][Active_Ship.TRANS_EMPTY_0_MOVES] +=
+			gc.active_ships[src_sea][Active_Ship.TRANS_EMPTY_1_MOVES] +
+			gc.active_ships[src_sea][Active_Ship.TRANS_EMPTY_2_MOVES]
+		gc.active_ships[src_sea][Active_Ship.TRANS_EMPTY_1_MOVES] = 0
+		gc.active_ships[src_sea][Active_Ship.TRANS_EMPTY_2_MOVES] = 0
 	}
 }
 
@@ -163,17 +163,17 @@ move_trans_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
 	return true
 }
 
-move_trans_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship) -> (ok: bool) {
-	if src_sea.active_ships[ship] == 0 do return true
+move_trans_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
+	if gc.active_ships[src_sea][ship] == 0 do return true
 	reset_valid_moves(gc, src_sea)
 	add_valid_transport_moves(gc, src_sea, Ships_Moves[ship])
-	for src_sea.active_ships[ship] > 0 {
+	for gc.active_ships[src_sea][ship] > 0 {
 		move_next_trans_in_sea(gc, src_sea, ship) or_return
 	}
 	return true
 }
 
-move_next_trans_in_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship) -> (ok: bool) {
+move_next_trans_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
 	dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], src_sea) or_return
 	dst_sea := get_sea(gc, dst_air_idx)
 	if skip_ship(src_sea, dst_sea, ship) do return true
@@ -181,7 +181,7 @@ move_next_trans_in_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship
 	return true
 }
 
-add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: ^Sea, max_distance: int) {
+add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance: int) {
 	// for dst_sea in sa.slice(&src_sea.canal_paths[gc.canal_state].adjacent_seas) {
 	for dst_sea in sa.slice(&src_sea.canal_paths[transmute(u8)gc.canals_open].adjacent_seas) {
 		if src_sea.skipped_moves[dst_sea.territory_index] ||
@@ -210,7 +210,7 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: ^Sea, max_distance: 
 	}
 }
 
-add_valid_unload_moves :: proc(gc: ^Game_Cache, src_sea: ^Sea) {
+add_valid_unload_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
 	for dst_land in sa.slice(&src_sea.adjacent_lands) {
 		sa.push(&gc.valid_actions, u8(dst_land.territory_index))
 	}
@@ -237,14 +237,14 @@ Skipped_Transports := [?]Active_Ship {
 unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for ship in Transports_With_Cargo {
 		for &src_sea in gc.seas {
-			if src_sea.active_ships[ship] == 0 do continue
+			if gc.active_ships[src_sea][ship] == 0 do continue
 			reset_valid_moves(gc, &src_sea)
 			add_valid_unload_moves(gc, &src_sea)
-			for src_sea.active_ships[ship] > 0 {
+			for gc.active_ships[src_sea][ship] > 0 {
 				dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], &src_sea) or_return
 				if dst_air_idx == src_sea.territory_index {
-					src_sea.active_ships[Skipped_Transports[ship]] += src_sea.active_ships[ship]
-					src_sea.active_ships[ship] = 0
+					gc.active_ships[src_sea][Skipped_Transports[ship]] += gc.active_ships[src_sea][ship]
+					gc.active_ships[src_sea][ship] = 0
 					continue
 				}
 				dst_land := get_land(gc, dst_air_idx)
@@ -275,11 +275,11 @@ Transport_Unloaded := [?]Active_Ship {
 	Active_Ship.TRANS_1I_1T_0_MOVES = .TRANS_1T_0_MOVES,
 }
 
-unload_unit_to_land :: proc(gc: ^Game_Cache, dst_land: ^Land, ship: Active_Ship) {
+unload_unit_to_land :: proc(gc: ^Game_Cache, dst_land: Land_ID, ship: Active_Ship) {
 	army := Transport_Unload_Unit_1[ship]
-	dst_land.active_armies[army] += 1
-	dst_land.idle_armies[gc.cur_player.index][Active_Army_To_Idle[army]] += 1
-	dst_land.team_units[gc.cur_player.team.index] += 1
+	gc.active_armies[dst_land][army] += 1
+	gc.idle_armies[dst_land][gc.cur_player.index][Active_Army_To_Idle[army]] += 1
+	gc.team_units[dst_land][gc.cur_player.team.index] += 1
 	dst_land.max_bombards += 1
 	if !flag_for_enemy_combat(dst_land, gc.cur_player.team.enemy_team.index)
 	{
@@ -287,9 +287,9 @@ unload_unit_to_land :: proc(gc: ^Game_Cache, dst_land: ^Land, ship: Active_Ship)
 	}
 }
 
-replace_ship :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship, new_ship: Active_Ship) {
+replace_ship :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship, new_ship: Active_Ship) {
 	src_sea.idle_ships[gc.cur_player.index][Active_Ship_To_Idle[new_ship]] += 1
-	src_sea.active_ships[new_ship] += 1
+	gc.active_ships[src_sea][new_ship] += 1
 	src_sea.idle_ships[gc.cur_player.index][Active_Ship_To_Idle[ship]] -= 1
-	src_sea.active_ships[ship] -= 1
+	gc.active_ships[src_sea][ship] -= 1
 }

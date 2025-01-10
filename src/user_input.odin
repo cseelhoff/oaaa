@@ -58,9 +58,9 @@ get_retreat_input :: proc(
 	return dst_air_idx, true
 }
 
-print_move_prompt :: proc(gc: ^Game_Cache, unit_name: string, src_air: ^Territory) {
+print_move_prompt :: proc(gc: ^Game_Cache, unit_name: string, src_air: Air_ID) {
 	print_game_state(gc)
-	fmt.print(PLAYER_DATA[gc.cur_player.index].color)
+	fmt.print(PLAYER_DATA[gc.cur_player].color)
 	fmt.println("Moving ", unit_name, " From ", src_air.name, " Valid Moves: ")
 	for valid_move in sa.slice(&gc.valid_actions) {
 		fmt.print(int(valid_move), gc.territories[valid_move].name, ", ")
@@ -71,28 +71,28 @@ print_move_prompt :: proc(gc: ^Game_Cache, unit_name: string, src_air: ^Territor
 get_move_input :: proc(
 	gc: ^Game_Cache,
 	unit_name: string,
-	src_air: ^Territory,
+	src_air: Air_ID,
 ) -> (
-	dst_air_idx: Air_ID,
+	dst_air: Air_ID,
 	ok: bool,
 ) {
 	debug_checks(gc)
-	dst_air_idx = Air_ID(gc.valid_actions.data[0])
+	dst_air = Air_ID(gc.valid_actions.data[0])
 	if gc.valid_actions.len > 1 {
-		if gc.answers_remaining == 0 do return dst_air_idx, false
-		if PLAYER_DATA[gc.cur_player.index].is_human {
+		if gc.answers_remaining == 0 do return dst_air, false
+		if PLAYER_DATA[gc.cur_player].is_human {
 			print_move_prompt(gc, unit_name, src_air)
-			dst_air_idx = Air_ID(get_user_input(gc))
+			dst_air = Air_ID(get_user_input(gc))
 		} else {
 			if ACTUALLY_PRINT do print_move_prompt(gc, unit_name, src_air)
-			dst_air_idx = Air_ID(get_ai_input(gc))
+			dst_air = Air_ID(get_ai_input(gc))
 			if ACTUALLY_PRINT {
-				fmt.println("AI Action:", dst_air_idx)
+				fmt.println("AI Action:", dst_air)
 			}
 		}
 	}
-	update_move_history(gc, src_air, dst_air_idx)
-	return dst_air_idx, true
+	update_move_history(gc, src_air, dst_air)
+	return dst_air, true
 }
 
 get_user_input :: proc(gc: ^Game_Cache) -> (user_input: u8 = 0) {

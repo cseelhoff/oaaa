@@ -5,7 +5,7 @@ import "core:mem"
 TERRITORIES_COUNT :: LANDS_COUNT + SEAS_COUNT
 MAX_TERRITORY_TO_LAND_CONNECTIONS :: 6
 MAX_AIR_TO_AIR_CONNECTIONS :: 7
-SA_Adjacent_Lands :: sa.Small_Array(MAX_TERRITORY_TO_LAND_CONNECTIONS, ^Land)
+SA_Adjacent_Lands :: sa.Small_Array(MAX_TERRITORY_TO_LAND_CONNECTIONS, Land_ID)
 SA_Adjacent_Airs :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, ^Territory)
 Skipped_Buys :: [len(Buy_Action)]bool
 
@@ -44,7 +44,7 @@ Coastal_Connection_String :: struct {
 	sea:  string,
 }
 
-Air_ID :: enum {
+Air_ID :: distinct enum u8 {
 	Washington_Air,
 	London_Air,
 	Berlin_Air,
@@ -55,8 +55,12 @@ Air_ID :: enum {
 	Baltic_Air,
 }
 
-is_land :: proc(terr: ^Territory) -> bool {
-	return int(terr.territory_index) < LANDS_COUNT
+is_land :: #force_inline proc(air: Air_ID) -> bool {
+	return int(air) < len(Land_ID)
+}
+
+to_air_id :: #force_inline proc(sea: Sea_ID) -> Air_ID {
+	return Air_ID(sea + len(Land_ID))
 }
 
 COASTAL_CONNECTIONS := [?]Coastal_Connection_String {
@@ -70,20 +74,7 @@ COASTAL_CONNECTIONS := [?]Coastal_Connection_String {
 	{land = "Tokyo", sea = "Pacific"},
 }
 
-initialize_territories :: proc(lands: ^Lands, seas: ^Seas, territories: ^Territory_Pointers) {
-	for &land, land_idx in lands {
-		land.land_index = Land_ID(land_idx)
-		land.territory_index = Air_ID(land_idx)		
-		territories[land.territory_index] = &land.territory
-	}
-	for &sea, sea_idx in seas {
-		sea.sea_index = Sea_ID(sea_idx)
-		sea.territory_index = Air_ID(sea_idx + LANDS_COUNT)
-		territories[sea.territory_index] = &sea.territory
-	}
-}
-
-initialize_costal_connections :: proc(lands: ^Lands, seas: ^Seas) -> (ok: bool) {
+initialize_costal_connections :: proc(lands: Land_IDs, seas: Sea_IDs) -> (ok: bool) {
 	for connection in COASTAL_CONNECTIONS {
 		land_idx := get_land_idx_from_string(connection.land) or_return
 		sea_idx := get_sea_idx_from_string(connection.sea) or_return
@@ -93,7 +84,7 @@ initialize_costal_connections :: proc(lands: ^Lands, seas: ^Seas) -> (ok: bool) 
 	return true
 }
 
-initialize_air_dist :: proc(lands: ^Lands, seas: ^Seas, territories: ^Territory_Pointers) {
+initialize_air_dist :: proc(lands: Land_IDs, seas: Sea_IDs, territories: ^Territory_Pointers) {
 	for &terr, territory_index in territories {
 		INFINITY :: 127 // must be less than half of u8
 		mem.set(&terr.air_distances, INFINITY, size_of(terr.air_distances))

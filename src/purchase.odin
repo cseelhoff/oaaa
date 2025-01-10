@@ -146,7 +146,7 @@ add_buy_if_not_skipped :: proc(gc: ^Game_Cache, src_air: ^Territory, action: Buy
 	}
 }
 
-buy_sea_units :: proc(gc: ^Game_Cache, land: ^Land) -> (ok: bool) {
+buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 	for dst_sea in sa.slice(&land.adjacent_seas) {
 		for (land.builds_left > 0 && !dst_sea.skipped_buys[Buy_Action.SKIP_BUY]) {
 			repair_cost := u8(max(0, 1 + int(land.factory_dmg) - int(land.builds_left)))
@@ -192,14 +192,14 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: ^Land) -> (ok: bool) {
 	return true
 }
 
-clear_buy_history :: proc(gc: ^Game_Cache, land: ^Land) {
+clear_buy_history :: proc(gc: ^Game_Cache, land: Land_ID) {
 	for sea in sa.slice(&land.adjacent_seas) {
 		mem.zero_slice(sea.skipped_buys[:])
 	}
 	gc.clear_needed = false
 }
 
-buy_land_units :: proc(gc: ^Game_Cache, land: ^Land) -> (ok: bool) {
+buy_land_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 	for (land.builds_left > 0) {
 		repair_cost := u8(max(0, 1 + int(land.factory_dmg) - int(land.builds_left)))
 		gc.valid_actions.len = 1

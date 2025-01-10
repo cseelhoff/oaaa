@@ -8,19 +8,19 @@ import "core:strings"
 MAX_SEA_TO_LAND_CONNECTIONS :: 6
 MAX_SEA_TO_SEA_CONNECTIONS :: 7
 SEAS_COUNT :: len(SEAS_DATA)
-Seas :: [SEAS_COUNT]Sea
+Seas :: [Sea_ID]Sea
 CANALS_COUNT :: len(CANALS)
 //CANALS_COUNT :: 2
 CANAL_STATES :: 1 << CANALS_COUNT
 MAX_PATHS_TO_SEA :: 2
-SA_Adjacent_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, ^Sea)
+SA_Adjacent_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
 Canal_Paths :: [CANAL_STATES]Sea_Distances
 Seas_2_Moves_Away :: sa.Small_Array(SEAS_COUNT, Sea_2_Moves_Away)
 
 Sea :: struct {
 	using territory:        Territory,
-	idle_ships:             [PLAYERS_COUNT]Idle_Sea_For_Player,
-	active_ships:           [len(Active_Ship)]u8,
+	idle_ships:             [Player_ID]Idle_Sea_For_Player,
+	active_ships:           [Active_Ship]u8,
 	canal_paths:            Canal_Paths,
 	sea_index:              Sea_ID,
 	enemy_destroyer_total:  u8,
@@ -38,14 +38,14 @@ Canal :: struct {
 }
 
 Sea_Distances :: struct {
-	sea_distance:      [SEAS_COUNT]u8,
+	sea_distance:      [Sea_ID]u8,
 	seas_2_moves_away: Seas_2_Moves_Away,
 	adjacent_seas:     SA_Adjacent_S2S,
 }
 
 Sea_2_Moves_Away :: struct {
-	sea:      ^Sea,
-	mid_seas: sa.Small_Array(MAX_PATHS_TO_SEA, ^Sea),
+	sea:      Sea_ID,
+	mid_seas: sa.Small_Array(MAX_PATHS_TO_SEA, Sea_ID),
 }
 
 Sea_ID :: enum {
@@ -61,16 +61,12 @@ Canal_ID :: enum {
 SEAS_DATA := [?]string{"Pacific", "Atlantic", "Baltic"}
 SEA_CONNECTIONS :: [?][2]string{{"Pacific", "Atlantic"}, {"Atlantic", "Baltic"}}
 CANALS := [?]Canal{{lands = {"Moscow", "Moscow"}, seas = {"Pacific", "Baltic"}}}
-Canal_Lands: [CANALS_COUNT][2]^Land
+Canal_Lands:= [CANALS_COUNT][2]Land_ID{{.Moscow, .Moscow}}
+Canal_Seas:= [CANALS_COUNT][2]Sea_ID{{.Pacific, .Pacific}}
 
-get_sea_id :: proc(air_idx: Air_ID) -> Sea_ID {
-	assert(int(air_idx) >= LANDS_COUNT, "Invalid air index")
-	return Sea_ID(int(air_idx) - LANDS_COUNT)
-}
-
-get_sea :: proc(gc: ^Game_Cache, air_idx: Air_ID) -> ^Sea {
-	assert(int(air_idx) >= LANDS_COUNT, "Invalid air index")
-	return &gc.seas[int(air_idx) - LANDS_COUNT]
+get_sea_id :: #force_inline proc(air: Air_ID) -> Sea_ID {
+	assert(int(air) >= len(Land_ID), "Invalid air index")
+	return Sea_ID(int(air) - len(Land_ID))
 }
 
 get_sea_idx_from_string :: proc(sea_name: string) -> (sea_idx: int, ok: bool) {
@@ -82,7 +78,7 @@ get_sea_idx_from_string :: proc(sea_name: string) -> (sea_idx: int, ok: bool) {
 	fmt.eprintln("Error: Sea not found: %s\n", sea_name)
 	return 0, false
 }
-initialize_sea_connections :: proc(seas: ^Seas) -> (ok: bool) {
+initialize_sea_connections :: proc(seas: Sea_IDs) -> (ok: bool) {
 	for sea_name, sea_idx in SEAS_DATA {
 		seas[sea_idx].name = sea_name
 	}
@@ -114,7 +110,7 @@ initialize_sea_connections :: proc(seas: ^Seas) -> (ok: bool) {
 	return true
 }
 
-initialize_seas_2_moves_away :: proc(seas: ^Seas) {
+initialize_seas_2_moves_away :: proc(seas: Sea_IDs) {
 	for canal_state in 0 ..< CANAL_STATES {
 		// Floyd-Warshall algorithm
 		// Initialize distances array to Infinity

@@ -150,16 +150,16 @@ skip_plane :: proc(
 move_single_plane :: proc(
 	dst_air: ^Territory,
 	dst_unit: Active_Plane,
-	player: ^Player,
+	player: Player_ID,
 	src_unit: Active_Plane,
 	src_air: ^Territory,
 ) {
 	dst_air.active_planes[dst_unit] += 1
-	dst_air.idle_planes[player.index][Active_Plane_To_Idle[dst_unit]] += 1
-	dst_air.team_units[player.team.index] += 1
+	dst_air.idle_planes[player][Active_Plane_To_Idle[dst_unit]] += 1
+	dst_air.team_units[mm.team[player]] += 1
 	src_air.active_planes[src_unit] -= 1
-	src_air.idle_planes[player.index][Active_Plane_To_Idle[src_unit]] -= 1
-	src_air.team_units[player.team.index] -= 1
+	src_air.idle_planes[player][Active_Plane_To_Idle[src_unit]] -= 1
+	src_air.team_units[mm.team[player]] -= 1
 }
 
 plane_enemy_checks :: proc(

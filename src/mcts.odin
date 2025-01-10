@@ -59,7 +59,7 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 
 PRINT_INTERVAL :: 10000
 //import "core:math/rand"
-mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
+mcts_search :: proc(gc: ^Game_Cache,initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 	root := create_node(initial_state, 0, nil)
 	for MCTS_ITERATIONS in 0 ..< iterations {
 		if MCTS_ITERATIONS % PRINT_INTERVAL == 0 {
@@ -73,7 +73,7 @@ mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 			node = node.children[RANDOM_NUMBERS[GLOBAL_RANDOM_SEED] % children_len]
 			GLOBAL_RANDOM_SEED = (GLOBAL_RANDOM_SEED + 1) % RANDOM_MAX
 		}
-		result: f64 = random_play_until_terminal(&node.state)
+		result: f64 = random_play_until_terminal(gc, &node.state)
 		for node != nil {
 			node.visits += 1
 			if node.parent != nil && node.parent.state.cur_player % 2 == 0 { 	//test is Allies turn?

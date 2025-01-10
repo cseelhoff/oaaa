@@ -368,17 +368,17 @@ move_ship_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
 	return true
 }
 
-move_ship_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship) -> (ok: bool) {
-	if src_sea.active_ships[ship] == 0 do return true
+move_ship_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
+	if gc.active_ships[src_sea][ship] == 0 do return true
 	reset_valid_moves(gc, src_sea)
 	add_valid_ship_moves(gc, src_sea, ship)
-	for src_sea.active_ships[ship] > 0 {
+	for gc.active_ships[src_sea][ship] > 0 {
 		move_next_ship_in_sea(gc, src_sea, ship) or_return
 	}
 	return true
 }
 
-move_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship) -> (ok: bool) {
+move_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
 		dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], src_sea) or_return
 	flag_for_enemy_combat(gc.territories[dst_air_idx], gc.cur_player.team.enemy_team.index)
 		dst_sea := get_sea(gc, dst_air_idx)
@@ -391,14 +391,14 @@ move_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship)
 		return true
 }
 
-skip_ship :: proc(src_sea: ^Sea, dst_sea: ^Sea, ship: Active_Ship) -> bool {
+skip_ship :: proc(src_sea: Sea_ID, dst_sea: Sea_ID, ship: Active_Ship) -> bool {
 	if src_sea != dst_sea do return false
-	src_sea.active_ships[Ships_Moved[ship]] += src_sea.active_ships[ship]
-	src_sea.active_ships[ship] = 0
+	gc.active_ships[src_sea][Ships_Moved[ship]] += gc.active_ships[src_sea][ship]
+	gc.active_ships[src_sea][ship] = 0
 	return true
 }
 
-add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship) {
+add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) {
 	// for dst_sea in sa.slice(&src_sea.canal_paths[gc.canal_state].adjacent_seas) {
 	for dst_sea in sa.slice(&src_sea.canal_paths[transmute(u8)gc.canals_open].adjacent_seas) {
 		if src_sea.skipped_moves[dst_sea.territory_index] {
@@ -423,16 +423,16 @@ add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: ^Sea, ship: Active_Ship) 
 }
 
 move_single_ship :: proc(
-	dst_sea: ^Sea,
+	dst_sea: Sea_ID,
 	dst_unit: Active_Ship,
 	player: ^Player,
 	src_unit: Active_Ship,
-	src_sea: ^Sea,
+	src_sea: Sea_ID,
 ) {
 	dst_sea.active_ships[dst_unit] += 1
 	dst_sea.idle_ships[player.index][Active_Ship_To_Idle[dst_unit]] += 1
 	dst_sea.team_units[player.team.index] += 1
-	src_sea.active_ships[src_unit] -= 1
+	gc.active_ships[src_sea][src_unit] -= 1
 	src_sea.idle_ships[player.index][Active_Ship_To_Idle[dst_unit]] -= 1
 	src_sea.team_units[player.team.index] -= 1
 }

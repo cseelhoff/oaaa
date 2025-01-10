@@ -25,18 +25,18 @@ PLAYER_DATA := [?]Player_Data {
 DEF_COLOR :: "\033[1;0m"
 
 Players :: [PLAYERS_COUNT]Player
-Factory_Locations :: sa.Small_Array(LANDS_COUNT, ^Land)
+Factory_Locations :: sa.Small_Array(LANDS_COUNT, Land_ID)
 
 Player :: struct {
 	factory_locations:  Factory_Locations,
-	capital:            ^Land,
-	team:               ^Team,
+	// capital:            Land_ID,
+	// team:               ^Team,
 	index:              Player_ID,
 	money:              u8,
 	income_per_turn:    u8,
 }
 
-TEAM_STRINGS := [?]string{"Allies", "Axis"}
+TEAM_STRINGS :: [?]string{"Allies", "Axis"}
 TEAMS_COUNT :: len(TEAM_STRINGS)
 
 Teams :: [TEAMS_COUNT]Team
@@ -94,7 +94,7 @@ initialize_teams :: proc(teams: ^Teams, players: ^Players) {
 	}
 }
 
-initialize_player_lands :: proc(lands: ^Lands, players: ^Players) -> (ok: bool) {
+initialize_player_lands :: proc(lands: Land_IDs, players: ^Players) -> (ok: bool) {
 	for &player, player_idx in players {
 		land_idx := get_land_idx_from_string(PLAYER_DATA[player_idx].capital) or_return
 		player.capital = &lands[land_idx]

@@ -10,7 +10,7 @@ MAX_LAND_TO_SEA_CONNECTIONS :: 4
 LANDS_COUNT :: len(LANDS_DATA)
 Lands :: [LANDS_COUNT]Land
 MAX_PATHS_TO_LAND :: 2
-SA_Adjacent_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, ^Sea)
+SA_Adjacent_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
 
 Land_Data :: struct {
 	name:  string,
@@ -18,7 +18,7 @@ Land_Data :: struct {
 	value: u8,
 }
 
-Mid_Lands :: sa.Small_Array(MAX_PATHS_TO_LAND, ^Land)
+Mid_Lands :: sa.Small_Array(MAX_PATHS_TO_LAND, Land_ID)
 Idle_Armies :: [PLAYERS_COUNT]Idle_Army_For_Player
 Active_Armies :: [len(Active_Army)]u8
 Land :: struct {
@@ -30,7 +30,7 @@ Land :: struct {
 	adjacent_seas:      SA_Adjacent_L2S,
 	original_owner:     ^Player,
 	land_distances:     [LANDS_COUNT]u8,
-	owner:              ^Player,
+	// owner:              Player_ID,
 	land_index:         Land_ID,
 	value:              u8,
 	factory_dmg:        u8,
@@ -40,27 +40,21 @@ Land :: struct {
 }
 
 Land_2_Moves_Away :: struct {
-	land:      ^Land,
+	land:      Land_ID,
 	mid_lands: Mid_Lands,
 }
 
 L2S_2_Moves_Away :: struct {
-	sea:       ^Sea,
+	sea:       Sea_ID,
 	mid_lands: Mid_Lands,
 }
 
-Land_ID :: enum u8 {
+Land_ID :: distinct enum u8 {
 	Washington,
 	London,
 	Berlin,
 	Moscow,
 	Tokyo,
-}
-
-get_land :: proc(gc: ^Game_Cache, air_idx: Air_ID) -> (land: ^Land) {
-	land_idx := int(air_idx)
-	assert(land_idx < LANDS_COUNT, "Invalid land index")
-	return &gc.lands[land_idx]
 }
 
 //  PACIFIC | USA | ATLANTIC | ENG | BALTIC | GER | RUS | JAP | PAC
@@ -82,7 +76,7 @@ get_land_idx_from_string :: proc(land_name: string) -> (land_idx: int, ok: bool)
 	fmt.eprintln("Error: Land not found: %s\n", land_name)
 	return 0, false
 }
-initialize_land_connections :: proc(lands: ^Lands) -> (ok: bool) {
+initialize_land_connections :: proc(lands: Land_IDs) -> (ok: bool) {
 	for land, land_idx in LANDS_DATA {
 		lands[land_idx].name = land.name
 	}
@@ -94,7 +88,7 @@ initialize_land_connections :: proc(lands: ^Lands) -> (ok: bool) {
 	}
 	return true
 }
-initialize_lands_2_moves_away :: proc(lands: ^Lands) {
+initialize_lands_2_moves_away :: proc(lands: Land_IDs) {
 	// Floyd-Warshall algorithm
 	// Initialize distances array to Infinity
 	distances: [LANDS_COUNT][LANDS_COUNT]u8
@@ -165,7 +159,7 @@ initialize_canals :: proc(lands: ^[LANDS_COUNT]Land) -> (ok: bool) {
 	return true
 }
 
-conquer_land :: proc(gc: ^Game_Cache, dst_land: ^Land) -> (ok: bool) {
+conquer_land :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool) {
 	old_owner := dst_land.owner
 	if old_owner.capital == dst_land {
 		gc.cur_player.money += old_owner.money
@@ -173,7 +167,7 @@ conquer_land :: proc(gc: ^Game_Cache, dst_land: ^Land) -> (ok: bool) {
 	}
 	old_owner.income_per_turn -= dst_land.value
 	new_owner := gc.cur_player
-	if gc.cur_player.team.index == dst_land.original_owner.team.index {
+	if mm.team[gc.cur_player] == mm.team[mm.orig_owner[dst_land]] {
 		new_owner = dst_land.original_owner
 	}
 	dst_land.owner = new_owner

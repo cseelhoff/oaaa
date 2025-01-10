@@ -3,73 +3,73 @@ import sa "core:container/small_array"
 import "core:fmt"
 
 allied_fighters_exist :: proc(gc: ^Game_Cache, territory: ^Territory) -> bool {
-	for player in sa.slice(&gc.cur_player.team.players) {
-		if territory.idle_planes[Idle_Plane.FIGHTER][player.index] > 0 {
+	for player in sa.slice(&mm.allies[gc.cur_player]) {
+		if territory.idle_planes[Idle_Plane.FIGHTER][player] > 0 {
 			return true
 		}
 	}
 	return false
 }
 
-no_defender_threat_exists :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> bool {
-	if (src_sea.enemy_blockade_total == 0 && src_sea.enemy_fighters_total == 0) {
-		if src_sea.enemy_submarines_total == 0 do return true
+no_defender_threat_exists :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
+	if gc.enemy_blockade_total[src_sea] == 0 && src_sea.enemy_fighters_total == 0 {
+		if gc.enemy_submarines_total[src_sea] == 0 do return true
 		if do_allied_destroyers_exist(gc, src_sea) do return false
 		return true
 	}
 	return false
 }
 
-get_allied_subs_count :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> (allied_subs: u8) {
+get_allied_subs_count :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> (allied_subs: u8) {
 	allied_subs = 0
-	for player in sa.slice(&gc.cur_player.team.players) {
-		allied_subs += src_sea.idle_ships[player.index][Idle_Ship.SUB]
+	for player in sa.slice(&mm.allies[gc.cur_player]) {
+		allied_subs += src_sea.idle_ships[player][Idle_Ship.SUB]
 	}
 	return
 }
 
-do_allied_destroyers_exist :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> bool {
-	for player in sa.slice(&gc.cur_player.team.players) {
-		if src_sea.idle_ships[player.index][Idle_Ship.DESTROYER] > 0 {
+do_allied_destroyers_exist :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
+	for player in sa.slice(&mm.allies[gc.cur_player]) {
+		if src_sea.idle_ships[player][Idle_Ship.DESTROYER] > 0 {
 			return true
 		}
 	}
 	return false
 }
 
-disable_bombardment :: proc(gc: ^Game_Cache, src_sea: ^Sea) {
-	src_sea.active_ships[Active_Ship.CRUISER_BOMBARDED] +=
-		src_sea.active_ships[Active_Ship.CRUISER_0_MOVES]
-	src_sea.active_ships[Active_Ship.CRUISER_0_MOVES] = 0
-	src_sea.active_ships[Active_Ship.BATTLESHIP_BOMBARDED] +=
-		src_sea.active_ships[Active_Ship.BATTLESHIP_0_MOVES]
-	src_sea.active_ships[Active_Ship.BATTLESHIP_0_MOVES] = 0
-	src_sea.active_ships[Active_Ship.BS_DAMAGED_BOMBARDED] +=
-		src_sea.active_ships[Active_Ship.BS_DAMAGED_0_MOVES]
-	src_sea.active_ships[Active_Ship.BS_DAMAGED_0_MOVES] = 0
+disable_bombardment :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
+	gc.active_ships[src_sea][Active_Ship.CRUISER_BOMBARDED] +=
+		gc.active_ships[src_sea][Active_Ship.CRUISER_0_MOVES]
+	gc.active_ships[src_sea][Active_Ship.CRUISER_0_MOVES] = 0
+	gc.active_ships[src_sea][Active_Ship.BATTLESHIP_BOMBARDED] +=
+		gc.active_ships[src_sea][Active_Ship.BATTLESHIP_0_MOVES]
+	gc.active_ships[src_sea][Active_Ship.BATTLESHIP_0_MOVES] = 0
+	gc.active_ships[src_sea][Active_Ship.BS_DAMAGED_BOMBARDED] +=
+		gc.active_ships[src_sea][Active_Ship.BS_DAMAGED_0_MOVES]
+	gc.active_ships[src_sea][Active_Ship.BS_DAMAGED_0_MOVES] = 0
 }
 
-non_dest_non_sub_exist :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> bool {
-	for player in sa.slice(&gc.cur_player.team.players) {
-		if src_sea.idle_ships[player.index][Idle_Ship.CARRIER] > 0 ||
-		   src_sea.idle_ships[player.index][Idle_Ship.CRUISER] > 0 ||
-		   src_sea.idle_ships[player.index][Idle_Ship.BATTLESHIP] > 0 ||
-		   src_sea.idle_ships[player.index][Idle_Ship.BS_DAMAGED] > 0 ||
-		   src_sea.idle_planes[player.index][Idle_Plane.FIGHTER] > 0 ||
-		   src_sea.idle_planes[player.index][Idle_Plane.BOMBER] > 0 {
+non_dest_non_sub_exist :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
+	for player in sa.slice(&mm.allies[gc.cur_player]) {
+		if src_sea.idle_ships[player][Idle_Ship.CARRIER] > 0 ||
+		   src_sea.idle_ships[player][Idle_Ship.CRUISER] > 0 ||
+		   src_sea.idle_ships[player][Idle_Ship.BATTLESHIP] > 0 ||
+		   src_sea.idle_ships[player][Idle_Ship.BS_DAMAGED] > 0 ||
+		   src_sea.idle_planes[player][Idle_Plane.FIGHTER] > 0 ||
+		   src_sea.idle_planes[player][Idle_Plane.BOMBER] > 0 {
 			return true
 		}
 	}
 	return false
 }
 
-build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: ^Sea) {
+build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
 	reset_valid_moves(gc, src_sea)
 	if src_sea.enemy_blockade_total == 0 &&
-		   src_sea.team_units[gc.cur_player.team.enemy_team.index] ==
+		   src_sea.team_units[mm.enemy_team[gc.cur_player]] ==
 			   src_sea.enemy_submarines_total ||
-	   src_sea.active_ships[Active_Ship.SUB_0_MOVES] > 0 ||
-	   src_sea.active_ships[Active_Ship.DESTROYER_0_MOVES] > 0 ||
+	   gc.active_ships[src_sea][Active_Ship.SUB_0_MOVES] > 0 ||
+	   gc.active_ships[src_sea][Active_Ship.DESTROYER_0_MOVES] > 0 ||
 	   non_dest_non_sub_exist(gc, src_sea) {
 		// I am allowed to stay because I have combat units or no enemy blockade remains
 		// otherwise I am possibly wasting transports
@@ -85,25 +85,25 @@ build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: ^Sea) {
 	}
 }
 
-sea_retreat :: proc(gc: ^Game_Cache, src_sea: ^Sea, dst_air_idx: Air_ID) -> bool {
+sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_air_idx: Air_ID) -> bool {
 	if dst_air_idx == src_sea.territory_index do return false
 	dst_sea := get_sea(gc, dst_air_idx)
-	player_idx := gc.cur_player.index
-	team_idx := gc.cur_player.team.index
+	player_idx := gc.cur_player
+	team_idx := mm.team[gc.cur_player]
 	for active_ship in Retreatable_Ships {
-		number_of_ships := src_sea.active_ships[active_ship]
+		number_of_ships := gc.active_ships[src_sea][active_ship]
 		dst_sea.active_ships[Ships_After_Retreat[active_ship]] += number_of_ships
 		dst_sea.idle_ships[player_idx][Active_Ship_To_Idle[active_ship]] += number_of_ships
 		dst_sea.team_units[team_idx] += number_of_ships
-		src_sea.active_ships[active_ship] = 0
+		gc.active_ships[src_sea][active_ship] = 0
 		src_sea.idle_ships[player_idx][Active_Ship_To_Idle[active_ship]] = 0
 		src_sea.team_units[team_idx] -= number_of_ships
-		for player in sa.slice(&gc.cur_player.team.players) {
+		for player in sa.slice(&mm.allies[gc.cur_player]) {
 			if player == gc.cur_player do continue
-			number_of_ships = src_sea.idle_ships[player.index][Active_Ship_To_Idle[active_ship]]
-			dst_sea.idle_ships[player.index][Active_Ship_To_Idle[active_ship]] += number_of_ships
+			number_of_ships = src_sea.idle_ships[player][Active_Ship_To_Idle[active_ship]]
+			dst_sea.idle_ships[player][Active_Ship_To_Idle[active_ship]] += number_of_ships
 			dst_sea.team_units[team_idx] += number_of_ships
-			src_sea.idle_ships[player.index][Active_Ship_To_Idle[active_ship]] = 0
+			src_sea.idle_ships[player][Active_Ship_To_Idle[active_ship]] = 0
 			src_sea.team_units[team_idx] -= number_of_ships
 		}
 	}
@@ -111,9 +111,9 @@ sea_retreat :: proc(gc: ^Game_Cache, src_sea: ^Sea, dst_air_idx: Air_ID) -> bool
 	return true
 }
 
-do_sea_targets_exist :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> bool {
-	enemy_team_idx := gc.cur_player.team.enemy_team.index
-	if src_sea.active_ships[Active_Ship.DESTROYER_0_MOVES] > 0 {
+do_sea_targets_exist :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
+	enemy_team_idx := mm.enemy_team[gc.cur_player]
+	if gc.active_ships[src_sea][Active_Ship.DESTROYER_0_MOVES] > 0 {
 		return src_sea.team_units[enemy_team_idx] > 0
 	} else if non_dest_non_sub_exist(gc, src_sea) {
 		return src_sea.team_units[enemy_team_idx] > src_sea.enemy_submarines_total
@@ -126,7 +126,7 @@ do_sea_targets_exist :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> bool {
 	return false
 }
 
-// destroy_vulnerable_transports :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> bool {
+// destroy_vulnerable_transports :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
 // 	if do_sea_targets_exist(gc, src_sea) do return false
 // 	// Perhaps it may be possible to have enemy fighters and friendly subs here?
 // 	player_idx := gc.cur_player.index
@@ -134,68 +134,67 @@ do_sea_targets_exist :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> bool {
 // 		// I dont think this is reachable
 // 		fmt.eprintln("destroy_vulnerable_transports: unreachable code")
 // 		src_sea.team_units[gc.cur_player.team.index] -=
-// 			src_sea.active_ships[Active_Ship.TRANS_EMPTY_0_MOVES]
+// 			gc.active_ships[src_sea][Active_Ship.TRANS_EMPTY_0_MOVES]
 // 		src_sea.idle_ships[player_idx][Idle_Ship.TRANS_EMPTY] = 0
-// 		src_sea.active_ships[Active_Ship.TRANS_EMPTY_0_MOVES] = 0
+// 		gc.active_ships[src_sea][Active_Ship.TRANS_EMPTY_0_MOVES] = 0
 
 // 		src_sea.team_units[gc.cur_player.team.index] -=
-// 			src_sea.active_ships[Active_Ship.TRANS_1I_0_MOVES]
+// 			gc.active_ships[src_sea][Active_Ship.TRANS_1I_0_MOVES]
 // 		src_sea.idle_ships[player_idx][Idle_Ship.TRANS_1I] = 0
-// 		src_sea.active_ships[Active_Ship.TRANS_1I_0_MOVES] = 0
+// 		gc.active_ships[src_sea][Active_Ship.TRANS_1I_0_MOVES] = 0
 
 // 		src_sea.team_units[gc.cur_player.team.index] -=
-// 			src_sea.active_ships[Active_Ship.TRANS_1A_0_MOVES]
+// 			gc.active_ships[src_sea][Active_Ship.TRANS_1A_0_MOVES]
 // 		src_sea.idle_ships[player_idx][Idle_Ship.TRANS_1A] = 0
-// 		src_sea.active_ships[Active_Ship.TRANS_1A_0_MOVES] = 0
+// 		gc.active_ships[src_sea][Active_Ship.TRANS_1A_0_MOVES] = 0
 
 // 		src_sea.team_units[gc.cur_player.team.index] -=
-// 			src_sea.active_ships[Active_Ship.TRANS_1T_0_MOVES]
+// 			gc.active_ships[src_sea][Active_Ship.TRANS_1T_0_MOVES]
 // 		src_sea.idle_ships[player_idx][Idle_Ship.TRANS_1T] = 0
-// 		src_sea.active_ships[Active_Ship.TRANS_1T_0_MOVES] = 0
+// 		gc.active_ships[src_sea][Active_Ship.TRANS_1T_0_MOVES] = 0
 
 // 		src_sea.team_units[gc.cur_player.team.index] -=
-// 			src_sea.active_ships[Active_Ship.TRANS_1I_1A_0_MOVES]
+// 			gc.active_ships[src_sea][Active_Ship.TRANS_1I_1A_0_MOVES]
 // 		src_sea.idle_ships[player_idx][Idle_Ship.TRANS_1I_1A] = 0
-// 		src_sea.active_ships[Active_Ship.TRANS_1I_1A_0_MOVES] = 0
+// 		gc.active_ships[src_sea][Active_Ship.TRANS_1I_1A_0_MOVES] = 0
 
 // 		src_sea.team_units[gc.cur_player.team.index] -=
-// 			src_sea.active_ships[Active_Ship.TRANS_1I_1T_0_MOVES]
+// 			gc.active_ships[src_sea][Active_Ship.TRANS_1I_1T_0_MOVES]
 // 		src_sea.idle_ships[player_idx][Idle_Ship.TRANS_1I_1T] = 0
-// 		src_sea.active_ships[Active_Ship.TRANS_1I_1T_0_MOVES] = 0
+// 		gc.active_ships[src_sea][Active_Ship.TRANS_1I_1T_0_MOVES] = 0
 // 	}
 // 	src_sea.combat_status = .POST_COMBAT
 // 	return true
 // }
 
-destroy_defender_transports :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> bool {
+destroy_defender_transports :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
 	if !no_defender_threat_exists(gc, src_sea) do return false
 	if do_sea_targets_exist(gc, src_sea) {
-		enemy_team_idx := gc.cur_player.team.enemy_team.index
-		for enemy_player in sa.slice(&gc.cur_player.team.enemy_players) {
-			enemy_player_idx := enemy_player.index
-			src_sea.team_units[enemy_team_idx] -=
-				src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_EMPTY]
-			src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_EMPTY] = 0
+		enemy_team := mm.enemy_team[gc.cur_player]
+		for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
+			src_sea.team_units[enemy_team] -=
+				src_sea.idle_ships[enemy][Idle_Ship.TRANS_EMPTY]
+			src_sea.idle_ships[enemy][Idle_Ship.TRANS_EMPTY] = 0
 
-			src_sea.team_units[enemy_team_idx] -=
-				src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_1I]
-			src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_1I] = 0
+			src_sea.team_units[enemy_team] -=
+				src_sea.idle_ships[enemy][Idle_Ship.TRANS_1I]
+			src_sea.idle_ships[enemy][Idle_Ship.TRANS_1I] = 0
 
-			src_sea.team_units[enemy_team_idx] -=
-				src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_1A]
-			src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_1A] = 0
+			src_sea.team_units[enemy_team] -=
+				src_sea.idle_ships[enemy][Idle_Ship.TRANS_1A]
+			src_sea.idle_ships[enemy][Idle_Ship.TRANS_1A] = 0
 
-			src_sea.team_units[enemy_team_idx] -=
-				src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_1T]
-			src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_1T] = 0
+			src_sea.team_units[enemy_team] -=
+				src_sea.idle_ships[enemy][Idle_Ship.TRANS_1T]
+			src_sea.idle_ships[enemy][Idle_Ship.TRANS_1T] = 0
 
-			src_sea.team_units[enemy_team_idx] -=
-				src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_1I_1A]
-			src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_1I_1A] = 0
+			src_sea.team_units[enemy_team] -=
+				src_sea.idle_ships[enemy][Idle_Ship.TRANS_1I_1A]
+			src_sea.idle_ships[enemy][Idle_Ship.TRANS_1I_1A] = 0
 
-			src_sea.team_units[enemy_team_idx] -=
-				src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_1I_1T]
-			src_sea.idle_ships[enemy_player_idx][Idle_Ship.TRANS_1I_1T] = 0
+			src_sea.team_units[enemy_team] -=
+				src_sea.idle_ships[enemy][Idle_Ship.TRANS_1I_1T]
+			src_sea.idle_ships[enemy][Idle_Ship.TRANS_1I_1T] = 0
 		}
 	}
 	src_sea.combat_status = .POST_COMBAT
@@ -206,7 +205,7 @@ get_attacker_hits :: proc(gc: ^Game_Cache, attacker_damage: int) -> (attacker_hi
 	attacker_hits = u8(attacker_damage / DICE_SIDES)
 	// todo why does this check for 2 answers remaining?
 	if gc.answers_remaining <= 1 {
-		if gc.cur_player.team.enemy_team.index in gc.unlucky_teams { 	// attacker is lucky
+		if mm.enemy_team[gc.cur_player] in gc.unlucky_teams { 	// attacker is lucky
 			attacker_hits += 0 < attacker_damage % DICE_SIDES ? 1 : 0 // no dice, round up
 			return
 		}
@@ -219,7 +218,7 @@ get_attacker_hits :: proc(gc: ^Game_Cache, attacker_damage: int) -> (attacker_hi
 get_defender_hits :: proc(gc: ^Game_Cache, defender_damage: int) -> (defender_hits: u8) {
 	defender_hits = u8(defender_damage / DICE_SIDES)
 	if gc.answers_remaining <= 1 {
-		if gc.cur_player.team.index in gc.unlucky_teams { 	// attacker is unlucky
+		if mm.team[gc.cur_player] in gc.unlucky_teams { 	// attacker is unlucky
 			defender_hits += 0 < defender_damage % DICE_SIDES ? 1 : 0 // no dice, round up
 			return
 		}
@@ -229,8 +228,8 @@ get_defender_hits :: proc(gc: ^Game_Cache, defender_damage: int) -> (defender_hi
 	return
 }
 
-no_allied_units_remain :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> bool {
-	if src_sea.team_units[gc.cur_player.team.index] > 0 do return false
+no_allied_units_remain :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
+	if src_sea.team_units[mm.team[gc.cur_player]] > 0 do return false
 	src_sea.combat_status = .POST_COMBAT
 	return true
 }
@@ -280,33 +279,33 @@ flag_for_enemy_combat :: proc(dst_air: ^Territory, enemy_team_idx: Team_ID) -> b
 	return true
 }
 
-check_for_conquer :: proc(gc: ^Game_Cache, dst_land: ^Land) -> bool {
-	if gc.cur_player.team == dst_land.owner.team do return false
+check_for_conquer :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> bool {
+	if mm.team[gc.cur_player] == mm.team[gc.owner[dst_land]] do return false
 	conquer_land(gc, dst_land)
 	return true
 }
 
-sea_bombardment :: proc(gc: ^Game_Cache, dst_land: ^Land) {
+sea_bombardment :: proc(gc: ^Game_Cache, dst_land: Land_ID) {
 	//todo allied ships get unlimited bombards
 	for src_sea in sa.slice(&dst_land.adjacent_seas) {
 		if dst_land.max_bombards == 0 do return
 		attacker_damage := 0
 		for ship in Bombard_Ships {
 			bombarding_ships :u8= 0
-			for player in sa.slice(&gc.cur_player.team.players) {
-				if player == gc.cur_player do continue
+			for ally in sa.slice(&mm.allies[gc.cur_player]) {
+				if ally == gc.cur_player do continue
 				bombarding_ships = min(
 					dst_land.max_bombards,
-					src_sea.idle_ships[player.index][Active_Ship_To_Idle[ship]],
+					src_sea.idle_ships[ally][Active_Ship_To_Idle[ship]],
 				)
 				dst_land.max_bombards -= bombarding_ships
 				attacker_damage += int(bombarding_ships) * Active_Ship_Attack[ship]
 			}
-			bombarding_ships = min(dst_land.max_bombards, src_sea.active_ships[ship])
+			bombarding_ships = min(dst_land.max_bombards, gc.active_ships[src_sea][ship])
 			dst_land.max_bombards -= bombarding_ships
 			attacker_damage += int(bombarding_ships) * Active_Ship_Attack[ship]
-			src_sea.active_ships[ship] -= bombarding_ships
-			src_sea.active_ships[Ship_After_Bombard[ship]] += bombarding_ships
+			gc.active_ships[src_sea][ship] -= bombarding_ships
+			gc.active_ships[src_sea][Ship_After_Bombard[ship]] += bombarding_ships
 			if dst_land.max_bombards == 0 do break
 		}
 		dst_land.max_bombards = 0
@@ -315,15 +314,15 @@ sea_bombardment :: proc(gc: ^Game_Cache, dst_land: ^Land) {
 	}
 }
 
-fire_tact_aaguns :: proc(gc: ^Game_Cache, dst_land: ^Land) {
+fire_tact_aaguns :: proc(gc: ^Game_Cache, dst_land: Land_ID) {
 	//todo
 	total_aaguns :u8= 0
-	for player in sa.slice(&gc.cur_player.team.enemy_players) {
-		total_aaguns += dst_land.idle_armies[player.index][Idle_Army.AAGUN]
+	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
+		total_aaguns += gc.idle_armies[dst_land][enemy][Idle_Army.AAGUN]
 	}
 	total_air_units :=
-		dst_land.idle_planes[gc.cur_player.index][Idle_Plane.FIGHTER] +
-		dst_land.idle_planes[gc.cur_player.index][Idle_Plane.BOMBER]
+		dst_land.idle_planes[gc.cur_player][Idle_Plane.FIGHTER] +
+		dst_land.idle_planes[gc.cur_player][Idle_Plane.BOMBER]
 	defender_damage := int(min(total_aaguns * 3, total_air_units))
 	defender_hits := get_defender_hits(gc, defender_damage)
 	for (defender_hits > 0) {
@@ -333,18 +332,18 @@ fire_tact_aaguns :: proc(gc: ^Game_Cache, dst_land: ^Land) {
 	}
 }
 
-attempt_conquer_land :: proc(gc: ^Game_Cache, src_land: ^Land) -> bool {
+attempt_conquer_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> bool {
 	if src_land.team_units[gc.cur_player.team.enemy_team.index] > 0 do return false
 	// if infantry, artillery, tanks exist then capture
-	if src_land.idle_armies[gc.cur_player.index][Idle_Army.INF] > 0 ||
-	   src_land.idle_armies[gc.cur_player.index][Idle_Army.ARTY] > 0 ||
-	   src_land.idle_armies[gc.cur_player.index][Idle_Army.TANK] > 0 {
+	if gc.idle_armies[src_land][gc.cur_player.index][Idle_Army.INF] > 0 ||
+	   gc.idle_armies[src_land][gc.cur_player.index][Idle_Army.ARTY] > 0 ||
+	   gc.idle_armies[src_land][gc.cur_player.index][Idle_Army.TANK] > 0 {
 		conquer_land(gc, src_land)
 	}
 	return true
 }
 
-build_land_retreat_options :: proc(gc: ^Game_Cache, src_land: ^Land) {
+build_land_retreat_options :: proc(gc: ^Game_Cache, src_land: Land_ID) {
 	reset_valid_moves(gc, src_land)
 	for &dst_land in sa.slice(&src_land.adjacent_lands) {
 		if dst_land.combat_status == .NO_COMBAT && dst_land.owner.team == gc.cur_player.team {
@@ -353,11 +352,11 @@ build_land_retreat_options :: proc(gc: ^Game_Cache, src_land: ^Land) {
 	}
 }
 
-destroy_undefended_aaguns :: proc(gc: ^Game_Cache, src_land: ^Land) {
+destroy_undefended_aaguns :: proc(gc: ^Game_Cache, src_land: Land_ID) {
 	for player in sa.slice(&gc.cur_player.team.enemy_players) {
-		if src_land.idle_armies[player.index][Idle_Army.AAGUN] > 0 {
-			aaguns := src_land.idle_armies[player.index][Idle_Army.AAGUN]
-			src_land.idle_armies[player.index][Idle_Army.AAGUN] = 0
+		if gc.idle_armies[src_land][player.index][Idle_Army.AAGUN] > 0 {
+			aaguns := gc.idle_armies[src_land][player.index][Idle_Army.AAGUN]
+			gc.idle_armies[src_land][player.index][Idle_Army.AAGUN] = 0
 			src_land.team_units[player.team.index] -= aaguns
 		}
 	}
@@ -400,7 +399,7 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-no_attackers_remain :: proc(gc: ^Game_Cache, src_land: ^Land) -> bool {
+no_attackers_remain :: proc(gc: ^Game_Cache, src_land: Land_ID) -> bool {
 	if src_land.team_units[gc.cur_player.team.index] == 0 {
 		src_land.combat_status = .POST_COMBAT
 		return true
@@ -408,7 +407,7 @@ no_attackers_remain :: proc(gc: ^Game_Cache, src_land: ^Land) -> bool {
 	return false
 }
 
-strategic_bombing :: proc(gc: ^Game_Cache, src_land: ^Land) -> bool {
+strategic_bombing :: proc(gc: ^Game_Cache, src_land: Land_ID) -> bool {
 	bombers := src_land.idle_planes[gc.cur_player.index][Idle_Plane.BOMBER]
 	if bombers == 0 || src_land.team_units[gc.cur_player.team.index] > bombers {
 		return false
@@ -427,23 +426,23 @@ strategic_bombing :: proc(gc: ^Game_Cache, src_land: ^Land) -> bool {
 	return true
 }
 
-retreat_land_units :: proc(gc: ^Game_Cache, src_land: ^Land, dst_air_idx: Air_ID) -> bool {
+retreat_land_units :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_air_idx: Air_ID) -> bool {
 	dst_land := get_land(gc, dst_air_idx)
 	if dst_land == src_land do return false
 	for army in Active_Army {
-		number_of_armies := src_land.active_armies[army]
-		dst_land.active_armies[army] += number_of_armies
-		dst_land.idle_armies[gc.cur_player.index][Active_Army_To_Idle[army]] += number_of_armies
-		dst_land.team_units[gc.cur_player.team.index] += number_of_armies
-		src_land.active_armies[army] = 0
-		src_land.idle_armies[gc.cur_player.index][Active_Army_To_Idle[army]] = 0
+		number_of_armies := gc.active_armies[src_land][army]
+		gc.active_armies[dst_land][army] += number_of_armies
+		gc.idle_armies[dst_land][gc.cur_player.index][Active_Army_To_Idle[army]] += number_of_armies
+		gc.team_units[dst_land][gc.cur_player.team.index] += number_of_armies
+		gc.active_armies[src_land][army] = 0
+		gc.idle_armies[src_land][gc.cur_player.index][Active_Army_To_Idle[army]] = 0
 		src_land.team_units[gc.cur_player.team.index] -= number_of_armies
 	}
 	src_land.combat_status = .POST_COMBAT
 	return true
 }
 
-remove_sea_attackers :: proc(gc: ^Game_Cache, src_sea: ^Sea, hits: ^u8) {
+remove_sea_attackers :: proc(gc: ^Game_Cache, src_sea: Sea_ID, hits: ^u8) {
 	for (hits^ > 0) {
 		hits^ -= 1
 		if hit_my_battleship(src_sea, gc.cur_player) do continue
@@ -465,18 +464,18 @@ remove_sea_attackers :: proc(gc: ^Game_Cache, src_sea: ^Sea, hits: ^u8) {
 
 remove_sea_defenders :: proc(
 	gc: ^Game_Cache,
-	src_sea: ^Sea,
+	src_sea: Sea_ID,
 	hits: ^u8,
 	subs_targetable: bool,
 	planes_targetable: bool,
 ) {
 	for (hits^ > 0) {
 		hits^ -= 1
-		if hit_enemy_battleship(src_sea, &gc.cur_player.team.enemy_players) do continue
-		if subs_targetable && hit_enemy_ships(src_sea, Defender_Sub_Casualty, &gc.cur_player.team.enemy_players) do continue
-		if hit_enemy_ships(src_sea, Defender_Sea_Casualty_Order_1, &gc.cur_player.team.enemy_players) do continue
-		if planes_targetable && hit_enemy_sea_fighter(src_sea, &gc.cur_player.team.enemy_players) do continue
-		if hit_enemy_ships(src_sea, Defender_Sea_Casualty_Order_2, &gc.cur_player.team.enemy_players) do continue
+		if hit_enemy_battleship(src_sea, &mm.enemies[gc.cur_player]) do continue
+		if subs_targetable && hit_enemy_ships(src_sea, Defender_Sub_Casualty, &mm.enemies[gc.cur_player]) do continue
+		if hit_enemy_ships(src_sea, Defender_Sea_Casualty_Order_1, &mm.enemies[gc.cur_player]) do continue
+		if planes_targetable && hit_enemy_sea_fighter(src_sea, &mm.enemies[gc.cur_player]) do continue
+		if hit_enemy_ships(src_sea, Defender_Sea_Casualty_Order_2, &mm.enemies[gc.cur_player]) do continue
 		assert(
 			src_sea.team_units[gc.cur_player.team.enemy_team.index] == 0 ||
 			!subs_targetable ||
@@ -486,7 +485,7 @@ remove_sea_defenders :: proc(
 	}
 }
 
-remove_land_attackers :: proc(gc: ^Game_Cache, src_land: ^Land, hits: ^u8) {
+remove_land_attackers :: proc(gc: ^Game_Cache, src_land: Land_ID, hits: ^u8) {
 	for (hits^ > 0) {
 		hits^ -= 1
 		if hit_my_armies(src_land, Attacker_Land_Casualty_Order_1, gc.cur_player) do continue
@@ -495,29 +494,29 @@ remove_land_attackers :: proc(gc: ^Game_Cache, src_land: ^Land, hits: ^u8) {
 	}
 
 }
-remove_land_defenders :: proc(gc: ^Game_Cache, src_land: ^Land, hits: ^u8) {
+remove_land_defenders :: proc(gc: ^Game_Cache, src_land: Land_ID, hits: ^u8) {
 	for (hits^ > 0) {
 		hits^ -= 1
-		if hit_enemy_armies(src_land, Defender_Land_Casualty_Order_1, &gc.cur_player.team.enemy_players) do continue
-		if hit_enemy_planes(src_land, .BOMBER, &gc.cur_player.team.enemy_players) do continue
-		if hit_enemy_armies(src_land, Defender_Land_Casualty_Order_2, &gc.cur_player.team.enemy_players) do continue
-		if hit_enemy_planes(src_land, .FIGHTER, &gc.cur_player.team.enemy_players) do continue
+		if hit_enemy_armies(src_land, Defender_Land_Casualty_Order_1, &mm.enemies[gc.cur_player]) do continue
+		if hit_enemy_planes(src_land, .BOMBER, &mm.enemies[gc.cur_player]) do continue
+		if hit_enemy_armies(src_land, Defender_Land_Casualty_Order_2, &mm.enemies[gc.cur_player]) do continue
+		if hit_enemy_planes(src_land, .FIGHTER, &mm.enemies[gc.cur_player]) do continue
 	}
 }
 
-hit_my_battleship :: proc(src_sea: ^Sea, cur_player: ^Player) -> bool {
-	if src_sea.active_ships[Active_Ship.BATTLESHIP_BOMBARDED] > 0 {
-		src_sea.active_ships[Active_Ship.BS_DAMAGED_BOMBARDED] += 1
-		src_sea.idle_ships[cur_player.index][Idle_Ship.BS_DAMAGED] += 1
-		src_sea.active_ships[Active_Ship.BATTLESHIP_BOMBARDED] -= 1
-		src_sea.idle_ships[cur_player.index][Idle_Ship.BATTLESHIP] -= 1
+hit_my_battleship :: proc(src_sea: Sea_ID, player: Player_ID) -> bool {
+	if gc.active_ships[src_sea][Active_Ship.BATTLESHIP_BOMBARDED] > 0 {
+		gc.active_ships[src_sea][Active_Ship.BS_DAMAGED_BOMBARDED] += 1
+		src_sea.idle_ships[player][Idle_Ship.BS_DAMAGED] += 1
+		gc.active_ships[src_sea][Active_Ship.BATTLESHIP_BOMBARDED] -= 1
+		src_sea.idle_ships[player][Idle_Ship.BATTLESHIP] -= 1
 		return true
 	}
 	return false
 }
 
-hit_ally_battleship :: proc(src_sea: ^Sea, cur_player: ^Player) -> bool {
-	for player in sa.slice(&cur_player.team.players) {
+hit_ally_battleship :: proc(src_sea: Sea_ID, cur_player: Player_ID) -> bool {
+	for player in sa.slice(&mm.allies[cur_player]) {
 		if player == cur_player do continue
 		if src_sea.idle_ships[player.index][Idle_Ship.BATTLESHIP] > 0 {
 			src_sea.idle_ships[player.index][Idle_Ship.BATTLESHIP] -= 1
@@ -528,7 +527,7 @@ hit_ally_battleship :: proc(src_sea: ^Sea, cur_player: ^Player) -> bool {
 	return false
 }
 
-hit_enemy_battleship :: proc(src_sea: ^Sea, enemy_players: ^SA_Player_Pointers) -> bool {
+hit_enemy_battleship :: proc(src_sea: Sea_ID, enemy_players: ^SA_Player_Pointers) -> bool {
 	for player in sa.slice(enemy_players) {
 		if src_sea.idle_ships[player.index][Idle_Ship.BATTLESHIP] > 0 {
 			src_sea.idle_ships[player.index][Idle_Ship.BATTLESHIP] -= 1
@@ -540,10 +539,10 @@ hit_enemy_battleship :: proc(src_sea: ^Sea, enemy_players: ^SA_Player_Pointers) 
 	return false
 }
 
-hit_my_ships :: proc(src_sea: ^Sea, casualty_order: []Active_Ship, cur_player: ^Player) -> bool {
+hit_my_ships :: proc(src_sea: Sea_ID, casualty_order: []Active_Ship, cur_player: ^Player) -> bool {
 	for ship in casualty_order {
-		if src_sea.active_ships[ship] > 0 {
-			src_sea.active_ships[ship] -= 1
+		if gc.active_ships[src_sea][ship] > 0 {
+			gc.active_ships[src_sea][ship] -= 1
 			src_sea.idle_ships[cur_player.index][Active_Ship_To_Idle[ship]] -= 1
 			src_sea.team_units[cur_player.team.index] -= 1
 			return true
@@ -552,7 +551,7 @@ hit_my_ships :: proc(src_sea: ^Sea, casualty_order: []Active_Ship, cur_player: ^
 	return false
 }
 
-hit_ally_ships :: proc(src_sea: ^Sea, casualty_order: []Active_Ship, cur_player: ^Player) -> bool {
+hit_ally_ships :: proc(src_sea: Sea_ID, casualty_order: []Active_Ship, cur_player: ^Player) -> bool {
 	for ship in casualty_order {
 		for player in sa.slice(&cur_player.team.players) {
 			if player == cur_player do continue
@@ -567,7 +566,7 @@ hit_ally_ships :: proc(src_sea: ^Sea, casualty_order: []Active_Ship, cur_player:
 }
 
 hit_enemy_ships :: proc(
-	src_sea: ^Sea,
+	src_sea: Sea_ID,
 	casualty_order: []Idle_Ship,
 	enemy_players: ^SA_Player_Pointers,
 ) -> bool {
@@ -619,7 +618,7 @@ hit_ally_planes :: proc(src_air: ^Territory, idle_plane: Idle_Plane, cur_player:
 	return false
 }
 
-hit_enemy_sea_fighter :: proc(src_sea: ^Sea, enemy_players: ^SA_Player_Pointers) -> bool {
+hit_enemy_sea_fighter :: proc(src_sea: Sea_ID, enemy_players: ^SA_Player_Pointers) -> bool {
 	for player in sa.slice(enemy_players) {
 		if src_sea.idle_planes[player.index][Idle_Plane.FIGHTER] > 0 {
 			src_sea.idle_planes[player.index][Idle_Plane.FIGHTER] -= 1
@@ -647,14 +646,14 @@ hit_enemy_planes :: proc(
 }
 
 hit_my_armies :: proc(
-	src_land: ^Land,
+	src_land: Land_ID,
 	casualty_order: []Active_Army,
 	cur_player: ^Player,
 ) -> bool {
 	for army in casualty_order {
-		if src_land.active_armies[army] > 0 {
-			src_land.active_armies[army] -= 1
-			src_land.idle_armies[cur_player.index][Active_Army_To_Idle[army]] -= 1
+		if gc.active_armies[src_land][army] > 0 {
+			gc.active_armies[src_land][army] -= 1
+			gc.idle_armies[src_land][cur_player.index][Active_Army_To_Idle[army]] -= 1
 			src_land.team_units[cur_player.team.index] -= 1
 			return true
 		}
@@ -663,14 +662,14 @@ hit_my_armies :: proc(
 }
 
 hit_enemy_armies :: proc(
-	src_land: ^Land,
+	src_land: Land_ID,
 	casualty_order: []Idle_Army,
 	enemy_players: ^SA_Player_Pointers,
 ) -> bool {
 	for army in casualty_order {
 		for player in sa.slice(enemy_players) {
-			if src_land.idle_armies[player.index][army] > 0 {
-				src_land.idle_armies[player.index][army] -= 1
+			if gc.idle_armies[src_land][player.index][army] > 0 {
+				gc.idle_armies[src_land][player.index][army] -= 1
 				src_land.team_units[player.team.index] -= 1
 				return true
 			}
@@ -679,7 +678,7 @@ hit_enemy_armies :: proc(
 	return false
 }
 
-get_attacker_damage_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> (damage: int = 0) {
+get_attacker_damage_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> (damage: int = 0) {
 	for player in sa.slice(&gc.cur_player.team.players) {
 		damage += int(src_sea.idle_ships[player.index][Idle_Ship.DESTROYER]) * DESTROYER_ATTACK
 		damage += int(src_sea.idle_ships[player.index][Idle_Ship.CARRIER]) * CARRIER_ATTACK
@@ -692,7 +691,7 @@ get_attacker_damage_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> (damage: int 
 	return damage
 }
 
-get_defender_damage_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> (damage: int = 0) {
+get_defender_damage_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> (damage: int = 0) {
 	for player in sa.slice(&gc.cur_player.team.enemy_players) {
 		damage += int(src_sea.idle_ships[player.index][Idle_Ship.DESTROYER]) * DESTROYER_DEFENSE
 		damage += int(src_sea.idle_ships[player.index][Idle_Ship.CARRIER]) * CARRIER_DEFENSE
@@ -704,29 +703,29 @@ get_defender_damage_sea :: proc(gc: ^Game_Cache, src_sea: ^Sea) -> (damage: int 
 	return damage
 }
 
-get_attcker_damage_land :: proc(gc: ^Game_Cache, src_land: ^Land) -> (damage: int = 0) {
+get_attcker_damage_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (damage: int = 0) {
 	player_idx := gc.cur_player.index
-	damage += int(src_land.idle_armies[player_idx][Idle_Army.INF]) * INFANTRY_ATTACK
+	damage += int(gc.idle_armies[src_land][player_idx][Idle_Army.INF]) * INFANTRY_ATTACK
 	damage +=
 		int(
 			min(
-				src_land.idle_armies[player_idx][Idle_Army.INF],
-				src_land.idle_armies[player_idx][Idle_Army.ARTY],
+				gc.idle_armies[src_land][player_idx][Idle_Army.INF],
+				gc.idle_armies[src_land][player_idx][Idle_Army.ARTY],
 			),
 		) *
 		INFANTRY_ATTACK
-	damage += int(src_land.idle_armies[player_idx][Idle_Army.ARTY]) * ARTILLERY_ATTACK
-	damage += int(src_land.idle_armies[player_idx][Idle_Army.TANK]) * TANK_ATTACK
+	damage += int(gc.idle_armies[src_land][player_idx][Idle_Army.ARTY]) * ARTILLERY_ATTACK
+	damage += int(gc.idle_armies[src_land][player_idx][Idle_Army.TANK]) * TANK_ATTACK
 	damage += int(src_land.idle_planes[player_idx][Idle_Plane.FIGHTER]) * FIGHTER_ATTACK
 	damage += int(src_land.idle_planes[player_idx][Idle_Plane.BOMBER]) * BOMBER_ATTACK
 	return damage
 }
 
-get_defender_damage_land :: proc(gc: ^Game_Cache, src_land: ^Land) -> (damage: int = 0) {
+get_defender_damage_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (damage: int = 0) {
 	for player in sa.slice(&gc.cur_player.team.enemy_players) {
-		damage += int(src_land.idle_armies[player.index][Idle_Army.INF]) * INFANTRY_DEFENSE
-		damage += int(src_land.idle_armies[player.index][Idle_Army.ARTY]) * ARTILLERY_DEFENSE
-		damage += int(src_land.idle_armies[player.index][Idle_Army.TANK]) * TANK_DEFENSE
+		damage += int(gc.idle_armies[src_land][player.index][Idle_Army.INF]) * INFANTRY_DEFENSE
+		damage += int(gc.idle_armies[src_land][player.index][Idle_Army.ARTY]) * ARTILLERY_DEFENSE
+		damage += int(gc.idle_armies[src_land][player.index][Idle_Army.TANK]) * TANK_DEFENSE
 		damage += int(src_land.idle_planes[player.index][Idle_Plane.FIGHTER]) * FIGHTER_DEFENSE
 		damage += int(src_land.idle_planes[player.index][Idle_Plane.BOMBER]) * BOMBER_DEFENSE
 	}

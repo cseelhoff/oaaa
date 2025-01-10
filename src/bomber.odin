@@ -35,13 +35,13 @@ bomber_enemy_checks :: proc(
 	return .BOMBER_0_MOVES
 }
 
-bomber_can_land_here :: proc(territory: ^Territory) {
-	territory.can_bomber_land_here = true
-	for air in sa.slice(&territory.adjacent_airs) {
-		air.can_bomber_land_in_1_move = true
+bomber_can_land_here :: proc(gc: ^Game_Cache, territory: Air_ID) {
+	gc.can_bomber_land_here += {territory}
+	for air in sa.slice(&mm.adj_a2a[territory]) {
+		gc.can_bomber_land_in_1_move += {territory}
 	}
-	for air in sa.slice(&territory.airs_2_moves_away) {
-		air.can_bomber_land_in_2_moves = true
+	for air in sa.slice(&mm.airs_2_moves_away[territory]) {
+		gc.can_bomber_land_in_2_moves += {territory}
 	}
 }
 
@@ -54,11 +54,11 @@ refresh_can_bomber_land_here :: proc(gc: ^Game_Cache) {
 		territory.can_bomber_land_in_2_moves = false
 	}
 	// check if any bombers have full moves remaining
-	for &land in gc.lands {
+	for land in Land_ID {
 		// is allied owned and not recently conquered?
 		//Since bombers happen first, we can assume that the land is not recently conquered
-		if gc.cur_player.team == land.owner.team { 	//&& land.combat_status == .NO_COMBAT {
-			bomber_can_land_here(&land)
+		if mm.team[gc.cur_player] == mm.team[gc.owner[land]] { 	//&& land.combat_status == .NO_COMBAT {
+			bomber_can_land_here(gc, Air_ID(land))
 		}
 	}
 	gc.is_bomber_cache_current = true
@@ -90,11 +90,10 @@ add_valid_bomber_moves :: proc(gc: ^Game_Cache, src_air: ^Territory) {
 	}
 }
 
-add_meaningful_bomber_move :: proc(gc: ^Game_Cache, src_air: ^Territory, dst_air: ^Territory) {
-	terr_idx := dst_air.territory_index
-	if dst_air.can_bomber_land_here ||
-	   dst_air.team_units[gc.cur_player.team.enemy_team.index] != 0 ||
-	   is_land(dst_air) && gc.lands[terr_idx].factory_dmg < gc.lands[terr_idx].factory_prod * 2 {
+add_meaningful_bomber_move :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
+	if dst_air in gc.can_bomber_land_here ||
+	   gc.team_units[dst_air][mm.enemy_team[gc.cur_player]] != 0 ||
+	   is_land(dst_air) && gc.factory_dmg[Land_ID(dst_air)] < gc.factory_prod[Land_ID(dst_air)] * 2 {
 		add_move_if_not_skipped(gc, src_air, dst_air)
 	}
 }
