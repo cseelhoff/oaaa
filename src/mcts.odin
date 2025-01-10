@@ -179,8 +179,8 @@ print_top_action_sequences :: proc() {
 	VISITS_WIDTH := 8
 	for i in 0 ..< MAX_ACTION_SEQUENCES {
 		if action_sequence_values[i] > 0 {
-			fmt.print("value: ", action_sequence_values[i])
-			fmt.print(" visits: ", action_sequence_visits[i])
+			fmt.print(" value:", action_sequence_values[i])
+			fmt.print(" visits:", action_sequence_visits[i])
 			fmt.print(" Actions:")
 			for j in 1 ..< action_sequence_lengths[i] {
 				fmt.print(" ", action_sequences[i][j])
@@ -196,7 +196,7 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
 	if node.parent != nil {
 		fmt.print(PLAYER_DATA[node.parent.state.cur_player].color)
-		fmt.print("Action: ")
+		fmt.print("Action:")
 		if node.action < LANDS_COUNT {
 			fmt.print(LANDS_DATA[node.action].name)
 		} else if node.action < TERRITORIES_COUNT {
@@ -204,8 +204,9 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 		} else {
 			fmt.print(Buy_Action(node.action - TERRITORIES_COUNT))
 		}
-		fmt.print(", Visits: ", node.visits)
-		fmt.print(", Value: ", node.value)
+		fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
+		fmt.print(", Visits:", node.visits)
+		fmt.print(", Value:", node.value)
 		fmt.print(", Avg:", node.value / f64(node.visits))
 		fmt.println(DEF_COLOR)
 	}
@@ -229,9 +230,10 @@ print_mcts_tree2 :: proc(node: ^MCTSNode, depth: uint) {
 	for i in 0 ..< depth {
 		fmt.print("  ")
 	}
-	fmt.print("Action: ", node.action)
-	fmt.print(", Visits: ", node.visits)
-	fmt.print(", Value: ", node.value)
+	fmt.print("Action:", node.action)
+	fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
+	fmt.print(", Visits:", node.visits)
+	fmt.print(", Value:", node.value)
 	fmt.print(", Avg:", node.value / f64(node.visits))
 	fmt.println()
 	for child in node.children {
