@@ -142,7 +142,7 @@ update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air_idx: Air_I
 	for {
 		assert(gc.valid_actions.len > 0)
 		valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
-		if Air_ID(valid_action) == dst_air_idx do return
+		if u2aid(valid_action) == dst_air_idx do return
 		gc.skipped_moves[src_air] += {src_air}
 		gc.clear_needed = true
 		//apply_skip(gc, src_air, gc.territories[valid_action])

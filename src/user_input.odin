@@ -41,15 +41,15 @@ get_retreat_input :: proc(
 	ok: bool,
 ) {
 	debug_checks(gc)
-	dst_air_idx = Air_ID(gc.valid_actions.data[0])
+	dst_air_idx = l2aid(gc.valid_actions.data[0])
 	if gc.valid_actions.len > 1 {
 		if gc.answers_remaining == 0 do return dst_air_idx, false
 		if PLAYER_DATA[gc.cur_player.index].is_human {
 			print_retreat_prompt(gc, src_air)
-			dst_air_idx = Air_ID(get_user_input(gc))
+			dst_air_idx = l2aid(get_user_input(gc))
 		} else {
 			if ACTUALLY_PRINT do print_retreat_prompt(gc, src_air)
-			dst_air_idx = Air_ID(get_ai_input(gc))
+			dst_air_idx = l2aid(get_ai_input(gc))
 			if ACTUALLY_PRINT {
 				fmt.println("AI Action:", dst_air_idx)
 			}
@@ -61,9 +61,9 @@ get_retreat_input :: proc(
 print_move_prompt :: proc(gc: ^Game_Cache, unit_name: string, src_air: Air_ID) {
 	print_game_state(gc)
 	fmt.print(PLAYER_DATA[gc.cur_player].color)
-	fmt.println("Moving ", unit_name, " From ", src_air.name, " Valid Moves: ")
+	fmt.println("Moving ", unit_name, " From ", src_air, " Valid Moves: ")
 	for valid_move in sa.slice(&gc.valid_actions) {
-		fmt.print(int(valid_move), gc.territories[valid_move].name, ", ")
+		fmt.print(int(valid_move), u2aid(valid_move), ", ")
 	}
 	fmt.println(DEF_COLOR)
 }
@@ -77,15 +77,15 @@ get_move_input :: proc(
 	ok: bool,
 ) {
 	debug_checks(gc)
-	dst_air = Air_ID(gc.valid_actions.data[0])
+	dst_air = u2aid(gc.valid_actions.data[0])
 	if gc.valid_actions.len > 1 {
 		if gc.answers_remaining == 0 do return dst_air, false
 		if PLAYER_DATA[gc.cur_player].is_human {
 			print_move_prompt(gc, unit_name, src_air)
-			dst_air = Air_ID(get_user_input(gc))
+			dst_air = u2aid(get_user_input(gc))
 		} else {
 			if ACTUALLY_PRINT do print_move_prompt(gc, unit_name, src_air)
-			dst_air = Air_ID(get_ai_input(gc))
+			dst_air = u2aid(get_ai_input(gc))
 			if ACTUALLY_PRINT {
 				fmt.println("AI Action:", dst_air)
 			}
@@ -115,7 +115,7 @@ get_user_input :: proc(gc: ^Game_Cache) -> (user_input: u8 = 0) {
 
 get_ai_input :: proc(gc: ^Game_Cache) -> (ai_input: u8) {
 	gc.answers_remaining -= 1
-	if !gc.use_selected_action || gc.selected_action >= MAX_VALID_ACTIONS {
+	if !gc.use_selected_action || gc.selected_action >= len(Action_ID) {
 		//fmt.eprintln("Invalid input ", gc.selected_action)
 		gc.seed = (gc.seed + 1) % RANDOM_MAX
 		return gc.valid_actions.data[RANDOM_NUMBERS[gc.seed] % gc.valid_actions.len]
@@ -160,16 +160,16 @@ get_buy_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (action: Buy_Action, 
 }
 
 print_game_state :: proc(gc: ^Game_Cache) {
-	color := PLAYER_DATA[gc.cur_player.index].color
+	color := PLAYER_DATA[gc.cur_player].color
 	fmt.println(color, "--------------------")
-	fmt.println("Current Player: ", PLAYER_DATA[gc.cur_player.index].name)
-	fmt.println("Money: ", gc.cur_player.money, DEF_COLOR, "\n")
-	for territory in gc.territories {
-		if int(territory.territory_index) < LANDS_COUNT {
-			land := get_land(gc, territory.territory_index)
-			fmt.print(PLAYER_DATA[land.owner.index].color)
+	fmt.println("Current Player: ", PLAYER_DATA[gc.cur_player].name)
+	fmt.println("Money: ", gc.money[gc.cur_player], DEF_COLOR, "\n")
+	for air in Air_ID {
+		if int(air) < len(Land_ID) {
+			land := a2lid(air)
+			fmt.print(mm.color[gc.owner[land]])
 			fmt.println(
-				territory.name,
+				air.name,
 				"builds:",
 				land.builds_left,
 				land.combat_status,
@@ -179,7 +179,7 @@ print_game_state :: proc(gc: ^Game_Cache) {
 				"bombards:",
 				land.max_bombards,
 			)
-			fmt.print(PLAYER_DATA[gc.cur_player.index].color)
+			fmt.print(PLAYER_DATA[gc.cur_player].color)
 			for army, army_idx in land.active_armies {
 				if army > 0 {
 					fmt.println(Active_Army_Names[army_idx], ":", army)

@@ -8,29 +8,29 @@ import "core:strings"
 MAX_SEA_TO_LAND_CONNECTIONS :: 6
 MAX_SEA_TO_SEA_CONNECTIONS :: 7
 SEAS_COUNT :: len(SEAS_DATA)
-Seas :: [Sea_ID]Sea
-CANALS_COUNT :: len(CANALS)
+// Seas :: [Sea_ID]Sea
+Canals_Count :: len(Canal_ID)
 //CANALS_COUNT :: 2
-CANAL_STATES :: 1 << CANALS_COUNT
+Canal_States :: 1 << Canals_Count
 MAX_PATHS_TO_SEA :: 2
 SA_Adjacent_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
-Canal_Paths :: [CANAL_STATES]Sea_Distances
+Canal_Paths :: [Canal_States]Sea_Distances
 Seas_2_Moves_Away :: sa.Small_Array(SEAS_COUNT, Sea_2_Moves_Away)
 
-Sea :: struct {
-	using territory:        Territory,
-	idle_ships:             [Player_ID]Idle_Sea_For_Player,
-	active_ships:           [Active_Ship]u8,
-	canal_paths:            Canal_Paths,
-	sea_index:              Sea_ID,
-	enemy_destroyer_total:  u8,
-	enemy_submarines_total: u8,
-	enemy_blockade_total:   u8,
-	allied_carriers:        u8,
-	enemy_fighters_total:   u8,
-	sea_path_blocked:       bool,
-	sub_path_blocked:       bool,
-}
+// Sea :: struct {
+// 	using territory:        Territory,
+// 	idle_ships:             [Player_ID]Idle_Sea_For_Player,
+// 	active_ships:           [Active_Ship]u8,
+// 	canal_paths:            Canal_Paths,
+// 	sea_index:              Sea_ID,
+// 	enemy_destroyer_total:  u8,
+// 	enemy_submarines_total: u8,
+// 	enemy_blockade_total:   u8,
+// 	allied_carriers:        u8,
+// 	enemy_fighters_total:   u8,
+// 	sea_path_blocked:       bool,
+// 	sub_path_blocked:       bool,
+// }
 
 Canal :: struct {
 	lands: [2]string,
@@ -61,8 +61,8 @@ Canal_ID :: enum {
 SEAS_DATA := [?]string{"Pacific", "Atlantic", "Baltic"}
 SEA_CONNECTIONS :: [?][2]string{{"Pacific", "Atlantic"}, {"Atlantic", "Baltic"}}
 CANALS := [?]Canal{{lands = {"Moscow", "Moscow"}, seas = {"Pacific", "Baltic"}}}
-Canal_Lands:= [CANALS_COUNT][2]Land_ID{{.Moscow, .Moscow}}
-Canal_Seas:= [CANALS_COUNT][2]Sea_ID{{.Pacific, .Pacific}}
+Canal_Lands:= [Canals_Count][2]Land_ID{{.Moscow, .Moscow}}
+Canal_Seas:= [Canals_Count][2]Sea_ID{{.Pacific, .Pacific}}
 
 get_sea_id :: #force_inline proc(air: Air_ID) -> Sea_ID {
 	assert(int(air) >= len(Land_ID), "Invalid air index")
@@ -97,8 +97,8 @@ initialize_sea_connections :: proc() -> (ok: bool) {
 	// if (canal_path_idx & (1 << uint(canal_idx))) == 0 {
 	// 	continue
 	// }
-	for canal_path_idx in 0 ..< CANAL_STATES {
-		canals_open := transmute(CANALS_OPEN)u8(canal_path_idx)
+	for canal_path_idx in 0 ..< Canal_States {
+		canals_open := transmute(Canals_Open)u8(canal_path_idx)
 		for canal_idx in canals_open {
 			canal := CANALS[canal_idx]
 			sea1_idx := get_sea_idx_from_string(canal.seas[0]) or_return
@@ -110,8 +110,8 @@ initialize_sea_connections :: proc() -> (ok: bool) {
 	return true
 }
 
-initialize_seas_2_moves_away :: proc(seas: Sea_IDs) {
-	for canal_state in 0 ..< CANAL_STATES {
+initialize_seas_2_moves_away :: proc() {
+	for canal_state in 0 ..< Canal_States {
 		// Floyd-Warshall algorithm
 		// Initialize distances array to Infinity
 		distances: [SEAS_COUNT][SEAS_COUNT]u8

@@ -6,9 +6,12 @@ import "core:mem"
 import "core:slice"
 import "core:strings"
 
-LANDS_COUNT :: len(LANDS_DATA)
-Lands :: [LANDS_COUNT]Land
 SA_Adjacent_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
+
+a2lid :: #force_inline proc(air : Air_ID) -> Land_ID {
+	assert(int(air) < len(Land_ID))
+	return Land_ID(air)
+}
 
 Land_Data :: struct {
 	name:  string,
@@ -18,23 +21,23 @@ Land_Data :: struct {
 
 Idle_Armies :: [PLAYERS_COUNT]Idle_Army_For_Player
 Active_Armies :: [len(Active_Army)]u8
-Land :: struct {
-	using territory:    Territory,
-	idle_armies:        Idle_Armies,
-	active_armies:      Active_Armies,
-	lands_2_moves_away: sa.Small_Array(LANDS_COUNT, Land_2_Moves_Away),
-	seas_2_moves_away:  sa.Small_Array(SEAS_COUNT, L2S_2_Moves_Away),
-	adjacent_seas:      SA_Adjacent_L2S,
-	original_owner:     ^Player,
-	land_distances:     [LANDS_COUNT]u8,
-	// owner:              Player_ID,
-	land_index:         Land_ID,
-	value:              u8,
-	factory_dmg:        u8,
-	factory_prod:       u8,
-	max_bombards:       u8,
-	builds_left:        u8,
-}
+// Land :: struct {
+// 	using territory:    Territory,
+// 	idle_armies:        Idle_Armies,
+// 	active_armies:      Active_Armies,
+// 	lands_2_moves_away: sa.Small_Array(len(Land_ID), Land_2_Moves_Away),
+// 	seas_2_moves_away:  sa.Small_Array(len(Sea_ID), L2S_2_Moves_Away),
+// 	adjacent_seas:      SA_Adjacent_L2S,
+// 	original_owner:     ^Player,
+// 	land_distances:     [len(Land_ID)]u8,
+// 	// owner:              Player_ID,
+// 	land_index:         Land_ID,
+// 	value:              u8,
+// 	factory_dmg:        u8,
+// 	factory_prod:       u8,
+// 	max_bombards:       u8,
+// 	builds_left:        u8,
+// }
 
 L2S_2_Moves_Away :: struct {
 	sea:       Sea_ID,
@@ -69,7 +72,7 @@ get_land_idx_from_string :: proc(land_name: string) -> (land_idx: int, ok: bool)
 	return 0, false
 }
 
-initialize_lands_2_moves_away :: proc(lands: Land_IDs) {
+initialize_lands_2_moves_away :: proc() {
 	// Floyd-Warshall algorithm
 	// Initialize distances array to Infinity
 	distances: [LANDS_COUNT][LANDS_COUNT]u8
@@ -111,7 +114,7 @@ initialize_lands_2_moves_away :: proc(lands: Land_IDs) {
 	}
 }
 
-initialize_canals :: proc(lands: ^[LANDS_COUNT]Land) -> (ok: bool) {
+initialize_canals :: proc() -> (ok: bool) {
 	// convert canal_state to a bitmask and loop through CANALS for those
 	// enabled for example if canal_state is 0, do not process any items in
 	// CANALS, if canal_state is 1, process the first item in CANALS, if
@@ -153,11 +156,11 @@ conquer_land :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool) {
 	}
 	gc.owner[dst_land] = new_owner
 	gc.income[new_owner] += mm.value[dst_land]
-	gc.combat_status[dst_land] = .POST_COMBAT
-	if dst_land.factory_prod == 0 {
+	gc.combat_status[l2aid(dst_land)] = .POST_COMBAT
+	if gc.factory_prod[dst_land] == 0 {
 		return true
 	}
-	sa.push(&new_owner.factory_locations, dst_land)
+	sa.push(&gc.factory_locations[new_owner], dst_land)
 	index, found := slice.linear_search(sa.slice(&old_owner.factory_locations), dst_land)
 	assert(found, "factory conquered, but not found in owned factory locations")
 	sa.unordered_remove(&old_owner.factory_locations, index)

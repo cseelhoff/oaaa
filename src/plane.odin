@@ -148,6 +148,7 @@ skip_plane :: proc(
 }
 
 move_single_plane :: proc(
+	gc: ^Game_Cache,
 	dst_air: Air_ID,
 	dst_unit: Active_Plane,
 	player: Player_ID,

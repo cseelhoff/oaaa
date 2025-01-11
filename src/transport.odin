@@ -21,6 +21,15 @@ Transports_With_Moves := [?]Active_Ship {
 	.TRANS_1I_1T_2_MOVES,
 }
 
+Idle_Transports := [?]Idle_Ship {
+	.TRANS_EMPTY,
+	.TRANS_1I,
+	.TRANS_1A,
+	.TRANS_1T,
+	.TRANS_1I_1A,
+	.TRANS_1I_1T,
+}
+
 Transports_Needing_Staging := [?]Active_Ship {
 	.TRANS_EMPTY_UNMOVED,
 	.TRANS_1I_UNMOVED,

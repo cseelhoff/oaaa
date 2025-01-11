@@ -5,7 +5,7 @@ Idle_Army_For_Player :: [len(Idle_Army)]u8
 Idle_Sea_For_Player :: [len(Idle_Ship)]u8
 
 Game_State :: struct {
-	land_states: [LANDS_COUNT]Land_State,
+	land_states: [len(Land_ID)]Land_State,
 	sea_states:  [SEAS_COUNT]Sea_State,
 	money:       [PLAYERS_COUNT]u8,
 	seed:        u16,
@@ -15,7 +15,7 @@ Game_State :: struct {
 Territory_State :: struct {
 	idle_planes:   [PLAYERS_COUNT]Idle_Plane_For_Player,
 	active_planes: [len(Active_Plane)]u8,
-	skipped_moves: [TERRITORIES_COUNT]bool,
+	skipped_moves: [len(Air_ID)]bool,
 	skipped_buys:  Skipped_Buys,
 	combat_status: Combat_Status,
 	builds_left:   u8,

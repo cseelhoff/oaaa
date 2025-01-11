@@ -6,9 +6,16 @@ MAX_LAND_TO_LAND_CONNECTIONS :: 6
 MAX_AIR_TO_AIR_CONNECTIONS :: 7
 MAX_LAND_TO_SEA_CONNECTIONS :: 4
 
+L2S_2_Away :: struct {
+	mid_lands: [2]Land_ID,
+	sea: Sea_ID
+}
+
 SA_Players :: sa.Small_Array(len(Player_ID), Player_ID)
 SA_L2L :: sa.Small_Array(MAX_LAND_TO_LAND_CONNECTIONS, Land_ID)
-SA_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Land_ID)
+SA_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
+SA_L2S_2_Away :: sa.Small_Array(len(Sea_ID), L2S_2_Away)
+SA_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
 SA_A2A :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, Air_ID)
 
 MapData :: struct {
@@ -20,6 +27,7 @@ MapData :: struct {
 	enemies:            [Player_ID]SA_Players,
 	adj_l2l:            [Land_ID]SA_L2L,
 	adj_l2s:            [Land_ID]SA_L2S,
+	adj_l2l2s:					[Land_ID]SA_L2S,
 	adj_a2a:            [Air_ID]SA_A2A,
 	orig_owner:         [Land_ID]Player_ID,
 	airs_2_moves_away:  [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
@@ -32,6 +40,9 @@ MapData :: struct {
 	air_distances:      [Air_ID][Air_ID]u8,
 	value:              [Land_ID]u8,
 	original_owner:     [Land_ID]Player_ID,
+	adj_s2s:						[Canal_States][Sea_ID]SA_S2S,
+	seas_2_moves_away:	[Canal_States][Sea_ID]SA_S2S,
+	sea_distances:			[Canal_States][Sea_ID][Sea_ID]u8,
 }
 
 MAX_PATHS_TO_LAND :: 2

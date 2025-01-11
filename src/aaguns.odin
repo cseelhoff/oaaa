@@ -13,7 +13,7 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 move_aagun_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (ok: bool) {
 	if gc.active_armies[src_land][.AAGUN_UNMOVED] == 0 do return true
-	reset_valid_moves(gc, Air_ID(src_land))
+	reset_valid_moves(gc, l2aid(src_land))
 	add_valid_aagun_moves(gc, src_land)
 	for gc.active_armies[src_land][Active_Army.AAGUN_UNMOVED] > 0 {
 		move_next_aagun_in_land(gc, src_land) or_return
@@ -25,7 +25,7 @@ move_next_aagun_in_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (ok: bool
 	dst_air_idx := get_move_input(
 		gc,
 		Active_Army_Names[.AAGUN_UNMOVED],
-		Air_ID(src_land),
+		l2aid(src_land),
 	) or_return
 	dst_land := Land_ID(dst_air_idx)
 	if skip_army(gc, src_land, dst_land, .AAGUN_UNMOVED) do return true
@@ -35,7 +35,7 @@ move_next_aagun_in_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (ok: bool
 
 add_valid_aagun_moves :: proc(gc: ^Game_Cache, src_land: Land_ID) {
 	for dst_land in sa.slice(&mm.adj_l2l[src_land]) {
-		if Air_ID(dst_land) in gc.skipped_moves[Air_ID(src_land)] ||
+		if l2aid(dst_land) in gc.skipped_moves[l2aid(src_land)] ||
 		   mm.team[gc.owner[dst_land]] != mm.team[gc.cur_player] {
 			continue
 		}

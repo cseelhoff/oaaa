@@ -2,42 +2,42 @@ package oaaa
 import sa "core:container/small_array"
 import "core:mem"
 
-TERRITORIES_COUNT :: LANDS_COUNT + SEAS_COUNT
+// TERRITORIES_COUNT :: LANDS_COUNT + SEAS_COUNT
 MAX_TERRITORY_TO_LAND_CONNECTIONS :: 6
-MAX_AIR_TO_AIR_CONNECTIONS :: 7
+// MAX_AIR_TO_AIR_CONNECTIONS :: 7
 SA_Adjacent_Lands :: sa.Small_Array(MAX_TERRITORY_TO_LAND_CONNECTIONS, Land_ID)
 SA_Adjacent_Airs :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, Air_ID)
 Skipped_Buys :: [len(Buy_Action)]bool
 
-Territory :: struct {
-	name:                       string,
-	idle_planes:                [PLAYERS_COUNT]Idle_Plane_For_Player,
-	active_planes:              [len(Active_Plane)]u8,
-	air_distances:              [TERRITORIES_COUNT]u8,
-	skipped_moves:              [TERRITORIES_COUNT]bool, // Maybe this should be a bitset at the gc level
-	skipped_buys:               Skipped_Buys,
-	combat_status:              Combat_Status,
-	//builds_left:                int,
-	land_within_6_moves:        SA_Land_Pointers,
-	land_within_5_moves:        SA_Land_Pointers,
-	land_within_4_moves:        SA_Land_Pointers,
-	land_within_3_moves:        SA_Land_Pointers,
-	land_within_2_moves:        SA_Land_Pointers,
-	adjacent_lands:             SA_Adjacent_Lands,
-	adjacent_airs:              SA_Adjacent_Airs,
-	airs_2_moves_away:          SA_Territory_Pointers,
-	airs_3_moves_away:          SA_Territory_Pointers,
-	airs_4_moves_away:          SA_Territory_Pointers,
-	airs_5_moves_away:          SA_Territory_Pointers,
-	airs_6_moves_away:          SA_Territory_Pointers,
-	team_units:                 [TEAMS_COUNT]u8,
-	territory_index:            Air_ID,
-	can_fighter_land_here:      bool, //bitset?
-	can_fighter_land_in_1_move: bool,
-	can_bomber_land_here:       bool,
-	can_bomber_land_in_1_move:  bool,
-	can_bomber_land_in_2_moves: bool,
-}
+// Territory :: struct {
+// 	name:                       string,
+// 	idle_planes:                [PLAYERS_COUNT]Idle_Plane_For_Player,
+// 	active_planes:              [len(Active_Plane)]u8,
+// 	air_distances:              [Air_ID]u8,
+// 	skipped_moves:              [Air_ID]bool, // Maybe this should be a bitset at the gc level
+// 	skipped_buys:               Skipped_Buys,
+// 	combat_status:              Combat_Status,
+// 	//builds_left:                int,
+// 	land_within_6_moves:        SA_Land,
+// 	land_within_5_moves:        SA_Land,
+// 	land_within_4_moves:        SA_Land,
+// 	land_within_3_moves:        SA_Land,
+// 	land_within_2_moves:        SA_Land,
+// 	adjacent_lands:             SA_Adjacent_Lands,
+// 	adjacent_airs:              SA_Adjacent_Airs,
+// 	airs_2_moves_away:          SA_Territory_Pointers,
+// 	airs_3_moves_away:          SA_Territory_Pointers,
+// 	airs_4_moves_away:          SA_Territory_Pointers,
+// 	airs_5_moves_away:          SA_Territory_Pointers,
+// 	airs_6_moves_away:          SA_Territory_Pointers,
+// 	team_units:                 [TEAMS_COUNT]u8,
+// 	territory_index:            Air_ID,
+// 	can_fighter_land_here:      bool, //bitset?
+// 	can_fighter_land_in_1_move: bool,
+// 	can_bomber_land_here:       bool,
+// 	can_bomber_land_in_1_move:  bool,
+// 	can_bomber_land_in_2_moves: bool,
+// }
 
 Coastal_Connection_String :: struct {
 	land: string,
@@ -59,8 +59,16 @@ is_land :: #force_inline proc(air: Air_ID) -> bool {
 	return int(air) < len(Land_ID)
 }
 
-to_air_id :: #force_inline proc(sea: Sea_ID) -> Air_ID {
+s2aid :: #force_inline proc(sea: Sea_ID) -> Air_ID {
 	return Air_ID(u8(sea) + u8(len(Land_ID)))
+}
+
+l2aid :: #force_inline proc(land: Land_ID) -> Air_ID {
+	return Air_ID(land)
+}
+
+u2aid :: #force_inline proc(u: u8) -> Air_ID {
+	return Air_ID(u)
 }
 
 COASTAL_CONNECTIONS := [?]Coastal_Connection_String {
@@ -74,7 +82,7 @@ COASTAL_CONNECTIONS := [?]Coastal_Connection_String {
 	{land = "Tokyo", sea = "Pacific"},
 }
 
-initialize_costal_connections :: proc(lands: Land_IDs, seas: Sea_IDs) -> (ok: bool) {
+initialize_costal_connections :: proc() -> (ok: bool) {
 	for connection in COASTAL_CONNECTIONS {
 		land_idx := get_land_idx_from_string(connection.land) or_return
 		sea_idx := get_sea_idx_from_string(connection.sea) or_return
@@ -103,7 +111,7 @@ initialize_air_dist :: proc() {
 		}
 	}
 	for &sea in seas {
-		for adjacent_sea in sa.slice(&sea.canal_paths[CANAL_STATES - 1].adjacent_seas) {
+		for adjacent_sea in sa.slice(&sea.canal_paths[Canal_States - 1].adjacent_seas) {
 			sea.air_distances[adjacent_sea.territory_index] = 1
 			sa.push(&sea.adjacent_airs, adjacent_sea)
 		}

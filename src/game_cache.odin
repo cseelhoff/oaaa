@@ -4,20 +4,43 @@ import "core:fmt"
 import "core:strings"
 
 BUY_ACTIONS_COUNT :: len(Buy_Action)
-MAX_VALID_ACTIONS :: TERRITORIES_COUNT + BUY_ACTIONS_COUNT
 
-Territory_Pointers :: [TERRITORIES_COUNT]Air_ID
-SA_Territory_Pointers :: sa.Small_Array(TERRITORIES_COUNT, Air_ID)
-SA_Land_Pointers :: sa.Small_Array(LANDS_COUNT, Land_ID)
+Action_ID :: distinct enum u8 {
+	Washington_Action,
+	London_Action,
+	Berlin_Action,
+	Moscow_Action,
+	Tokyo_Action,
+	Pacific_Action,
+	Atlantic_Action,
+	Baltic_Action,
+	Skip_Action,
+	Inf_Action,
+	Arty_Action,
+	Tank_Action,
+	AAGun_Action,
+	Fighter_Action,
+	Bomber_Action,
+	Trans_Action,
+	Sub_Action,
+	Destroyer_Action,
+	Carrier_Action,
+	Cruiser_Action,
+	Battleship_Action,
+}
+
+// Territory_Pointers :: [TERRITORIES_COUNT]Air_ID
+SA_Territory_Pointers :: sa.Small_Array(len(Air_ID), Air_ID)
+SA_Land :: sa.Small_Array(len(Land_ID), Land_ID)
 SA_Player_Pointers :: sa.Small_Array(PLAYERS_COUNT, ^Player)
-CANALS_OPEN :: bit_set[Canal_ID;u8]
+Canals_Open :: bit_set[Canal_ID;u8]
 UNLUCKY_TEAMS :: bit_set[Team_ID;u8]
 Territory_Bitset :: bit_set[Air_ID;u8]
-SA_Valid_Actions :: sa.Small_Array(MAX_VALID_ACTIONS, u8)
+SA_Valid_Actions :: sa.Small_Array(len(Action_ID), u8)
 
 Game_Cache :: struct {
 	//state:             Game_State,
-	seas:                       Seas,
+	// seas:                       Seas,
 	// lands:                    Lands,
 	active_armies:              [Land_ID][Active_Army]u8,
 	active_ships:               [Sea_ID][Active_Ship]u8,
@@ -32,12 +55,14 @@ Game_Cache :: struct {
 	can_bomber_land_in_1_move:  Territory_Bitset,
 	can_bomber_land_in_2_moves: Territory_Bitset,
 	can_fighter_land_here:      Territory_Bitset,
+	factory_locations:          [Player_ID]SA_Land,
 	valid_actions:              SA_Valid_Actions,
 	income:                     [Player_ID]u8,
 	enemy_blockade_total:       [Sea_ID]u8,
 	enemy_fighters_total:       [Sea_ID]u8,
 	enemy_submarines_total:     [Sea_ID]u8,
-	territories:                Territory_Pointers,
+	enemy_destroyer_total:      [Sea_ID]u8,
+	// territories:                Territory_Pointers,
 	players:                    Players,
 	money:                      [Player_ID]u8,
 	owner:                      [Land_ID]Player_ID,
@@ -50,7 +75,7 @@ Game_Cache :: struct {
 	// step_id:                  int,
 	answers_remaining:          u16,
 	max_loops:                  u16,
-	canals_open:                CANALS_OPEN, //[CANALS_COUNT]bool,
+	canals_open:                Canals_Open, //[CANALS_COUNT]bool,
 	unlucky_teams:              UNLUCKY_TEAMS,
 	selected_action:            u8,
 	// user_input:               int,
