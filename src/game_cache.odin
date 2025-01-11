@@ -6,8 +6,8 @@ import "core:strings"
 BUY_ACTIONS_COUNT :: len(Buy_Action)
 MAX_VALID_ACTIONS :: TERRITORIES_COUNT + BUY_ACTIONS_COUNT
 
-Territory_Pointers :: [TERRITORIES_COUNT]^Territory
-SA_Territory_Pointers :: sa.Small_Array(TERRITORIES_COUNT, ^Territory)
+Territory_Pointers :: [TERRITORIES_COUNT]Air_ID
+SA_Territory_Pointers :: sa.Small_Array(TERRITORIES_COUNT, Air_ID)
 SA_Land_Pointers :: sa.Small_Array(LANDS_COUNT, Land_ID)
 SA_Player_Pointers :: sa.Small_Array(PLAYERS_COUNT, ^Player)
 CANALS_OPEN :: bit_set[Canal_ID;u8]
@@ -20,23 +20,29 @@ Game_Cache :: struct {
 	seas:                       Seas,
 	// lands:                    Lands,
 	active_armies:              [Land_ID][Active_Army]u8,
+	active_ships:               [Sea_ID][Active_Ship]u8,
+	active_planes:              [Air_ID][Active_Plane]u8,
 	idle_armies:                [Land_ID][Player_ID][Idle_Army]u8,
 	idle_planes:                [Air_ID][Player_ID][Idle_Plane]u8,
-	idle_ships:                [Sea_ID][Player_ID][Idle_Ship]u8,
+	idle_ships:                 [Sea_ID][Player_ID][Idle_Ship]u8,
 	skipped_moves:              [Air_ID]Territory_Bitset,
-	team_units:								  [Air_ID][Team_ID]u8,
+	team_units:                 [Air_ID][Team_ID]u8,
+	combat_status:              [Air_ID]Combat_Status,
 	can_bomber_land_here:       Territory_Bitset,
 	can_bomber_land_in_1_move:  Territory_Bitset,
 	can_bomber_land_in_2_moves: Territory_Bitset,
+	can_fighter_land_here:      Territory_Bitset,
 	valid_actions:              SA_Valid_Actions,
-	enemy_blockade_total:			 [Sea_ID]u8,
-
+	income:                     [Player_ID]u8,
+	enemy_blockade_total:       [Sea_ID]u8,
+	enemy_fighters_total:       [Sea_ID]u8,
+	enemy_submarines_total:     [Sea_ID]u8,
 	territories:                Territory_Pointers,
 	players:                    Players,
 	money:                      [Player_ID]u8,
 	owner:                      [Land_ID]Player_ID,
-	factory_dmg:								[Land_ID]u8,
-	factory_prod:								[Land_ID]u8,
+	factory_dmg:                [Land_ID]u8,
+	factory_prod:               [Land_ID]u8,
 	//teams:                    Teams,
 	cur_player:                 Player_ID,
 	seed:                       u16,
@@ -133,7 +139,7 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	debug_checks(gc)
 }
 
-load_territory_from_state :: proc(territory: ^Territory, ts: ^Territory_State) {
+load_territory_from_state :: proc(territory: Air_ID, ts: Air_ID) {
 	territory.combat_status = ts.combat_status
 	//territory.builds_left = ts.builds_left
 	territory.skipped_moves = ts.skipped_moves
@@ -142,7 +148,7 @@ load_territory_from_state :: proc(territory: ^Territory, ts: ^Territory_State) {
 	territory.idle_planes = ts.idle_planes
 }
 
-save_territory_to_state :: proc(ts: ^Territory_State, territory: ^Territory) {
+save_territory_to_state :: proc(ts: Air_ID, territory: Air_ID) {
 	ts.combat_status = territory.combat_status
 	//ts.builds_left = territory.builds_left
 	ts.skipped_moves = territory.skipped_moves

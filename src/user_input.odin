@@ -8,7 +8,7 @@ import "core:strconv"
 // get_move_input :: proc(
 // 	gc: ^Game_Cache,
 // 	unit_name: string,
-// 	src_air: ^Territory,
+// 	src_air: Air_ID,
 // ) -> (
 // 	dst_air_idx: int,
 // ) {
@@ -22,7 +22,7 @@ import "core:strconv"
 // 	return get_ai_input(gc)
 // }
 
-print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: ^Territory) {
+print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	print_game_state(gc)
 	fmt.print(PLAYER_DATA[gc.cur_player.index].color)
 	fmt.println("Retreat From ", src_air.name, " Valid Moves: ")
@@ -35,7 +35,7 @@ print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: ^Territory) {
 
 get_retreat_input :: proc(
 	gc: ^Game_Cache,
-	src_air: ^Territory,
+	src_air: Air_ID,
 ) -> (
 	dst_air_idx: Air_ID,
 	ok: bool,
@@ -129,7 +129,7 @@ get_ai_input :: proc(gc: ^Game_Cache) -> (ai_input: u8) {
 	return gc.selected_action
 }
 
-print_buy_prompt :: proc(gc: ^Game_Cache, src_air: ^Territory) {
+print_buy_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	print_game_state(gc)
 	fmt.print(PLAYER_DATA[gc.cur_player.index].color)
 	fmt.println("Buy At", src_air.name)
@@ -139,7 +139,7 @@ print_buy_prompt :: proc(gc: ^Game_Cache, src_air: ^Territory) {
 	fmt.println(DEF_COLOR)
 }
 
-get_buy_input :: proc(gc: ^Game_Cache, src_air: ^Territory) -> (action: Buy_Action, ok: bool) {
+get_buy_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (action: Buy_Action, ok: bool) {
 	debug_checks(gc)
 	action = action_idx_to_buy(gc.valid_actions.data[0])
 	if gc.valid_actions.len > 1 {

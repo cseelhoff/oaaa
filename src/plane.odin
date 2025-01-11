@@ -107,7 +107,7 @@ move_plane_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
 	return true
 }
 
-move_plane_air :: proc(gc: ^Game_Cache, src_air: ^Territory, plane: Active_Plane) -> (ok: bool) {
+move_plane_air :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) -> (ok: bool) {
 	if src_air.active_planes[plane] == 0 do return true
 	refresh_plane_can_land_here(gc, plane)
 	reset_valid_moves(gc, src_air)
@@ -120,7 +120,7 @@ move_plane_air :: proc(gc: ^Game_Cache, src_air: ^Territory, plane: Active_Plane
 
 move_next_plane_in_air :: proc(
 	gc: ^Game_Cache,
-	src_air: ^Territory,
+	src_air: Air_ID,
 	plane: Active_Plane,
 ) -> (
 	ok: bool,
@@ -134,8 +134,8 @@ move_next_plane_in_air :: proc(
 }
 
 skip_plane :: proc(
-	src_air: ^Territory,
-	dst_air: ^Territory,
+	src_air: Air_ID,
+	dst_air: Air_ID,
 	plane: Active_Plane,
 	enemy_idx: Team_ID,
 ) -> (
@@ -148,24 +148,24 @@ skip_plane :: proc(
 }
 
 move_single_plane :: proc(
-	dst_air: ^Territory,
+	dst_air: Air_ID,
 	dst_unit: Active_Plane,
 	player: Player_ID,
 	src_unit: Active_Plane,
-	src_air: ^Territory,
+	src_air: Air_ID,
 ) {
-	dst_air.active_planes[dst_unit] += 1
-	dst_air.idle_planes[player][Active_Plane_To_Idle[dst_unit]] += 1
-	dst_air.team_units[mm.team[player]] += 1
-	src_air.active_planes[src_unit] -= 1
-	src_air.idle_planes[player][Active_Plane_To_Idle[src_unit]] -= 1
-	src_air.team_units[mm.team[player]] -= 1
+	gc.active_planes[dst_air][dst_unit] += 1
+	gc.idle_planes[dst_air][player][Active_Plane_To_Idle[dst_unit]] += 1
+	gc.team_units[dst_air][mm.team[player]] += 1
+	gc.active_planes[src_air][src_unit] -= 1
+	gc.idle_planes[src_air][player][Active_Plane_To_Idle[src_unit]] -= 1
+	gc.team_units[src_air][mm.team[player]] -= 1
 }
 
 plane_enemy_checks :: proc(
 	gc: ^Game_Cache,
-	src_air: ^Territory,
-	dst_air: ^Territory,
+	src_air: Air_ID,
+	dst_air: Air_ID,
 	plane: Active_Plane,
 ) -> Active_Plane {
 	if plane == Active_Plane.FIGHTER_UNMOVED {
@@ -174,7 +174,7 @@ plane_enemy_checks :: proc(
 	return bomber_enemy_checks(gc, src_air, dst_air)
 }
 
-add_valid_plane_moves :: proc(gc: ^Game_Cache, src_air: ^Territory, plane: Active_Plane) {
+add_valid_plane_moves :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) {
 	if plane == Active_Plane.FIGHTER_UNMOVED {
 		add_valid_fighter_moves(gc, src_air)
 	} else {
@@ -192,7 +192,7 @@ refresh_plane_can_land_here :: proc(gc: ^Game_Cache, plane: Active_Plane) {
 
 crash_unlandable_fighters :: proc(
 	gc: ^Game_Cache,
-	src_air: ^Territory,
+	src_air: Air_ID,
 	plane: Active_Plane,
 ) -> bool {
 	if gc.valid_actions.len > 0 do return false

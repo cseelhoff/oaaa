@@ -6,10 +6,8 @@ import "core:mem"
 import "core:slice"
 import "core:strings"
 
-MAX_LAND_TO_SEA_CONNECTIONS :: 4
 LANDS_COUNT :: len(LANDS_DATA)
 Lands :: [LANDS_COUNT]Land
-MAX_PATHS_TO_LAND :: 2
 SA_Adjacent_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
 
 Land_Data :: struct {
@@ -18,7 +16,6 @@ Land_Data :: struct {
 	value: u8,
 }
 
-Mid_Lands :: sa.Small_Array(MAX_PATHS_TO_LAND, Land_ID)
 Idle_Armies :: [PLAYERS_COUNT]Idle_Army_For_Player
 Active_Armies :: [len(Active_Army)]u8
 Land :: struct {
@@ -37,11 +34,6 @@ Land :: struct {
 	factory_prod:       u8,
 	max_bombards:       u8,
 	builds_left:        u8,
-}
-
-Land_2_Moves_Away :: struct {
-	land:      Land_ID,
-	mid_lands: Mid_Lands,
 }
 
 L2S_2_Moves_Away :: struct {
@@ -76,18 +68,7 @@ get_land_idx_from_string :: proc(land_name: string) -> (land_idx: int, ok: bool)
 	fmt.eprintln("Error: Land not found: %s\n", land_name)
 	return 0, false
 }
-initialize_land_connections :: proc(lands: Land_IDs) -> (ok: bool) {
-	for land, land_idx in LANDS_DATA {
-		lands[land_idx].name = land.name
-	}
-	for connection in LAND_CONNECTIONS {
-		land1_idx := get_land_idx_from_string(connection[0]) or_return
-		land2_idx := get_land_idx_from_string(connection[1]) or_return
-		sa.push(&lands[land1_idx].adjacent_lands, &lands[land2_idx])
-		sa.push(&lands[land2_idx].adjacent_lands, &lands[land1_idx])
-	}
-	return true
-}
+
 initialize_lands_2_moves_away :: proc(lands: Land_IDs) {
 	// Floyd-Warshall algorithm
 	// Initialize distances array to Infinity
@@ -160,19 +141,19 @@ initialize_canals :: proc(lands: ^[LANDS_COUNT]Land) -> (ok: bool) {
 }
 
 conquer_land :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool) {
-	old_owner := dst_land.owner
-	if old_owner.capital == dst_land {
-		gc.cur_player.money += old_owner.money
-		old_owner.money = 0
+	old_owner := gc.owner[dst_land]
+	if mm.capital[old_owner] == dst_land {
+		gc.money[gc.cur_player] += gc.money[old_owner]
+		gc.money[old_owner] = 0
 	}
-	old_owner.income_per_turn -= dst_land.value
+	gc.income[old_owner] -= mm.value[dst_land]
 	new_owner := gc.cur_player
 	if mm.team[gc.cur_player] == mm.team[mm.orig_owner[dst_land]] {
-		new_owner = dst_land.original_owner
+		new_owner = mm.original_owner[dst_land]
 	}
-	dst_land.owner = new_owner
-	new_owner.income_per_turn += dst_land.value
-	dst_land.combat_status = .POST_COMBAT
+	gc.owner[dst_land] = new_owner
+	gc.income[new_owner] += mm.value[dst_land]
+	gc.combat_status[dst_land] = .POST_COMBAT
 	if dst_land.factory_prod == 0 {
 		return true
 	}

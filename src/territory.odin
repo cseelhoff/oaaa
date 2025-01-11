@@ -6,7 +6,7 @@ TERRITORIES_COUNT :: LANDS_COUNT + SEAS_COUNT
 MAX_TERRITORY_TO_LAND_CONNECTIONS :: 6
 MAX_AIR_TO_AIR_CONNECTIONS :: 7
 SA_Adjacent_Lands :: sa.Small_Array(MAX_TERRITORY_TO_LAND_CONNECTIONS, Land_ID)
-SA_Adjacent_Airs :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, ^Territory)
+SA_Adjacent_Airs :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, Air_ID)
 Skipped_Buys :: [len(Buy_Action)]bool
 
 Territory :: struct {
@@ -60,7 +60,7 @@ is_land :: #force_inline proc(air: Air_ID) -> bool {
 }
 
 to_air_id :: #force_inline proc(sea: Sea_ID) -> Air_ID {
-	return Air_ID(sea + len(Land_ID))
+	return Air_ID(u8(sea) + u8(len(Land_ID)))
 }
 
 COASTAL_CONNECTIONS := [?]Coastal_Connection_String {
@@ -84,7 +84,7 @@ initialize_costal_connections :: proc(lands: Land_IDs, seas: Sea_IDs) -> (ok: bo
 	return true
 }
 
-initialize_air_dist :: proc(lands: Land_IDs, seas: Sea_IDs, territories: ^Territory_Pointers) {
+initialize_air_dist :: proc() {
 	for &terr, territory_index in territories {
 		INFINITY :: 127 // must be less than half of u8
 		mem.set(&terr.air_distances, INFINITY, size_of(terr.air_distances))

@@ -132,8 +132,8 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 }
 
 add_move_if_not_skipped :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
-	if !src_air.skipped_moves[dst_air.territory_index] {
-		sa.push(&gc.valid_actions, u8(dst_air.territory_index))
+	if dst_air not_in gc.skipped_moves[src_air] {
+		sa.push(&gc.valid_actions, u8(dst_air))
 	}
 }
 
@@ -150,7 +150,7 @@ update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air_idx: Air_I
 	}
 }
 
-// apply_skip :: proc(gc: ^Game_Cache, src_air: ^Territory, dst_air: ^Territory) {
+// apply_skip :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 // 	for skipped_move, src_air_idx in dst_air.skipped_moves {
 // 		if skipped_move {
 // 			src_air.skipped_moves[src_air_idx] = true
@@ -159,8 +159,8 @@ update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air_idx: Air_I
 // }
 
 clear_move_history :: proc(gc: ^Game_Cache) {
-	for territory in gc.territories {
-		mem.zero_slice(territory.skipped_moves[:])
+	for air in Air_ID {
+		gc.skipped_moves[air] = {}
 	}
 	gc.clear_needed = false
 }

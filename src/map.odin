@@ -4,10 +4,12 @@ import sa "core:container/small_array"
 
 MAX_LAND_TO_LAND_CONNECTIONS :: 6
 MAX_AIR_TO_AIR_CONNECTIONS :: 7
+MAX_LAND_TO_SEA_CONNECTIONS :: 4
 
 SA_Players :: sa.Small_Array(len(Player_ID), Player_ID)
 SA_L2L :: sa.Small_Array(MAX_LAND_TO_LAND_CONNECTIONS, Land_ID)
-SA_A2A :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, Land_ID)
+SA_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Land_ID)
+SA_A2A :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, Air_ID)
 
 MapData :: struct {
 	teams:              Teams,
@@ -17,12 +19,27 @@ MapData :: struct {
 	allies:             [Player_ID]SA_Players,
 	enemies:            [Player_ID]SA_Players,
 	adj_l2l:            [Land_ID]SA_L2L,
+	adj_l2s:            [Land_ID]SA_L2S,
 	adj_a2a:            [Air_ID]SA_A2A,
 	orig_owner:         [Land_ID]Player_ID,
 	airs_2_moves_away:  [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
-	lands_2_moves_away: [Land_ID]sa.Small_Array(len(Land_ID), Land_ID),
-  dst_sea_2_away:     [Land_ID]sa.Small_Array(len(Sea_ID), Sea_ID),
+	airs_3_moves_away:  [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
+	airs_4_moves_away:  [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
+	airs_5_moves_away:  [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
+	lands_2_moves_away: [Land_ID]sa.Small_Array(len(Land_ID), Land_2_Moves_Away),
+	dst_sea_2_away:     [Land_ID]sa.Small_Array(len(Sea_ID), Sea_ID),
 	land_distances:     [Land_ID][Land_ID]u8,
+	air_distances:      [Air_ID][Air_ID]u8,
+	value:              [Land_ID]u8,
+	original_owner:     [Land_ID]Player_ID,
+}
+
+MAX_PATHS_TO_LAND :: 2
+Mid_Lands :: sa.Small_Array(MAX_PATHS_TO_LAND, Land_ID)
+
+Land_2_Moves_Away :: struct {
+	land:      Land_ID,
+	mid_lands: Mid_Lands,
 }
 
 mm: MapData = {}

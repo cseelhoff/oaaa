@@ -22,8 +22,8 @@ FIGHTER_MAX_MOVES :: 4
 
 fighter_enemy_checks :: proc(
 	gc: ^Game_Cache,
-	src_air: ^Territory,
-	dst_air: ^Territory,
+	src_air: Air_ID,
+	dst_air: Air_ID,
 ) -> Active_Plane {
 	if flag_for_enemy_combat(dst_air, gc.cur_player.team.enemy_team.index) {
 		return Fighter_After_Moves[src_air.air_distances[dst_air.territory_index]]
@@ -31,7 +31,7 @@ fighter_enemy_checks :: proc(
 	return .FIGHTER_0_MOVES
 }
 
-fighter_can_land_here :: proc(territory: ^Territory) {
+fighter_can_land_here :: proc(territory: Air_ID) {
 	territory.can_fighter_land_here = true
 	for air in sa.slice(&territory.adjacent_airs) {
 		air.can_fighter_land_in_1_move = true
@@ -78,7 +78,7 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 	gc.is_fighter_cache_current = true
 }
 
-add_valid_fighter_moves :: proc(gc: ^Game_Cache, src_air: ^Territory) {
+add_valid_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	for dst_air in sa.slice(&src_air.adjacent_airs) {
 		add_meaningful_fighter_move(gc, src_air, dst_air)
 	}
@@ -97,7 +97,7 @@ add_valid_fighter_moves :: proc(gc: ^Game_Cache, src_air: ^Territory) {
 	}
 }
 
-add_meaningful_fighter_move :: proc(gc: ^Game_Cache, src_air: ^Territory, dst_air: ^Territory) {
+add_meaningful_fighter_move :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 	if dst_air.can_fighter_land_here ||
 	   dst_air.team_units[gc.cur_player.team.enemy_team.index] != 0 {
 		add_move_if_not_skipped(gc, src_air, dst_air)
@@ -120,7 +120,7 @@ land_fighter_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
 	return true
 }
 
-land_fighter_air :: proc(gc: ^Game_Cache, src_air: ^Territory, plane: Active_Plane) -> (ok: bool) {
+land_fighter_air :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) -> (ok: bool) {
 	if src_air.active_planes[plane] == 0 do return true
 	refresh_can_fighter_land_here(gc)
 	gc.valid_actions.len = 0
@@ -131,7 +131,7 @@ land_fighter_air :: proc(gc: ^Game_Cache, src_air: ^Territory, plane: Active_Pla
 	return true
 }
 
-add_valid_fighter_landing :: proc(gc: ^Game_Cache, src_air: ^Territory, plane: Active_Plane) {
+add_valid_fighter_landing :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) {
 	for dst_air in sa.slice(&src_air.adjacent_airs) {
 		if dst_air.can_fighter_land_here {
 			add_move_if_not_skipped(gc, src_air, dst_air)
@@ -159,7 +159,7 @@ add_valid_fighter_landing :: proc(gc: ^Game_Cache, src_air: ^Territory, plane: A
 
 land_next_fighter_in_air :: proc(
 	gc: ^Game_Cache,
-	src_air: ^Territory,
+	src_air: Air_ID,
 	plane: Active_Plane,
 ) -> (
 	ok: bool,

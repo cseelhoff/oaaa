@@ -121,7 +121,7 @@ update_factory_history :: proc(gc: ^Game_Cache, action: u8) {
 	}
 }
 
-update_buy_history :: proc(gc: ^Game_Cache, src_air: ^Territory, action: Buy_Action) {
+update_buy_history :: proc(gc: ^Game_Cache, src_air: Air_ID, action: Buy_Action) {
 	for {
 		assert(gc.valid_actions.len > 0)
 		valid_action_idx := gc.valid_actions.data[gc.valid_actions.len - 1]
@@ -140,7 +140,7 @@ action_idx_to_buy :: proc(action: u8) -> Buy_Action {
 	return Buy_Action(action - TERRITORIES_COUNT)
 }
 
-add_buy_if_not_skipped :: proc(gc: ^Game_Cache, src_air: ^Territory, action: Buy_Action) {
+add_buy_if_not_skipped :: proc(gc: ^Game_Cache, src_air: Air_ID, action: Buy_Action) {
 	if !src_air.skipped_buys[u8(action)] {
 		sa.push(&gc.valid_actions, buy_to_action_idx(action))
 	}

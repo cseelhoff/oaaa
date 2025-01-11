@@ -78,7 +78,7 @@ get_sea_idx_from_string :: proc(sea_name: string) -> (sea_idx: int, ok: bool) {
 	fmt.eprintln("Error: Sea not found: %s\n", sea_name)
 	return 0, false
 }
-initialize_sea_connections :: proc(seas: Sea_IDs) -> (ok: bool) {
+initialize_sea_connections :: proc() -> (ok: bool) {
 	for sea_name, sea_idx in SEAS_DATA {
 		seas[sea_idx].name = sea_name
 	}
