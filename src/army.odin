@@ -203,7 +203,7 @@ add_if_boat_available :: proc(
 ) {
 	if is_boat_available(gc, src_land, dst_sea, army) {
 		if s2aid(dst_sea) not_in gc.skipped_moves[l2aid(src_land)] {
-			sa.push(&gc.valid_actions, u8(dst_sea))
+			sa.push(&gc.valid_actions, s2act(dst_sea))
 		}
 	}
 }
@@ -218,7 +218,7 @@ are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands, enemy_team:
 add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
 	for dst_land in sa.slice(&mm.adj_l2l[src_land]) {
 		if l2aid(dst_land) in gc.skipped_moves[l2aid(src_land)] do continue
-		sa.push(&gc.valid_actions, u8(dst_land))
+		sa.push(&gc.valid_actions, l2act(dst_land))
 	}
 	for dst_sea in sa.slice(&mm.adj_l2s[src_land]) {
 		add_if_boat_available(gc, src_land, dst_sea, army)
@@ -232,12 +232,12 @@ add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
 		   are_midlands_blocked(gc, &dst_land_2_away.mid_lands, enemy_team) {
 			continue
 		}
-		sa.push(&gc.valid_actions, u8(dst_land_2_away.land))
+		sa.push(&gc.valid_actions, l2act(dst_land_2_away.land))
 	}
 	// check for moving from land to sea (two moves away)
-	for dst_sea_2_away in sa.slice(&mm.adj_l2l2s[src_land]) {
-		if dst_sea_2_away.sea in gc.skipped_moves[src_land] ||
-		   are_midlands_blocked(&dst_sea_2_away.mid_lands, enemy_team) {
+	for &dst_sea_2_away in sa.slice(&mm.adj_l2s_2_away[src_land]) {
+		if s2aid(dst_sea_2_away.sea) in gc.skipped_moves[l2aid(src_land)] ||
+		   are_midlands_blocked(gc, &dst_sea_2_away.mid_lands, enemy_team) {
 			continue
 		}
 		add_if_boat_available(gc, src_land, dst_sea_2_away.sea, army)
@@ -276,7 +276,7 @@ check_load_transport :: proc(
 	dst_sea := get_sea_id(dst_air)
 	load_available_transport(gc, army, src_land, dst_sea, gc.cur_player)
 	if is_boat_available(gc, src_land, dst_sea, army) do return true
-	action_idx, found := slice.linear_search(sa.slice(&gc.valid_actions), u8(dst_air))
+	action_idx, found := slice.linear_search(sa.slice(&gc.valid_actions), a2act(dst_air))
 	if !found {
 		fmt.eprintln("Error: Previous action not found in list")
 		return false

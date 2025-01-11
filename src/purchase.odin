@@ -235,7 +235,7 @@ buy_land_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 
 buy_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	gc.valid_actions.data[0] = buy_to_action_idx(.SKIP_BUY)
-	for land in sa.slice(&gc.cur_player.factory_locations) {
+	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
 		if land.builds_left == 0 do continue
 		if gc.clear_needed do clear_buy_history(gc, land)
 		buy_sea_units(gc, land) or_return

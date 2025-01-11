@@ -24,38 +24,32 @@ import "core:strconv"
 
 print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	print_game_state(gc)
-	fmt.print(PLAYER_DATA[gc.cur_player.index].color)
-	fmt.println("Retreat From ", src_air.name, " Valid Moves: ")
+	fmt.print(mm.color[gc.cur_player])
+	fmt.println("Retreat From ", mm.air_name[src_air], " Valid Moves: ")
 	for valid_move in sa.slice(&gc.valid_actions) {
-		fmt.print(int(valid_move), gc.territories[valid_move].name, ", ")
+		fmt.print(int(valid_move), valid_move, ", ")
 	}
 	fmt.println(DEF_COLOR)
 }
 
 
-get_retreat_input :: proc(
-	gc: ^Game_Cache,
-	src_air: Air_ID,
-) -> (
-	dst_air_idx: Air_ID,
-	ok: bool,
-) {
+get_retreat_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (dst_air: Air_ID, ok: bool) {
 	debug_checks(gc)
-	dst_air_idx = l2aid(gc.valid_actions.data[0])
+	dst_air = u2aid(gc.valid_actions.data[0])
 	if gc.valid_actions.len > 1 {
-		if gc.answers_remaining == 0 do return dst_air_idx, false
-		if PLAYER_DATA[gc.cur_player.index].is_human {
+		if gc.answers_remaining == 0 do return dst_air, false
+		if gc.cur_player in mm.is_human {
 			print_retreat_prompt(gc, src_air)
-			dst_air_idx = l2aid(get_user_input(gc))
+			dst_air = u2aid(get_user_input(gc))
 		} else {
 			if ACTUALLY_PRINT do print_retreat_prompt(gc, src_air)
-			dst_air_idx = l2aid(get_ai_input(gc))
+			dst_air = u2aid(get_ai_input(gc))
 			if ACTUALLY_PRINT {
-				fmt.println("AI Action:", dst_air_idx)
+				fmt.println("AI Action:", dst_air)
 			}
 		}
 	}
-	return dst_air_idx, true
+	return dst_air, true
 }
 
 print_move_prompt :: proc(gc: ^Game_Cache, unit_name: string, src_air: Air_ID) {
@@ -169,36 +163,36 @@ print_game_state :: proc(gc: ^Game_Cache) {
 			land := a2lid(air)
 			fmt.print(mm.color[gc.owner[land]])
 			fmt.println(
-				air.name,
+				mm.air_name[air],
+				gc.combat_status[air],
 				"builds:",
-				land.builds_left,
-				land.combat_status,
-				land.factory_dmg,
+				gc.builds_left[land],
+				gc.factory_dmg[land],
 				"/",
-				land.factory_prod,
+				gc.factory_prod[land],
 				"bombards:",
-				land.max_bombards,
+				gc.max_bombards[land],
 			)
 			fmt.print(PLAYER_DATA[gc.cur_player].color)
-			for army, army_idx in land.active_armies {
+			for army, army_idx in gc.active_armies[land] {
 				if army > 0 {
 					fmt.println(Active_Army_Names[army_idx], ":", army)
 				}
 			}
-			for plane, plane_idx in land.active_planes {
+			for plane, plane_idx in gc.active_planes[air] {
 				if plane > 0 {
 					fmt.println(Active_Plane_Names[plane_idx], ":", plane)
 				}
 			}
 			for &player in gc.players {
 				// if &player == gc.cur_player do continue
-				fmt.print(PLAYER_DATA[player.index].color)
-				for army, army_idx in land.idle_armies[player.index] {
+				fmt.print(mm.color[player])
+				for army, army_idx in gc.idle_armies[land][player] {
 					if army > 0 {
 						fmt.println(Idle_Army_Names[army_idx], ":", army)
 					}
 				}
-				for plane, plane_idx in land.idle_planes[player.index] {
+				for plane, plane_idx in gc.idle_planes[air][player] {
 					if plane > 0 {
 						fmt.println(Idle_Plane_Names[plane_idx], ":", plane)
 					}

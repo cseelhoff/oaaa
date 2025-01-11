@@ -71,6 +71,19 @@ u2aid :: #force_inline proc(u: u8) -> Air_ID {
 	return Air_ID(u)
 }
 
+a2act :: #force_inline proc(air: Air_ID) -> Action_ID {
+	return Action_ID(air)
+}
+
+l2act :: #force_inline proc(land: Land_ID) -> Action_ID {
+	return Action_ID(land)
+}
+
+s2act :: #force_inline proc(sea: Sea_ID) -> Action_ID {
+	return Action_ID(s2aid(sea))
+}
+
+
 COASTAL_CONNECTIONS := [?]Coastal_Connection_String {
 	{land = "Washington", sea = "Pacific"},
 	{land = "Washington", sea = "Atlantic"},

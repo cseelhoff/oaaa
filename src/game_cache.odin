@@ -36,7 +36,7 @@ SA_Player_Pointers :: sa.Small_Array(PLAYERS_COUNT, ^Player)
 Canals_Open :: bit_set[Canal_ID;u8]
 UNLUCKY_TEAMS :: bit_set[Team_ID;u8]
 Territory_Bitset :: bit_set[Air_ID;u8]
-SA_Valid_Actions :: sa.Small_Array(len(Action_ID), u8)
+SA_Valid_Actions :: sa.Small_Array(len(Action_ID), Action_ID)
 
 Game_Cache :: struct {
 	//state:             Game_State,
@@ -62,6 +62,7 @@ Game_Cache :: struct {
 	enemy_fighters_total:       [Sea_ID]u8,
 	enemy_submarines_total:     [Sea_ID]u8,
 	enemy_destroyer_total:      [Sea_ID]u8,
+	max_bombards:               [Land_ID]u8,
 	// territories:                Territory_Pointers,
 	players:                    Players,
 	money:                      [Player_ID]u8,
@@ -84,6 +85,7 @@ Game_Cache :: struct {
 	is_fighter_cache_current:   bool,
 	clear_needed:               bool,
 	use_selected_action:        bool,
+	builds_left:                [Land_ID]u8,
 }
 
 save_cache_to_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {

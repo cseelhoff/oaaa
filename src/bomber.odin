@@ -75,12 +75,12 @@ add_valid_bomber_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 		}
 	}
 	for dst_air in sa.slice(&mm.airs_5_moves_away[src_air]) {
-		if dst_air.can_bomber_land_in_1_move {
+		if dst_air in gc.can_bomber_land_in_1_move {
 			add_meaningful_bomber_move(gc, src_air, dst_air)
 		}
 	}
 	for dst_air in sa.slice(&mm.airs_6_moves_away[src_air]) {
-		if dst_air.can_bomber_land_here {
+		if dst_air in gc.can_bomber_land_here {
 			add_move_if_not_skipped(gc, src_air, dst_air)
 		}
 	}

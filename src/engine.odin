@@ -133,16 +133,16 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 add_move_if_not_skipped :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 	if dst_air not_in gc.skipped_moves[src_air] {
-		sa.push(&gc.valid_actions, u8(dst_air))
+		sa.push(&gc.valid_actions, a2act(dst_air))
 	}
 }
 
-update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air_idx: Air_ID) {
+update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 	// get a list of newly skipped valid_actions
 	for {
 		assert(gc.valid_actions.len > 0)
 		valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
-		if u2aid(valid_action) == dst_air_idx do return
+		if valid_action == a2act(dst_air) do return
 		gc.skipped_moves[src_air] += {src_air}
 		gc.clear_needed = true
 		//apply_skip(gc, src_air, gc.territories[valid_action])
@@ -165,17 +165,18 @@ clear_move_history :: proc(gc: ^Game_Cache) {
 	gc.clear_needed = false
 }
 
-reset_valid_moves :: proc(gc: ^Game_Cache, territory: Air_ID) { 	// -> (dst_air_idx: int) {
+reset_valid_moves :: proc(gc: ^Game_Cache, air: Air_ID) { 	// -> (dst_air_idx: int) {
 	gc.valid_actions.len = 1
-	gc.valid_actions.data[0] = u8(territory)
+	gc.valid_actions.data[0] = a2act(air)
 }
 
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
+
 	if gc.money[gc.cur_player] < FACTORY_COST do return true
 	gc.valid_actions.len = 1
-	gc.valid_actions.data[0] = buy_to_action_idx(.SKIP_BUY)
-	for land in gc.lands {
-		if land.owner != gc.cur_player ||
+	gc.valid_actions.data[0] = .Skip_Action
+	for land in Land_ID {
+		if gc.owner[land] != gc.cur_player ||
 		   land.factory_prod > 0 ||
 		   land.combat_status != .NO_COMBAT ||
 		   land.skipped_moves[land.territory_index] {
