@@ -8,7 +8,7 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		move_aagun_land(gc, src_land) or_return
 	}
 	if gc.clear_needed do clear_move_history(gc)
-	return true 
+	return true
 }
 
 move_aagun_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (ok: bool) {
