@@ -60,18 +60,18 @@ Land_2_Moves_Away :: struct {
 mm: MapData = {}
 
 initialize_map_constants :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	initialize_teams(&gc.teams, &gc.players)
-	initialize_territories(&gc.lands, &gc.seas, &gc.territories)
-	initialize_player_lands(&gc.lands, &gc.players)
-	initialize_land_connections(&gc.lands) or_return
+	initialize_teams()
+	initialize_territories()
+	initialize_player_lands()
+	initialize_land_connections() or_return
 	//initialize_sea_connections(&gc.canal_paths, &gc.seas) or_return
-	initialize_sea_connections(&gc.seas) or_return
-	initialize_costal_connections(&gc.lands, &gc.seas) or_return
-	initialize_canals(&gc.lands) or_return
-	initialize_lands_2_moves_away(&gc.lands)
+	initialize_sea_connections() or_return
+	initialize_costal_connections() or_return
+	initialize_canals() or_return
+	initialize_lands_2_moves_away()
 	// initialize_seas_2_moves_away(&gc.seas, &gc.canal_paths)
-	initialize_seas_2_moves_away(&gc.seas)
-	initialize_air_dist(&gc.lands, &gc.seas, &gc.territories)
+	initialize_seas_2_moves_away()
+	initialize_air_dist()
 	// initialize_land_path()
 	// initialize_sea_path()
 	// initialize_within_x_moves()

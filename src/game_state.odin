@@ -1,41 +1,26 @@
 package oaaa
 
-Idle_Plane_For_Player :: [len(Idle_Plane)]u8
-Idle_Army_For_Player :: [len(Idle_Army)]u8
-Idle_Sea_For_Player :: [len(Idle_Ship)]u8
-
 Game_State :: struct {
-	land_states: [len(Land_ID)]Land_State,
-	sea_states:  [SEAS_COUNT]Sea_State,
-	money:       [PLAYERS_COUNT]u8,
-	seed:        u16,
-	cur_player:  u8,
+	active_armies:              [Land_ID][Active_Army]u8,
+	active_ships:               [Sea_ID][Active_Ship]u8,
+	active_planes:              [Air_ID][Active_Plane]u8,
+	idle_armies:                [Land_ID][Player_ID][Idle_Army]u8,
+	idle_planes:                [Air_ID][Player_ID][Idle_Plane]u8,
+	idle_ships:                 [Sea_ID][Player_ID][Idle_Ship]u8,
+	skipped_moves:              [Air_ID]Territory_Bitset,
+	skipped_buys:               [Land_ID]Purchase_Bitset,
+	combat_status:              [Air_ID]Combat_Status,
+	owner:                      [Land_ID]Player_ID,
+	income:                     [Player_ID]u8,
+	money:                      [Player_ID]u8,
+	max_bombards:               [Land_ID]u8,
+	factory_dmg:                [Land_ID]u8,
+	factory_prod:               [Land_ID]u8,
+	builds_left:                [Land_ID]u8,
+	seed:                       u16,
+	cur_player:                 Player_ID,
 }
 
-Territory_State :: struct {
-	idle_planes:   [PLAYERS_COUNT]Idle_Plane_For_Player,
-	active_planes: [len(Active_Plane)]u8,
-	skipped_moves: [len(Air_ID)]bool,
-	skipped_buys:  Skipped_Buys,
-	combat_status: Combat_Status,
-	builds_left:   u8,
-}
-
-Land_State :: struct {
-	using territory_state: Territory_State,
-	idle_armies:           [PLAYERS_COUNT]Idle_Army_For_Player,
-	active_armies:         [len(Active_Army)]u8,
-	owner:                 u8,
-	factory_dmg:           u8,
-	factory_prod:          u8,
-	max_bombards:          u8,
-}
-
-Sea_State :: struct {
-	using territory_state: Territory_State,
-	idle_ships:            [PLAYERS_COUNT]Idle_Sea_For_Player,
-	active_ships:          [len(Active_Ship)]u8,
-}
 
 Combat_Status :: enum u8{
 	NO_COMBAT,
@@ -56,7 +41,7 @@ load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
 		land.owner = get_player_idx_from_string(LANDS_DATA[land_idx].owner) or_return
 		land.idle_armies[land.owner][Idle_Army.INF] = 0
 		if land.owner == gs.cur_player {
-			land.builds_left = land.factory_prod
+			gc.builds_left[land] = land.factory_prod
 			land.active_armies[Active_Army.INF_UNMOVED] = 0
 		}
 	}

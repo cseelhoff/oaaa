@@ -100,7 +100,7 @@ move_unmoved_planes :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 move_plane_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
 	gc.clear_needed = false
-	for &src_air in gc.territories {
+	for src_air in Air_ID {
 		move_plane_air(gc, src_air, plane) or_return
 	}
 	if gc.clear_needed do clear_move_history(gc)
@@ -108,11 +108,11 @@ move_plane_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
 }
 
 move_plane_air :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) -> (ok: bool) {
-	if src_air.active_planes[plane] == 0 do return true
+	if gc.active_planes[src_air][plane] == 0 do return true
 	refresh_plane_can_land_here(gc, plane)
 	reset_valid_moves(gc, src_air)
 	add_valid_plane_moves(gc, src_air, plane)
-	for src_air.active_planes[plane] > 0 {
+	for gc.active_planes[src_air][plane] > 0 {
 		move_next_plane_in_air(gc, src_air, plane) or_return
 	}
 	return true
@@ -125,11 +125,10 @@ move_next_plane_in_air :: proc(
 ) -> (
 	ok: bool,
 ) {
-	dst_air_idx := get_move_input(gc, Active_Plane_Names[plane], src_air) or_return
-	dst_air := gc.territories[dst_air_idx]
-	if skip_plane(src_air, dst_air, plane, gc.cur_player.team.enemy_team.index) do return true
-	plane_after_move := plane_enemy_checks(gc, src_air, dst_air, plane)
-	move_single_plane(dst_air, plane_after_move, gc.cur_player, plane, src_air)
+	dst_air := get_move_input(gc, Active_Plane_Names[plane], src_air) or_return
+	if skip_plane(src_air, act2air(dst_air), plane, gc.cur_player.team.enemy_team.index) do return true
+	plane_after_move := plane_enemy_checks(gc, src_air, act2air(dst_air), plane)
+	move_single_plane(gc, act2air(dst_air), plane_after_move, gc.cur_player, plane, src_air)
 	return true
 }
 
@@ -142,8 +141,8 @@ skip_plane :: proc(
 	ok: bool,
 ) {
 	if src_air != dst_air || dst_air.team_units[enemy_idx] > 0 do return false
-	src_air.active_planes[Plane_After_Moves[plane]] += src_air.active_planes[plane]
-	src_air.active_planes[plane] = 0
+	gc.active_planes[src_air][Plane_After_Moves[plane]] += gc.active_planes[src_air][plane]
+	gc.active_planes[src_air][plane] = 0
 	return true
 }
 
@@ -191,15 +190,11 @@ refresh_plane_can_land_here :: proc(gc: ^Game_Cache, plane: Active_Plane) {
 	}
 }
 
-crash_unlandable_fighters :: proc(
-	gc: ^Game_Cache,
-	src_air: Air_ID,
-	plane: Active_Plane,
-) -> bool {
+crash_unlandable_fighters :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) -> bool {
 	if gc.valid_actions.len > 0 do return false
-	planes_count := src_air.active_planes[plane]
+	planes_count := gc.active_planes[src_air][plane]
 	src_air.team_units[gc.cur_player.team.index] -= planes_count
 	src_air.idle_planes[gc.cur_player.index][Active_Plane_To_Idle[plane]] -= planes_count
-	src_air.active_planes[plane] = 0
+	gc.active_planes[src_air][plane] = 0
 	return true
 }

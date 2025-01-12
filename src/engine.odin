@@ -14,7 +14,7 @@ when ODIN_DEBUG {
 		// 	//print_game_state(gc)
 		// 	gc.actually_print = true
 		// } else do return
-		for sea in gc.seas {
+		for sea in Sea_ID {
 			team_idles: [2]u8 = {0, 0}
 			for ship, ship_idx in sea.active_ships {
 				if ship < 0 {
@@ -145,7 +145,7 @@ update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 		if valid_action == a2act(dst_air) do return
 		gc.skipped_moves[src_air] += {src_air}
 		gc.clear_needed = true
-		//apply_skip(gc, src_air, gc.territories[valid_action])
+		//apply_skip(gc, src_air, Air_ID[valid_action])
 		gc.valid_actions.len -= 1
 	}
 }
@@ -171,7 +171,6 @@ reset_valid_moves :: proc(gc: ^Game_Cache, air: Air_ID) { 	// -> (dst_air_idx: i
 }
 
 
-
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	if gc.money[gc.cur_player] < FACTORY_COST do return true
 	gc.valid_actions.len = 1
@@ -186,23 +185,21 @@ buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		sa.push(&gc.valid_actions, l2act(land))
 	}
 	for gc.money[gc.cur_player] < FACTORY_COST {
-		factory_land_idx := get_factory_buy(gc) or_return
-		if factory_land_idx == buy_to_action_idx(.SKIP_BUY) do return true
+		factory_land_action := get_factory_buy(gc) or_return
+		if factory_land_action == .Skip_Action do return true
 		gc.money[gc.cur_player] -= FACTORY_COST
-		factory_land := &gc.lands[factory_land_idx]
-		factory_land.factory_prod = factory_land.value
-		sa.push(&gc.cur_player.factory_locations, factory_land)
+		factory_land := act2land(factory_land_action)
+		gc.factory_prod[factory_land] = mm.value[factory_land]
+		sa.push(&gc.factory_locations[gc.cur_player], factory_land)
 	}
 	return true
 }
 
 reset_units_fully :: proc(gc: ^Game_Cache) {
 	for sea in Sea_ID {
-		gc.active_ships[sea][.BATTLESHIP_0_MOVES] +=
-			gc.active_ships[sea][.BS_DAMAGED_0_MOVES]
+		gc.active_ships[sea][.BATTLESHIP_0_MOVES] += gc.active_ships[sea][.BS_DAMAGED_0_MOVES]
 		gc.active_ships[sea][.BS_DAMAGED_0_MOVES] = 0
-		gc.active_ships[sea][.BATTLESHIP_BOMBARDED] +=
-			gc.active_ships[sea][.BS_DAMAGED_BOMBARDED]
+		gc.active_ships[sea][.BATTLESHIP_BOMBARDED] += gc.active_ships[sea][.BS_DAMAGED_BOMBARDED]
 		gc.active_ships[sea][.BS_DAMAGED_BOMBARDED] = 0
 		gc.idle_ships[sea][gc.cur_player][.BATTLESHIP] +=
 			gc.idle_ships[sea][gc.cur_player][.BS_DAMAGED]
@@ -236,34 +233,33 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		gc.active_armies[land][.TANK_UNMOVED] = idle_armies[.TANK]
 		gc.active_armies[land][.AAGUN_UNMOVED] = idle_armies[.AAGUN]
 		gc.active_planes[l2aid(land)] = {}
-		idle_planes := &land.idle_planes[gc.cur_player]
-		gc.active_planes[.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
-		gc.active_planes[.BOMBER_UNMOVED] = idle_planes[.BOMBER]
+		idle_planes := &gc.idle_planes[l2aid(land)][gc.cur_player]
+		gc.active_planes[l2aid(land)][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
+		gc.active_planes[l2aid(land)][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
 	}
 
-	for &sea in gc.seas {
-		sea.combat_status = .NO_COMBAT
-		mem.zero_slice(sea.skipped_moves[:])
-		mem.zero_slice(sea.skipped_buys[:])
-		mem.zero_slice(sea.active_ships[:])
-		idle_ships := &sea.idle_ships[gc.cur_player]
-		sea.active_ships[Active_Ship.TRANS_EMPTY_UNMOVED] = idle_ships[Idle_Ship.TRANS_EMPTY]
-		sea.active_ships[Active_Ship.TRANS_1I_UNMOVED] = idle_ships[Idle_Ship.TRANS_1I]
-		sea.active_ships[Active_Ship.TRANS_1A_UNMOVED] = idle_ships[Idle_Ship.TRANS_1A]
-		sea.active_ships[Active_Ship.TRANS_1T_UNMOVED] = idle_ships[Idle_Ship.TRANS_1T]
-		sea.active_ships[Active_Ship.TRANS_2I_2_MOVES] = idle_ships[Idle_Ship.TRANS_2I]
-		sea.active_ships[Active_Ship.TRANS_1I_1A_2_MOVES] = idle_ships[Idle_Ship.TRANS_1I_1A]
-		sea.active_ships[Active_Ship.TRANS_1I_1T_2_MOVES] = idle_ships[Idle_Ship.TRANS_1I_1T]
-		sea.active_ships[Active_Ship.SUB_UNMOVED] = idle_ships[Idle_Ship.SUB]
-		sea.active_ships[Active_Ship.DESTROYER_UNMOVED] = idle_ships[Idle_Ship.DESTROYER]
-		sea.active_ships[Active_Ship.CARRIER_UNMOVED] = idle_ships[Idle_Ship.CARRIER]
-		sea.active_ships[Active_Ship.CRUISER_UNMOVED] = idle_ships[Idle_Ship.CRUISER]
-		sea.active_ships[Active_Ship.BATTLESHIP_UNMOVED] = idle_ships[Idle_Ship.BATTLESHIP]
-		sea.active_ships[Active_Ship.BS_DAMAGED_UNMOVED] = idle_ships[Idle_Ship.BS_DAMAGED]
-		mem.zero_slice(sea.active_planes[:])
-		idle_planes := &sea.idle_planes[gc.cur_player.index]
-		sea.active_planes[Active_Plane.FIGHTER_UNMOVED] = idle_planes[Idle_Plane.FIGHTER]
-		sea.active_planes[Active_Plane.BOMBER_UNMOVED] = idle_planes[Idle_Plane.BOMBER]
+	for sea in Sea_ID {
+		gc.combat_status[s2aid(sea)] = .NO_COMBAT
+		gc.skipped_moves[s2aid(sea)] = {}
+		gc.active_ships[sea] = {}
+		idle_ships := &gc.idle_ships[sea][gc.cur_player]
+		gc.active_ships[sea][.TRANS_EMPTY_UNMOVED] = idle_ships[.TRANS_EMPTY]
+		gc.active_ships[sea][.TRANS_1I_UNMOVED] = idle_ships[.TRANS_1I]
+		gc.active_ships[sea][.TRANS_1A_UNMOVED] = idle_ships[.TRANS_1A]
+		gc.active_ships[sea][.TRANS_1T_UNMOVED] = idle_ships[.TRANS_1T]
+		gc.active_ships[sea][.TRANS_2I_2_MOVES] = idle_ships[.TRANS_2I]
+		gc.active_ships[sea][.TRANS_1I_1A_2_MOVES] = idle_ships[.TRANS_1I_1A]
+		gc.active_ships[sea][.TRANS_1I_1T_2_MOVES] = idle_ships[.TRANS_1I_1T]
+		gc.active_ships[sea][.SUB_UNMOVED] = idle_ships[.SUB]
+		gc.active_ships[sea][.DESTROYER_UNMOVED] = idle_ships[.DESTROYER]
+		gc.active_ships[sea][.CARRIER_UNMOVED] = idle_ships[.CARRIER]
+		gc.active_ships[sea][.CRUISER_UNMOVED] = idle_ships[.CRUISER]
+		gc.active_ships[sea][.BATTLESHIP_UNMOVED] = idle_ships[.BATTLESHIP]
+		gc.active_ships[sea][.BS_DAMAGED_UNMOVED] = idle_ships[.BS_DAMAGED]
+		gc.active_planes[s2aid(sea)] = {}
+		idle_planes := &gc.idle_planes[s2aid(sea)][gc.cur_player]
+		gc.active_planes[s2aid(sea)][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
+		gc.active_planes[s2aid(sea)][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
 	}
 	count_sea_unit_totals(gc)
 	load_open_canals(gc)
@@ -283,32 +279,31 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 	// Evaluate the game state and return a score
 	allied_score := 1 // one helps prevent division by zero
 	enemy_score := 1
-	for player, player_idx in PLAYER_DATA {
-		if player.team == PLAYER_DATA[gs.cur_player].team {
-			allied_score += int(gs.money[player_idx])
-		} else {
-			enemy_score += int(gs.money[player_idx])
-		}
+	for ally in sa.slice(&mm.allies[gs.cur_player]) {
+		allied_score += int(gs.money[ally])
 	}
-	for player, player_idx in PLAYER_DATA {
+	for enemy in sa.slice(&mm.enemies[gs.cur_player]) {
+		enemy_score += int(gs.money[enemy])
+	}
+	for player in Player_ID {
 		mil_cost := 0
-		for land in gs.land_states {
+		for land in Land_IDd {
 			for army in Idle_Army {
-				mil_cost += int(land.idle_armies[player_idx][army]) * int(COST_IDLE_ARMY[army])
+				mil_cost += int(gs.idle_armies[land][player][army]) * int(COST_IDLE_ARMY[army])
 			}
 			for plane in Idle_Plane {
-				mil_cost += int(land.idle_planes[player_idx][plane]) * int(COST_IDLE_PLANE[plane])
+				mil_cost += int(gs.idle_planes[land][player][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
-		for sea in gs.sea_states {
+		for sea in Sea_ID {
 			for ship in Idle_Ship {
-				mil_cost += int(sea.idle_ships[player_idx][ship]) * int(COST_IDLE_SHIP[ship])
+				mil_cost += int(gs.idle_ships[sea][player][ship]) * int(COST_IDLE_SHIP[ship])
 			}
 			for plane in Idle_Plane {
-				mil_cost += int(sea.idle_planes[player_idx][plane]) * int(COST_IDLE_PLANE[plane])
+				mil_cost += int(gs.idle_planes[sea][player][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
-		if player.team == PLAYER_DATA[gs.cur_player].team {
+		if mm.team[player] == mm.team[gs.cur_player] {
 			allied_score += mil_cost
 		} else {
 			enemy_score += mil_cost
@@ -319,45 +314,8 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 	return score
 }
 
-evaluate_cache :: proc(gc: ^Game_Cache) -> f64 {
-	// Evaluate the game cache and return a score
-	allied_score := 1 // one helps prevent division by zero
-	enemy_score := 1
-	for player in gc.players {
-		if player.team == gc.cur_player.team {
-			allied_score += int(player.money)
-		} else {
-			enemy_score += int(player.money)
-		}
-	}
-	for player in gc.players {
-		mil_cost := 0
-		for land in gc.lands {
-			for army in Idle_Army {
-				mil_cost += int(land.idle_armies[player.index][army]) * int(COST_IDLE_ARMY[army])
-			}
-			for plane in Idle_Plane {
-				mil_cost +=
-					int(land.idle_planes[player.index][plane]) * int(COST_IDLE_PLANE[plane])
-			}
-		}
-		for sea in gc.seas {
-			for ship in Idle_Ship {
-				mil_cost += int(sea.idle_ships[player.index][ship]) * int(COST_IDLE_SHIP[ship])
-			}
-			for plane in Idle_Plane {
-				mil_cost += int(sea.idle_planes[player.index][plane]) * int(COST_IDLE_PLANE[plane])
-			}
-		}
-		if player.team == gc.cur_player.team {
-			allied_score += mil_cost
-		} else {
-			enemy_score += mil_cost
-		}
-	}
-	score: f64 = f64(allied_score) / f64(enemy_score + allied_score)
-	// ??? if starting_player >= PLAYERS_COUNT do return 1 - score
-	return score
+evaluate_cache :: #force_inline proc(gc: ^Game_Cache) -> f64 {
+	return evaluate_state(&gc.state)
 }
 
 import "core:math/rand"
@@ -389,7 +347,7 @@ random_play_until_terminal :: proc(gc: ^Game_Cache, gs: ^Game_State) -> f64 {
 		score = evaluate_cache(gc)
 	}
 	score = evaluate_cache(gc)
-	if int(gc.cur_player.index) % 2 == 1 {
+	if mm.team[gc.cur_player] == .Axis {
 		score = 1 - score
 	}
 	return score
@@ -401,7 +359,7 @@ get_possible_actions :: proc(gs: ^Game_State) -> SA_Valid_Actions {
 	// set unlucky teams
 	ok := initialize_map_constants(&gc)
 	load_cache_from_state(&gc, gs)
-	gc.unlucky_teams = {gc.cur_player.team.index}
+	gc.unlucky_teams = {mm.team[gc.cur_player]}
 	gc.answers_remaining = 0
 	gc.seed = 0
 	debug_checks(&gc)

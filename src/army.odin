@@ -141,7 +141,7 @@ move_next_army_in_land :: proc(
 ) {
 	dst_air := get_move_input(gc, Active_Army_Names[army], l2aid(src_land)) or_return
 	if check_load_transport(gc, army, src_land, dst_air) do return true
-	dst_land := Land_ID(dst_air)
+	dst_land := a2lid(dst_air)
 	if skip_army(gc, src_land, dst_land, army) do return true
 	army_after_move := blitz_checks(gc, dst_land, army, src_land)
 	move_single_army(gc, dst_land, army_after_move, gc.cur_player, army, src_land)

@@ -15,7 +15,7 @@ import "core:strconv"
 // 	if (PLAYER_DATA[gc.cur_player.index].is_human) {
 // 		fmt.print("Moving ", unit_name, " From ", src_air.name, " Valid Moves: ")
 // 		for valid_move in sa.slice(&gc.valid_actions) {
-// 			fmt.print(gc.territories[valid_move].name, ", ")
+// 			fmt.print(Air_ID[valid_move].name, ", ")
 // 		}
 // 		return get_user_input(gc)
 // 	}
@@ -35,15 +35,15 @@ print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 
 get_retreat_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (dst_air: Air_ID, ok: bool) {
 	debug_checks(gc)
-	dst_air = u2aid(gc.valid_actions.data[0])
+	dst_air = act2air(gc.valid_actions.data[0])
 	if gc.valid_actions.len > 1 {
 		if gc.answers_remaining == 0 do return dst_air, false
 		if gc.cur_player in mm.is_human {
 			print_retreat_prompt(gc, src_air)
-			dst_air = u2aid(get_user_input(gc))
+			dst_air = act2air(get_user_input(gc))
 		} else {
 			if ACTUALLY_PRINT do print_retreat_prompt(gc, src_air)
-			dst_air = u2aid(get_ai_input(gc))
+			dst_air = act2air(get_ai_input(gc))
 			if ACTUALLY_PRINT {
 				fmt.println("AI Action:", dst_air)
 			}
@@ -54,7 +54,7 @@ get_retreat_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (dst_air: Air_ID,
 
 print_move_prompt :: proc(gc: ^Game_Cache, unit_name: string, src_air: Air_ID) {
 	print_game_state(gc)
-	fmt.print(PLAYER_DATA[gc.cur_player].color)
+	fmt.print(mm.color[gc.cur_player])
 	fmt.println("Moving ", unit_name, " From ", src_air, " Valid Moves: ")
 	for valid_move in sa.slice(&gc.valid_actions) {
 		fmt.print(int(valid_move), u2aid(valid_move), ", ")
@@ -71,17 +71,17 @@ get_move_input :: proc(
 	ok: bool,
 ) {
 	debug_checks(gc)
-	dst_air = u2aid(gc.valid_actions.data[0])
+	action := gc.valid_actions.data[0]
 	if gc.valid_actions.len > 1 {
-		if gc.answers_remaining == 0 do return dst_air, false
+		if gc.answers_remaining == 0 do return act2air(action), false
 		if PLAYER_DATA[gc.cur_player].is_human {
 			print_move_prompt(gc, unit_name, src_air)
-			dst_air = u2aid(get_user_input(gc))
+			action = get_user_input(gc)
 		} else {
 			if ACTUALLY_PRINT do print_move_prompt(gc, unit_name, src_air)
-			dst_air = u2aid(get_ai_input(gc))
+			action = get_ai_input(gc)
 			if ACTUALLY_PRINT {
-				fmt.println("AI Action:", dst_air)
+				fmt.println("AI Action:", action)
 			}
 		}
 	}
@@ -89,7 +89,7 @@ get_move_input :: proc(
 	return dst_air, true
 }
 
-get_user_input :: proc(gc: ^Game_Cache) -> (user_input: u8 = 0) {
+get_user_input :: proc(gc: ^Game_Cache) -> (action: Action_ID) {
 	buffer: [10]byte
 	fmt.print("Enter a number between 0 and 255: ")
 	n, err := os.read(os.stdin, buffer[:])
@@ -98,7 +98,7 @@ get_user_input :: proc(gc: ^Game_Cache) -> (user_input: u8 = 0) {
 		return
 	}
 	input_str := string(buffer[:n])
-	int_input := u8(strconv.atoi(input_str))
+	int_input := int2act(strconv.atoi(input_str))
 	_, found := slice.linear_search(sa.slice(&gc.valid_actions), int_input)
 	if !found {
 		fmt.eprintln("Invalid input ", int_input)
@@ -107,9 +107,9 @@ get_user_input :: proc(gc: ^Game_Cache) -> (user_input: u8 = 0) {
 	return int_input
 }
 
-get_ai_input :: proc(gc: ^Game_Cache) -> (ai_input: u8) {
+get_ai_input :: proc(gc: ^Game_Cache) -> (action: Action_ID) {
 	gc.answers_remaining -= 1
-	if !gc.use_selected_action || gc.selected_action >= len(Action_ID) {
+	if !gc.use_selected_action {
 		//fmt.eprintln("Invalid input ", gc.selected_action)
 		gc.seed = (gc.seed + 1) % RANDOM_MAX
 		return gc.valid_actions.data[RANDOM_NUMBERS[gc.seed] % gc.valid_actions.len]

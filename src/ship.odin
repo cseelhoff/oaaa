@@ -361,8 +361,8 @@ move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 move_ship_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
 		gc.clear_needed = false
-	for &src_sea in gc.seas {
-		move_ship_sea(gc, &src_sea, ship) or_return
+	for src_sea in Sea_ID {
+		move_ship_sea(gc, src_sea, ship) or_return
 	}
 	if gc.clear_needed do clear_move_history(gc)
 	return true
@@ -380,7 +380,7 @@ move_ship_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (o
 
 move_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
 		dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], src_sea) or_return
-	flag_for_enemy_combat(gc.territories[dst_air_idx], gc.cur_player.team.enemy_team.index)
+	flag_for_enemy_combat(Air_ID[dst_air_idx], gc.cur_player.team.enemy_team.index)
 		dst_sea := get_sea(gc, dst_air_idx)
 	if skip_ship(src_sea, dst_sea, ship) do return true
 		move_single_ship(dst_sea, Ships_Moved[ship], gc.cur_player, ship, src_sea)

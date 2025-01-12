@@ -25,8 +25,8 @@ fighter_enemy_checks :: proc(
 	src_air: Air_ID,
 	dst_air: Air_ID,
 ) -> Active_Plane {
-	if flag_for_enemy_combat(dst_air, gc.cur_player.team.enemy_team.index) {
-		return Fighter_After_Moves[src_air.air_distances[dst_air.territory_index]]
+	if flag_for_enemy_combat(gc,dst_air, mm.enemy_team[gc.cur_player]) {
+		return Fighter_After_Moves[mm.air_distances[src_air][dst_air]]
 	}
 	return .FIGHTER_0_MOVES
 }
@@ -41,13 +41,13 @@ fighter_can_land_here :: proc(territory: Air_ID) {
 refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 	if gc.is_fighter_cache_current do return
 	// initialize all to false
-	for territory in gc.territories {
-		territory.can_fighter_land_here = false
-		territory.can_fighter_land_in_1_move = false
+	for air in Air_ID {
+		gc.can_fighter_land_here -= {air}
+		gc.can_fighter_land_in_1_move -= {air}
 	}
 	for &land in gc.lands {
 		// is allied owned and not recently conquered?
-		if gc.cur_player.team == land.owner.team && land.combat_status == .NO_COMBAT {
+		if gc.cur_player.team == mm.team[gc.owner[land]] && gc.combat_status[land] == .NO_COMBAT {
 			fighter_can_land_here(&land.territory)
 		}
 		// check for possiblity to build carrier under fighter
@@ -57,7 +57,7 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 			}
 		}
 	}
-	for &sea in gc.seas {
+	for &sea in Sea_ID {
 		if sea.allied_carriers > 0 {
 			fighter_can_land_here(&sea.territory)
 		}
@@ -121,36 +121,36 @@ land_fighter_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
 }
 
 land_fighter_air :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) -> (ok: bool) {
-	if src_air.active_planes[plane] == 0 do return true
+	if gc.active_planes[src_air][plane] == 0 do return true
 	refresh_can_fighter_land_here(gc)
 	gc.valid_actions.len = 0
 	add_valid_fighter_landing(gc, src_air, plane)
-	for src_air.active_planes[plane] > 0 {
+	for gc.active_planes[src_air][plane] > 0 {
 		land_next_fighter_in_air(gc, src_air, plane) or_return
 	}
 	return true
 }
 
 add_valid_fighter_landing :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) {
-	for dst_air in sa.slice(&src_air.adjacent_airs) {
+	for dst_air in sa.slice(&mm.adjacent_airs[src_air]) {
 		if dst_air.can_fighter_land_here {
 			add_move_if_not_skipped(gc, src_air, dst_air)
 		}
 	}
 	if plane == .FIGHTER_1_MOVES do return
-	for dst_air in sa.slice(&src_air.airs_2_moves_away) {
+	for dst_air in sa.slice(&mm.airs_2_moves_away[src_air]) {
 		if dst_air.can_fighter_land_here {
 			add_move_if_not_skipped(gc, src_air, dst_air)
 		}
 	}
 	if plane == .FIGHTER_2_MOVES do return
-	for dst_air in sa.slice(&src_air.airs_3_moves_away) {
+	for dst_air in sa.slice(&mm.airs_3_moves_away[src_air]) {
 		if dst_air.can_fighter_land_here {
 			add_move_if_not_skipped(gc, src_air, dst_air)
 		}
 	}
 	if plane == .FIGHTER_3_MOVES do return
-	for dst_air in sa.slice(&src_air.airs_4_moves_away) {
+	for dst_air in sa.slice(&mm.airs_4_moves_away[src_air]) {
 		if dst_air.can_fighter_land_here {
 			add_move_if_not_skipped(gc, src_air, dst_air)
 		}
@@ -165,9 +165,8 @@ land_next_fighter_in_air :: proc(
 	ok: bool,
 ) {
 	if crash_unlandable_fighters(gc, src_air, plane) do return true
-	dst_air_idx := get_move_input(gc, Active_Plane_Names[plane], src_air) or_return
-	dst_air := gc.territories[dst_air_idx]
-	move_single_plane(dst_air, Plane_After_Moves[plane], gc.cur_player, plane, src_air)
+	dst_air := get_move_input(gc, Active_Plane_Names[plane], src_air) or_return
+	move_single_plane(gc, dst_air, Plane_After_Moves[plane], gc.cur_player, plane, src_air)
 	if carrier_now_empty(gc, dst_air_idx) {
 		valid_move_index := slice.linear_search(
 			sa.slice(&gc.valid_actions),

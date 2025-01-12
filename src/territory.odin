@@ -83,6 +83,19 @@ s2act :: #force_inline proc(sea: Sea_ID) -> Action_ID {
 	return Action_ID(s2aid(sea))
 }
 
+act2land :: #force_inline proc(act: Action_ID) -> Land_ID {
+	return Land_ID(act)
+}
+
+act2air :: #force_inline proc(act: Action_ID) -> Air_ID {
+	return Air_ID(act)
+}
+
+int2act :: #force_inline proc(i: int) -> Action_ID {
+	assert(i >= 0 && i < len(Action_ID))
+	return Action_ID(i)
+}
+
 
 COASTAL_CONNECTIONS := [?]Coastal_Connection_String {
 	{land = "Washington", sea = "Pacific"},
