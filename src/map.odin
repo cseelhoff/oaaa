@@ -34,6 +34,7 @@ MapData :: struct {
 	airs_3_moves_away:  [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
 	airs_4_moves_away:  [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
 	airs_5_moves_away:  [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
+	airs_6_moves_away:  [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
 	lands_2_moves_away: [Land_ID]sa.Small_Array(len(Land_ID), Land_2_Moves_Away),
 	dst_sea_2_away:     [Land_ID]sa.Small_Array(len(Sea_ID), Sea_ID),
 	land_distances:     [Land_ID][Land_ID]u8,

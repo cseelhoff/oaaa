@@ -177,12 +177,12 @@ buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	gc.valid_actions.data[0] = .Skip_Action
 	for land in Land_ID {
 		if gc.owner[land] != gc.cur_player ||
-		   land.factory_prod > 0 ||
-		   land.combat_status != .NO_COMBAT ||
-		   land.skipped_moves[land.territory_index] {
+		   gc.factory_prod[land] > 0 ||
+		   gc.combat_status[l2aid(land)] != .NO_COMBAT ||
+		   land in gc.skipped_moves[land] {
 			continue
 		}
-		sa.push(&gc.valid_actions, u8(land.territory_index))
+		sa.push(&gc.valid_actions, l2act(land))
 	}
 	for gc.money[gc.cur_player] < FACTORY_COST {
 		factory_land_idx := get_factory_buy(gc) or_return
@@ -196,16 +196,16 @@ buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 }
 
 reset_units_fully :: proc(gc: ^Game_Cache) {
-	for &sea in gc.seas {
-		sea.active_ships[Active_Ship.BATTLESHIP_0_MOVES] +=
-			sea.active_ships[Active_Ship.BS_DAMAGED_0_MOVES]
-		sea.active_ships[Active_Ship.BS_DAMAGED_0_MOVES] = 0
-		sea.active_ships[Active_Ship.BATTLESHIP_BOMBARDED] +=
-			sea.active_ships[Active_Ship.BS_DAMAGED_BOMBARDED]
-		sea.active_ships[Active_Ship.BS_DAMAGED_BOMBARDED] = 0
-		sea.idle_ships[gc.cur_player.index][Idle_Ship.BATTLESHIP] +=
-			sea.idle_ships[gc.cur_player.index][Idle_Ship.BS_DAMAGED]
-		sea.idle_ships[gc.cur_player.index][Idle_Ship.BS_DAMAGED] = 0
+	for sea in Sea_ID {
+		gc.active_ships[sea][.BATTLESHIP_0_MOVES] +=
+			gc.active_ships[sea][.BS_DAMAGED_0_MOVES]
+		gc.active_ships[sea][.BS_DAMAGED_0_MOVES] = 0
+		gc.active_ships[sea][.BATTLESHIP_BOMBARDED] +=
+			gc.active_ships[sea][.BS_DAMAGED_BOMBARDED]
+		gc.active_ships[sea][.BS_DAMAGED_BOMBARDED] = 0
+		gc.idle_ships[sea][gc.cur_player][.BATTLESHIP] +=
+			gc.idle_ships[sea][gc.cur_player][.BS_DAMAGED]
+		gc.idle_ships[sea][gc.cur_player][.BS_DAMAGED] = 0
 	}
 }
 

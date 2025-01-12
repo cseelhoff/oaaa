@@ -245,7 +245,7 @@ Skipped_Transports := [?]Active_Ship {
 
 unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for ship in Transports_With_Cargo {
-		for &src_sea in gc.seas {
+		for src_sea in Sea_ID {
 			if gc.active_ships[src_sea][ship] == 0 do continue
 			reset_valid_moves(gc, &src_sea)
 			add_valid_unload_moves(gc, &src_sea)
