@@ -132,8 +132,8 @@ update_buy_history :: proc(gc: ^Game_Cache, src_air: Air_ID, action: Buy_Action)
 	}
 }
 
-buy_to_action_idx :: proc(action: Buy_Action) -> u8 {
-	return u8(action) + TERRITORIES_COUNT
+buy_to_action_idx :: proc(action: Buy_Action) -> Action_ID {
+	return Action_ID(u8(action) + TERRITORIES_COUNT)
 }
 
 action_idx_to_buy :: proc(action: u8) -> Buy_Action {

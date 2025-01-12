@@ -36,6 +36,7 @@ SA_Player_Pointers :: sa.Small_Array(PLAYERS_COUNT, ^Player)
 Canals_Open :: bit_set[Canal_ID;u8]
 UNLUCKY_TEAMS :: bit_set[Team_ID;u8]
 Territory_Bitset :: bit_set[Air_ID;u8]
+Purchase_Bitset :: bit_set[Buy_Action;u8]
 SA_Valid_Actions :: sa.Small_Array(len(Action_ID), Action_ID)
 
 Game_Cache :: struct {
@@ -49,6 +50,7 @@ Game_Cache :: struct {
 	idle_planes:                [Air_ID][Player_ID][Idle_Plane]u8,
 	idle_ships:                 [Sea_ID][Player_ID][Idle_Ship]u8,
 	skipped_moves:              [Air_ID]Territory_Bitset,
+	skipped_buys:               [Land_ID]Purchase_Bitset,
 	team_units:                 [Air_ID][Team_ID]u8,
 	combat_status:              [Air_ID]Combat_Status,
 	can_bomber_land_here:       Territory_Bitset,

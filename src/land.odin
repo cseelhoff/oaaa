@@ -163,6 +163,6 @@ conquer_land :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool) {
 	sa.push(&gc.factory_locations[new_owner], dst_land)
 	index, found := slice.linear_search(sa.slice(&gc.factory_locations[old_owner]), dst_land)
 	assert(found, "factory conquered, but not found in owned factory locations")
-	sa.unordered_remove(&old_owner.factory_locations, index)
+	sa.unordered_remove(&gc.factory_locations[old_owner], index)
 	return true
 }

@@ -6,8 +6,11 @@ MAX_LAND_TO_LAND_CONNECTIONS :: 6
 MAX_AIR_TO_AIR_CONNECTIONS :: 7
 MAX_LAND_TO_SEA_CONNECTIONS :: 4
 
+MAX_PATHS_TO_LAND :: 2
+Mid_Lands :: sa.Small_Array(MAX_PATHS_TO_LAND, Land_ID)
+
 L2S_2_Away :: struct {
-	mid_lands: [2]Land_ID,
+	mid_lands: Mid_Lands,
 	sea:       Sea_ID,
 }
 
@@ -48,9 +51,6 @@ MapData :: struct {
 	air_name:           [Air_ID]string,
 	is_human:           bit_set[Player_ID;u8],
 }
-
-MAX_PATHS_TO_LAND :: 2
-Mid_Lands :: sa.Small_Array(MAX_PATHS_TO_LAND, Land_ID)
 
 Land_2_Moves_Away :: struct {
 	land:      Land_ID,

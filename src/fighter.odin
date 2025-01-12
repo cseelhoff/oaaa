@@ -113,7 +113,7 @@ land_fighter_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 land_fighter_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
 		gc.clear_needed = false
-	for &src_air in gc.territories {
+	for src_air in Air_ID {
 		land_fighter_air(gc, src_air, plane) or_return
 	}
 	if gc.clear_needed do clear_move_history(gc)
