@@ -1,32 +1,44 @@
 package oaaa
 
 Game_State :: struct {
-	active_armies:              [Land_ID][Active_Army]u8,
-	active_ships:               [Sea_ID][Active_Ship]u8,
-	active_planes:              [Air_ID][Active_Plane]u8,
-	idle_armies:                [Land_ID][Player_ID][Idle_Army]u8,
-	idle_planes:                [Air_ID][Player_ID][Idle_Plane]u8,
-	idle_ships:                 [Sea_ID][Player_ID][Idle_Ship]u8,
-	skipped_moves:              [Air_ID]Territory_Bitset,
-	skipped_buys:               [Land_ID]Purchase_Bitset,
-	combat_status:              [Air_ID]Combat_Status,
-	owner:                      [Land_ID]Player_ID,
-	income:                     [Player_ID]u8,
-	money:                      [Player_ID]u8,
-	max_bombards:               [Land_ID]u8,
-	factory_dmg:                [Land_ID]u8,
-	factory_prod:               [Land_ID]u8,
-	builds_left:                [Land_ID]u8,
-	seed:                       u16,
-	cur_player:                 Player_ID,
+	active_armies:      [Land_ID][Active_Army]u8,
+	active_ships:       [Sea_ID][Active_Ship]u8,
+	active_planes:      [Air_ID][Active_Plane]u8,
+	idle_armies:        [Land_ID][Player_ID][Idle_Army]u8,
+	idle_land_planes:   [Land_ID][Player_ID][Idle_Plane]u8,
+	idle_sea_planes:    [Sea_ID][Player_ID][Idle_Plane]u8,
+	idle_ships:         [Sea_ID][Player_ID][Idle_Ship]u8,
+	skipped_land_moves: [Land_ID]Land_Bitset,
+	skipped_l2s_moves:	[Land_ID]Sea_Bitset,
+	skipped_sea_moves:  [Sea_ID]Sea_Bitset,
+	skipped_buys:       [Land_ID]Purchase_Bitset,
+	land_combat_status: [Land_ID]Combat_Status,
+	sea_combat_status:  [Sea_ID]Combat_Status,
+	owner:              [Land_ID]Player_ID,
+	income:             [Player_ID]u8,
+	money:              [Player_ID]u8,
+	max_bombards:       [Land_ID]u8,
+	factory_dmg:        [Land_ID]u8,
+	factory_prod:       [Land_ID]u8,
+	builds_left:        [Land_ID]u8,
+	seed:               u16,
+	cur_player:         Player_ID,
 }
 
 
-Combat_Status :: enum u8{
+Combat_Status :: enum u8 {
 	NO_COMBAT,
 	MID_COMBAT,
 	PRE_COMBAT,
 	POST_COMBAT,
+}
+
+push_land_action :: #force_inline proc(gc: ^Game_Cache, land: Land_ID) {
+	sa.push(&gc.valid_actions, l2act(land))
+}
+
+push_sea_action :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) {
+	sa.push(&gc.valid_actions, s2act(sea))
 }
 
 load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {

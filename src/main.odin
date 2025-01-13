@@ -4,6 +4,14 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 
+is_human := [Player_ID]bool {
+	.Rus = false,
+	.Ger = false,
+	.Eng = false,
+	.Jap = false,
+	.USA = false,
+}
+
 main :: proc() {
 	fmt.println("Starting CAAA")
 	iterations := 100_000_000
@@ -27,12 +35,6 @@ main :: proc() {
 	game_cache.answers_remaining = 65000
 	game_cache.seed = 2	
 
-	// PLAYER_DATA[0].is_human = true
-	// PLAYER_DATA[1].is_human = true
-	// PLAYER_DATA[2].is_human = true
-	// PLAYER_DATA[3].is_human = true
-	// PLAYER_DATA[4].is_human = true
-	
 	// for (game_cache.answers_remaining > 0) {
 	// 	ok = play_full_turn(&game_cache)
 	// 	if !ok {

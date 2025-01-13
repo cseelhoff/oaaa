@@ -31,68 +31,50 @@ bomber_enemy_checks :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) -
 	return .BOMBER_0_MOVES
 }
 
-bomber_can_land_here :: proc(gc: ^Game_Cache, territory: Air_ID) {
-	gc.can_bomber_land_here += {territory}
-	for air in sa.slice(&mm.adj_a2a[territory]) {
-		gc.can_bomber_land_in_1_move += {territory}
+bomber_can_attack_here :: proc(gc: ^Game_Cache, land: Land_ID) {
+	landable_bomber_location := gc.friendly_owner && gc.air_no_combat
+	bomber_attack_locations := !gc.skipped_air2air[src_air] & (gc.air_has_enemies | gc.air_has_bombable_factory) //&& air_within_6_air_moves[src_air] 
+	filtered_bomber_attack_locations := {}
+	for dst_air in Air_ID {
+		air_bitset : Air_Bitset = 1 << air
+		filtered_bomber_attack_locations += (air_bitset & bomber_attack_locations) & (air_within_3_air_moves[src_air] | (air_within_4_air_moves[src_air] & transmute(Air_Bitset)(0- u16(transmute(u8)((mm.air_within_2_air_moves[dst_air] & landable_bomber_location) != 0)))) | (air_within_5_air_moves[src_air] & transmute(Air_Bitset)(0- u16(transmute(u8)((mm.air_within_1_air_moves[dst_air] & landable_bomber_location) != 0)))))
 	}
-	for air in sa.slice(&mm.airs_2_moves_away[territory]) {
-		gc.can_bomber_land_in_2_moves += {territory}
-	}
+}
+
+
+	
+	gc.can_bomber_land_here += {air}
+	gc.can_bomber_land_in_1_move += {mm.adj_l2a[land]}
+	gc.can_bomber_land_in_2_moves += {mm.air_l2a_2away[land]}
+	// for air in sa.slice(&mm.adj_l2a[air]) {
+	// 	gc.can_bomber_land_in_1_move += {air}
+	// }
+	// for air in sa.slice(&mm.airs_2_moves_away[air]) {
+	// 	gc.can_bomber_land_in_2_moves += {air}
+	// }
 }
 
 refresh_can_bomber_land_here :: proc(gc: ^Game_Cache) {
 	// initialize all to false
 	if gc.is_bomber_cache_current do return
-	for air in Air_ID {
-		gc.can_bomber_land_here -= {air}
-		gc.can_bomber_land_in_1_move -= {air}
-		gc.can_bomber_land_in_2_moves -= {air}
-	}
-	// check if any bombers have full moves remaining
+	gc.can_bomber_land_here.clear()
+	gc.can_bomber_land_in_1_move.clear()
+	gc.can_bomber_land_in_2_moves.clear()
 	for land in Land_ID {
 		// is allied owned and not recently conquered?
-		//Since bombers happen first, we can assume that the land is not recently conquered
-		if mm.team[gc.cur_player] == mm.team[gc.owner[land]] { 	//&& land.combat_status == .NO_COMBAT {
-			bomber_can_land_here(gc, l2aid(land))
+		if mm.team[gc.cur_player] == mm.team[gc.owner[land]] && land.combat_status == .NO_COMBAT {
+			bomber_can_land_here(gc, land)
 		}
 	}
 	gc.is_bomber_cache_current = true
 }
-add_valid_bomber_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
-	for dst_air in sa.slice(&mm.adj_a2a[src_air]) {
-		add_meaningful_bomber_move(gc, src_air, dst_air)
-	}
-	for dst_air in sa.slice(&mm.airs_2_moves_away[src_air]) {
-		add_meaningful_bomber_move(gc, src_air, dst_air)
-	}
-	for dst_air in sa.slice(&mm.airs_3_moves_away[src_air]) {
-		add_meaningful_bomber_move(gc, src_air, dst_air)
-	}
-	for dst_air in sa.slice(&mm.airs_4_moves_away[src_air]) {
-		if dst_air in gc.can_bomber_land_in_2_moves {
-			add_meaningful_bomber_move(gc, src_air, dst_air)
-		}
-	}
-	for dst_air in sa.slice(&mm.airs_5_moves_away[src_air]) {
-		if dst_air in gc.can_bomber_land_in_1_move {
-			add_meaningful_bomber_move(gc, src_air, dst_air)
-		}
-	}
-	for dst_air in sa.slice(&mm.airs_6_moves_away[src_air]) {
-		if dst_air in gc.can_bomber_land_here {
-			add_move_if_not_skipped(gc, src_air, dst_air)
-		}
-	}
+
+add_valid_attacking_bomber_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
+	valid_air_moves_bitset := !gc.skipped_air2air[src_air] && air_within_6_air_moves[src_air] && (gc.air_has_enemies || gc.air_has_bombable_factory || gc.can_bomber_land_here)
 }
 
-add_meaningful_bomber_move :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
-	if dst_air in gc.can_bomber_land_here ||
-	   gc.team_units[dst_air][mm.enemy_team[gc.cur_player]] != 0 ||
-	   is_land(dst_air) &&
-		   gc.factory_dmg[Land_ID(dst_air)] < gc.factory_prod[Land_ID(dst_air)] * 2 {
-		add_move_if_not_skipped(gc, src_air, dst_air)
-	}
+add_valid_landing_bomber_moves :: proc(gc: ^Game_Cache, src_air: Air_ID, nearby_air: ^[Air_ID]bit_set[Air_ID;u16]) {
+	valid_air_moves_bitset := !gc.skipped_air2air[src_air] && gc.can_bomber_land_here && nearby_air 
 }
 
 land_bomber_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -120,40 +102,6 @@ land_bomber_air :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) -
 		land_next_bomber_in_air(gc, src_air, plane) or_return
 	}
 	return true
-}
-
-import "core:fmt"
-
-add_valid_bomber_landing :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) {
-	for dst_air in sa.slice(&mm.adj_a2a[src_air]) {
-		if dst_air in gc.can_bomber_land_here {
-			add_move_if_not_skipped(gc, src_air, dst_air)
-		}
-	}
-	if plane == .BOMBER_1_MOVES do return
-	for dst_air in sa.slice(&mm.airs_2_moves_away[src_air]) {
-		if dst_air in gc.can_bomber_land_here {
-			add_move_if_not_skipped(gc, src_air, dst_air)
-		}
-	}
-	if plane == .BOMBER_2_MOVES do return
-	for dst_air in sa.slice(&mm.airs_3_moves_away[src_air]) {
-		if dst_air in gc.can_bomber_land_here {
-			add_move_if_not_skipped(gc, src_air, dst_air)
-		}
-	}
-	if plane == .BOMBER_3_MOVES do return
-	for dst_air in sa.slice(&mm.airs_4_moves_away[src_air]) {
-		if dst_air in gc.can_bomber_land_here {
-			add_move_if_not_skipped(gc, src_air, dst_air)
-		}
-	}
-	if plane == .BOMBER_4_MOVES do return
-	for dst_air in sa.slice(&mm.airs_5_moves_away[src_air]) {
-		if dst_air in gc.can_bomber_land_here {
-			add_move_if_not_skipped(gc, src_air, dst_air)
-		}
-	}
 }
 
 land_next_bomber_in_air :: proc(

@@ -165,6 +165,11 @@ clear_move_history :: proc(gc: ^Game_Cache) {
 	gc.clear_needed = false
 }
 
+reset_valid_land_moves :: proc(gc: ^Game_Cache, land: Land_ID) { 
+	gc.valid_actions.len = 1
+	gc.valid_actions.data[0] = l2act(land)
+}
+
 reset_valid_moves :: proc(gc: ^Game_Cache, air: Air_ID) { 	// -> (dst_air_idx: int) {
 	gc.valid_actions.len = 1
 	gc.valid_actions.data[0] = a2act(air)

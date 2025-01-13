@@ -96,6 +96,11 @@ int2act :: #force_inline proc(i: int) -> Action_ID {
 	return Action_ID(i)
 }
 
+air2land :: #force_inline proc(air: Air_ID) -> Land_ID {
+	assert(int(air) < len(Land_ID))
+	return Land_ID(air)
+}
+
 
 COASTAL_CONNECTIONS := [?]Coastal_Connection_String {
 	{land = "Washington", sea = "Pacific"},

@@ -34,35 +34,46 @@ SA_Territory_Pointers :: sa.Small_Array(len(Air_ID), Air_ID)
 SA_Land :: sa.Small_Array(len(Land_ID), Land_ID)
 SA_Player_Pointers :: sa.Small_Array(PLAYERS_COUNT, ^Player)
 Canals_Open :: bit_set[Canal_ID;u8]
-UNLUCKY_TEAMS :: bit_set[Team_ID;u8]
-Territory_Bitset :: bit_set[Air_ID;u8]
+Unlucky_Teams :: bit_set[Team_ID;u8]
+Land_Bitset :: bit_set[Land_ID;u8]
+Sea_Bitset :: bit_set[Sea_ID;u8]
 Purchase_Bitset :: bit_set[Buy_Action;u16]
-SA_Valid_Actions :: sa.Small_Array(len(Action_ID), Action_ID)
+Actions_Bitset :: bit_set[Action_ID;u16]
+Air_Bitset :: bit_set[Air_ID;u16]
 
 Game_Cache :: struct {
-	using state: Game_State,
-	team_units:                 [Air_ID][Team_ID]u8,
-	can_bomber_land_here:       Territory_Bitset,
-	can_bomber_land_in_1_move:  Territory_Bitset,
-	can_bomber_land_in_2_moves: Territory_Bitset,
-	can_fighter_land_here:      Territory_Bitset,
-	can_fighter_land_in_1_move: Territory_Bitset,
-	factory_locations:          [Player_ID]SA_Land,
-	valid_actions:              SA_Valid_Actions,
-	enemy_blockade_total:       [Sea_ID]u8,
-	enemy_fighters_total:       [Sea_ID]u8,
-	enemy_submarines_total:     [Sea_ID]u8,
-	enemy_destroyer_total:      [Sea_ID]u8,
-	answers_remaining:          u16,
-	max_loops:                  u16,
-	canals_open:                Canals_Open, //[CANALS_COUNT]bool,
-	unlucky_teams:              UNLUCKY_TEAMS,
-	selected_action:            Action_ID,
-	is_bomber_cache_current:    bool,
-	is_fighter_cache_current:   bool,
-	clear_needed:               bool,
-	use_selected_action:        bool,
-	allied_carriers:						[Sea_ID]u8,
+	using state:                   Game_State,
+	land_team_units:               [Land_ID][Team_ID]u8,
+	sea_team_units:                [Sea_ID][Team_ID]u8,
+	can_bomber_land_here:          Land_Bitset,
+	can_bomber_land_in_1_move:     Land_Bitset,
+	can_bomber_land_in_2_moves:    Land_Bitset,
+	can_fighter_land_here:         Land_Bitset,
+	can_fighter_land_in_1_move:    Land_Bitset,
+	can_fighter_sealand_here:      Sea_Bitset,
+	can_fighter_sealand_in_1_move: Sea_Bitset,
+	air_has_enemies:							 Air_Bitset,
+	land_has_enemies:							 Land_Bitset,
+	land_has_bombable_factory:	   Land_Bitset,
+	sea_has_enemies:							 Sea_Bitset,
+	factory_locations:             [Player_ID]SA_Land,
+	valid_actions:                 Actions_Bitset,
+	enemy_blockade_total:          [Sea_ID]u8,
+	enemy_fighters_total:          [Sea_ID]u8,
+	enemy_submarines_total:        [Sea_ID]u8,
+	enemy_destroyer_total:         [Sea_ID]u8,
+	answers_remaining:             u16,
+	max_loops:                     u16,
+	canals_open:                   Canals_Open, //[CANALS_COUNT]bool,
+	unlucky_teams:                 Unlucky_Teams,
+	selected_action:               Action_ID,
+	is_bomber_cache_current:       bool,
+	is_fighter_cache_current:      bool,
+	clear_needed:                  bool,
+	use_selected_action:           bool,
+	allied_carriers:               [Sea_ID]u8,
+	air_no_combat:                 Air_Bitset,
+	friendly_owner:								 Air_Bitset,
 }
 
 save_cache_to_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
@@ -150,7 +161,8 @@ count_sea_unit_totals :: proc(gc: ^Game_Cache) {
 load_open_canals :: proc(gc: ^Game_Cache) {
 	gc.canals_open = {}
 	for canal, canal_idx in Canal_Lands {
-		if mm.team[gc.owner[canal[0]]] == mm.team[gc.cur_player] && mm.team[gc.owner[canal[1]]] == mm.team[gc.cur_player] {
+		if mm.team[gc.owner[canal[0]]] == mm.team[gc.cur_player] &&
+		   mm.team[gc.owner[canal[1]]] == mm.team[gc.cur_player] {
 			gc.canals_open += {Canal_ID(canal_idx)}
 		}
 	}

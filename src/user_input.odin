@@ -89,6 +89,33 @@ get_move_input :: proc(
 	return dst_air, true
 }
 
+get_land2air_move_input:: proc(
+	gc: ^Game_Cache,
+	unit_name: string,
+	src_land: Land_ID,
+) -> (
+	dst_air: Air_ID,
+	ok: bool,
+) {
+	debug_checks(gc)
+	action := gc.valid_actions.data[0]
+	if gc.valid_actions.len > 1 {
+		if gc.answers_remaining == 0 do return act2air(action), false
+		if is_human[gc.cur_player] {
+			print_move_prompt(gc, unit_name, src_land)
+			action = get_user_input(gc)
+		} else {
+			if ACTUALLY_PRINT do print_move_prompt(gc, unit_name, src_land)
+			action = get_ai_input(gc)
+			if ACTUALLY_PRINT {
+				fmt.println("AI Action:", action)
+			}
+		}
+	}
+	update_land_move_history(gc, src_land, dst_land)
+	return dst_land, true
+
+
 get_user_input :: proc(gc: ^Game_Cache) -> (action: Action_ID) {
 	buffer: [10]byte
 	fmt.print("Enter a number between 0 and 255: ")
