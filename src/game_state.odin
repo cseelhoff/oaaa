@@ -1,5 +1,7 @@
 package oaaa
 
+import sa "core:container/small_array"
+
 Game_State :: struct {
 	active_armies:      [Land_ID][Active_Army]u8,
 	active_ships:       [Sea_ID][Active_Ship]u8,
@@ -10,6 +12,8 @@ Game_State :: struct {
 	idle_ships:         [Sea_ID][Player_ID][Idle_Ship]u8,
 	skipped_land_moves: [Land_ID]Land_Bitset,
 	skipped_l2s_moves:	[Land_ID]Sea_Bitset,
+	// skipped_air2air:		[Air_ID]Air_Bitset,
+	skipped_l2a_moves:	[Land_ID]Air_Bitset,
 	skipped_sea_moves:  [Sea_ID]Sea_Bitset,
 	skipped_buys:       [Land_ID]Purchase_Bitset,
 	land_combat_status: [Land_ID]Combat_Status,
@@ -31,14 +35,6 @@ Combat_Status :: enum u8 {
 	MID_COMBAT,
 	PRE_COMBAT,
 	POST_COMBAT,
-}
-
-push_land_action :: #force_inline proc(gc: ^Game_Cache, land: Land_ID) {
-	sa.push(&gc.valid_actions, l2act(land))
-}
-
-push_sea_action :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) {
-	sa.push(&gc.valid_actions, s2act(sea))
 }
 
 load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {

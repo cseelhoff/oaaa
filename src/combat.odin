@@ -255,15 +255,15 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-flag_for_enemy_combat :: proc(gc: ^Game_Cache, dst_land: Land_ID, enemy_team: Team_ID) -> bool {
+flag_for_land_enemy_combat :: proc(gc: ^Game_Cache, dst_land: Land_ID, enemy_team: Team_ID) -> bool {
 	if gc.land_team_units[dst_land][enemy_team] == 0 do return false
 	gc.land_combat_status[dst_land] = .PRE_COMBAT
 	return true
 }
 
-flag_for_enemy_combat :: proc(gc: ^Game_Cache, dst_air: Air_ID, enemy_team: Team_ID) -> bool {
-	if gc.team_units[dst_air][enemy_team] == 0 do return false
-	gc.combat_status[dst_air] = .PRE_COMBAT
+flag_for_sea_enemy_combat :: proc(gc: ^Game_Cache, dst_sea: Sea_ID, enemy_team: Team_ID) -> bool {
+	if gc.sea_team_units[dst_sea][enemy_team] == 0 do return false
+	gc.sea_combat_status[dst_sea] = .PRE_COMBAT
 	return true
 }
 

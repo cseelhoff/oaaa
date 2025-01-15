@@ -143,7 +143,7 @@ move_next_army_in_land :: proc(
 	if check_load_transport(gc, army, src_land, dst_air) do return true
 	if skip_army(gc, src_land, a2lid(dst_air), army) do return true
 	army_after_move := blitz_checks(gc, a2lid(dst_air), army, src_land)
-	move_single_army(gc, dst_air, army_after_move, gc.cur_player, army, src_land)
+	move_single_army_land(gc, a2lid(dst_air), army_after_move, gc.cur_player, src_land, army)
 	return true
 }
 
@@ -153,7 +153,7 @@ blitz_checks :: proc(
 	army: Active_Army,
 	src_land: Land_ID,
 ) -> Active_Army {
-	if !flag_for_enemy_combat(gc, dst_land, mm.enemy_team[gc.cur_player]) &&
+	if !flag_for_land_enemy_combat(gc, dst_land, mm.enemy_team[gc.cur_player]) &&
 	   check_for_conquer(gc, dst_land) &&
 	   army == .TANK_UNMOVED &&
 	   mm.land_distances[src_land][dst_land] == 1 &&
@@ -235,7 +235,7 @@ add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
 	}
 	// check for moving from land to sea (two moves away)
 	for &dst_sea_2_away in sa.slice(&mm.adj_l2s_2_away[src_land]) {
-		if s2aid(dst_sea_2_away.sea) in gc.skipped_land_moves[src_land] ||
+		if dst_sea_2_away.sea in gc.skipped_l2s_moves[src_land] ||
 		   are_midlands_blocked(gc, &dst_sea_2_away.mid_lands, enemy_team) {
 			continue
 		}
@@ -274,12 +274,7 @@ check_load_transport :: proc(
 	if int(dst_air) < len(Land_ID) do return false
 	load_available_transport(gc, army, src_land, get_sea_id(dst_air), gc.cur_player)
 	if is_boat_available(gc, src_land, get_sea_id(dst_air), army) do return true
-	action_idx, found := slice.linear_search(sa.slice(&gc.valid_actions), a2act(dst_air))
-	if !found {
-		fmt.eprintln("Error: Previous action not found in list")
-		return false
-	}
-	sa.unordered_remove(&gc.valid_actions, action_idx)
+	gc.valid_actions -= {a2act(dst_air)}
 	return true
 }
 
@@ -314,7 +309,7 @@ load_specific_transport :: proc(
 	gc.idle_ships[dst_sea][player][Active_Ship_To_Idle[new_ship]] += 1
 	gc.active_armies[src_land][army] -= 1
 	gc.idle_armies[src_land][player][idle_army] -= 1
-	gc.team_land_units[src_land][mm.team[player]] -= 1
+	gc.land_team_units[src_land][mm.team[player]] -= 1
 	gc.active_ships[dst_sea][ship] -= 1
 	gc.idle_ships[dst_sea][player][Active_Ship_To_Idle[ship]] -= 1
 }

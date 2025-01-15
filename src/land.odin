@@ -19,7 +19,6 @@ Land_Data :: struct {
 	value: u8,
 }
 
-Idle_Armies :: [PLAYERS_COUNT]Idle_Army_For_Player
 Active_Armies :: [len(Active_Army)]u8
 // Land :: struct {
 // 	using territory:    Territory,

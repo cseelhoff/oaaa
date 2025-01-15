@@ -268,6 +268,7 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 	}
 	count_sea_unit_totals(gc)
 	load_open_canals(gc)
+	refresh_landable_planes(gc)
 }
 
 is_terminal_state :: proc(game_state: ^Game_State) -> bool {

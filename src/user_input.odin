@@ -114,7 +114,7 @@ get_land2air_move_input:: proc(
 	}
 	update_land_move_history(gc, src_land, dst_land)
 	return dst_land, true
-
+}
 
 get_user_input :: proc(gc: ^Game_Cache) -> (action: Action_ID) {
 	buffer: [10]byte

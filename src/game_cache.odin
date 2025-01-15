@@ -38,7 +38,7 @@ Unlucky_Teams :: bit_set[Team_ID;u8]
 Land_Bitset :: bit_set[Land_ID;u8]
 Sea_Bitset :: bit_set[Sea_ID;u8]
 Purchase_Bitset :: bit_set[Buy_Action;u16]
-Actions_Bitset :: bit_set[Action_ID;u16]
+Actions_Bitset :: bit_set[Action_ID;u32]
 Air_Bitset :: bit_set[Air_ID;u16]
 
 Game_Cache :: struct {
@@ -46,16 +46,16 @@ Game_Cache :: struct {
 	land_team_units:               [Land_ID][Team_ID]u8,
 	sea_team_units:                [Sea_ID][Team_ID]u8,
 	can_bomber_land_here:          Land_Bitset,
-	can_bomber_land_in_1_move:     Land_Bitset,
-	can_bomber_land_in_2_moves:    Land_Bitset,
+	can_bomber_land_in_1_moves:    Air_Bitset,
+	can_bomber_land_in_2_moves:    Air_Bitset,
 	can_fighter_land_here:         Land_Bitset,
-	can_fighter_land_in_1_move:    Land_Bitset,
+	can_fighter_land_in_1_move:    Air_Bitset,
 	can_fighter_sealand_here:      Sea_Bitset,
-	can_fighter_sealand_in_1_move: Sea_Bitset,
-	air_has_enemies:							 Air_Bitset,
-	land_has_enemies:							 Land_Bitset,
-	land_has_bombable_factory:	   Land_Bitset,
-	sea_has_enemies:							 Sea_Bitset,
+	can_fighter_sealand_in_1_move: Air_Bitset,
+	air_has_enemies:               Air_Bitset,
+	// land_has_enemies:              Land_Bitset,
+	has_bombable_factory:          Land_Bitset,
+	// sea_has_enemies:               Sea_Bitset,
 	factory_locations:             [Player_ID]SA_Land,
 	valid_actions:                 Actions_Bitset,
 	enemy_blockade_total:          [Sea_ID]u8,
@@ -72,8 +72,22 @@ Game_Cache :: struct {
 	clear_needed:                  bool,
 	use_selected_action:           bool,
 	allied_carriers:               [Sea_ID]u8,
-	air_no_combat:                 Air_Bitset,
-	friendly_owner:								 Air_Bitset,
+	// air_no_combat:                 Air_Bitset,
+	land_no_combat:                Land_Bitset,
+	sea_no_combat:                 Sea_Bitset,
+	friendly_owner:                Land_Bitset,
+}
+
+push_land_action :: #force_inline proc(gc: ^Game_Cache, land: Land_ID) {
+	gc.valid_actions += {l2act(land)}
+}
+
+push_sea_action :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) {
+	gc.valid_actions += {s2act(sea)}
+}
+
+l2a_bitset :: #force_inline proc(land: Land_Bitset) -> Air_Bitset {
+	return transmute(Air_Bitset)u16(transmute(u8)land)
 }
 
 save_cache_to_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
@@ -132,6 +146,7 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	}
 	count_sea_unit_totals(gc)
 	load_open_canals(gc)
+	refresh_landable_planes(gc)
 	debug_checks(gc)
 }
 
