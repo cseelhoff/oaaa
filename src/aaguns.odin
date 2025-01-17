@@ -33,7 +33,7 @@ move_next_aagun_in_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (ok: bool
 }
 
 add_valid_aagun_moves :: proc(gc: ^Game_Cache, src_land: Land_ID) {
-	for dst_land in sa.slice(&mm.adj_l2l[src_land]) {
+	for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
 		if l2aid(dst_land) in gc.skipped_a2a[l2aid(src_land)] ||
 		   mm.team[gc.owner[dst_land]] != mm.team[gc.cur_player] {
 			continue

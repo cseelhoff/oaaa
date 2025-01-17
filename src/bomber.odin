@@ -32,7 +32,6 @@ move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		add_valid_unmoved_bomber_moves(gc, src_land)
 		for gc.active_land_planes[src_land][.BOMBER_UNMOVED] > 0 {
 			dst_air := get_move_input(gc, "BOMBER_UNMOVED", l2aid(src_land)) or_return
-			dst_unit: Active_Plane
 			if is_land(dst_air) {
 				move_unmoved_bomber_to_land(gc, src_land, a2lid(dst_air))
 			} else {
@@ -46,12 +45,12 @@ move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 add_valid_unmoved_bomber_moves :: #force_inline proc(gc: ^Game_Cache, src_land: Land_ID) {
 	gc.valid_actions += air2action_bitset(
 		(~gc.skipped_a2a[l2aid(src_land)] &
-			(l2a_bitset(mm.l2l_within_6_air_moves[src_land] & gc.can_bomber_land_here) |
+			(mm.a2a_within_6_moves[l2aid(src_land)] & l2a_bitset(gc.can_bomber_land_here) |
 					((gc.air_has_enemies | l2a_bitset(gc.has_bombable_factory)) &
-							(mm.l2a_within_3_moves[src_land] |
-									(mm.l2a_within_4_air_moves[src_land] &
+							(mm.a2a_within_3_moves[l2aid(src_land)] |
+									(mm.a2a_within_4_moves[l2aid(src_land)] &
 											gc.can_bomber_land_in_2_moves) |
-									(mm.l2a_within_5_air_moves[src_land] &
+									(mm.a2a_within_5_moves[l2aid(src_land)] &
 											gc.can_bomber_land_in_1_moves))))),
 	)
 }
@@ -95,15 +94,15 @@ refresh_can_bomber_land_here :: proc(gc: ^Game_Cache) {
 	gc.can_bomber_land_in_1_moves = {}
 	gc.can_bomber_land_in_2_moves = {}
 	for dst_land in gc.can_bomber_land_here {
-		gc.can_bomber_land_in_1_moves += mm.adj_l2a[dst_land]
-		gc.can_bomber_land_in_2_moves += mm.air_l2a_2away[dst_land]
+		gc.can_bomber_land_in_1_moves += mm.a2a_within_1_moves[l2aid(dst_land)]
+		gc.can_bomber_land_in_2_moves += mm.a2a_within_2_moves[l2aid(dst_land)]
 	}
 	gc.is_bomber_cache_current = true
 }
 // add_valid_attacking_bomber_moves :: proc(gc: ^Game_Cache, src_land: Land_ID) {
 // 	valid_air_moves_bitset :=
 // 		~gc.skipped_l2a_moves[src_land] &
-// 	 	l2a_bitset(mm.l2l_within_6_air_moves[src_land]) &
+// 	 	l2a_bitset(mm.a2a_within_6_moves[src_land]) &
 // 		(gc.air_has_enemies | l2a_bitset(gc.has_bombable_factory) | l2a_bitset(gc.can_bomber_land_here))
 // }
 
@@ -192,24 +191,24 @@ add_valid_landing_bomber_moves :: proc(
 	#partial switch plane {
 	case .BOMBER_1_MOVES:
 		valid_air_moves_bitset =
-			~gc.skipped_a2a[src_air] & l2a_bitset(gc.can_bomber_land_here & mm.adj_a2l[src_air])
+			~gc.skipped_a2a[src_air] & l2a_bitset(gc.can_bomber_land_here) & mm.a2a_within_1_moves[src_air]
 	case .BOMBER_2_MOVES:
 		valid_air_moves_bitset =
 			~gc.skipped_a2a[src_air] &
 			l2a_bitset(gc.can_bomber_land_here) &
-			mm.a2a_within_2_air_moves[src_air]
+			mm.a2a_within_2_moves[src_air]
 	case .BOMBER_3_MOVES:
 		valid_air_moves_bitset =
 			~gc.skipped_a2a[src_air] &
-			l2a_bitset(gc.can_bomber_land_here & mm.a2l_within_3_air_moves[src_air])
+			l2a_bitset(gc.can_bomber_land_here) & mm.a2a_within_3_moves[src_air]
 	case .BOMBER_4_MOVES:
 		valid_air_moves_bitset =
 			~gc.skipped_a2a[src_air] &
-			l2a_bitset(gc.can_bomber_land_here & mm.a2l_within_4_air_moves[src_air])
+			l2a_bitset(gc.can_bomber_land_here) & mm.a2a_within_4_moves[src_air]
 	case .BOMBER_5_MOVES:
 		valid_air_moves_bitset =
 			~gc.skipped_a2a[src_air] &
-			l2a_bitset(gc.can_bomber_land_here & mm.a2l_within_5_air_moves[src_air])
+			l2a_bitset(gc.can_bomber_land_here) & mm.a2a_within_5_moves[src_air]
 	}
 	return valid_air_moves_bitset
 }

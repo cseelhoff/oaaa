@@ -54,38 +54,38 @@ Buy_Active_Army := [?]Active_Army {
 	Buy_Action.BUY_AAGUN = .AAGUN_0_MOVES,
 }
 
-Cost_Buy := [?]u8 {
-	Buy_Action.SKIP_BUY       = 0,
-	Buy_Action.BUY_INF        = 3,
-	Buy_Action.BUY_ARTY       = 4,
-	Buy_Action.BUY_TANK       = 6,
-	Buy_Action.BUY_AAGUN      = 5,
-	Buy_Action.BUY_FIGHTER    = 10,
-	Buy_Action.BUY_BOMBER     = 12,
-	Buy_Action.BUY_TRANS      = 7,
-	Buy_Action.BUY_SUB        = 6,
-	Buy_Action.BUY_DESTROYER  = 8,
-	Buy_Action.BUY_CARRIER    = 14,
-	Buy_Action.BUY_CRUISER    = 12,
-	Buy_Action.BUY_BATTLESHIP = 20,
+Cost_Buy := [Buy_Action]u8 {
+	.SKIP_BUY       = 0,
+	.BUY_INF        = 3,
+	.BUY_ARTY       = 4,
+	.BUY_TANK       = 6,
+	.BUY_AAGUN      = 5,
+	.BUY_FIGHTER    = 10,
+	.BUY_BOMBER     = 12,
+	.BUY_TRANS      = 7,
+	.BUY_SUB        = 6,
+	.BUY_DESTROYER  = 8,
+	.BUY_CARRIER    = 14,
+	.BUY_CRUISER    = 12,
+	.BUY_BATTLESHIP = 20,
 }
 
 FACTORY_COST :: 15
 
-Buy_Names := [?]string {
-	Buy_Action.SKIP_BUY       = "SKIP_BUY",
-	Buy_Action.BUY_INF        = "BUY_INF",
-	Buy_Action.BUY_ARTY       = "BUY_ARTY",
-	Buy_Action.BUY_TANK       = "BUY_TANK",
-	Buy_Action.BUY_AAGUN      = "BUY_AAGUN",
-	Buy_Action.BUY_FIGHTER    = "BUY_FIGHTER",
-	Buy_Action.BUY_BOMBER     = "BUY_BOMBER",
-	Buy_Action.BUY_TRANS      = "BUY_TRANS",
-	Buy_Action.BUY_SUB        = "BUY_SUB",
-	Buy_Action.BUY_DESTROYER  = "BUY_DESTROYER",
-	Buy_Action.BUY_CARRIER    = "BUY_CARRIER",
-	Buy_Action.BUY_CRUISER    = "BUY_CRUISER",
-	Buy_Action.BUY_BATTLESHIP = "BUY_BATTLESHIP",
+Buy_Names := [Buy_Action]string {
+	.SKIP_BUY       = "SKIP_BUY",
+	.BUY_INF        = "BUY_INF",
+	.BUY_ARTY       = "BUY_ARTY",
+	.BUY_TANK       = "BUY_TANK",
+	.BUY_AAGUN      = "BUY_AAGUN",
+	.BUY_FIGHTER    = "BUY_FIGHTER",
+	.BUY_BOMBER     = "BUY_BOMBER",
+	.BUY_TRANS      = "BUY_TRANS",
+	.BUY_SUB        = "BUY_SUB",
+	.BUY_DESTROYER  = "BUY_DESTROYER",
+	.BUY_CARRIER    = "BUY_CARRIER",
+	.BUY_CRUISER    = "BUY_CRUISER",
+	.BUY_BATTLESHIP = "BUY_BATTLESHIP",
 }
 
 get_factory_buy :: proc(gc: ^Game_Cache) -> (action: Action_ID, ok: bool) {

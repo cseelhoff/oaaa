@@ -173,16 +173,15 @@ reset_valid_land_moves :: proc(gc: ^Game_Cache, land: Land_ID) {
 
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	if gc.money[gc.cur_player] < FACTORY_COST do return true
-	gc.valid_actions.len = 1
-	gc.valid_actions.data[0] = .Skip_Action
+	gc.valid_actions = {.Skip_Action}
 	for land in Land_ID {
 		if gc.owner[land] != gc.cur_player ||
 		   gc.factory_prod[land] > 0 ||
-		   gc.combat_status[l2aid(land)] != .NO_COMBAT ||
-		   l2aid(land) in gc.skipped_moves[l2aid(land)] {
+		   gc.land_combat_status[land] != .NO_COMBAT ||
+		   l2aid(land) in gc.skipped_a2a[l2aid(land)] {
 			continue
 		}
-		sa.push(&gc.valid_actions, l2act(land))
+		gc.valid_actions += {l2act(land)}
 	}
 	for gc.money[gc.cur_player] < FACTORY_COST {
 		factory_land_action := get_factory_buy(gc) or_return
@@ -222,9 +221,9 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		if gc.owner[land] == gc.cur_player {
 			gc.builds_left[land] = gc.factory_prod[land]
 		}
-		gc.combat_status[l2aid(land)] = .NO_COMBAT
+		gc.land_combat_status[land] = .NO_COMBAT
 		gc.max_bombards[land] = 0
-		gc.skipped_moves[l2aid(land)] = {}
+		gc.skipped_a2a[l2aid(land)] = {}
 		gc.skipped_buys[land] = {}
 		gc.active_armies[land] = {}
 		idle_armies := &gc.idle_armies[land][gc.cur_player]
@@ -232,15 +231,15 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		gc.active_armies[land][.ARTY_UNMOVED] = idle_armies[.ARTY]
 		gc.active_armies[land][.TANK_UNMOVED] = idle_armies[.TANK]
 		gc.active_armies[land][.AAGUN_UNMOVED] = idle_armies[.AAGUN]
-		gc.active_planes[l2aid(land)] = {}
-		idle_planes := &gc.idle_planes[l2aid(land)][gc.cur_player]
-		gc.active_planes[l2aid(land)][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
-		gc.active_planes[l2aid(land)][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
+		gc.active_land_planes[land] = {}
+		idle_planes := &gc.idle_land_planes[land][gc.cur_player]
+		gc.active_land_planes[land][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
+		gc.active_land_planes[land][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
 	}
 
 	for sea in Sea_ID {
-		gc.combat_status[s2aid(sea)] = .NO_COMBAT
-		gc.skipped_moves[s2aid(sea)] = {}
+		gc.sea_combat_status[sea] = .NO_COMBAT
+		gc.skipped_a2a[s2aid(sea)] = {}
 		gc.active_ships[sea] = {}
 		idle_ships := &gc.idle_ships[sea][gc.cur_player]
 		gc.active_ships[sea][.TRANS_EMPTY_UNMOVED] = idle_ships[.TRANS_EMPTY]
@@ -256,10 +255,10 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		gc.active_ships[sea][.CRUISER_UNMOVED] = idle_ships[.CRUISER]
 		gc.active_ships[sea][.BATTLESHIP_UNMOVED] = idle_ships[.BATTLESHIP]
 		gc.active_ships[sea][.BS_DAMAGED_UNMOVED] = idle_ships[.BS_DAMAGED]
-		gc.active_planes[s2aid(sea)] = {}
-		idle_planes := &gc.idle_planes[s2aid(sea)][gc.cur_player]
-		gc.active_planes[s2aid(sea)][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
-		gc.active_planes[s2aid(sea)][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
+		gc.active_sea_planes[sea] = {}
+		idle_planes := &gc.idle_sea_planes[sea][gc.cur_player]
+		gc.active_sea_planes[sea][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
+		gc.active_sea_planes[sea][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
 	}
 	count_sea_unit_totals(gc)
 	load_open_canals(gc)

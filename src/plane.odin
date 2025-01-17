@@ -9,14 +9,14 @@ Idle_Plane :: enum {
 	BOMBER,
 }
 
-Idle_Plane_Names := [?]string {
+Idle_Plane_Names := [Idle_Plane]string {
 	Idle_Plane.FIGHTER = "FIGHTER",
 	Idle_Plane.BOMBER  = "BOMBER",
 }
 
-COST_IDLE_PLANE := [?]u8 {
-	Idle_Plane.FIGHTER = Cost_Buy[Buy_Action.BUY_FIGHTER],
-	Idle_Plane.BOMBER  = Cost_Buy[Buy_Action.BUY_BOMBER],
+COST_IDLE_PLANE := [Idle_Plane]u8 {
+	Idle_Plane.FIGHTER = Cost_Buy[.BUY_FIGHTER],
+	Idle_Plane.BOMBER  = Cost_Buy[.BUY_BOMBER],
 }
 
 FIGHTER_ATTACK :: 3

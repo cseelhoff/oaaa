@@ -19,7 +19,7 @@ Active_Armies :: [len(Active_Army)]u8
 // 	using territory:    Territory,
 // 	idle_armies:        Idle_Armies,
 // 	active_armies:      Active_Armies,
-// 	lands_2_moves_away: sa.Small_Array(len(Land_ID), Land_2_Moves_Away),
+// 	l2l_2away_via_land: sa.Small_Array(len(Land_ID), Land_2_Moves_Away),
 // 	seas_2_moves_away:  sa.Small_Array(len(Sea_ID), L2S_2_Moves_Away),
 // 	adjacent_seas:      SA_Adjacent_L2S,
 // 	original_owner:     ^Player,
@@ -66,7 +66,7 @@ get_land_idx_from_string :: proc(land_name: string) -> (land_idx: int, ok: bool)
 	return 0, false
 }
 
-initialize_lands_2_moves_away :: proc() {
+initialize_l2l_2away_via_land :: proc() {
 	// Floyd-Warshall algorithm
 	// Initialize distances array to Infinity
 	distances: [LANDS_COUNT][LANDS_COUNT]u8
@@ -90,7 +90,7 @@ initialize_lands_2_moves_away :: proc() {
 			}
 		}
 	}
-	// Initialize the lands_2_moves_away array
+	// Initialize the l2l_2away_via_land array
 	for &land, land_idx in lands {
 		adjacent_lands := sa.slice(&land.adjacent_lands)
 		for distance, dest_land_idx in distances[land_idx] {
@@ -102,7 +102,7 @@ initialize_lands_2_moves_away :: proc() {
 					_ = slice.linear_search(adjacent_lands, dest_adjacent_land) or_continue
 					sa.push(&dest.mid_lands, dest_adjacent_land)
 				}
-				sa.push(&land.lands_2_moves_away, dest)
+				sa.push(&land.l2l_2away_via_land, dest)
 			}
 		}
 	}

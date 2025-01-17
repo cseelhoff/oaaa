@@ -25,19 +25,21 @@ import "core:strconv"
 print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	print_game_state(gc)
 	fmt.print(mm.color[gc.cur_player])
-	fmt.println("Retreat From ", mm.air_name[src_air], " Valid Moves: ")
-	for valid_move in sa.slice(&gc.valid_actions) {
+	if is_land(src_air) {
+		fmt.println("Retreat From Land ", mm.land_name[a2lid(src_air)], " Valid Moves: ")
+	} else {
+		fmt.println("Retreat From Sea ", mm.sea_name[a2sid(src_air)], " Valid Moves: ")
+	}
+	for valid_move in gc.valid_actions {
 		fmt.print(int(valid_move), valid_move, ", ")
 	}
 	fmt.println(DEF_COLOR)
 }
 
-
 get_retreat_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (dst_air: Air_ID, ok: bool) {
 	debug_checks(gc)
-	dst_air = act2air(gc.valid_actions.data[0])
-	if gc.valid_actions.len > 1 {
-		if gc.answers_remaining == 0 do return dst_air, false
+	if card(gc.valid_actions) > 1 {
+		if gc.answers_remaining == 0 do return Air_ID(0), false
 		if gc.cur_player in mm.is_human {
 			print_retreat_prompt(gc, src_air)
 			dst_air = act2air(get_user_input(gc))
@@ -74,10 +76,10 @@ get_move_input :: proc(
 	if card(gc.valid_actions) > 1 {
 		if gc.answers_remaining == 0 do return Air_ID(0), false
 		if is_human[gc.cur_player] {
-			print_move_prompt(gc, unit_name, l2aid(src_air))
+			print_move_prompt(gc, unit_name, src_air)
 			dst_air = act2air(get_user_input(gc))
 		} else {
-			if ACTUALLY_PRINT do print_move_prompt(gc, unit_name, l2aid(src_air))
+			if ACTUALLY_PRINT do print_move_prompt(gc, unit_name, src_air)
 			dst_air = act2air(get_ai_input(gc))
 			if ACTUALLY_PRINT {
 				fmt.println("AI Action:", dst_air)
@@ -161,75 +163,76 @@ print_game_state :: proc(gc: ^Game_Cache) {
 	fmt.println(color, "--------------------")
 	fmt.println("Current Player: ", PLAYER_DATA[gc.cur_player].name)
 	fmt.println("Money: ", gc.money[gc.cur_player], DEF_COLOR, "\n")
-	for air in Air_ID {
-		if int(air) < len(Land_ID) {
-			land := a2lid(air)
-			fmt.print(mm.color[gc.owner[land]])
-			fmt.println(
-				mm.air_name[air],
-				gc.combat_status[air],
-				"builds:",
-				gc.builds_left[land],
-				gc.factory_dmg[land],
-				"/",
-				gc.factory_prod[land],
-				"bombards:",
-				gc.max_bombards[land],
-			)
-			fmt.print(PLAYER_DATA[gc.cur_player].color)
-			for army, army_idx in gc.active_armies[land] {
-				if army > 0 {
-					fmt.println(Active_Army_Names[army_idx], ":", army)
+	for land in Land_ID {
+		fmt.print(mm.color[gc.owner[land]])
+		fmt.println(
+			mm.land_name[land],
+			gc.land_combat_status[land],
+			"builds:",
+			gc.builds_left[land],
+			gc.factory_dmg[land],
+			"/",
+			gc.factory_prod[land],
+			"bombards:",
+			gc.max_bombards[land],
+		)
+		fmt.print(PLAYER_DATA[gc.cur_player].color)
+		for army in Active_Army {
+			if gc.active_armies[land][army] > 0 {
+				fmt.println(Active_Army_Names[army], ":", gc.active_armies[land][army])
+			}
+		}
+		for plane in Active_Plane {
+			if gc.active_land_planes[land][plane] > 0 {
+				fmt.println(Active_Plane_Names[plane], ":", gc.active_land_planes[land][plane])
+			}
+		}
+		for player in Player_ID {
+			// if &player == gc.cur_player do continue
+			fmt.print(mm.color[player])
+			for army in Idle_Army {
+				if gc.idle_armies[land][player][army] > 0 {
+					fmt.println(Idle_Army_Names[army], ":", gc.idle_armies[land][player][army])
 				}
 			}
-			for plane, plane_idx in gc.active_planes[air] {
-				if plane > 0 {
-					fmt.println(Active_Plane_Names[plane_idx], ":", plane)
-				}
-			}
-			for &player in gc.players {
-				// if &player == gc.cur_player do continue
-				fmt.print(mm.color[player])
-				for army, army_idx in gc.idle_armies[land][player] {
-					if army > 0 {
-						fmt.println(Idle_Army_Names[army_idx], ":", army)
-					}
-				}
-				for plane, plane_idx in gc.idle_planes[air][player] {
-					if plane > 0 {
-						fmt.println(Idle_Plane_Names[plane_idx], ":", plane)
-					}
-				}
-			}
-		} else {
-			sea := get_sea(gc, territory.territory_index)
-			fmt.println(territory.name)
-			fmt.print(PLAYER_DATA[gc.cur_player.index].color)
-			for ship, ship_idx in sea.active_ships {
-				if ship > 0 {
-					fmt.println(Active_Ship_Names[ship_idx], ":", ship)
-				}
-			}
-			for plane, plane_idx in sea.active_planes {
-				if plane > 0 {
-					fmt.println(Active_Plane_Names[plane_idx], ":", plane)
-				}
-			}
-			for &player in gc.players {
-				// if &player == gc.cur_player do continue
-				fmt.print(PLAYER_DATA[player.index].color)
-				for ship, ship_idx in sea.idle_ships[player.index] {
-					if ship > 0 {
-						fmt.println(Idle_Ship_Names[ship_idx], ":", ship)
-					}
-				}
-				for plane, plane_idx in sea.idle_planes[player.index] {
-					if plane > 0 {
-						fmt.println(Idle_Plane_Names[plane_idx], ":", plane)
-					}
+			for plane in Idle_Plane {
+				if gc.idle_land_planes[land][player][plane] > 0 {
+					fmt.println(Idle_Plane_Names[plane], ":", gc.idle_land_planes[land][player][plane])
 				}
 			}
 		}
-		fmt.println(DEF_COLOR)
 	}
+	for sea in Sea_ID {
+		fmt.println(mm.sea_name[sea], gc.sea_combat_status[sea])
+		fmt.print(mm.color[gc.cur_player])
+		for ship in Active_Ship {
+			if gc.active_ships[sea][ship] > 0 {
+				fmt.println(Active_Ship_Names[ship], ":", gc.active_ships[sea][ship])
+			}
+		}
+		for plane in Active_Plane {
+			if gc.active_sea_planes[sea][plane] > 0 {
+				fmt.println(Active_Plane_Names[plane], ":", gc.active_sea_planes[sea][plane])
+			}
+		}
+		for player in Player_ID {
+			// if &player == gc.cur_player do continue
+			fmt.print(mm.color[player])
+			for ship in Idle_Ship {
+				if gc.idle_ships[sea][player][ship] > 0 {
+					fmt.println(Idle_Ship_Names[ship], ":", gc.idle_ships[sea][player][ship])
+				}
+			}
+			//for plane in Idle_Plane {
+			// 	if gc.idle_sea_planes plane > 0 {
+			// 		fmt.println(Idle_Plane_Names[plane], ":", plane)
+			// 	}
+			// }
+			if gc.idle_sea_planes[sea][player][.FIGHTER] > 0 {
+				fmt.println(Idle_Plane_Names[.FIGHTER], ":", gc.idle_sea_planes[sea][player][.FIGHTER])
+			}
+		}
+	}
+	fmt.println(DEF_COLOR)
 }
+

@@ -8,6 +8,8 @@ MAX_LAND_TO_SEA_CONNECTIONS :: 4
 
 MAX_PATHS_TO_LAND :: 2
 Mid_Lands :: sa.Small_Array(MAX_PATHS_TO_LAND, Land_ID)
+MAX_PATHS_TO_SEA :: 2
+Mid_Seas :: sa.Small_Array(MAX_PATHS_TO_SEA, Land_ID)
 
 L2S_2_Away :: struct {
 	mid_lands: Mid_Lands,
@@ -20,53 +22,70 @@ SA_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
 SA_L2S_2_Away :: sa.Small_Array(len(Sea_ID), L2S_2_Away)
 SA_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
 SA_A2A :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, Air_ID)
+L2L_2Away_Via_Land :: [Land_ID]sa.Small_Array(len(Land_ID), Land_2_Moves_Away)
+S2S_2Away_Via_Sea :: [Land_ID]sa.Small_Array(len(Sea_ID), Sea_ID)
 
 MapData :: struct {
-	teams:                  Teams,
-	capital:                [Player_ID]Land_ID,
-	team:                   [Player_ID]Team_ID,
-	enemy_team:             [Player_ID]Team_ID,
-	allies:                 [Player_ID]SA_Players,
-	enemies:                [Player_ID]SA_Players,
-	adj_l2a:                [Land_ID]Air_Bitset,
-	air_l2a_2away:          [Land_ID]Air_Bitset,
-	adj_l2l:                [Land_ID]SA_L2L,
-	adj_l2s:                [Land_ID]SA_L2S,
-	adj_l2s_2_away:         [Land_ID]SA_L2S_2_Away,
+	teams:                 Teams,
+	capital:               [Player_ID]Land_ID,
+	team:                  [Player_ID]Team_ID,
+	enemy_team:            [Player_ID]Team_ID,
+	allies:                [Player_ID]SA_Players,
+	enemies:               [Player_ID]SA_Players,
+	// adj_l2a:                [Land_ID]Air_Bitset,
+	// a2a_2away_via_air:          [Land_ID]Air_Bitset,
+	// l2l_1away_via_land:                [Land_ID]SA_L2L,
+	// l2s_1away_via_land:                [Land_ID]SA_L2S,
+	// l2s_2away_via_land:         [Land_ID]SA_L2S_2_Away,
 	//adj_a2a:            [Air_ID]SA_A2A,
-	adj_a2l:                [Air_ID]Land_Bitset,
-	adj_a2s:                [Air_ID]Sea_Bitset,
-	orig_owner:             [Land_ID]Player_ID,
+	// adj_a2l:                [Air_ID]Land_Bitset,
+	// adj_a2s:                [Air_ID]Sea_Bitset,
+	orig_owner:            [Land_ID]Player_ID,
 	// airs_2_moves_away:       [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
 	// airs_3_moves_away:       [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
 	// airs_4_moves_away:       [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
 	// airs_5_moves_away:       [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
 	// airs_6_moves_away:       [Air_ID]sa.Small_Array(len(Air_ID), Air_ID),
-	l2l_within_6_air_moves: [Land_ID]Land_Bitset,
+	// a2a_within_6_moves: [Land_ID]Land_Bitset,
 	// air_within_5_air_moves:  [Air_ID]Air_Bitset,
 	// air_within_4_air_moves:  [Air_ID]Air_Bitset,
 	// air_within_3_air_moves:  [Air_ID]Air_Bitset,
 	// air_within_2_air_moves:  [Air_ID]Air_Bitset,
 	// air_within_1_air_moves:  [Air_ID]Air_Bitset,
-	l2a_within_3_moves:     [Land_ID]Air_Bitset,
-	l2a_within_4_air_moves: [Land_ID]Air_Bitset,
-	l2a_within_5_air_moves: [Land_ID]Air_Bitset,
-	a2a_within_2_air_moves: [Air_ID]Air_Bitset, //fighters use this too
-	a2l_within_3_air_moves: [Air_ID]Land_Bitset,
-	a2l_within_4_air_moves: [Air_ID]Land_Bitset,
-	a2l_within_5_air_moves: [Air_ID]Land_Bitset,
-	lands_2_moves_away:     [Land_ID]sa.Small_Array(len(Land_ID), Land_2_Moves_Away),
-	dst_sea_2_away:         [Land_ID]sa.Small_Array(len(Sea_ID), Sea_ID),
-	land_distances:         [Land_ID][Land_ID]u8,
-	air_distances:          [Air_ID][Air_ID]u8,
-	value:                  [Land_ID]u8,
-	original_owner:         [Land_ID]Player_ID,
-	adj_s2s:                [Canal_States][Sea_ID]SA_S2S,
-	seas_2_moves_away:      [Canal_States][Sea_ID]SA_S2S,
-	sea_distances:          [Canal_States][Sea_ID][Sea_ID]u8,
-	color:                  [Player_ID]string,
-	air_name:               [Air_ID]string,
-	is_human:               bit_set[Player_ID;u8],
+	// a2a_within_3_moves:     [Land_ID]Air_Bitset,
+	a2a_within_1_moves:    [Air_ID]Air_Bitset,
+	a2a_within_2_moves:    [Air_ID]Air_Bitset,
+	a2a_within_3_moves:    [Air_ID]Air_Bitset,
+	a2a_within_4_moves:    [Air_ID]Air_Bitset,
+	a2a_within_5_moves:    [Air_ID]Air_Bitset,
+	a2a_within_6_moves:    [Air_ID]Air_Bitset,
+	// a2a_within_4_moves: [Land_ID]Air_Bitset,
+	// a2a_within_5_moves: [Land_ID]Air_Bitset,
+	// a2a_within_2_air_moves: [Air_ID]Air_Bitset, //fighters use this too
+	// a2l_within_3_air_moves: [Air_ID]Land_Bitset,
+	// a2l_within_4_air_moves: [Air_ID]Land_Bitset,
+	// a2l_within_5_air_moves: [Air_ID]Land_Bitset,
+	l2l_2away_via_land:    L2L_2Away_Via_Land,
+	l2l_1away_via_land:    [Land_ID]SA_L2L,
+	l2s_1away_via_land:    [Land_ID]SA_L2S,
+	l2s_2away_via_land:    [Land_ID]SA_L2S_2_Away,
+	// s2s_2away_via_sea:      S2S_2Away_Via_Sea,
+	// a2a_1away_via_air:			[Air_ID]SA_A2A,
+	a2a_2away_via_air:     [Air_ID]Air_Bitset,
+	land_distances:        [Land_ID][Land_ID]u8,
+	air_distances:         [Air_ID][Air_ID]u8,
+	value:                 [Land_ID]u8,
+	original_owner:        [Land_ID]Player_ID,
+	// adj_s2s:                [Canal_States][Sea_ID]SA_S2S,
+	s2s_1away_via_sea:     [Canal_States][Sea_ID]Sea_Bitset,
+	s2s_2away_via_sea:     [Canal_States][Sea_ID]Sea_Bitset,
+	s2s_2away_via_midseas: [Canal_States][Sea_ID][Sea_ID]Mid_Seas,
+	sea_distances:         [Canal_States][Sea_ID][Sea_ID]u8,
+	color:                 [Player_ID]string,
+	// air_name:               [Air_ID]string,
+	land_name:             [Land_ID]string,
+	sea_name:              [Sea_ID]string,
+	is_human:              bit_set[Player_ID;u8],
 }
 
 Land_2_Moves_Away :: struct {
@@ -85,7 +104,7 @@ initialize_map_constants :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	initialize_sea_connections() or_return
 	initialize_costal_connections() or_return
 	initialize_canals() or_return
-	initialize_lands_2_moves_away()
+	initialize_l2l_2away_via_land()
 	// initialize_seas_2_moves_away(&gc.seas, &gc.canal_paths)
 	initialize_seas_2_moves_away()
 	initialize_air_dist()

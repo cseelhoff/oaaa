@@ -215,18 +215,18 @@ are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands, enemy_team:
 }
 
 add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
-	for dst_land in sa.slice(&mm.adj_l2l[src_land]) {
+	for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
 		if l2aid(dst_land) in gc.skipped_a2a[l2aid(src_land)] do continue
 		push_land_action(gc, dst_land)
 	}
-	for dst_sea in sa.slice(&mm.adj_l2s[src_land]) {
+	for dst_sea in sa.slice(&mm.l2s_1away_via_land[src_land]) {
 		add_if_boat_available(gc, src_land, dst_sea, army)
 	}
 }
 
 add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
 	enemy_team := mm.enemy_team[gc.cur_player]
-	for &dst_land_2_away in sa.slice(&mm.lands_2_moves_away[src_land]) {
+	for &dst_land_2_away in sa.slice(&mm.l2l_2away_via_land[src_land]) {
 		if l2aid(dst_land_2_away.land) in gc.skipped_a2a[l2aid(src_land)] ||
 		   are_midlands_blocked(gc, &dst_land_2_away.mid_lands, enemy_team) {
 			continue
@@ -234,7 +234,7 @@ add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
 		push_land_action(gc, dst_land_2_away.land)
 	}
 	// check for moving from land to sea (two moves away)
-	for &dst_sea_2_away in sa.slice(&mm.adj_l2s_2_away[src_land]) {
+	for &dst_sea_2_away in sa.slice(&mm.l2s_2away_via_land[src_land]) {
 		if s2aid(dst_sea_2_away.sea) in gc.skipped_a2a[l2aid(src_land)] ||
 		   are_midlands_blocked(gc, &dst_sea_2_away.mid_lands, enemy_team) {
 			continue
