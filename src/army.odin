@@ -173,10 +173,10 @@ move_single_army_land :: proc(
 ) {
 	gc.active_armies[dst_land][dst_unit] += 1
 	gc.idle_armies[dst_land][player][Active_Army_To_Idle[dst_unit]] += 1
-	gc.land_team_units[dst_land][mm.team[player]] += 1
+	gc.team_land_units[dst_land][mm.team[player]] += 1
 	gc.active_armies[src_land][src_unit] -= 1
 	gc.idle_armies[src_land][player][Active_Army_To_Idle[src_unit]] -= 1
-	gc.land_team_units[src_land][mm.team[player]] -= 1
+	gc.team_land_units[src_land][mm.team[player]] -= 1
 }
 
 is_boat_available :: proc(
@@ -209,7 +209,7 @@ add_if_boat_available :: proc(
 
 are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands, enemy_team: Team_ID) -> bool {
 	for mid_land in sa.slice(mid_lands) {
-		if gc.land_team_units[mid_land][enemy_team] == 0 do return false
+		if gc.team_land_units[mid_land][enemy_team] == 0 do return false
 	}
 	return true
 }
@@ -309,7 +309,7 @@ load_specific_transport :: proc(
 	gc.idle_ships[dst_sea][player][Active_Ship_To_Idle[new_ship]] += 1
 	gc.active_armies[src_land][army] -= 1
 	gc.idle_armies[src_land][player][idle_army] -= 1
-	gc.land_team_units[src_land][mm.team[player]] -= 1
+	gc.team_land_units[src_land][mm.team[player]] -= 1
 	gc.active_ships[dst_sea][ship] -= 1
 	gc.idle_ships[dst_sea][player][Active_Ship_To_Idle[ship]] -= 1
 }

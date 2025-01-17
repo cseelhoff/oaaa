@@ -66,7 +66,7 @@ non_dest_non_sub_exist :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
 build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
 	gc.valid_actions={s2act(src_sea)}
 	if gc.enemy_blockade_total[src_sea] == 0 &&
-		   gc.sea_team_units[src_sea][mm.enemy_team[gc.cur_player]] ==
+		   gc.team_sea_units[src_sea][mm.enemy_team[gc.cur_player]] ==
 			   gc.enemy_submarines_total[src_sea] ||
 	   gc.active_ships[src_sea][.SUB_0_MOVES] > 0 ||
 	   gc.active_ships[src_sea][.DESTROYER_0_MOVES] > 0 ||
@@ -91,17 +91,17 @@ sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> bool {
 		number_of_ships := gc.active_ships[src_sea][active_ship]
 		gc.active_ships[dst_sea][Ships_After_Retreat[active_ship]] += number_of_ships
 		gc.idle_ships[dst_sea][gc.cur_player][Active_Ship_To_Idle[active_ship]] += number_of_ships
-		gc.sea_team_units[dst_sea][team] += number_of_ships
+		gc.team_sea_units[dst_sea][team] += number_of_ships
 		gc.active_ships[src_sea][active_ship] = 0
 		gc.idle_ships[src_sea][gc.cur_player][Active_Ship_To_Idle[active_ship]] = 0
-		gc.sea_team_units[src_sea][team] -= number_of_ships
+		gc.team_sea_units[src_sea][team] -= number_of_ships
 		for player in sa.slice(&mm.allies[gc.cur_player]) {
 			if player == gc.cur_player do continue
 			number_of_ships = gc.idle_ships[src_sea][player][Active_Ship_To_Idle[active_ship]]
 			gc.idle_ships[dst_sea][player][Active_Ship_To_Idle[active_ship]] += number_of_ships
-			gc.sea_team_units[dst_sea][team] += number_of_ships
+			gc.team_sea_units[dst_sea][team] += number_of_ships
 			gc.idle_ships[src_sea][player][Active_Ship_To_Idle[active_ship]] = 0
-			gc.sea_team_units[src_sea][team] -= number_of_ships
+			gc.team_sea_units[src_sea][team] -= number_of_ships
 		}
 	}
 	gc.sea_combat_status[src_sea] = .POST_COMBAT
@@ -111,12 +111,12 @@ sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> bool {
 do_sea_targets_exist :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
 	enemy_team_idx := mm.enemy_team[gc.cur_player]
 	if gc.active_ships[src_sea][.DESTROYER_0_MOVES] > 0 {
-		return gc.sea_team_units[src_sea][enemy_team_idx] > 0
+		return gc.team_sea_units[src_sea][enemy_team_idx] > 0
 	} else if non_dest_non_sub_exist(gc, src_sea) {
-		return gc.sea_team_units[src_sea][enemy_team_idx] > gc.enemy_submarines_total[src_sea]
+		return gc.team_sea_units[src_sea][enemy_team_idx] > gc.enemy_submarines_total[src_sea]
 	} else if get_allied_subs_count(gc, src_sea) > 0 {
 		return(
-			gc.sea_team_units[src_sea][enemy_team_idx] >
+			gc.team_sea_units[src_sea][enemy_team_idx] >
 			gc.enemy_submarines_total[src_sea] + gc.enemy_fighters_total[src_sea] \
 		)
 	}
@@ -170,7 +170,7 @@ destroy_defender_transports :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
 		enemy_team := mm.enemy_team[gc.cur_player]
 		for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
 			for transport in Idle_Transports {
-				gc.sea_team_units[src_sea][enemy_team] -=
+				gc.team_sea_units[src_sea][enemy_team] -=
 					gc.idle_ships[src_sea][enemy][transport]
 				gc.idle_ships[src_sea][enemy][transport] = 0
 			}
@@ -208,7 +208,7 @@ get_defender_hits :: proc(gc: ^Game_Cache, defender_damage: int) -> (defender_hi
 }
 
 no_allied_units_remain :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
-	if gc.sea_team_units[src_sea][mm.team[gc.cur_player]] > 0 do return false
+	if gc.team_sea_units[src_sea][mm.team[gc.cur_player]] > 0 do return false
 	gc.sea_combat_status[src_sea] = .POST_COMBAT
 	return true
 }
@@ -253,13 +253,13 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 }
 
 flag_for_land_enemy_combat :: proc(gc: ^Game_Cache, dst_land: Land_ID, enemy_team: Team_ID) -> bool {
-	if gc.land_team_units[dst_land][enemy_team] == 0 do return false
+	if gc.team_land_units[dst_land][enemy_team] == 0 do return false
 	gc.land_combat_status[dst_land] = .PRE_COMBAT
 	return true
 }
 
 flag_for_sea_enemy_combat :: proc(gc: ^Game_Cache, dst_sea: Sea_ID, enemy_team: Team_ID) -> bool {
-	if gc.sea_team_units[dst_sea][enemy_team] == 0 do return false
+	if gc.team_sea_units[dst_sea][enemy_team] == 0 do return false
 	gc.sea_combat_status[dst_sea] = .PRE_COMBAT
 	return true
 }

@@ -41,55 +41,55 @@ Active_Plane :: enum {
 	BOMBER_0_MOVES,
 }
 
-Active_Plane_To_Idle := [?]Idle_Plane {
-	Active_Plane.FIGHTER_UNMOVED = .FIGHTER,
-	Active_Plane.FIGHTER_4_MOVES = .FIGHTER,
-	Active_Plane.FIGHTER_3_MOVES = .FIGHTER,
-	Active_Plane.FIGHTER_2_MOVES = .FIGHTER,
-	Active_Plane.FIGHTER_1_MOVES = .FIGHTER,
-	Active_Plane.FIGHTER_0_MOVES = .FIGHTER,
-	Active_Plane.BOMBER_UNMOVED  = .BOMBER,
-	Active_Plane.BOMBER_5_MOVES  = .BOMBER,
-	Active_Plane.BOMBER_4_MOVES  = .BOMBER,
-	Active_Plane.BOMBER_3_MOVES  = .BOMBER,
-	Active_Plane.BOMBER_2_MOVES  = .BOMBER,
-	Active_Plane.BOMBER_1_MOVES  = .BOMBER,
-	Active_Plane.BOMBER_0_MOVES  = .BOMBER,
+Active_Plane_To_Idle := [Active_Plane]Idle_Plane {
+	.FIGHTER_UNMOVED = .FIGHTER,
+	.FIGHTER_4_MOVES = .FIGHTER,
+	.FIGHTER_3_MOVES = .FIGHTER,
+	.FIGHTER_2_MOVES = .FIGHTER,
+	.FIGHTER_1_MOVES = .FIGHTER,
+	.FIGHTER_0_MOVES = .FIGHTER,
+	.BOMBER_UNMOVED  = .BOMBER,
+	.BOMBER_5_MOVES  = .BOMBER,
+	.BOMBER_4_MOVES  = .BOMBER,
+	.BOMBER_3_MOVES  = .BOMBER,
+	.BOMBER_2_MOVES  = .BOMBER,
+	.BOMBER_1_MOVES  = .BOMBER,
+	.BOMBER_0_MOVES  = .BOMBER,
 }
 
-Active_Plane_Names := [?]string {
-	Active_Plane.FIGHTER_UNMOVED = "FIGHTER_UNMOVED",
-	Active_Plane.FIGHTER_4_MOVES = "FIGHTER_4_MOVES",
-	Active_Plane.FIGHTER_3_MOVES = "FIGHTER_3_MOVES",
-	Active_Plane.FIGHTER_2_MOVES = "FIGHTER_2_MOVES",
-	Active_Plane.FIGHTER_1_MOVES = "FIGHTER_1_MOVES",
-	Active_Plane.FIGHTER_0_MOVES = "FIGHTER_0_MOVES",
-	Active_Plane.BOMBER_UNMOVED  = "BOMBER_UNMOVED",
-	Active_Plane.BOMBER_5_MOVES  = "BOMBER_5_MOVES",
-	Active_Plane.BOMBER_4_MOVES  = "BOMBER_4_MOVES",
-	Active_Plane.BOMBER_3_MOVES  = "BOMBER_3_MOVES",
-	Active_Plane.BOMBER_2_MOVES  = "BOMBER_2_MOVES",
-	Active_Plane.BOMBER_1_MOVES  = "BOMBER_1_MOVES",
-	Active_Plane.BOMBER_0_MOVES  = "BOMBER_0_MOVES",
+Active_Plane_Names := [Active_Plane]string {
+	.FIGHTER_UNMOVED = "FIGHTER_UNMOVED",
+	.FIGHTER_4_MOVES = "FIGHTER_4_MOVES",
+	.FIGHTER_3_MOVES = "FIGHTER_3_MOVES",
+	.FIGHTER_2_MOVES = "FIGHTER_2_MOVES",
+	.FIGHTER_1_MOVES = "FIGHTER_1_MOVES",
+	.FIGHTER_0_MOVES = "FIGHTER_0_MOVES",
+	.BOMBER_UNMOVED  = "BOMBER_UNMOVED",
+	.BOMBER_5_MOVES  = "BOMBER_5_MOVES",
+	.BOMBER_4_MOVES  = "BOMBER_4_MOVES",
+	.BOMBER_3_MOVES  = "BOMBER_3_MOVES",
+	.BOMBER_2_MOVES  = "BOMBER_2_MOVES",
+	.BOMBER_1_MOVES  = "BOMBER_1_MOVES",
+	.BOMBER_0_MOVES  = "BOMBER_0_MOVES",
 }
 
-Plane_After_Moves := [?]Active_Plane {
-	Active_Plane.FIGHTER_UNMOVED = .FIGHTER_0_MOVES,
-	Active_Plane.FIGHTER_4_MOVES = .FIGHTER_0_MOVES,
-	Active_Plane.FIGHTER_3_MOVES = .FIGHTER_0_MOVES,
-	Active_Plane.FIGHTER_2_MOVES = .FIGHTER_0_MOVES,
-	Active_Plane.FIGHTER_1_MOVES = .FIGHTER_0_MOVES,
-	Active_Plane.FIGHTER_0_MOVES = .FIGHTER_0_MOVES,
-	Active_Plane.BOMBER_UNMOVED  = .BOMBER_0_MOVES,
-	Active_Plane.BOMBER_5_MOVES  = .BOMBER_0_MOVES,
-	Active_Plane.BOMBER_4_MOVES  = .BOMBER_0_MOVES,
-	Active_Plane.BOMBER_3_MOVES  = .BOMBER_0_MOVES,
-	Active_Plane.BOMBER_2_MOVES  = .BOMBER_0_MOVES,
-	Active_Plane.BOMBER_1_MOVES  = .BOMBER_0_MOVES,
-	Active_Plane.BOMBER_0_MOVES  = .BOMBER_0_MOVES,
+Plane_After_Moves := [Active_Plane]Active_Plane {
+	.FIGHTER_UNMOVED = .FIGHTER_0_MOVES,
+	.FIGHTER_4_MOVES = .FIGHTER_0_MOVES,
+	.FIGHTER_3_MOVES = .FIGHTER_0_MOVES,
+	.FIGHTER_2_MOVES = .FIGHTER_0_MOVES,
+	.FIGHTER_1_MOVES = .FIGHTER_0_MOVES,
+	.FIGHTER_0_MOVES = .FIGHTER_0_MOVES,
+	.BOMBER_UNMOVED  = .BOMBER_0_MOVES,
+	.BOMBER_5_MOVES  = .BOMBER_0_MOVES,
+	.BOMBER_4_MOVES  = .BOMBER_0_MOVES,
+	.BOMBER_3_MOVES  = .BOMBER_0_MOVES,
+	.BOMBER_2_MOVES  = .BOMBER_0_MOVES,
+	.BOMBER_1_MOVES  = .BOMBER_0_MOVES,
+	.BOMBER_0_MOVES  = .BOMBER_0_MOVES,
 }
 
-Unmoved_Planes := [?]Active_Plane{Active_Plane.FIGHTER_UNMOVED, Active_Plane.BOMBER_UNMOVED}
+Unmoved_Planes := [?]Active_Plane{.FIGHTER_UNMOVED, .BOMBER_UNMOVED}
 
 move_unmoved_planes :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for plane in Unmoved_Planes {
@@ -110,7 +110,7 @@ move_plane_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
 move_plane_air :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) -> (ok: bool) {
 	if gc.active_planes[src_air][plane] == 0 do return true
 	refresh_plane_can_land_here(gc, plane)
-	gc.valid_actions={a2act(src_air)}
+	gc.valid_actions = {a2act(src_air)}
 	add_valid_plane_moves(gc, src_air, plane)
 	for gc.active_planes[src_air][plane] > 0 {
 		move_next_plane_in_air(gc, src_air, plane) or_return
@@ -171,7 +171,6 @@ plane_enemy_checks :: proc(
 	if plane == Active_Plane.FIGHTER_UNMOVED {
 		return fighter_enemy_checks(gc, src_air, dst_air)
 	}
-	return bomber_enemy_checks(gc, src_air, dst_air)
 }
 
 add_valid_plane_moves :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) {

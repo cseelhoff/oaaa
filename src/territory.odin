@@ -55,6 +55,16 @@ Air_ID :: distinct enum u8 {
 	Baltic_Air,
 }
 
+a2lid :: #force_inline proc(air : Air_ID) -> Land_ID {
+	assert(int(air) < len(Land_ID))
+	return Land_ID(air)
+}
+
+a2sid :: #force_inline proc(air : Air_ID) -> Sea_ID {
+	assert(int(air) >= len(Land_ID))
+	return Sea_ID(int(air) - len(Land_ID))
+}
+
 is_land :: #force_inline proc(air: Air_ID) -> bool {
 	return int(air) < len(Land_ID)
 }

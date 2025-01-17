@@ -95,7 +95,9 @@ when ODIN_DEBUG {
 }
 play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	debug_checks(gc)
-	move_unmoved_planes(gc) or_return // move before carriers for more options
+	move_unmoved_fighters(gc) or_return // move before carriers for more options
+	debug_checks(gc)
+	move_unmoved_bombers(gc) or_return
 	debug_checks(gc)
 	move_combat_ships(gc) or_return
 	debug_checks(gc)
@@ -113,9 +115,9 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	debug_checks(gc)
 	move_aa_guns(gc) or_return
 	debug_checks(gc)
-	land_fighter_units(gc) or_return
+	land_remaining_fighters(gc) or_return
 	debug_checks(gc)
-	land_bomber_units(gc) or_return
+	land_remaining_bombers(gc) or_return
 	debug_checks(gc)
 	buy_units(gc) or_return
 	debug_checks(gc)

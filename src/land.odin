@@ -8,11 +8,6 @@ import "core:strings"
 
 SA_Adjacent_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
 
-a2lid :: #force_inline proc(air : Air_ID) -> Land_ID {
-	assert(int(air) < len(Land_ID))
-	return Land_ID(air)
-}
-
 Land_Data :: struct {
 	name:  string,
 	owner: string,

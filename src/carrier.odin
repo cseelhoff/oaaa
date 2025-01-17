@@ -12,9 +12,9 @@ carry_allied_fighters :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID)
 		if fighters_to_move == 0 do continue
 		fighters_to_move = min(fighters_to_move, fighters_remaining)
 		gc.idle_sea_planes[dst_sea][player][.FIGHTER] += fighters_to_move
-		gc.sea_team_units[dst_sea][mm.team[player]] += fighters_to_move
+		gc.team_sea_units[dst_sea][mm.team[player]] += fighters_to_move
 		gc.idle_sea_planes[src_sea][player][.FIGHTER] -= fighters_to_move
-		gc.sea_team_units[src_sea][mm.team[player]] -= fighters_to_move
+		gc.team_sea_units[src_sea][mm.team[player]] -= fighters_to_move
 		fighters_remaining -= fighters_to_move
 		if fighters_remaining == 0 do break
 	}

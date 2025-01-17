@@ -20,6 +20,51 @@ Unlanded_Fighters := [?]Active_Plane {
 
 FIGHTER_MAX_MOVES :: 4
 
+move_unmoved_fighters :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (ok: bool) {
+	gc.clear_needed = false
+	for src_land in Land_ID {
+		if gc.active_land_planes[src_land][.FIGHTER_UNMOVED] == 0 do return true
+		if ~gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
+		gc.valid_actions = {l2act(src_land)}
+		add_valid_unmoved_land_fighter_moves(gc, src_land)
+		for gc.active_land_planes[src_land][.FIGHTER_UNMOVED] > 0 {
+			move_next_fighter_from_land(gc, src_land) or_return
+		}
+	}
+	for src_sea in Sea_ID {
+		if gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] == 0 do return true
+		if ~gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
+		gc.valid_actions = {s2act(src_sea)}
+		add_valid_unmoved_sea_fighter_moves(gc, src_sea)
+		for gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] > 0 {
+			move_next_fighter_from_sea(gc, src_sea) or_return
+		}
+	}
+	return true
+}
+
+add_valid_unmoved_land_fighter_moves:: #force_inline proc(gc: ^Game_Cache, src_land: Land_ID) {
+	gc.valid_actions +=
+		air2action_bitset(
+			(~gc.skipped_a2a[l2aid(src_land)] &
+				(l2a_bitset(mm.l2a_within_4_air_moves[src_land] & gc.can_fighter_land_here) |
+					(gc.air_has_enemies &
+						(mm.l2a_within_2_moves[src_land] |
+							(mm.l2a_within_3_air_moves[src_land] & gc.can_fighter_land_in_1_move))))) 
+		)
+}
+
+add_valid_unmoved_sea_fighter_moves:: #force_inline proc(gc: ^Game_Cache, src_sea: Sea_ID) {
+	gc.valid_actions +=
+		air2action_bitset(
+			(~gc.skipped_a2a[s2aid(src_sea)] &
+				(l2a_bitset(mm.s2a_within_4_air_moves[src_sea] & gc.can_fighter_land_here) |
+					(gc.air_has_enemies &
+						(mm.s2a_within_2_moves[src_sea] |
+							(mm.s2a_within_3_air_moves[src_sea] & gc.can_fighter_land_in_1_move))))) 
+		)
+}
+
 fighter_enemy_checks :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) -> Active_Plane {
 	if flag_for_enemy_combat(gc, dst_air, mm.enemy_team[gc.cur_player]) {
 		return Fighter_After_Moves[mm.air_distances[src_air][dst_air]]

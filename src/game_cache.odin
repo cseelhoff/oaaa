@@ -43,15 +43,15 @@ Air_Bitset :: bit_set[Air_ID;u16]
 
 Game_Cache :: struct {
 	using state:                   Game_State,
-	land_team_units:               [Land_ID][Team_ID]u8,
-	sea_team_units:                [Sea_ID][Team_ID]u8,
+	team_land_units:               [Land_ID][Team_ID]u8,
+	team_sea_units:                [Sea_ID][Team_ID]u8,
 	can_bomber_land_here:          Land_Bitset,
 	can_bomber_land_in_1_moves:    Air_Bitset,
 	can_bomber_land_in_2_moves:    Air_Bitset,
-	can_fighter_land_here:         Land_Bitset,
+	can_fighter_land_here:         Air_Bitset,
 	can_fighter_land_in_1_move:    Air_Bitset,
-	can_fighter_sealand_here:      Sea_Bitset,
-	can_fighter_sealand_in_1_move: Air_Bitset,
+	// can_fighter_sealand_here:      Sea_Bitset,
+	// can_fighter_sealand_in_1_move: Air_Bitset,
 	air_has_enemies:               Air_Bitset,
 	// land_has_enemies:              Land_Bitset,
 	has_bombable_factory:          Land_Bitset,
@@ -88,6 +88,10 @@ push_sea_action :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) {
 
 l2a_bitset :: #force_inline proc(land: Land_Bitset) -> Air_Bitset {
 	return transmute(Air_Bitset)u16(transmute(u8)land)
+}
+
+air2action_bitset :: #force_inline proc(air: Air_Bitset) -> Actions_Bitset {
+	return transmute(Actions_Bitset)u32(transmute(u16)air)
 }
 
 save_cache_to_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {

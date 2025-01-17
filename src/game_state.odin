@@ -5,7 +5,8 @@ import sa "core:container/small_array"
 Game_State :: struct {
 	active_armies:      [Land_ID][Active_Army]u8,
 	active_ships:       [Sea_ID][Active_Ship]u8,
-	active_planes:      [Air_ID][Active_Plane]u8,
+	active_land_planes: [Land_ID][Active_Plane]u8,
+	active_sea_planes:  [Sea_ID][Active_Plane]u8,
 	idle_armies:        [Land_ID][Player_ID][Idle_Army]u8,
 	idle_land_planes:   [Land_ID][Player_ID][Idle_Plane]u8,
 	idle_sea_planes:    [Sea_ID][Player_ID][Idle_Plane]u8,
