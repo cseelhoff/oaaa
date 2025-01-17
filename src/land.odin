@@ -155,7 +155,7 @@ conquer_land :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool) {
 	}
 	gc.owner[dst_land] = new_owner
 	gc.income[new_owner] += mm.value[dst_land]
-	gc.combat_status[l2aid(dst_land)] = .POST_COMBAT
+	gc.land_combat_status[dst_land] = .POST_COMBAT
 	if gc.factory_prod[dst_land] == 0 {
 		return true
 	}

@@ -110,7 +110,7 @@ move_plane_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
 move_plane_air :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) -> (ok: bool) {
 	if gc.active_planes[src_air][plane] == 0 do return true
 	refresh_plane_can_land_here(gc, plane)
-	reset_valid_moves(gc, src_air)
+	gc.valid_actions={a2act(src_air)}
 	add_valid_plane_moves(gc, src_air, plane)
 	for gc.active_planes[src_air][plane] > 0 {
 		move_next_plane_in_air(gc, src_air, plane) or_return

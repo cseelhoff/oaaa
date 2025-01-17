@@ -139,7 +139,7 @@ move_next_army_in_land :: proc(
 ) -> (
 	ok: bool,
 ) {
-	dst_air := get_land2air_move_input(gc, Active_Army_Names[army], src_land) or_return
+	dst_air := get_move_input(gc, Active_Army_Names[army], l2aid(src_land)) or_return
 	if check_load_transport(gc, army, src_land, dst_air) do return true
 	if skip_army(gc, src_land, a2lid(dst_air), army) do return true
 	army_after_move := blitz_checks(gc, a2lid(dst_air), army, src_land)
@@ -201,7 +201,7 @@ add_if_boat_available :: proc(
 	army: Active_Army,
 ) {
 	if is_boat_available(gc, src_land, dst_sea, army) {
-		if dst_sea not_in gc.skipped_l2s_moves[src_land] {
+		if s2aid(dst_sea) not_in gc.skipped_a2a[l2aid(src_land)] {
 			push_sea_action(gc, dst_sea)
 		}
 	}
@@ -216,7 +216,7 @@ are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands, enemy_team:
 
 add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
 	for dst_land in sa.slice(&mm.adj_l2l[src_land]) {
-		if dst_land in gc.skipped_land_moves[src_land] do continue
+		if l2aid(dst_land) in gc.skipped_a2a[l2aid(src_land)] do continue
 		push_land_action(gc, dst_land)
 	}
 	for dst_sea in sa.slice(&mm.adj_l2s[src_land]) {
@@ -227,7 +227,7 @@ add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
 add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
 	enemy_team := mm.enemy_team[gc.cur_player]
 	for &dst_land_2_away in sa.slice(&mm.lands_2_moves_away[src_land]) {
-		if dst_land_2_away.land in gc.skipped_land_moves[src_land] ||
+		if l2aid(dst_land_2_away.land) in gc.skipped_a2a[l2aid(src_land)] ||
 		   are_midlands_blocked(gc, &dst_land_2_away.mid_lands, enemy_team) {
 			continue
 		}
@@ -235,7 +235,7 @@ add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
 	}
 	// check for moving from land to sea (two moves away)
 	for &dst_sea_2_away in sa.slice(&mm.adj_l2s_2_away[src_land]) {
-		if dst_sea_2_away.sea in gc.skipped_l2s_moves[src_land] ||
+		if s2aid(dst_sea_2_away.sea) in gc.skipped_a2a[l2aid(src_land)] ||
 		   are_midlands_blocked(gc, &dst_sea_2_away.mid_lands, enemy_team) {
 			continue
 		}

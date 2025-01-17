@@ -20,12 +20,8 @@ Unlanded_Fighters := [?]Active_Plane {
 
 FIGHTER_MAX_MOVES :: 4
 
-fighter_enemy_checks :: proc(
-	gc: ^Game_Cache,
-	src_air: Air_ID,
-	dst_air: Air_ID,
-) -> Active_Plane {
-	if flag_for_enemy_combat(gc,dst_air, mm.enemy_team[gc.cur_player]) {
+fighter_enemy_checks :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) -> Active_Plane {
+	if flag_for_enemy_combat(gc, dst_air, mm.enemy_team[gc.cur_player]) {
 		return Fighter_After_Moves[mm.air_distances[src_air][dst_air]]
 	}
 	return .FIGHTER_0_MOVES
@@ -79,30 +75,20 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 }
 
 add_valid_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
-	for dst_air in sa.slice(&src_air.adjacent_airs) {
-		add_meaningful_fighter_move(gc, src_air, dst_air)
-	}
-	for dst_air in sa.slice(&src_air.airs_2_moves_away) {
-		add_meaningful_fighter_move(gc, src_air, dst_air)
-	}
-	for dst_air in sa.slice(&src_air.airs_3_moves_away) {
-		if dst_air.can_fighter_land_in_1_move {
-			add_meaningful_fighter_move(gc, src_air, dst_air)
-		}
-	}
-	for dst_air in sa.slice(&src_air.airs_4_moves_away) {
-		if dst_air.can_fighter_land_here {
-			add_move_if_not_skipped(gc, src_air, dst_air)
-		}
-	}
+	gc.valid_actions =
+		~gc.skipped_a2a[src_air] &
+		((mm.a2a_within_2_air_moves[src_air] &
+					(mm.can_fighter_land_here[dst_air] | gc.air_has_enemies[dst_air])) |
+				(mm.airs_3_moves_away[src_air] & gc.can_fighter_land_in_1_move) |
+				(mm.airs_4_moves_away[src_air] & gc.can_fighter_land_here))
 }
 
-add_meaningful_fighter_move :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
-	if dst_air.can_fighter_land_here ||
-	   dst_air.team_units[gc.cur_player.team.enemy_team.index] != 0 {
-		add_move_if_not_skipped(gc, src_air, dst_air)
-	}
-}
+// add_meaningful_fighter_move :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
+// 	if dst_air.can_fighter_land_here ||
+// 	   dst_air.team_units[gc.cur_player.team.enemy_team.index] != 0 {
+// 		add_move_if_not_skipped(gc, src_air, dst_air)
+// 	}
+// }
 
 land_fighter_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for plane in Unlanded_Fighters {
@@ -112,7 +98,7 @@ land_fighter_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
 }
 
 land_fighter_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
-		gc.clear_needed = false
+	gc.clear_needed = false
 	for src_air in Air_ID {
 		land_fighter_air(gc, src_air, plane) or_return
 	}

@@ -131,23 +131,23 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-add_move_if_not_skipped :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
-	if dst_air not_in gc.skipped_moves[src_air] {
-		sa.push(&gc.valid_actions, a2act(dst_air))
-	}
-}
+// add_move_if_not_skipped :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
+// 	if dst_air not_in gc.skipped_a2a[src_air] {
+// 		gc.valid_actions += {a2act(dst_air)}
+// 	}
+// }
 
 update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 	// get a list of newly skipped valid_actions
-	for {
-		assert(gc.valid_actions.len > 0)
-		valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
-		if valid_action == a2act(dst_air) do return
-		gc.skipped_moves[src_air] += {src_air}
+	for valid_action in gc.valid_actions {
+		// assert(card(gc.valid_actions) > 0)
+		// valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
+		if valid_action == a2act(src_air) do continue
+		if valid_action == a2act(dst_air) do break
+		gc.skipped_a2a[src_air] += {act2air(valid_action)}
 		gc.clear_needed = true
-		//apply_skip(gc, src_air, Air_ID[valid_action])
-		gc.valid_actions.len -= 1
 	}
+	gc.valid_actions -= transmute(Actions_Bitset)u32(transmute(u16)gc.skipped_a2a[src_air])
 }
 
 // apply_skip :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
@@ -160,21 +160,14 @@ update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 
 clear_move_history :: proc(gc: ^Game_Cache) {
 	for air in Air_ID {
-		gc.skipped_moves[air] = {}
+		gc.skipped_a2a[air] = {}
 	}
 	gc.clear_needed = false
 }
 
 reset_valid_land_moves :: proc(gc: ^Game_Cache, land: Land_ID) { 
-	gc.valid_actions.len = 1
-	gc.valid_actions.data[0] = l2act(land)
+	gc.valid_actions = {l2act(land)}
 }
-
-reset_valid_moves :: proc(gc: ^Game_Cache, air: Air_ID) { 	// -> (dst_air_idx: int) {
-	gc.valid_actions.len = 1
-	gc.valid_actions.data[0] = a2act(air)
-}
-
 
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	if gc.money[gc.cur_player] < FACTORY_COST do return true
@@ -359,7 +352,7 @@ random_play_until_terminal :: proc(gc: ^Game_Cache, gs: ^Game_State) -> f64 {
 	return score
 }
 
-get_possible_actions :: proc(gs: ^Game_State) -> SA_Valid_Actions {
+get_possible_actions :: proc(gs: ^Game_State) -> Actions_Bitset {
 	// Return the list of possible actions from the given state
 	gc: Game_Cache
 	// set unlucky teams

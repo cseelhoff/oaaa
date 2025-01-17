@@ -25,7 +25,7 @@ is_carrier_available :: proc(gc: ^Game_Cache, dst_sea: Sea_ID) -> bool {
 	fighters: u8 = 0
 	for player in sa.slice(&mm.allies[gc.cur_player]) {
 		carriers += gc.idle_ships[dst_sea][player][Idle_Ship.CARRIER]
-		fighters += gc.idle_planes[s2aid(dst_sea)][player][Idle_Plane.FIGHTER]
+		fighters += gc.idle_sea_planes[dst_sea][player][Idle_Plane.FIGHTER]
 	}
 	return carriers * 2 > fighters
 }

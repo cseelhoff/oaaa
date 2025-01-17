@@ -60,8 +60,8 @@ Ship_After_Staged := [?][MAX_TRANSPORT_MOVES + 1]Active_Ship {
 	},
 }
 
-Transport_Load_Unit := [len(Idle_Army)][len(Active_Ship)]Active_Ship {
-	Idle_Army.INF = {
+Transport_Load_Unit := [Idle_Army][len(Active_Ship)]Active_Ship {
+	.INF = {
 		Active_Ship.TRANS_1T_2_MOVES = .TRANS_1I_1T_2_MOVES,
 		Active_Ship.TRANS_1A_2_MOVES = .TRANS_1I_1A_2_MOVES,
 		Active_Ship.TRANS_1I_2_MOVES = .TRANS_2I_2_MOVES,
@@ -75,7 +75,7 @@ Transport_Load_Unit := [len(Idle_Army)][len(Active_Ship)]Active_Ship {
 		Active_Ship.TRANS_1I_0_MOVES = .TRANS_2I_0_MOVES,
 		Active_Ship.TRANS_EMPTY_0_MOVES = .TRANS_1I_0_MOVES,
 	},
-	Idle_Army.ARTY = {
+	.ARTY = {
 		Active_Ship.TRANS_1I_2_MOVES = .TRANS_1I_1A_2_MOVES,
 		Active_Ship.TRANS_EMPTY_2_MOVES = .TRANS_1A_2_MOVES,
 		Active_Ship.TRANS_1I_1_MOVES = .TRANS_1I_1A_1_MOVES,
@@ -83,7 +83,7 @@ Transport_Load_Unit := [len(Idle_Army)][len(Active_Ship)]Active_Ship {
 		Active_Ship.TRANS_1I_0_MOVES = .TRANS_1I_1A_0_MOVES,
 		Active_Ship.TRANS_EMPTY_0_MOVES = .TRANS_1A_0_MOVES,
 	},
-	Idle_Army.TANK = {
+	.TANK = {
 		Active_Ship.TRANS_1I_2_MOVES = .TRANS_1I_1T_2_MOVES,
 		Active_Ship.TRANS_EMPTY_2_MOVES = .TRANS_1T_2_MOVES,
 		Active_Ship.TRANS_1I_1_MOVES = .TRANS_1I_1T_1_MOVES,
@@ -91,6 +91,8 @@ Transport_Load_Unit := [len(Idle_Army)][len(Active_Ship)]Active_Ship {
 		Active_Ship.TRANS_1I_0_MOVES = .TRANS_1I_1T_0_MOVES,
 		Active_Ship.TRANS_EMPTY_0_MOVES = .TRANS_1T_0_MOVES,
 	},
+	.AAGUN = {
+	}
 }
 
 Idle_Ship_Space := [?][]Idle_Ship {
@@ -121,7 +123,7 @@ stage_trans_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
 
 stage_trans_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
 	if gc.active_ships[src_sea][ship] == 0 do return true
-	reset_valid_moves(gc, src_sea)
+	gc.valid_actions={s2act(src_sea)}
 	add_valid_transport_moves(gc, src_sea, 2)
 	for gc.active_ships[src_sea][ship] > 0 {
 		stage_next_ship_in_sea(gc, src_sea, ship) or_return
@@ -174,7 +176,7 @@ move_trans_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
 
 move_trans_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
 	if gc.active_ships[src_sea][ship] == 0 do return true
-	reset_valid_moves(gc, s2aid(src_sea))
+	gc.valid_actions={s2act(src_sea)}
 	add_valid_transport_moves(gc, src_sea, Ships_Moves[ship])
 	for gc.active_ships[src_sea][ship] > 0 {
 		move_next_trans_in_sea(gc, src_sea, ship) or_return
@@ -232,20 +234,60 @@ Transports_With_Cargo := [?]Active_Ship {
 	.TRANS_1I_1T_0_MOVES,
 }
 
-Skipped_Transports := [?]Active_Ship {
-	Active_Ship.TRANS_1I_0_MOVES    = .TRANS_1I_UNLOADED,
-	Active_Ship.TRANS_1A_0_MOVES    = .TRANS_1A_UNLOADED,
-	Active_Ship.TRANS_1T_0_MOVES    = .TRANS_1T_UNLOADED,
-	Active_Ship.TRANS_2I_0_MOVES    = .TRANS_2I_UNLOADED,
-	Active_Ship.TRANS_1I_1A_0_MOVES = .TRANS_1I_1A_UNLOADED,
-	Active_Ship.TRANS_1I_1T_0_MOVES = .TRANS_1I_1T_UNLOADED,
+Skipped_Transports := [Active_Ship]Active_Ship {
+	.TRANS_EMPTY_UNMOVED = .TRANS_EMPTY_UNMOVED,
+	.TRANS_EMPTY_2_MOVES = .TRANS_EMPTY_2_MOVES,
+	.TRANS_EMPTY_1_MOVES = .TRANS_EMPTY_1_MOVES,
+	.TRANS_EMPTY_0_MOVES = .TRANS_EMPTY_0_MOVES,
+	.TRANS_1I_UNMOVED = .TRANS_1I_UNMOVED,
+	.TRANS_1I_2_MOVES = .TRANS_1I_2_MOVES,
+	.TRANS_1I_1_MOVES = .TRANS_1I_1_MOVES,
+	.TRANS_1I_UNLOADED = .TRANS_1I_UNLOADED,
+	.TRANS_1A_UNMOVED = .TRANS_1A_UNMOVED,
+	.TRANS_1A_2_MOVES = .TRANS_1A_2_MOVES,
+	.TRANS_1A_1_MOVES = .TRANS_1A_1_MOVES,
+	.TRANS_1A_UNLOADED = .TRANS_1A_UNLOADED,
+	.TRANS_1T_UNMOVED = .TRANS_1T_UNMOVED,
+	.TRANS_1T_2_MOVES = .TRANS_1T_2_MOVES,
+	.TRANS_1T_1_MOVES = .TRANS_1T_1_MOVES,
+	.TRANS_1T_UNLOADED = .TRANS_1T_UNLOADED,
+	.TRANS_2I_2_MOVES = .TRANS_2I_2_MOVES,
+	.TRANS_2I_1_MOVES = .TRANS_2I_1_MOVES,
+	.TRANS_2I_UNLOADED = .TRANS_2I_UNLOADED,
+	.TRANS_1I_1A_2_MOVES = .TRANS_1I_1A_2_MOVES,
+	.TRANS_1I_1A_1_MOVES = .TRANS_1I_1A_1_MOVES,
+	.TRANS_1I_1A_UNLOADED = .TRANS_1I_1A_UNLOADED,
+	.TRANS_1I_1T_2_MOVES = .TRANS_1I_1T_2_MOVES,
+	.TRANS_1I_1T_1_MOVES = .TRANS_1I_1T_1_MOVES,
+	.TRANS_1I_1T_UNLOADED = .TRANS_1I_1T_UNLOADED,
+	.SUB_UNMOVED = .SUB_UNMOVED,
+	.SUB_0_MOVES = .SUB_0_MOVES,
+	.DESTROYER_UNMOVED = .DESTROYER_UNMOVED,
+	.DESTROYER_0_MOVES = .DESTROYER_0_MOVES,
+	.CARRIER_UNMOVED = .CARRIER_UNMOVED,
+	.CARRIER_0_MOVES = .CARRIER_0_MOVES,
+	.CRUISER_UNMOVED = .CRUISER_UNMOVED,
+	.CRUISER_0_MOVES = .CRUISER_0_MOVES,
+	.CRUISER_BOMBARDED = .CRUISER_BOMBARDED,
+	.BATTLESHIP_UNMOVED = .BATTLESHIP_UNMOVED,
+	.BATTLESHIP_0_MOVES = .BATTLESHIP_0_MOVES,
+	.BATTLESHIP_BOMBARDED = .BATTLESHIP_BOMBARDED,
+	.BS_DAMAGED_UNMOVED = .BS_DAMAGED_UNMOVED,
+	.BS_DAMAGED_0_MOVES = .BS_DAMAGED_0_MOVES,
+	.BS_DAMAGED_BOMBARDED = .BS_DAMAGED_BOMBARDED,
+	.TRANS_1I_0_MOVES    = .TRANS_1I_UNLOADED,
+	.TRANS_1A_0_MOVES    = .TRANS_1A_UNLOADED,
+	.TRANS_1T_0_MOVES    = .TRANS_1T_UNLOADED,
+	.TRANS_2I_0_MOVES    = .TRANS_2I_UNLOADED,
+	.TRANS_1I_1A_0_MOVES = .TRANS_1I_1A_UNLOADED,
+	.TRANS_1I_1T_0_MOVES = .TRANS_1I_1T_UNLOADED,
 }
 
 unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for ship in Transports_With_Cargo {
 		for src_sea in Sea_ID {
 			if gc.active_ships[src_sea][ship] == 0 do continue
-			reset_valid_moves(gc, s2aid(src_sea))
+			gc.valid_actions={s2act(src_sea)}
 			add_valid_unload_moves(gc, src_sea)
 			for gc.active_ships[src_sea][ship] > 0 {
 				dst_air := get_move_input(gc, Active_Ship_Names[ship], s2aid(src_sea)) or_return
@@ -264,22 +306,102 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-Transport_Unload_Unit_1 := [?]Active_Army {
-	Active_Ship.TRANS_1I_0_MOVES    = .INF_0_MOVES,
-	Active_Ship.TRANS_1A_0_MOVES    = .ARTY_0_MOVES,
-	Active_Ship.TRANS_1T_0_MOVES    = .TANK_0_MOVES,
-	Active_Ship.TRANS_2I_0_MOVES    = .INF_0_MOVES,
-	Active_Ship.TRANS_1I_1A_0_MOVES = .INF_0_MOVES,
-	Active_Ship.TRANS_1I_1T_0_MOVES = .INF_0_MOVES,
+Transport_Unload_Unit_1 := [Active_Ship]Active_Army {
+	.TRANS_EMPTY_UNMOVED = .INF_0_MOVES,
+	.TRANS_EMPTY_2_MOVES = .INF_0_MOVES,
+	.TRANS_EMPTY_1_MOVES = .INF_0_MOVES,
+	.TRANS_EMPTY_0_MOVES = .INF_0_MOVES,
+	.TRANS_1I_UNMOVED    = .INF_0_MOVES,
+	.TRANS_1I_2_MOVES    = .INF_0_MOVES,
+	.TRANS_1I_1_MOVES    = .INF_0_MOVES,
+	.TRANS_1I_UNLOADED   = .INF_0_MOVES,
+	.TRANS_1A_UNMOVED    = .INF_0_MOVES,
+	.TRANS_1A_2_MOVES    = .INF_0_MOVES,
+	.TRANS_1A_1_MOVES    = .INF_0_MOVES,
+	.TRANS_1A_UNLOADED   = .INF_0_MOVES,
+	.TRANS_1T_UNMOVED    = .INF_0_MOVES,
+	.TRANS_1T_2_MOVES    = .INF_0_MOVES,
+	.TRANS_1T_1_MOVES    = .INF_0_MOVES,
+	.TRANS_1T_UNLOADED   = .INF_0_MOVES,
+	.TRANS_2I_2_MOVES    = .INF_0_MOVES,
+	.TRANS_2I_1_MOVES    = .INF_0_MOVES,
+	.TRANS_2I_UNLOADED   = .INF_0_MOVES,
+	.TRANS_1I_1A_2_MOVES = .INF_0_MOVES,
+	.TRANS_1I_1A_1_MOVES = .INF_0_MOVES,
+	.TRANS_1I_1A_UNLOADED = .INF_0_MOVES,
+	.TRANS_1I_1T_2_MOVES = .INF_0_MOVES,
+	.TRANS_1I_1T_1_MOVES = .INF_0_MOVES,
+	.TRANS_1I_1T_UNLOADED = .INF_0_MOVES,
+	.SUB_UNMOVED         = .INF_0_MOVES,
+	.SUB_0_MOVES         = .INF_0_MOVES,
+	.DESTROYER_UNMOVED   = .INF_0_MOVES,
+	.DESTROYER_0_MOVES   = .INF_0_MOVES,
+	.CARRIER_UNMOVED     = .INF_0_MOVES,
+	.CARRIER_0_MOVES     = .INF_0_MOVES,
+	.CRUISER_UNMOVED     = .INF_0_MOVES,
+	.CRUISER_0_MOVES     = .INF_0_MOVES,
+	.CRUISER_BOMBARDED   = .INF_0_MOVES,
+	.BATTLESHIP_UNMOVED  = .INF_0_MOVES,
+	.BATTLESHIP_0_MOVES  = .INF_0_MOVES,
+	.BATTLESHIP_BOMBARDED = .INF_0_MOVES,
+	.BS_DAMAGED_UNMOVED  = .INF_0_MOVES,
+	.BS_DAMAGED_0_MOVES  = .INF_0_MOVES,
+	.BS_DAMAGED_BOMBARDED = .INF_0_MOVES,
+	.TRANS_1I_0_MOVES    = .INF_0_MOVES,
+	.TRANS_1A_0_MOVES    = .ARTY_0_MOVES,
+	.TRANS_1T_0_MOVES    = .TANK_0_MOVES,
+	.TRANS_2I_0_MOVES    = .INF_0_MOVES,
+	.TRANS_1I_1A_0_MOVES = .INF_0_MOVES,
+	.TRANS_1I_1T_0_MOVES = .INF_0_MOVES,
 }
 
-Transport_Unloaded := [?]Active_Ship {
-	Active_Ship.TRANS_1I_0_MOVES    = .TRANS_EMPTY_0_MOVES,
-	Active_Ship.TRANS_1A_0_MOVES    = .TRANS_EMPTY_0_MOVES,
-	Active_Ship.TRANS_1T_0_MOVES    = .TRANS_EMPTY_0_MOVES,
-	Active_Ship.TRANS_2I_0_MOVES    = .TRANS_1I_0_MOVES,
-	Active_Ship.TRANS_1I_1A_0_MOVES = .TRANS_1A_0_MOVES,
-	Active_Ship.TRANS_1I_1T_0_MOVES = .TRANS_1T_0_MOVES,
+Transport_Unloaded := [Active_Ship]Active_Ship {
+	.TRANS_1I_0_MOVES    = .TRANS_EMPTY_0_MOVES,
+	.TRANS_1A_0_MOVES    = .TRANS_EMPTY_0_MOVES,
+	.TRANS_1T_0_MOVES    = .TRANS_EMPTY_0_MOVES,
+	.TRANS_2I_0_MOVES    = .TRANS_1I_0_MOVES,
+	.TRANS_1I_1A_0_MOVES = .TRANS_1A_0_MOVES,
+	.TRANS_1I_1T_0_MOVES = .TRANS_1T_0_MOVES,
+	.TRANS_EMPTY_UNMOVED = .TRANS_EMPTY_0_MOVES,
+	.TRANS_EMPTY_2_MOVES = .TRANS_EMPTY_0_MOVES,
+	.TRANS_EMPTY_1_MOVES = .TRANS_EMPTY_0_MOVES,
+	.TRANS_EMPTY_0_MOVES = .TRANS_EMPTY_0_MOVES,
+	.TRANS_1I_UNMOVED    = .TRANS_1I_0_MOVES,
+	.TRANS_1I_2_MOVES    = .TRANS_1I_0_MOVES,
+	.TRANS_1I_1_MOVES    = .TRANS_1I_0_MOVES,
+	.TRANS_1I_UNLOADED   = .TRANS_1I_0_MOVES,
+	.TRANS_1A_UNMOVED    = .TRANS_1A_0_MOVES,
+	.TRANS_1A_2_MOVES    = .TRANS_1A_0_MOVES,
+	.TRANS_1A_1_MOVES    = .TRANS_1A_0_MOVES,
+	.TRANS_1A_UNLOADED   = .TRANS_1A_0_MOVES,
+	.TRANS_1T_UNMOVED    = .TRANS_1T_0_MOVES,
+	.TRANS_1T_2_MOVES    = .TRANS_1T_0_MOVES,
+	.TRANS_1T_1_MOVES    = .TRANS_1T_0_MOVES,
+	.TRANS_1T_UNLOADED   = .TRANS_1T_0_MOVES,
+	.TRANS_2I_2_MOVES    = .TRANS_2I_0_MOVES,
+	.TRANS_2I_1_MOVES    = .TRANS_2I_0_MOVES,
+	.TRANS_2I_UNLOADED   = .TRANS_2I_0_MOVES,
+	.TRANS_1I_1A_2_MOVES = .TRANS_1I_1A_0_MOVES,
+	.TRANS_1I_1A_1_MOVES = .TRANS_1I_1A_0_MOVES,
+	.TRANS_1I_1A_UNLOADED = .TRANS_1I_1A_0_MOVES,
+	.TRANS_1I_1T_2_MOVES = .TRANS_1I_1T_0_MOVES,
+	.TRANS_1I_1T_1_MOVES = .TRANS_1I_1T_0_MOVES,
+	.TRANS_1I_1T_UNLOADED = .TRANS_1I_1T_0_MOVES,
+	.SUB_UNMOVED         = .TRANS_EMPTY_0_MOVES,
+	.SUB_0_MOVES         = .TRANS_EMPTY_0_MOVES,
+	.DESTROYER_UNMOVED   = .TRANS_EMPTY_0_MOVES,
+	.DESTROYER_0_MOVES   = .TRANS_EMPTY_0_MOVES,
+	.CARRIER_UNMOVED     = .TRANS_EMPTY_0_MOVES,
+	.CARRIER_0_MOVES     = .TRANS_EMPTY_0_MOVES,
+	.CRUISER_UNMOVED     = .TRANS_EMPTY_0_MOVES,
+	.CRUISER_0_MOVES     = .TRANS_EMPTY_0_MOVES,
+	.CRUISER_BOMBARDED   = .TRANS_EMPTY_0_MOVES,
+	.BATTLESHIP_UNMOVED  = .TRANS_EMPTY_0_MOVES,
+	.BATTLESHIP_0_MOVES  = .TRANS_EMPTY_0_MOVES,
+	.BATTLESHIP_BOMBARDED = .TRANS_EMPTY_0_MOVES,
+	.BS_DAMAGED_UNMOVED  = .TRANS_EMPTY_0_MOVES,
+	.BS_DAMAGED_0_MOVES  = .TRANS_EMPTY_0_MOVES,
+	.BS_DAMAGED_BOMBARDED = .TRANS_EMPTY_0_MOVES,
 }
 
 unload_unit_to_land :: proc(gc: ^Game_Cache, dst_land: Land_ID, ship: Active_Ship) {

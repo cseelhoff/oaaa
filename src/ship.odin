@@ -370,7 +370,7 @@ move_ship_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
 
 move_ship_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
 	if gc.active_ships[src_sea][ship] == 0 do return true
-	reset_valid_moves(gc, src_sea)
+	gc.valid_actions={s2act(src_sea)}
 	add_valid_ship_moves(gc, src_sea, ship)
 	for gc.active_ships[src_sea][ship] > 0 {
 		move_next_ship_in_sea(gc, src_sea, ship) or_return

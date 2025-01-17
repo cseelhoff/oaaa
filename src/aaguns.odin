@@ -22,10 +22,10 @@ move_aagun_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (ok: bool) {
 }
 
 move_next_aagun_in_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (ok: bool) {
-	dst_air := get_land2air_move_input(
+	dst_air := get_move_input(
 		gc,
 		Active_Army_Names[.AAGUN_UNMOVED],
-		src_land,
+		l2aid(src_land),
 	) or_return
 	if skip_army(gc, src_land, air2land(dst_air), .AAGUN_UNMOVED) do return true
 	move_single_army_land(gc, air2land(dst_air), .AAGUN_0_MOVES, gc.cur_player, src_land, .AAGUN_UNMOVED)
@@ -34,7 +34,7 @@ move_next_aagun_in_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (ok: bool
 
 add_valid_aagun_moves :: proc(gc: ^Game_Cache, src_land: Land_ID) {
 	for dst_land in sa.slice(&mm.adj_l2l[src_land]) {
-		if dst_land in gc.skipped_land_moves[src_land] ||
+		if l2aid(dst_land) in gc.skipped_a2a[l2aid(src_land)] ||
 		   mm.team[gc.owner[dst_land]] != mm.team[gc.cur_player] {
 			continue
 		}
