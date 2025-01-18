@@ -12,9 +12,10 @@ import "core:fmt"
 // }
 
 no_defender_threat_exists :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
-	if gc.enemy_blockade_total[src_sea] == 0 && gc.enemy_fighters_total[src_sea] == 0 {
-		if gc.enemy_submarines_total[src_sea] == 0 do return true
-		if do_allied_destroyers_exist(gc, src_sea) do return false
+	if src_sea not_in
+	   (gc.has_enemy_blockade |
+			   gc.has_enemy_fighters |
+			   (gc.has_enemy_subs & ~gc.has_allied_destroyers)) {
 		return true
 	}
 	return false
@@ -64,8 +65,7 @@ non_dest_non_sub_exist :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
 
 build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
 	//gc.valid_actions = {s2act(src_sea)}
-	if src_sea in ((~gc.has_enemy_blockade & ~gc.has_enemy_fighters) |
-	gc.has_allied_combatants) {
+	if src_sea in ((~gc.has_enemy_blockade & ~gc.has_enemy_fighters) | gc.has_allied_combatants) {
 		// I am allowed to stay because I have combat units or no enemy blockade remains
 		// otherwise I am possibly wasting transports
 		gc.valid_actions += {s2act(src_sea)}
@@ -73,7 +73,8 @@ build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
 	gc.valid_actions += sea2action_bitset(
 		mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] &
 		gc.sea_no_combat &
-		~gc.has_enemy_blockade)
+		~gc.has_enemy_blockade,
+	)
 }
 
 sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> bool {
@@ -718,7 +719,7 @@ get_attacker_damage_sea :: proc(gc: ^Game_Cache, sea: Sea_ID) -> (damage: int = 
 		damage += int(gc.idle_ships[sea][ally][.BS_DAMAGED]) * BATTLESHIP_ATTACK
 		damage += int(gc.idle_sea_planes[sea][ally][.FIGHTER]) * FIGHTER_ATTACK
 	}
-	damage += int(gc.idle_planes[s2aid(sea)][gc.cur_player][.BOMBER]) * BOMBER_ATTACK
+	damage += int(gc.idle_sea_planes[sea][gc.cur_player][.BOMBER]) * BOMBER_ATTACK
 	return damage
 }
 

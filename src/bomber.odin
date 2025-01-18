@@ -99,6 +99,12 @@ refresh_can_bomber_land_here :: proc(gc: ^Game_Cache) {
 	}
 	gc.is_bomber_cache_current = true
 }
+
+refresh_can_bomber_land_here_directly :: proc(gc: ^Game_Cache) {
+	gc.can_bomber_land_here = gc.friendly_owner & gc.land_no_combat
+	gc.is_bomber_cache_current = true
+}
+
 // add_valid_attacking_bomber_moves :: proc(gc: ^Game_Cache, src_land: Land_ID) {
 // 	valid_air_moves_bitset :=
 // 		~gc.skipped_l2a_moves[src_land] &
@@ -128,7 +134,7 @@ land_bomber_from_land :: proc(
 	ok: bool,
 ) {
 	if gc.active_land_planes[src_land][plane] == 0 do return true
-	if ~gc.is_bomber_cache_current do refresh_can_bomber_land_here(gc)
+	if ~gc.is_bomber_cache_current do refresh_can_bomber_land_here_directly(gc)
 	gc.valid_actions = {}
 	add_valid_landing_bomber_moves(gc, l2aid(src_land), plane)
 	for gc.active_land_planes[src_land][plane] > 0 {
@@ -155,7 +161,7 @@ move_bomber_from_land_to_land :: proc(
 
 land_bomber_from_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, plane: Active_Plane) -> (ok: bool) {
 	if gc.active_sea_planes[src_sea][plane] == 0 do return true
-	if ~gc.is_bomber_cache_current do refresh_can_bomber_land_here(gc)
+	if ~gc.is_bomber_cache_current do refresh_can_bomber_land_here_directly(gc)
 	gc.valid_actions = {}
 	add_valid_landing_bomber_moves(gc, s2aid(src_sea), plane)
 	for gc.active_sea_planes[src_sea][plane] > 0 {
