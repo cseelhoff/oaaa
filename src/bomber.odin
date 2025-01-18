@@ -110,13 +110,12 @@ land_remaining_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for plane in Unlanded_Bombers {
 		gc.clear_needed = false
 		for src_land in Land_ID {
-			land_bomber_from_land(gc, src_land, plane) or_continue
+			land_bomber_from_land(gc, src_land, plane) or_return
 		}
 		for src_sea in Sea_ID {
-			land_bomber_from_sea(gc, src_sea, plane) or_continue
+			land_bomber_from_sea(gc, src_sea, plane) or_return
 		}
 		if gc.clear_needed do clear_move_history(gc)
-		return true
 	}
 	return true
 }
@@ -190,25 +189,35 @@ add_valid_landing_bomber_moves :: proc(
 ) {
 	#partial switch plane {
 	case .BOMBER_1_MOVES:
-		valid_air_moves_bitset =
-			~gc.skipped_a2a[src_air] & l2a_bitset(gc.can_bomber_land_here) & mm.a2a_within_1_moves[src_air]
-	case .BOMBER_2_MOVES:
-		valid_air_moves_bitset =
+		gc.valid_actions = air2action_bitset(
 			~gc.skipped_a2a[src_air] &
 			l2a_bitset(gc.can_bomber_land_here) &
-			mm.a2a_within_2_moves[src_air]
+			mm.a2a_within_1_moves[src_air],
+		)
+	case .BOMBER_2_MOVES:
+		gc.valid_actions = air2action_bitset(
+			~gc.skipped_a2a[src_air] &
+			l2a_bitset(gc.can_bomber_land_here) &
+			mm.a2a_within_2_moves[src_air],
+		)
 	case .BOMBER_3_MOVES:
-		valid_air_moves_bitset =
+		gc.valid_actions = air2action_bitset(
 			~gc.skipped_a2a[src_air] &
-			l2a_bitset(gc.can_bomber_land_here) & mm.a2a_within_3_moves[src_air]
+			l2a_bitset(gc.can_bomber_land_here) &
+			mm.a2a_within_3_moves[src_air],
+		)
 	case .BOMBER_4_MOVES:
-		valid_air_moves_bitset =
+		gc.valid_actions = air2action_bitset(
 			~gc.skipped_a2a[src_air] &
-			l2a_bitset(gc.can_bomber_land_here) & mm.a2a_within_4_moves[src_air]
+			l2a_bitset(gc.can_bomber_land_here) &
+			mm.a2a_within_4_moves[src_air],
+		)
 	case .BOMBER_5_MOVES:
-		valid_air_moves_bitset =
+		gc.valid_actions = air2action_bitset(
 			~gc.skipped_a2a[src_air] &
-			l2a_bitset(gc.can_bomber_land_here) & mm.a2a_within_5_moves[src_air]
+			l2a_bitset(gc.can_bomber_land_here) &
+			mm.a2a_within_5_moves[src_air],
+		)
 	}
 	return valid_air_moves_bitset
 }

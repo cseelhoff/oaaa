@@ -42,40 +42,36 @@ Actions_Bitset :: bit_set[Action_ID;u32]
 Air_Bitset :: bit_set[Air_ID;u16]
 
 Game_Cache :: struct {
-	using state:                   Game_State,
-	team_land_units:               [Land_ID][Team_ID]u8,
-	team_sea_units:                [Sea_ID][Team_ID]u8,
-	can_bomber_land_here:          Land_Bitset,
-	can_bomber_land_in_1_moves:    Air_Bitset,
-	can_bomber_land_in_2_moves:    Air_Bitset,
-	can_fighter_land_here:         Air_Bitset,
-	can_fighter_land_in_1_move:    Air_Bitset,
-	// can_fighter_sealand_here:      Sea_Bitset,
-	// can_fighter_sealand_in_1_move: Air_Bitset,
-	air_has_enemies:               Air_Bitset,
-	// land_has_enemies:              Land_Bitset,
-	has_bombable_factory:          Land_Bitset,
-	// sea_has_enemies:               Sea_Bitset,
-	factory_locations:             [Player_ID]SA_Land,
-	valid_actions:                 Actions_Bitset,
-	enemy_blockade_total:          [Sea_ID]u8,
-	enemy_fighters_total:          [Sea_ID]u8,
-	enemy_submarines_total:        [Sea_ID]u8,
-	enemy_destroyer_total:         [Sea_ID]u8,
-	answers_remaining:             u16,
-	max_loops:                     u16,
-	canals_open:                   Canals_Open, //[CANALS_COUNT]bool,
-	unlucky_teams:                 Unlucky_Teams,
-	selected_action:               Action_ID,
-	is_bomber_cache_current:       bool,
-	is_fighter_cache_current:      bool,
-	clear_needed:                  bool,
-	use_selected_action:           bool,
-	allied_carriers:               [Sea_ID]u8,
-	// air_no_combat:                 Air_Bitset,
-	land_no_combat:                Land_Bitset,
-	sea_no_combat:                 Sea_Bitset,
-	friendly_owner:                Land_Bitset,
+	using state:                Game_State,
+	team_land_units:            [Land_ID][Team_ID]u8,
+	team_sea_units:             [Sea_ID][Team_ID]u8,
+	can_bomber_land_here:       Land_Bitset,
+	can_bomber_land_in_1_moves: Air_Bitset,
+	can_bomber_land_in_2_moves: Air_Bitset,
+	can_fighter_land_here:      Air_Bitset,
+	can_fighter_land_in_1_move: Air_Bitset,
+	air_has_enemies:            Air_Bitset,
+	has_bombable_factory:       Land_Bitset,
+	factory_locations:          [Player_ID]SA_Land,
+	valid_actions:              Actions_Bitset,
+	has_enemy_blockade:         Sea_Bitset,
+	has_enemy_fighters:         Sea_Bitset,
+	has_allied_combatants:      Sea_Bitset,
+	enemy_submarines_total:     [Sea_ID]u8,
+	enemy_destroyer_total:      [Sea_ID]u8,
+	answers_remaining:          u16,
+	max_loops:                  u16,
+	canals_open:                Canals_Open, //[CANALS_COUNT]bool,
+	unlucky_teams:              Unlucky_Teams,
+	selected_action:            Action_ID,
+	is_bomber_cache_current:    bool,
+	is_fighter_cache_current:   bool,
+	clear_needed:               bool,
+	use_selected_action:        bool,
+	allied_carriers:            [Sea_ID]u8,
+	land_no_combat:             Land_Bitset,
+	sea_no_combat:              Sea_Bitset,
+	friendly_owner:             Land_Bitset,
 }
 
 push_land_action :: #force_inline proc(gc: ^Game_Cache, land: Land_ID) {
@@ -88,6 +84,10 @@ push_sea_action :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) {
 
 l2a_bitset :: #force_inline proc(land: Land_Bitset) -> Air_Bitset {
 	return transmute(Air_Bitset)u16(transmute(u8)land)
+}
+
+sea2action_bitset :: #force_inline proc(sea: Sea_Bitset) -> Actions_Bitset {
+	return transmute(Actions_Bitset)u32(transmute(u16)sea << len(Land_ID))
 }
 
 air2action_bitset :: #force_inline proc(air: Air_Bitset) -> Actions_Bitset {
