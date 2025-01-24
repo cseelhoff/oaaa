@@ -71,37 +71,37 @@ get_player_idx_from_string :: proc(player_name: string) -> (player_idx: u8, ok: 
 	return 0, false
 }
 
-initialize_teams :: proc(teams: ^Teams, players: ^Players) {
-	for &team, team_idx in teams {
-		team.index = Team_ID(team_idx)
-		for &other_team in teams {
-			if &team != &other_team {
-				team.enemy_team = &other_team
-				break
-			}
-		}
-		for &player, player_idx in players {
-			if strings.compare(PLAYER_DATA[player_idx].team, TEAM_STRINGS[team_idx]) == 0 {
-				sa.push(&team.players, &player)
-				// team.is_allied[player_idx] = true
-				player.team = &team
-				player.index = Player_ID(player_idx)
-			} else {
-				sa.push(&team.enemy_players, &player)
-				// team.is_allied[player_idx] = false
-			}
-		}
-	}
+initialize_teams :: proc() {
+	// for &team, team_idx in teams {
+	// 	team.index = Team_ID(team_idx)
+	// 	for &other_team in teams {
+	// 		if &team != &other_team {
+	// 			team.enemy_team = &other_team
+	// 			break
+	// 		}
+	// 	}
+	// 	for &player, player_idx in players {
+	// 		if strings.compare(PLAYER_DATA[player_idx].team, TEAM_STRINGS[team_idx]) == 0 {
+	// 			sa.push(&team.players, &player)
+	// 			// team.is_allied[player_idx] = true
+	// 			player.team = &team
+	// 			player.index = Player_ID(player_idx)
+	// 		} else {
+	// 			sa.push(&team.enemy_players, &player)
+	// 			// team.is_allied[player_idx] = false
+	// 		}
+	// 	}
+	// }
 }
 
 initialize_player_lands :: proc() -> (ok: bool) {
-	for &player, player_idx in players {
-		land_idx := get_land_idx_from_string(PLAYER_DATA[player_idx].capital) or_return
-		player.capital = &lands[land_idx]
-	}
-	for &land, land_idx in lands {
-		player_idx, _ := get_player_idx_from_string(LANDS_DATA[land_idx].owner)
-		land.original_owner = &players[player_idx]
-	}
+	// for player in Player_ID {
+	// 	land_idx := get_land_idx_from_string(PLAYER_DATA[player_idx].capital) or_return
+	// 	player.capital = &lands[land_idx]
+	// }
+	// for &land, land_idx in lands {
+	// 	player_idx, _ := get_player_idx_from_string(LANDS_DATA[land_idx].owner)
+	// 	land.original_owner = &players[player_idx]
+	// }
 	return true
 }

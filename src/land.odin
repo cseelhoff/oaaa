@@ -69,20 +69,20 @@ get_land_idx_from_string :: proc(land_name: string) -> (land_idx: int, ok: bool)
 initialize_l2l_2away_via_land :: proc() {
 	// Floyd-Warshall algorithm
 	// Initialize distances array to Infinity
-	distances: [LANDS_COUNT][LANDS_COUNT]u8
+	distances: [len(Land_ID)][len(Land_ID)]u8
 	INFINITY :: 127
 	mem.set(&distances, INFINITY, size_of(distances))
-	for &land, land_idx in lands {
+	for land in Land_ID {
 		// Ensure that the distance from a land to itself is 0
-		distances[land_idx][land_idx] = 0
+		distances[land][land] = 0
 		// Set initial distances based on adjacent lands
-		for adjacent_land in sa.slice(&land.adjacent_lands) {
-			distances[land_idx][adjacent_land.land_index] = 1
+		for adjacent_land in sa.slice(&mm.l2l_1away_via_land[land]) {
+			distances[land][adjacent_land] = 1
 		}
 	}
-	for mid_idx in 0 ..< LANDS_COUNT {
-		for start_idx in 0 ..< LANDS_COUNT {
-			for end_idx in 0 ..< LANDS_COUNT {
+	for mid_idx in Land_ID {
+		for start_idx in Land_ID {
+			for end_idx in Land_ID {
 				new_dist := distances[start_idx][mid_idx] + distances[mid_idx][end_idx]
 				if new_dist < distances[start_idx][end_idx] {
 					distances[start_idx][end_idx] = new_dist
@@ -91,21 +91,21 @@ initialize_l2l_2away_via_land :: proc() {
 		}
 	}
 	// Initialize the l2l_2away_via_land array
-	for &land, land_idx in lands {
-		adjacent_lands := sa.slice(&land.adjacent_lands)
-		for distance, dest_land_idx in distances[land_idx] {
-			if distance == 2 {
-				dest := Land_2_Moves_Away {
-					land = &lands[dest_land_idx],
-				}
-				for dest_adjacent_land in sa.slice(&dest.land.adjacent_lands) {
-					_ = slice.linear_search(adjacent_lands, dest_adjacent_land) or_continue
-					sa.push(&dest.mid_lands, dest_adjacent_land)
-				}
-				sa.push(&land.l2l_2away_via_land, dest)
-			}
-		}
-	}
+	// for land in Land_ID {
+	// 	adjacent_lands := sa.slice(&mm.l2l_1away_via_land[land])
+	// 	for distance, dest_land_idx in distances[land] {
+	// 		if distance == 2 {
+	// 			dest := Land_2_Moves_Away {
+	// 				land = &lands[dest_land_idx],
+	// 			}
+	// 			for dest_adjacent_land in sa.slice(&dest.land.adjacent_lands) {
+	// 				_ = slice.linear_search(adjacent_lands, dest_adjacent_land) or_continue
+	// 				sa.push(&dest.mid_lands, dest_adjacent_land)
+	// 			}
+	// 			sa.push(&land.l2l_2away_via_land, dest)
+	// 		}
+	// 	}
+	// }
 }
 
 initialize_canals :: proc() -> (ok: bool) {
@@ -132,7 +132,7 @@ initialize_canals :: proc() -> (ok: bool) {
 	for canal, canal_idx in CANALS {
 		land1_idx := get_land_idx_from_string(canal.lands[0]) or_return
 		land2_idx := get_land_idx_from_string(canal.lands[1]) or_return
-		Canal_Lands[canal_idx] = {&lands[land1_idx], &lands[land2_idx]}
+		// Canal_Lands[canal_idx] = {&lands[land1_idx], &lands[land2_idx]}
 	}
 	return true
 }

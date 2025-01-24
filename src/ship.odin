@@ -353,14 +353,14 @@ Ships_After_Retreat := [?]Active_Ship {
 }
 
 move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
-		for ship in Unmoved_Blockade_Ships {
+	for ship in Unmoved_Blockade_Ships {
 		move_ship_seas(gc, ship) or_return
 	}
 	return true
 }
 
 move_ship_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
-		gc.clear_needed = false
+	gc.clear_needed = false
 	for src_sea in Sea_ID {
 		move_ship_sea(gc, src_sea, ship) or_return
 	}
@@ -370,7 +370,7 @@ move_ship_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
 
 move_ship_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
 	if gc.active_ships[src_sea][ship] == 0 do return true
-	gc.valid_actions={s2act(src_sea)}
+	gc.valid_actions = {s2act(src_sea)}
 	add_valid_ship_moves(gc, src_sea, ship)
 	for gc.active_ships[src_sea][ship] > 0 {
 		move_next_ship_in_sea(gc, src_sea, ship) or_return
@@ -379,19 +379,18 @@ move_ship_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (o
 }
 
 move_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
-		dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], src_sea) or_return
-	flag_for_enemy_combat(Air_ID[dst_air_idx], gc.cur_player.team.enemy_team.index)
-		dst_sea := get_sea(gc, dst_air_idx)
-	if skip_ship(src_sea, dst_sea, ship) do return true
-		move_single_ship(dst_sea, Ships_Moved[ship], gc.cur_player, ship, src_sea)
-		if ship == Active_Ship.CARRIER_UNMOVED {
-		carry_allied_fighters(gc, src_sea, dst_sea)
+	dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], s2aid(src_sea)) or_return
+	flag_for_sea_enemy_combat(gc, a2sid(dst_air_idx), mm.enemy_team[gc.cur_player])
+	if skip_ship(gc, src_sea, a2sid(dst_air_idx), ship) do return true
+	move_single_ship(gc, a2sid(dst_air_idx), Ships_Moved[ship], gc.cur_player, ship, src_sea)
+	if ship == .CARRIER_UNMOVED {
+		carry_allied_fighters(gc, src_sea, a2sid(dst_air_idx))
 		gc.is_fighter_cache_current = false
 	}
-		return true
+	return true
 }
 
-skip_ship :: proc(src_sea: Sea_ID, dst_sea: Sea_ID, ship: Active_Ship) -> bool {
+skip_ship :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID, ship: Active_Ship) -> bool {
 	if src_sea != dst_sea do return false
 	gc.active_ships[src_sea][Ships_Moved[ship]] += gc.active_ships[src_sea][ship]
 	gc.active_ships[src_sea][ship] = 0
@@ -400,39 +399,38 @@ skip_ship :: proc(src_sea: Sea_ID, dst_sea: Sea_ID, ship: Active_Ship) -> bool {
 
 add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) {
 	// for dst_sea in sa.slice(&src_sea.canal_paths[gc.canal_state].adjacent_seas) {
-	for dst_sea in sa.slice(&src_sea.canal_paths[transmute(u8)gc.canals_open].adjacent_seas) {
-		if src_sea.skipped_moves[dst_sea.territory_index] {
+	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
+		if s2aid(dst_sea) in gc.skipped_a2a[s2aid(src_sea)] {
 			continue
 		}
-		sa.push(&gc.valid_actions, u8(dst_sea.territory_index))
+		gc.valid_actions += {s2act(dst_sea)}
 	}
 	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
-	for &dst_sea_2_away in sa.slice(
-		&src_sea.canal_paths[transmute(u8)gc.canals_open].seas_2_moves_away,
-	) {
-		if src_sea.skipped_moves[dst_sea_2_away.sea.territory_index] {
+	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
+		if s2aid(dst_sea_2_away) in gc.skipped_a2a[s2aid(src_sea)] {
 			continue
 		}
-		for mid_sea in sa.slice(&dst_sea_2_away.mid_seas) {
-			if mid_sea.enemy_destroyer_total > 0 do continue
-			if ship != Active_Ship.SUB_UNMOVED && mid_sea.sea_path_blocked do continue
-			sa.push(&gc.valid_actions, u8(dst_sea_2_away.sea.territory_index))
+		for mid_sea in sa.slice(&mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][dst_sea_2_away]) {
+			if gc.enemy_destroyer_total[mid_sea] > 0 do continue
+			if ship != .SUB_UNMOVED && gc.enemy_blockade_total[mid_sea] > 0 do continue
+			gc.valid_actions += {s2act(dst_sea_2_away)}
 			break
 		}
 	}
 }
 
 move_single_ship :: proc(
+	gc: ^Game_Cache,
 	dst_sea: Sea_ID,
 	dst_unit: Active_Ship,
-	player: ^Player,
+	player: Player_ID,
 	src_unit: Active_Ship,
 	src_sea: Sea_ID,
 ) {
-	dst_sea.active_ships[dst_unit] += 1
-	dst_sea.idle_ships[player.index][Active_Ship_To_Idle[dst_unit]] += 1
-	dst_sea.team_units[player.team.index] += 1
+	gc.active_ships[dst_sea][dst_unit] += 1
+	gc.idle_ships[dst_sea][player][Active_Ship_To_Idle[dst_unit]] += 1
+	gc.team_sea_units[dst_sea][mm.team[player]] += 1
 	gc.active_ships[src_sea][src_unit] -= 1
-	src_sea.idle_ships[player.index][Active_Ship_To_Idle[dst_unit]] -= 1
-	src_sea.team_units[player.team.index] -= 1
+	gc.idle_ships[src_sea][player][Active_Ship_To_Idle[dst_unit]] -= 1
+	gc.team_sea_units[src_sea][mm.team[player]] -= 1
 }

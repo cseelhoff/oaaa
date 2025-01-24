@@ -13,6 +13,10 @@ is_human := [Player_ID]bool {
 }
 
 main :: proc() {
+ start()
+}
+
+start :: proc() {
 	fmt.println("Starting CAAA")
 	iterations := 100_000_000
 	if len(os.args) >= 2 {

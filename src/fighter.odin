@@ -164,15 +164,16 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 	gc.can_fighter_land_here =
 		l2a_bitset(gc.friendly_owner & gc.land_no_combat) | s2a_bitset(gc.has_carrier_space)
 	// check for possiblity to build carrier under fighter
-	for land in gc.factory_locations {
-		gc.can_fighter_land_here += l2s_1away_via_land[land]
+	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
+		gc.can_fighter_land_here += s2a_bitset(mm.l2s_1away_via_land_bitset[land])
 	}
 	for sea in Sea_ID {
 		// if player owns a carrier, then landing area is 2 spaces away
 		if gc.active_ships[sea][.CARRIER_UNMOVED] > 0 {
-			gc.can_fighter_land_here +=
-				mm.s2s_1away_via_sea[gc.canals_open][sea] |
-				mm.s2s_2away_via_sea[gc.canals_open][sea]
+			gc.can_fighter_land_here += s2a_bitset(
+				mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea] |
+				mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][sea],
+			)
 		}
 	}
 	gc.can_fighter_land_in_1_move = {}
@@ -187,19 +188,18 @@ refresh_can_fighter_land_here_directly :: proc(gc: ^Game_Cache) {
 	gc.can_fighter_land_here =
 		l2a_bitset(gc.friendly_owner & gc.land_no_combat) | s2a_bitset(gc.has_carrier_space)
 	// check for possiblity to build carrier under fighter
-	for land in gc.factory_locations {
-		gc.can_fighter_land_here += l2s_1away_via_land[land]
+	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
+		gc.can_fighter_land_here += s2a_bitset(mm.l2s_1away_via_land_bitset[land])
 	}
 	gc.is_fighter_cache_current = true
 }
 
 add_valid_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
-	gc.valid_actions =
+	gc.valid_actions = air2action_bitset(
 		~gc.skipped_a2a[src_air] &
-		((mm.a2a_within_2_air_moves[src_air] &
-					(mm.can_fighter_land_here[dst_air] | gc.air_has_enemies[dst_air])) |
-				(mm.airs_3_moves_away[src_air] & gc.can_fighter_land_in_1_move) |
-				(mm.airs_4_moves_away[src_air] & gc.can_fighter_land_here))
+		((mm.a2a_within_2_moves[src_air] & (gc.can_fighter_land_here | gc.air_has_enemies)) |
+				(mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move) |
+				(mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here)))
 }
 
 land_remaining_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {

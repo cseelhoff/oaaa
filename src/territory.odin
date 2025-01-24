@@ -2,7 +2,7 @@ package oaaa
 import sa "core:container/small_array"
 import "core:mem"
 
-// TERRITORIES_COUNT :: LANDS_COUNT + SEAS_COUNT
+// len(Air_ID) :: LANDS_COUNT + SEAS_COUNT
 MAX_TERRITORY_TO_LAND_CONNECTIONS :: 6
 // MAX_AIR_TO_AIR_CONNECTIONS :: 7
 SA_Adjacent_Lands :: sa.Small_Array(MAX_TERRITORY_TO_LAND_CONNECTIONS, Land_ID)
@@ -124,44 +124,48 @@ COASTAL_CONNECTIONS := [?]Coastal_Connection_String {
 }
 
 initialize_costal_connections :: proc() -> (ok: bool) {
-	for connection in COASTAL_CONNECTIONS {
-		land_idx := get_land_idx_from_string(connection.land) or_return
-		sea_idx := get_sea_idx_from_string(connection.sea) or_return
-		sa.append(&lands[land_idx].adjacent_seas, &seas[sea_idx])
-		sa.append(&seas[sea_idx].adjacent_lands, &lands[land_idx])
-	}
+	// for connection in COASTAL_CONNECTIONS {
+	// 	land_idx := get_land_idx_from_string(connection.land) or_return
+	// 	sea_idx := get_sea_idx_from_string(connection.sea) or_return
+	// 	// sa.append(&lands[land_idx].adjacent_seas, &seas[sea_idx])
+	// 	sa.push(mm.l2s_1away_via_land[land_idx],sea_idx)
+	// 	mm.l2s_1away_via_land_bitset[land_idx].set(sea_idx)
+	// 	// sa.append(&seas[sea_idx].adjacent_lands, &lands[land_idx])
+	// }
 	return true
 }
 
 initialize_air_dist :: proc() {
-	for &terr, territory_index in territories {
+	for terr in Air_ID {
 		INFINITY :: 127 // must be less than half of u8
-		mem.set(&terr.air_distances, INFINITY, size_of(terr.air_distances))
+		//mem.set(&terr.air_distances, INFINITY, size_of(terr.air_distances))
+		//mm.air_distances[terr][terr] = INFINITY
+		mem.set(&mm.air_distances[terr], INFINITY, size_of(mm.air_distances[terr]))
 		// Ensure that the distance from a land to itself is 0
-		terr.air_distances[territory_index] = 0
+		mm.air_distances[terr][terr] = 0
 		// Set initial distances based on adjacent lands
-		for adjacent_land in sa.slice(&terr.adjacent_lands) {
-			terr.air_distances[adjacent_land.territory_index] = 1
-			sa.push(&terr.adjacent_airs, adjacent_land)
+		for adjacent_land in sa.slice(&mm.l2l_1away_via_land[a2lid(terr)]) {
+			mm.air_distances[terr][l2aid(adjacent_land)] = 1
+			mm.a2a_within_1_moves[terr] += {l2aid(adjacent_land)}
 		}
 	}
-	for &land in lands {
-		for adjacent_sea in sa.slice(&land.adjacent_seas) {
-			land.air_distances[adjacent_sea.territory_index] = 1
+	for land in Land_ID {
+		for adjacent_sea in sa.slice(&mm.l2s_1away_via_land[land]) {
+			mm.air_distances[terr][l2aid(adjacent_sea)] = 1
 			sa.push(&land.adjacent_airs, adjacent_sea)
 		}
 	}
-	for &sea in seas {
-		for adjacent_sea in sa.slice(&sea.canal_paths[Canal_States - 1].adjacent_seas) {
+	for sea in Sea_ID {
+		for adjacent_sea in mm.s2s_1away_via_sea[Canal_States - 1][sea] {
 			sea.air_distances[adjacent_sea.territory_index] = 1
 			sa.push(&sea.adjacent_airs, adjacent_sea)
 		}
 	}
-	for mid_idx in 0 ..< TERRITORIES_COUNT {
+	for mid_idx in 0 ..< len(Air_ID) {
 		mid_air_dist := &territories[mid_idx].air_distances
-		for start_idx in 0 ..< TERRITORIES_COUNT {
+		for start_idx in 0 ..< len(Air_ID) {
 			start_air_dist := &territories[start_idx].air_distances
-			for end_idx in 0 ..< TERRITORIES_COUNT {
+			for end_idx in 0 ..< len(Air_ID) {
 				new_dist := mid_air_dist[start_idx] + mid_air_dist[end_idx]
 				if new_dist < start_air_dist[end_idx] {
 					start_air_dist[end_idx] = new_dist

@@ -224,7 +224,7 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		gc.land_combat_status[land] = .NO_COMBAT
 		gc.max_bombards[land] = 0
 		gc.skipped_a2a[l2aid(land)] = {}
-		gc.skipped_buys[land] = {}
+		gc.skipped_buys[l2aid(land)] = {}
 		gc.active_armies[land] = {}
 		idle_armies := &gc.idle_armies[land][gc.cur_player]
 		gc.active_armies[land][.INF_UNMOVED] = idle_armies[.INF]
@@ -240,6 +240,7 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 	for sea in Sea_ID {
 		gc.sea_combat_status[sea] = .NO_COMBAT
 		gc.skipped_a2a[s2aid(sea)] = {}
+		gc.skipped_buys[s2aid(sea)] = {}
 		gc.active_ships[sea] = {}
 		idle_ships := &gc.idle_ships[sea][gc.cur_player]
 		gc.active_ships[sea][.TRANS_EMPTY_UNMOVED] = idle_ships[.TRANS_EMPTY]
@@ -262,7 +263,7 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 	}
 	count_sea_unit_totals(gc)
 	load_open_canals(gc)
-	refresh_landable_planes(gc)
+	// refresh_landable_planes(gc)
 }
 
 is_terminal_state :: proc(game_state: ^Game_State) -> bool {
@@ -287,12 +288,12 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 	}
 	for player in Player_ID {
 		mil_cost := 0
-		for land in Land_IDd {
+		for land in Land_ID {
 			for army in Idle_Army {
 				mil_cost += int(gs.idle_armies[land][player][army]) * int(COST_IDLE_ARMY[army])
 			}
 			for plane in Idle_Plane {
-				mil_cost += int(gs.idle_planes[land][player][plane]) * int(COST_IDLE_PLANE[plane])
+				mil_cost += int(gs.idle_land_planes[land][player][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
 		for sea in Sea_ID {
@@ -300,7 +301,7 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 				mil_cost += int(gs.idle_ships[sea][player][ship]) * int(COST_IDLE_SHIP[ship])
 			}
 			for plane in Idle_Plane {
-				mil_cost += int(gs.idle_planes[sea][player][plane]) * int(COST_IDLE_PLANE[plane])
+				mil_cost += int(gs.idle_sea_planes[sea][player][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
 		if mm.team[player] == mm.team[gs.cur_player] {
@@ -369,7 +370,7 @@ get_possible_actions :: proc(gs: ^Game_State) -> Actions_Bitset {
 	return gc.valid_actions
 }
 
-apply_action :: proc(gs: ^Game_State, action: u8) {
+apply_action :: proc(gs: ^Game_State, action: Action_ID) {
 	// Apply the action to the game state
 	gc: Game_Cache
 	ok := initialize_map_constants(&gc)

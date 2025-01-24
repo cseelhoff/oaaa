@@ -76,7 +76,7 @@ mcts_search :: proc(gc: ^Game_Cache,initial_state: ^Game_State, iterations: int)
 		result: f64 = random_play_until_terminal(gc, &node.state)
 		for node != nil {
 			node.visits += 1
-			if node.parent != nil && node.parent.state.cur_player % 2 == 0 { 	//test is Allies turn?
+			if node.parent != nil && mm.team[node.parent.state.cur_player] == .Allies { 	//test is Allies turn?
 				node.value += result
 			} else {
 				node.value += 1 - result
@@ -90,8 +90,8 @@ import sa "core:container/small_array"
 expand_node :: proc(node: ^MCTSNode) {
 	num_actions := 0
 	actions := get_possible_actions(&node.state)
-	for next_action in sa.slice(&actions) {
-		if next_action > MAX_VALID_ACTIONS {
+	for next_action in actions {
+		if next_action > len(Action_ID) {
 			fmt.eprintln("Invalid action ", next_action)
 		}
 		//new_state := clone_state(&node.state)
@@ -197,12 +197,12 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if node.parent != nil {
 		fmt.print(PLAYER_DATA[node.parent.state.cur_player].color)
 		fmt.print("Action:")
-		if node.action < LANDS_COUNT {
+		if node.action < len(Land_ID) {
 			fmt.print(LANDS_DATA[node.action].name)
-		} else if node.action < TERRITORIES_COUNT {
-			fmt.print(SEAS_DATA[node.action - LANDS_COUNT])
+		} else if node.action < len(Air_ID) {
+			fmt.print(SEAS_DATA[node.action - len(Land_ID)])
 		} else {
-			fmt.print(Buy_Names[node.action - TERRITORIES_COUNT])
+			fmt.print(Buy_Names[node.action - len(Air_ID)])
 		}
 		fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
 		fmt.print(", Visits:", node.visits)

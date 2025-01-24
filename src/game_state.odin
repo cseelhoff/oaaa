@@ -12,7 +12,7 @@ Game_State :: struct {
 	idle_sea_planes:    [Sea_ID][Player_ID][Idle_Plane]u8,
 	idle_ships:         [Sea_ID][Player_ID][Idle_Ship]u8,
 	skipped_a2a:        [Air_ID]Air_Bitset,
-	skipped_buys:       [Land_ID]Purchase_Bitset,
+	skipped_buys:       [Air_ID]Purchase_Bitset,
 	land_combat_status: [Land_ID]Combat_Status,
 	sea_combat_status:  [Sea_ID]Combat_Status,
 	owner:              [Land_ID]Player_ID,
@@ -40,14 +40,14 @@ load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
 	}
 	factory_locations :: [?]Land_ID{.Washington, .London, .Berlin, .Moscow, .Tokyo}
 	for land in factory_locations {
-		gs.land_states[land].factory_prod = LANDS_DATA[land].value
+		gs.factory_prod[land] = LANDS_DATA[land].value
 	}
-	for &land, land_idx in gs.land_states {
-		land.owner = get_player_idx_from_string(LANDS_DATA[land_idx].owner) or_return
-		land.idle_armies[land.owner][Idle_Army.INF] = 0
-		if land.owner == gs.cur_player {
-			gc.builds_left[land] = land.factory_prod
-			land.active_armies[Active_Army.INF_UNMOVED] = 0
+	for land in Land_ID {
+		gs.owner[land] = mm.orig_owner[land]
+		gs.idle_armies[land][gs.owner[land]][.INF] = 0
+		if gs.owner[land] == gs.cur_player {
+			gs.builds_left[land] = gs.factory_prod[land]
+			gs.active_armies[land][.INF_UNMOVED] = 0
 		}
 	}
 	// gs.land_states[Land_ID.Moscow].active_armies[Active_Army.TANK_UNMOVED] = 2

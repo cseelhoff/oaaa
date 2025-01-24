@@ -140,10 +140,10 @@ print_buy_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 
 get_buy_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (action: Buy_Action, ok: bool) {
 	debug_checks(gc)
-	action = action_idx_to_buy(gc.valid_actions.data[0])
-	if gc.valid_actions.len > 1 {
+	// action = action_idx_to_buy(gc.valid_actions)
+	if card(gc.valid_actions) > 1 {
 		if gc.answers_remaining == 0 do return .SKIP_BUY, false
-		if PLAYER_DATA[gc.cur_player.index].is_human {
+		if is_human[gc.cur_player] {
 			print_buy_prompt(gc, src_air)
 			action = action_idx_to_buy(get_user_input(gc))
 		} else {
