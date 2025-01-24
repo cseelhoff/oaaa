@@ -34,7 +34,7 @@ is_action_land :: #force_inline proc(action: Action_ID) -> bool {
 	return int(action) < len(Land_ID)
 }
 
-Active_Armies :: [len(Active_Army)]u8
+Active_Armies :: [Active_Army]u8
 
 
 L2S_2_Moves_Away :: struct {

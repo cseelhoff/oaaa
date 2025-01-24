@@ -16,16 +16,20 @@ SA_Adjacent_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
 Canal_Paths :: [Canal_States]Sea_Distances
 Seas_2_Moves_Away :: sa.Small_Array(SEAS_COUNT, Sea_2_Moves_Away)
 
+to_sea :: proc {
+	air_to_sea,
+	action_to_sea,
+}
 
-air_to_sea :: #force_inline proc(air : Air_ID) -> Sea_ID {
+air_to_sea :: #force_inline proc(air: Air_ID) -> Sea_ID {
 	assert(int(air) >= len(Land_ID))
 	return Sea_ID(int(air) - len(Land_ID))
 }
+
 action_to_sea :: #force_inline proc(action: Action_ID) -> Sea_ID {
 	assert(int(action) >= len(Land_ID) && int(action) < len(Air_ID))
 	return Sea_ID(int(action) - len(Land_ID))
 }
-to_sea :: proc{air_to_sea, action_to_sea}
 
 Canal :: struct {
 	lands: [2]string,
@@ -56,8 +60,8 @@ Canal_ID :: enum {
 SEAS_DATA := [?]string{"Pacific", "Atlantic", "Baltic"}
 SEA_CONNECTIONS :: [?][2]string{{"Pacific", "Atlantic"}, {"Atlantic", "Baltic"}}
 CANALS := [?]Canal{{lands = {"Moscow", "Moscow"}, seas = {"Pacific", "Baltic"}}}
-Canal_Lands:= [Canals_Count][2]Land_ID{{.Moscow, .Moscow}}
-Canal_Seas:= [Canals_Count][2]Sea_ID{{.Pacific, .Pacific}}
+Canal_Lands := [Canals_Count][2]Land_ID{{.Moscow, .Moscow}}
+Canal_Seas := [Canals_Count][2]Sea_ID{{.Pacific, .Pacific}}
 
 get_sea_id :: #force_inline proc(air: Air_ID) -> Sea_ID {
 	assert(int(air) >= len(Land_ID), "Invalid air index")

@@ -202,15 +202,16 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance
 	}
 	if max_distance == 1 do return
 	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
+	mid_seas := &mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea]
 	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if dst_sea_2_away in gc.skipped_a2a[to_air(src_sea)] ||
+		if to_air(dst_sea_2_away) in gc.skipped_a2a[to_air(src_sea)] ||
 		   gc.team_sea_units[dst_sea_2_away][mm.enemy_team[gc.cur_player]] > 0 &&
-			   gc.combat_sea_status[dst_sea_2_away] != .PRE_COMBAT { 	// transport needs escort
+			   gc.sea_combat_status[dst_sea_2_away] != .PRE_COMBAT { 	// transport needs escort
 			continue
 		}
-		for mid_sea in sa.slice(&dst_sea_2_away.mid_seas) {
-			if (!mid_sea.sea_path_blocked) {
-				sa.push(&gc.valid_actions, u8(dst_sea_2_away.sea.territory_index))
+		for mid_sea in sa.slice(&mid_seas[dst_sea_2_away]) {
+			if (gc.enemy_blockade_total[mid_sea] == 0) {
+				gc.valid_actions += {to_action(dst_sea_2_away)}
 				break
 			}
 		}
@@ -218,8 +219,8 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance
 }
 
 add_valid_unload_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
-	for dst_land in sa.slice(&src_sea.adjacent_lands) {
-		sa.push(&gc.valid_actions, u8(dst_land.territory_index))
+	for dst_land in sa.slice(&mm.s2l_1away_via_sea[src_sea]) {
+		gc.valid_actions += {to_action(dst_land)}
 	}
 }
 
@@ -295,8 +296,8 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 					gc.active_ships[src_sea][ship] = 0
 					continue
 				}
-				unload_unit_to_land(gc, dst_land, ship)
-				replace_ship(gc, &src_sea, ship, Transport_Unloaded[ship])
+				unload_unit_to_land(gc, to_land(dst_air), ship)
+				replace_ship(gc, src_sea, ship, Transport_Unloaded[ship])
 			}
 		}
 		if gc.clear_needed do clear_move_history(gc)
@@ -405,17 +406,17 @@ Transport_Unloaded := [Active_Ship]Active_Ship {
 unload_unit_to_land :: proc(gc: ^Game_Cache, dst_land: Land_ID, ship: Active_Ship) {
 	army := Transport_Unload_Unit_1[ship]
 	gc.active_armies[dst_land][army] += 1
-	gc.idle_armies[dst_land][gc.cur_player.index][Active_Army_To_Idle[army]] += 1
-	gc.team_units[dst_land][gc.cur_player.team.index] += 1
-	dst_land.max_bombards += 1
-	if !flag_for_enemy_combat(dst_land, gc.cur_player.team.enemy_team.index) {
+	gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[army]] += 1
+	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
+	gc.max_bombards[dst_land] += 1
+	if !flag_for_land_enemy_combat(gc,dst_land, mm.enemy_team[gc.cur_player]) {
 		check_for_conquer(gc, dst_land)
 	}
 }
 
 replace_ship :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship, new_ship: Active_Ship) {
-	src_sea.idle_ships[gc.cur_player.index][Active_Ship_To_Idle[new_ship]] += 1
+	gc.idle_ships[src_sea][gc.cur_player][Active_Ship_To_Idle[new_ship]] += 1
 	gc.active_ships[src_sea][new_ship] += 1
-	src_sea.idle_ships[gc.cur_player.index][Active_Ship_To_Idle[ship]] -= 1
+	gc.idle_ships[src_sea][gc.cur_player][Active_Ship_To_Idle[ship]] -= 1
 	gc.active_ships[src_sea][ship] -= 1
 }

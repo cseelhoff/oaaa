@@ -15,77 +15,94 @@ when ODIN_DEBUG {
 		// 	gc.actually_print = true
 		// } else do return
 		for sea in Sea_ID {
-			team_idles: [2]u8 = {0, 0}
-			for ship, ship_idx in sea.active_ships {
+			team_idles: [Team_ID]u8 = {
+				.Allies = 0,
+				.Axis   = 0,
+			}
+			for active_ship in Active_Ship {
+				ship := gc.active_ships[sea][active_ship]
 				if ship < 0 {
 					fmt.eprintln("Negative active ships")
 				}
 			}
-			for player in gc.players {
-				for ship, ship_idx in sea.idle_ships[player.index] {
+
+			for player in Player_ID {
+				for idle_ship in Idle_Ship {
+					ship := gc.idle_ships[sea][player][idle_ship]
 					if ship < 0 {
 						fmt.eprintln("Negative idle ships")
 					}
-					team_idles[player.team.index] += ship
+					team_idles[mm.team[player]] += ship
 				}
-				for plane, plane_idx in sea.idle_planes[player.index] {
-					if plane < 0 {
+				for idle_plane in Idle_Plane {
+					planes := gc.idle_sea_planes[sea][player][idle_plane]
+					if planes < 0 {
 						fmt.eprintln("Negative idle planes")
-					} else if plane > 0 && plane_idx == 1 && player.team != gc.cur_player.team {
+					} else if planes > 0 &&
+					   idle_plane == .BOMBER &&
+					   mm.team[player] != mm.team[gc.cur_player] {
 						fmt.eprintln("Enemy bombers at sea")
 					}
-					team_idles[player.team.index] += plane
+					team_idles[mm.team[player]] += planes
 				}
 			}
-			if sea.team_units[0] != team_idles[0] {
+			if gc.team_sea_units[sea][.Allies] != team_idles[.Allies] {
 				fmt.eprintln("Unequal team 0 units")
 			}
-			if sea.team_units[1] != team_idles[1] {
+			if gc.team_sea_units[sea][.Axis] != team_idles[.Axis] {
 				fmt.eprintln("Unequal team 1 units")
 			}
-			if sea.team_units[0] < 0 {
+			if gc.team_sea_units[sea][.Allies] < 0 {
 				fmt.eprintln("Negative team units")
 			}
-			if sea.team_units[1] < 0 {
+			if gc.team_sea_units[sea][.Axis] < 0 {
 				fmt.eprintln("Negative team units")
 			}
 		}
-		for land in gc.lands {
-			team_idles: [2]u8 = {0, 0}
-			for army, army_idx in land.active_armies {
+		for land in Land_ID {
+			team_idles: [Team_ID]u8 = {
+				.Allies = 0,
+				.Axis   = 0,
+			}
+			for active_army in Active_Army {
+				army := gc.active_armies[land][active_army]
 				if army < 0 {
 					fmt.eprintln("Negative active armies")
 				}
 			}
-			for player in gc.players {
-				for army, army_idx in land.idle_armies[player.index] {
+			for player in Player_ID {
+				for idle_army in Idle_Army {
+					army := gc.idle_armies[land][player][idle_army]
 					if army < 0 {
 						fmt.eprintln("Negative idle armies")
 					}
-					team_idles[player.team.index] += army
+					team_idles[mm.team[player]] += army
 				}
-				for plane, plane_idx in land.idle_planes[player.index] {
+
+				for idle_plane in Idle_Plane {
+					plane := gc.idle_land_planes[land][player][idle_plane]
 					if plane < 0 {
 						fmt.eprintln("Negative idle planes")
 					}
-					team_idles[player.team.index] += plane
-				}
-				if team_idles[player.team.index] > 0 &&
-				   land.owner.team == gc.cur_player.team &&
-				   player.team != gc.cur_player.team {
-					fmt.eprintln("Enemy units on land")
+					team_idles[mm.team[player]] += plane
+
+					if team_idles[mm.team[player]] > 0 &&
+					   mm.team[gc.owner[land]] == mm.team[gc.cur_player] &&
+					   mm.team[player] != mm.team[gc.cur_player] {
+						fmt.eprintln("Enemy units on land")
+					}
 				}
 			}
-			if land.team_units[0] != team_idles[0] {
+			if gc.team_land_units[land][.Allies] != team_idles[.Allies] {
 				fmt.eprintln("Unequal team 0 units")
 			}
-			if land.team_units[1] != team_idles[1] {
+			if gc.team_land_units[land][.Axis] != team_idles[.Axis] {
 				fmt.eprintln("Unequal team 1 units")
 			}
-			if land.team_units[0] < 0 {
+			if gc.team_land_units[land][.Allies] < 0 {
 				fmt.eprintln("Negative team units")
 			}
-			if land.team_units[1] < 0 {
+			if gc.team_land_units[land][.Axis] < 0 {
 				fmt.eprintln("Negative team units")
 			}
 		}
@@ -167,7 +184,7 @@ clear_move_history :: proc(gc: ^Game_Cache) {
 	gc.clear_needed = false
 }
 
-reset_valid_land_moves :: proc(gc: ^Game_Cache, land: Land_ID) { 
+reset_valid_land_moves :: proc(gc: ^Game_Cache, land: Land_ID) {
 	gc.valid_actions = {to_action(land)}
 }
 
@@ -293,7 +310,8 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 				mil_cost += int(gs.idle_armies[land][player][army]) * int(COST_IDLE_ARMY[army])
 			}
 			for plane in Idle_Plane {
-				mil_cost += int(gs.idle_land_planes[land][player][plane]) * int(COST_IDLE_PLANE[plane])
+				mil_cost +=
+					int(gs.idle_land_planes[land][player][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
 		for sea in Sea_ID {
@@ -301,7 +319,8 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 				mil_cost += int(gs.idle_ships[sea][player][ship]) * int(COST_IDLE_SHIP[ship])
 			}
 			for plane in Idle_Plane {
-				mil_cost += int(gs.idle_sea_planes[sea][player][plane]) * int(COST_IDLE_PLANE[plane])
+				mil_cost +=
+					int(gs.idle_sea_planes[sea][player][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
 		if mm.team[player] == mm.team[gs.cur_player] {

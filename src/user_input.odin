@@ -28,7 +28,7 @@ print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	if is_land(src_air) {
 		fmt.println("Retreat From Land ", mm.land_name[to_land(src_air)], " Valid Moves: ")
 	} else {
-		fmt.println("Retreat From Sea ", mm.sea_name[sea(src_air)], " Valid Moves: ")
+		fmt.println("Retreat From Sea ", mm.sea_name[to_sea(src_air)], " Valid Moves: ")
 	}
 	for valid_move in gc.valid_actions {
 		fmt.print(int(valid_move), valid_move, ", ")
@@ -99,7 +99,7 @@ get_user_input :: proc(gc: ^Game_Cache) -> (action: Action_ID) {
 		return
 	}
 	input_str := string(buffer[:n])
-	int_input := int2act(strconv.atoi(input_str))
+	int_input := to_action(strconv.atoi(input_str))
 	assert(int_input in gc.valid_actions)
 	return int_input
 }
@@ -109,7 +109,7 @@ get_ai_input :: proc(gc: ^Game_Cache) -> Action_ID {
 	if !gc.use_selected_action {
 		//fmt.eprintln("Invalid input ", gc.selected_action)
 		gc.seed = (gc.seed + 1) % RANDOM_MAX
-		rand_idx := RANDOM_NUMBERS[gc.seed] % card(gc.valid_actions)
+		rand_idx := RANDOM_NUMBERS[gc.seed] % u8(card(gc.valid_actions))
 		for action_idx in gc.valid_actions {
 			if rand_idx == 0 {
 				return action_idx
@@ -130,9 +130,13 @@ get_ai_input :: proc(gc: ^Game_Cache) -> Action_ID {
 
 print_buy_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	print_game_state(gc)
-	fmt.print(PLAYER_DATA[gc.cur_player.index].color)
-	fmt.println("Buy At", src_air.name)
-	for buy_action_idx in sa.slice(&gc.valid_actions) {
+	fmt.print(mm.color[gc.cur_player])
+	if is_land(src_air) {
+		fmt.println("Buy At", mm.land_name[to_land(src_air)])
+	} else {
+		fmt.println("Buy At", mm.sea_name[to_sea(src_air)])
+	}
+	for buy_action_idx in gc.valid_actions {
 		fmt.print(buy_action_idx, Buy_Names[to_buy_action(buy_action_idx)], ", ")
 	}
 	fmt.println(DEF_COLOR)

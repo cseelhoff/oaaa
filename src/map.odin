@@ -21,6 +21,7 @@ SA_L2L :: sa.Small_Array(MAX_LAND_TO_LAND_CONNECTIONS, Land_ID)
 SA_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
 SA_L2S_2_Away :: sa.Small_Array(len(Sea_ID), L2S_2_Away)
 SA_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
+SA_S2L :: sa.Small_Array(MAX_SEA_TO_LAND_CONNECTIONS, Land_ID)
 SA_A2A :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, Air_ID)
 L2L_2Away_Via_Land :: [Land_ID]sa.Small_Array(len(Land_ID), Land_2_Moves_Away)
 S2S_2Away_Via_Sea :: [Land_ID]sa.Small_Array(len(Sea_ID), Sea_ID)
@@ -44,6 +45,7 @@ MapData :: struct {
 	l2s_1away_via_land:        [Land_ID]SA_L2S,
 	l2s_1away_via_land_bitset: [Land_ID]Sea_Bitset,
 	l2s_2away_via_land:        [Land_ID]SA_L2S_2_Away,
+	s2l_1away_via_sea:				 [Sea_ID]SA_S2L,
 	a2a_2away_via_air:         [Air_ID]Air_Bitset,
 	land_distances:            [Land_ID][Land_ID]u8,
 	air_distances:             [Air_ID][Air_ID]u8,

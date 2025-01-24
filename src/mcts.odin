@@ -102,7 +102,7 @@ expand_node :: proc(node: ^MCTSNode) {
 }
 MAX_ACTION_SEQUENCES :: 20
 MAX_ACTIONS :: 1000
-Action_Sequence :: [MAX_ACTIONS]u8
+Action_Sequence :: [MAX_ACTIONS]Action_ID
 action_sequences := [MAX_ACTION_SEQUENCES]Action_Sequence{}
 action_sequence_lengths := [MAX_ACTION_SEQUENCES]int{}
 action_sequence_visits := [MAX_ACTION_SEQUENCES]int{}
@@ -129,7 +129,7 @@ update_top_action_sequences :: proc(
 	}
 }
 
-copy_full_array :: proc(src: ^[MAX_ACTIONS]u8, dest: ^[MAX_ACTIONS]u8) {
+copy_full_array :: proc(src: ^[MAX_ACTIONS]Action_ID, dest: ^[MAX_ACTIONS]Action_ID) {
 	for i in 0 ..< MAX_ACTIONS {
 		dest[i] = src[i]
 	}
@@ -253,7 +253,7 @@ print_mcts :: proc(root: ^MCTSNode) {
 	// print_top_action_sequences();
 }
 
-select_best_action :: proc(root: ^MCTSNode) -> u8 {
+select_best_action :: proc(root: ^MCTSNode) -> Action_ID {
 	best_child: ^MCTSNode = nil
 	best_value: f64 = -999999.0
 	for child in root.children {
