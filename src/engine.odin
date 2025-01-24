@@ -135,7 +135,7 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 // add_move_if_not_skipped :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 // 	if dst_air not_in gc.skipped_a2a[src_air] {
-// 		gc.valid_actions += {a2act(dst_air)}
+// 		gc.valid_actions += {to_action(dst_air)}
 // 	}
 // }
 
@@ -144,12 +144,12 @@ update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 	for valid_action in gc.valid_actions {
 		// assert(card(gc.valid_actions) > 0)
 		// valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
-		if valid_action == a2act(src_air) do continue
-		if valid_action == a2act(dst_air) do break
-		gc.skipped_a2a[src_air] += {act2air(valid_action)}
+		if valid_action == to_action(src_air) do continue
+		if valid_action == to_action(dst_air) do break
+		gc.skipped_a2a[src_air] += {to_air(valid_action)}
 		gc.clear_needed = true
 	}
-	gc.valid_actions -= transmute(Actions_Bitset)u32(transmute(u16)gc.skipped_a2a[src_air])
+	gc.valid_actions -= transmute(Action_Bitset)u32(transmute(u16)gc.skipped_a2a[src_air])
 }
 
 // apply_skip :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
@@ -168,7 +168,7 @@ clear_move_history :: proc(gc: ^Game_Cache) {
 }
 
 reset_valid_land_moves :: proc(gc: ^Game_Cache, land: Land_ID) { 
-	gc.valid_actions = {l2act(land)}
+	gc.valid_actions = {to_action(land)}
 }
 
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -178,16 +178,16 @@ buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		if gc.owner[land] != gc.cur_player ||
 		   gc.factory_prod[land] > 0 ||
 		   gc.land_combat_status[land] != .NO_COMBAT ||
-		   l2aid(land) in gc.skipped_a2a[l2aid(land)] {
+		   to_air(land) in gc.skipped_a2a[to_air(land)] {
 			continue
 		}
-		gc.valid_actions += {l2act(land)}
+		gc.valid_actions += {to_action(land)}
 	}
 	for gc.money[gc.cur_player] < FACTORY_COST {
 		factory_land_action := get_factory_buy(gc) or_return
 		if factory_land_action == .Skip_Action do return true
 		gc.money[gc.cur_player] -= FACTORY_COST
-		factory_land := act2land(factory_land_action)
+		factory_land := to_land(factory_land_action)
 		gc.factory_prod[factory_land] = mm.value[factory_land]
 		sa.push(&gc.factory_locations[gc.cur_player], factory_land)
 	}
@@ -223,8 +223,8 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		}
 		gc.land_combat_status[land] = .NO_COMBAT
 		gc.max_bombards[land] = 0
-		gc.skipped_a2a[l2aid(land)] = {}
-		gc.skipped_buys[l2aid(land)] = {}
+		gc.skipped_a2a[to_air(land)] = {}
+		gc.skipped_buys[to_air(land)] = {}
 		gc.active_armies[land] = {}
 		idle_armies := &gc.idle_armies[land][gc.cur_player]
 		gc.active_armies[land][.INF_UNMOVED] = idle_armies[.INF]
@@ -239,8 +239,8 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 
 	for sea in Sea_ID {
 		gc.sea_combat_status[sea] = .NO_COMBAT
-		gc.skipped_a2a[s2aid(sea)] = {}
-		gc.skipped_buys[s2aid(sea)] = {}
+		gc.skipped_a2a[to_air(sea)] = {}
+		gc.skipped_buys[to_air(sea)] = {}
 		gc.active_ships[sea] = {}
 		idle_ships := &gc.idle_ships[sea][gc.cur_player]
 		gc.active_ships[sea][.TRANS_EMPTY_UNMOVED] = idle_ships[.TRANS_EMPTY]
@@ -354,7 +354,7 @@ random_play_until_terminal :: proc(gc: ^Game_Cache, gs: ^Game_State) -> f64 {
 	return score
 }
 
-get_possible_actions :: proc(gs: ^Game_State) -> Actions_Bitset {
+get_possible_actions :: proc(gs: ^Game_State) -> Action_Bitset {
 	// Return the list of possible actions from the given state
 	gc: Game_Cache
 	// set unlucky teams

@@ -370,7 +370,7 @@ move_ship_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
 
 move_ship_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
 	if gc.active_ships[src_sea][ship] == 0 do return true
-	gc.valid_actions = {s2act(src_sea)}
+	gc.valid_actions = {to_action(src_sea)}
 	add_valid_ship_moves(gc, src_sea, ship)
 	for gc.active_ships[src_sea][ship] > 0 {
 		move_next_ship_in_sea(gc, src_sea, ship) or_return
@@ -379,12 +379,13 @@ move_ship_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (o
 }
 
 move_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
-	dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], s2aid(src_sea)) or_return
-	flag_for_sea_enemy_combat(gc, a2sid(dst_air_idx), mm.enemy_team[gc.cur_player])
-	if skip_ship(gc, src_sea, a2sid(dst_air_idx), ship) do return true
-	move_single_ship(gc, a2sid(dst_air_idx), Ships_Moved[ship], gc.cur_player, ship, src_sea)
+	dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], to_air(src_sea)) or_return
+	dst_sea := to_sea(dst_air_idx)
+	flag_for_sea_enemy_combat(gc, dst_sea, mm.enemy_team[gc.cur_player])
+	if skip_ship(gc, src_sea, dst_sea, ship) do return true
+	move_single_ship(gc, dst_sea, Ships_Moved[ship], gc.cur_player, ship, src_sea)
 	if ship == .CARRIER_UNMOVED {
-		carry_allied_fighters(gc, src_sea, a2sid(dst_air_idx))
+		carry_allied_fighters(gc, src_sea, dst_sea)
 		gc.is_fighter_cache_current = false
 	}
 	return true
@@ -400,20 +401,20 @@ skip_ship :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID, ship: Activ
 add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) {
 	// for dst_sea in sa.slice(&src_sea.canal_paths[gc.canal_state].adjacent_seas) {
 	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if s2aid(dst_sea) in gc.skipped_a2a[s2aid(src_sea)] {
+		if to_air(dst_sea) in gc.skipped_a2a[to_air(src_sea)] {
 			continue
 		}
-		gc.valid_actions += {s2act(dst_sea)}
+		gc.valid_actions += {to_action(dst_sea)}
 	}
 	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
 	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if s2aid(dst_sea_2_away) in gc.skipped_a2a[s2aid(src_sea)] {
+		if to_air(dst_sea_2_away) in gc.skipped_a2a[to_air(src_sea)] {
 			continue
 		}
 		for mid_sea in sa.slice(&mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][dst_sea_2_away]) {
 			if gc.enemy_destroyer_total[mid_sea] > 0 do continue
 			if ship != .SUB_UNMOVED && gc.enemy_blockade_total[mid_sea] > 0 do continue
-			gc.valid_actions += {s2act(dst_sea_2_away)}
+			gc.valid_actions += {to_action(dst_sea_2_away)}
 			break
 		}
 	}

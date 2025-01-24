@@ -96,7 +96,7 @@ print_factory_prompt :: proc(gc: ^Game_Cache) {
 		if valid_action == .Skip_Action {
 			fmt.print(int(valid_action), "=Skip", ", ")
 		} else {
-			fmt.print(int(valid_action), act2air(valid_action), ", ")
+			fmt.print(int(valid_action), to_air(valid_action), ", ")
 		}
 
 	}
@@ -124,12 +124,12 @@ get_factory_buy :: proc(gc: ^Game_Cache) -> (action: Action_ID, ok: bool) {
 }
 
 update_factory_history :: proc(gc: ^Game_Cache, action: Action_ID) {
-	actions_to_remove:Actions_Bitset={}
+	actions_to_remove:Action_Bitset={}
 	for valid_action in gc.valid_actions {
 		// assert(card(gc.valid_actions) > 0)
 		// valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
 		if (valid_action == action) do break
-		gc.skipped_a2a[act2air(valid_action)] += {act2air(valid_action)}
+		gc.skipped_a2a[to_air(valid_action)] += {to_air(valid_action)}
 		actions_to_remove += {valid_action}
 		// Air_ID[valid_action].skipped_moves[valid_action] = true
 		// gc.valid_actions.len -= 1
@@ -143,17 +143,17 @@ update_buy_history :: proc(gc: ^Game_Cache, src_air: Air_ID, action: Buy_Action)
 		// valid_action_idx := gc.valid_actions.data[gc.valid_actions.len - 1]
 		if valid_action == .Skip_Action do continue
 		if valid_action == buy_to_action_idx(action) do break
-		gc.skipped_buys[src_air] += {action_idx_to_buy(valid_action)}
+		gc.skipped_buys[src_air] += {to_buy_action(valid_action)}
 		gc.clear_needed = true
 	}
-	gc.valid_actions -= transmute(Actions_Bitset)u32(gc.skipped_buys[src_air])
+	gc.valid_actions -= transmute(Action_Bitset)u32(transmute(u16)gc.skipped_buys[src_air])
 }
 
 buy_to_action_idx :: proc(action: Buy_Action) -> Action_ID {
 	return Action_ID(u8(action) + len(Air_ID))
 }
 
-action_idx_to_buy :: proc(action: Action_ID) -> Buy_Action {
+to_buy_action :: proc(action: Action_ID) -> Buy_Action {
 	return Buy_Action(u8(action) - len(Air_ID))
 }
 
@@ -165,20 +165,20 @@ add_buy_if_not_skipped :: proc(gc: ^Game_Cache, src_air: Air_ID, action: Buy_Act
 
 buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 	for dst_sea in sa.slice(&mm.l2s_1away_via_land[land]) {
-		for (gc.builds_left[land] > 0 && .SKIP_BUY not_in gc.skipped_buys[s2aid(dst_sea)]) {
+		for (gc.builds_left[land] > 0 && .SKIP_BUY not_in gc.skipped_buys[to_air(dst_sea)]) {
 			repair_cost := u8(max(0, 1 + int(gc.factory_dmg[land]) - int(gc.builds_left[land])))
 			gc.valid_actions = {.Skip_Action}
 			if gc.money[gc.cur_player] >= Cost_Buy[.BUY_FIGHTER] + repair_cost &&
-				s2aid(dst_sea) in gc.can_fighter_land_here {
-				add_buy_if_not_skipped(gc, s2aid(dst_sea), .BUY_FIGHTER)
+				to_air(dst_sea) in gc.can_fighter_land_here {
+				add_buy_if_not_skipped(gc, to_air(dst_sea), .BUY_FIGHTER)
 			}
 			for buy_ship in Valid_Sea_Buys {
 				if gc.money[gc.cur_player] < Cost_Buy[buy_ship] + repair_cost do continue
-				add_buy_if_not_skipped(gc, s2aid(dst_sea), buy_ship)
+				add_buy_if_not_skipped(gc, to_air(dst_sea), buy_ship)
 			}
-			action := get_buy_input(gc, s2aid(dst_sea)) or_return
+			action := get_buy_input(gc, to_air(dst_sea)) or_return
 			if action == .SKIP_BUY {
-				gc.skipped_buys[s2aid(dst_sea)]+= {.SKIP_BUY}
+				gc.skipped_buys[to_air(dst_sea)]+= {.SKIP_BUY}
 				break
 			}
 			gc.builds_left[land] -= 1
@@ -196,14 +196,18 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 			if action == .BUY_FIGHTER {
 				gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
 				gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
-				gc.can_fighter_land_here[dst_sea] = is_carrier_available(gc, dst_sea)
+				if is_carrier_available(gc, dst_sea) {
+					gc.can_fighter_land_here += {to_air(dst_sea)}
+				} else {
+					gc.can_fighter_land_here -= {to_air(dst_sea)}
+				}
 			} else {
 				ship := Buy_Active_Ship[action]
 				gc.active_ships[dst_sea][ship] += 1
 				gc.idle_ships[dst_sea][gc.cur_player][Active_Ship_To_Idle[ship]] += 1
-				if ship == .CARRIER_0_MOVES do gc.can_fighter_land_here[dst_sea] = true
+				if ship == .CARRIER_0_MOVES do gc.can_fighter_land_here += {to_air(dst_sea)}
 			}
-			gc.team_units[dst_sea][mm.team[gc.cur_player]] += 1
+			gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
 		}
 	}
 	return true
@@ -211,7 +215,7 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 
 clear_buy_history :: proc(gc: ^Game_Cache, land: Land_ID) {
 	for sea in sa.slice(&mm.l2s_1away_via_land[land]) {
-		gc.skipped_buys[s2aid(sea)] = {}
+		gc.skipped_buys[to_air(sea)] = {}
 		// mem.zero_slice(sea.skipped_buys[:])
 	}
 	gc.clear_needed = false
@@ -223,13 +227,13 @@ buy_land_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 		gc.valid_actions = {.Skip_Action}
 		for buy_plane in Valid_Air_Buys {
 			if gc.money[gc.cur_player] < Cost_Buy[buy_plane] + repair_cost do continue
-			add_buy_if_not_skipped(gc, l2aid(land), buy_plane)
+			add_buy_if_not_skipped(gc, to_air(land), buy_plane)
 		}
 		for buy_army in Valid_Land_Buys {
 			if gc.money[gc.cur_player] < Cost_Buy[buy_army] + repair_cost do continue
-			add_buy_if_not_skipped(gc, l2aid(land), buy_army)
+			add_buy_if_not_skipped(gc, to_air(land), buy_army)
 		}
-		action := get_buy_input(gc, l2aid(land)) or_return
+		action := get_buy_input(gc, to_air(land)) or_return
 		if action == .SKIP_BUY {
 			gc.builds_left[land] = 0
 			break

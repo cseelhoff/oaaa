@@ -14,24 +14,28 @@ Land_Data :: struct {
 	value: u8,
 }
 
+to_land :: proc{air_to_land, action_to_land}
+is_land :: proc{is_air_land, is_action_land}
+
+action_to_land :: #force_inline proc(act: Action_ID) -> Land_ID {
+	return Land_ID(act)
+}
+
+air_to_land :: #force_inline proc(air : Air_ID) -> Land_ID {
+	assert(int(air) < len(Land_ID))
+	return Land_ID(air)
+}
+
+is_air_land :: #force_inline proc(air: Air_ID) -> bool {
+	return int(air) < len(Land_ID)
+}
+
+is_action_land :: #force_inline proc(action: Action_ID) -> bool {
+	return int(action) < len(Land_ID)
+}
+
 Active_Armies :: [len(Active_Army)]u8
-// Land :: struct {
-// 	using territory:    Territory,
-// 	idle_armies:        Idle_Armies,
-// 	active_armies:      Active_Armies,
-// 	l2l_2away_via_land: sa.Small_Array(len(Land_ID), Land_2_Moves_Away),
-// 	seas_2_moves_away:  sa.Small_Array(len(Sea_ID), L2S_2_Moves_Away),
-// 	adjacent_seas:      SA_Adjacent_L2S,
-// 	original_owner:     ^Player,
-// 	land_distances:     [len(Land_ID)]u8,
-// 	// owner:              Player_ID,
-// 	land_index:         Land_ID,
-// 	value:              u8,
-// 	factory_dmg:        u8,
-// 	factory_prod:       u8,
-// 	max_bombards:       u8,
-// 	builds_left:        u8,
-// }
+
 
 L2S_2_Moves_Away :: struct {
 	sea:       Sea_ID,

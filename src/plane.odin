@@ -101,7 +101,7 @@ move_unmoved_planes :: proc(gc: ^Game_Cache) -> (ok: bool) {
 move_plane_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
 	gc.clear_needed = false
 	for src_air in Air_ID {
-		move_plane_air(gc, src_air, plane) or_return
+		move_plane_to_air(gc, src_air, plane) or_return
 	}
 	if gc.clear_needed do clear_move_history(gc)
 	return true
@@ -110,10 +110,10 @@ move_plane_airs :: proc(gc: ^Game_Cache, plane: Active_Plane) -> (ok: bool) {
 move_plane_air :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) -> (ok: bool) {
 	if gc.active_planes[src_air][plane] == 0 do return true
 	refresh_plane_can_land_here(gc, plane)
-	gc.valid_actions = {a2act(src_air)}
+	gc.valid_actions = {to_action(src_air)}
 	add_valid_plane_moves(gc, src_air, plane)
 	for gc.active_planes[src_air][plane] > 0 {
-		move_next_plane_in_air(gc, src_air, plane) or_return
+		move_next_plane_in_to_air(gc, src_air, plane) or_return
 	}
 	return true
 }
@@ -126,9 +126,9 @@ move_next_plane_in_air :: proc(
 	ok: bool,
 ) {
 	dst_air := get_move_input(gc, Active_Plane_Names[plane], src_air) or_return
-	if skip_plane(src_air, act2air(dst_air), plane, gc.cur_player.team.enemy_team.index) do return true
-	plane_after_move := plane_enemy_checks(gc, src_air, act2air(dst_air), plane)
-	move_single_plane(gc, act2air(dst_air), plane_after_move, gc.cur_player, plane, src_air)
+	if skip_plane(src_air, to_air(dst_air), plane, gc.cur_player.team.enemy_team.index) do return true
+	plane_after_move := plane_enemy_checks(gc, src_air, to_air(dst_air), plane)
+	move_single_plane(gc, to_air(dst_air), plane_after_move, gc.cur_player, plane, src_air)
 	return true
 }
 
@@ -190,7 +190,7 @@ refresh_plane_can_land_here :: proc(gc: ^Game_Cache, plane: Active_Plane) {
 }
 
 crash_unlandable_fighters :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) -> bool {
-	if gc.valid_actions.len > 0 do return false
+	if gc.valid_actions.Action_Bitset > 0 do return false
 	planes_count := gc.active_planes[src_air][plane]
 	src_air.team_units[gc.cur_player.team.index] -= planes_count
 	src_air.idle_planes[gc.cur_player.index][Active_Plane_To_Idle[plane]] -= planes_count

@@ -139,11 +139,11 @@ move_next_army_in_land :: proc(
 ) -> (
 	ok: bool,
 ) {
-	dst_air := get_move_input(gc, Active_Army_Names[army], l2aid(src_land)) or_return
+	dst_air := get_move_input(gc, Active_Army_Names[army], to_air(src_land)) or_return
 	if check_load_transport(gc, army, src_land, dst_air) do return true
-	if skip_army(gc, src_land, a2lid(dst_air), army) do return true
-	army_after_move := blitz_checks(gc, a2lid(dst_air), army, src_land)
-	move_single_army_land(gc, a2lid(dst_air), army_after_move, gc.cur_player, src_land, army)
+	if skip_army(gc, src_land, to_land(dst_air), army) do return true
+	army_after_move := blitz_checks(gc, to_land(dst_air), army, src_land)
+	move_single_army_land(gc, to_land(dst_air), army_after_move, gc.cur_player, src_land, army)
 	return true
 }
 
@@ -201,8 +201,8 @@ add_if_boat_available :: proc(
 	army: Active_Army,
 ) {
 	if is_boat_available(gc, src_land, dst_sea, army) {
-		if s2aid(dst_sea) not_in gc.skipped_a2a[l2aid(src_land)] {
-			push_sea_action(gc, dst_sea)
+		if to_air(dst_sea) not_in gc.skipped_a2a[to_air(src_land)] {
+			gc.valid_actions += {to_action(dst_sea)}
 		}
 	}
 }
@@ -216,8 +216,8 @@ are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands, enemy_team:
 
 add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
 	for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
-		if l2aid(dst_land) in gc.skipped_a2a[l2aid(src_land)] do continue
-		push_land_action(gc, dst_land)
+		if to_air(dst_land) in gc.skipped_a2a[to_air(src_land)] do continue
+		gc.valid_actions += {to_action(dst_land)}
 	}
 	for dst_sea in sa.slice(&mm.l2s_1away_via_land[src_land]) {
 		add_if_boat_available(gc, src_land, dst_sea, army)
@@ -227,15 +227,15 @@ add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
 add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
 	enemy_team := mm.enemy_team[gc.cur_player]
 	for &dst_land_2_away in sa.slice(&mm.l2l_2away_via_land[src_land]) {
-		if l2aid(dst_land_2_away.land) in gc.skipped_a2a[l2aid(src_land)] ||
+		if to_air(dst_land_2_away.land) in gc.skipped_a2a[to_air(src_land)] ||
 		   are_midlands_blocked(gc, &dst_land_2_away.mid_lands, enemy_team) {
 			continue
 		}
-		push_land_action(gc, dst_land_2_away.land)
+		gc.valid_actions += {to_action(dst_land_2_away.land)}
 	}
 	// check for moving from land to sea (two moves away)
 	for &dst_sea_2_away in sa.slice(&mm.l2s_2away_via_land[src_land]) {
-		if s2aid(dst_sea_2_away.sea) in gc.skipped_a2a[l2aid(src_land)] ||
+		if to_air(dst_sea_2_away.sea) in gc.skipped_a2a[to_air(src_land)] ||
 		   are_midlands_blocked(gc, &dst_sea_2_away.mid_lands, enemy_team) {
 			continue
 		}
@@ -274,7 +274,7 @@ check_load_transport :: proc(
 	if int(dst_air) < len(Land_ID) do return false
 	load_available_transport(gc, army, src_land, get_sea_id(dst_air), gc.cur_player)
 	if is_boat_available(gc, src_land, get_sea_id(dst_air), army) do return true
-	gc.valid_actions -= {a2act(dst_air)}
+	gc.valid_actions -= {to_action(dst_air)}
 	return true
 }
 

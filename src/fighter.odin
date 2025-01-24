@@ -25,28 +25,28 @@ move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for src_land in Land_ID {
 		if gc.active_land_planes[src_land][.FIGHTER_UNMOVED] == 0 do return true
 		if ~gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
-		gc.valid_actions = {l2act(src_land)}
-		add_valid_unmoved_fighter_moves(gc, l2aid(src_land))
+		gc.valid_actions = {to_action(src_land)}
+		add_valid_unmoved_fighter_moves(gc, to_air(src_land))
 		for gc.active_land_planes[src_land][.FIGHTER_UNMOVED] > 0 {
-			dst_air := get_move_input(gc, "FIGHTER_UNMOVED", l2aid(src_land)) or_return
+			dst_air := get_move_input(gc, "FIGHTER_UNMOVED", to_air(src_land)) or_return
 			if is_land(dst_air) {
-				move_unmoved_fighter_from_land_to_land(gc, src_land, a2lid(dst_air))
+				move_unmoved_fighter_from_land_to_land(gc, src_land, to_land(dst_air))
 			} else {
-				move_unmoved_fighter_from_land_to_sea(gc, src_land, a2sid(dst_air))
+				move_unmoved_fighter_from_land_to_sea(gc, src_land, to_sea(dst_air))
 			}
 		}
 	}
 	for src_sea in Sea_ID {
 		if gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] == 0 do return true
 		if ~gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
-		gc.valid_actions = {s2act(src_sea)}
-		add_valid_unmoved_fighter_moves(gc, s2aid(src_sea))
+		gc.valid_actions = {to_action(src_sea)}
+		add_valid_unmoved_fighter_moves(gc, to_air(src_sea))
 		for gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] > 0 {
-			dst_air := get_move_input(gc, "FIGHTER_UNMOVED", s2aid(src_sea)) or_return
+			dst_air := get_move_input(gc, "FIGHTER_UNMOVED", to_air(src_sea)) or_return
 			if is_land(dst_air) {
-				move_unmoved_fighter_from_sea_to_land(gc, src_sea, a2lid(dst_air))
+				move_unmoved_fighter_from_sea_to_land(gc, src_sea, to_land(dst_air))
 			} else {
-				move_unmoved_fighter_from_sea_to_sea(gc, src_sea, a2sid(dst_air))
+				move_unmoved_fighter_from_sea_to_sea(gc, src_sea, to_sea(dst_air))
 			}
 		}
 	}
@@ -54,7 +54,7 @@ move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 }
 
 add_valid_unmoved_fighter_moves :: #force_inline proc(gc: ^Game_Cache, src_air: Air_ID) {
-	gc.valid_actions += air2action_bitset(
+	gc.valid_actions += to_action_bitset(
 		(~gc.skipped_a2a[src_air] &
 			((mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here) |
 					(gc.air_has_enemies &
@@ -70,11 +70,11 @@ move_unmoved_fighter_from_land_to_land :: proc(
 	dst_land: Land_ID,
 ) {
 	if skip_land_fighter(gc, src_land, dst_land) do return
-	if l2aid(dst_land) in gc.air_has_enemies {
+	if to_air(dst_land) in gc.air_has_enemies {
 		gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += 1
 	} else {
 		gc.land_combat_status[dst_land] = .PRE_COMBAT
-		gc.active_land_planes[dst_land][Fighter_After_Moves[mm.air_distances[l2aid(src_land)][l2aid(dst_land)]]] +=
+		gc.active_land_planes[dst_land][Fighter_After_Moves[mm.air_distances[to_air(src_land)][to_air(dst_land)]]] +=
 		1
 	}
 	gc.idle_land_planes[dst_land][gc.cur_player][.FIGHTER] += 1
@@ -90,11 +90,11 @@ move_unmoved_fighter_from_land_to_sea :: proc(
 	src_land: Land_ID,
 	dst_sea: Sea_ID,
 ) {
-	if s2aid(dst_sea) in gc.air_has_enemies {
+	if to_air(dst_sea) in gc.air_has_enemies {
 		gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
 	} else {
 		gc.sea_combat_status[dst_sea] = .PRE_COMBAT
-		gc.active_sea_planes[dst_sea][Fighter_After_Moves[mm.air_distances[l2aid(src_land)][s2aid(dst_sea)]]] +=
+		gc.active_sea_planes[dst_sea][Fighter_After_Moves[mm.air_distances[to_air(src_land)][to_air(dst_sea)]]] +=
 		1
 	}
 	gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
@@ -110,11 +110,11 @@ move_unmoved_fighter_from_sea_to_land :: proc(
 	src_sea: Sea_ID,
 	dst_land: Land_ID,
 ) {
-	if l2aid(dst_land) in gc.air_has_enemies {
+	if to_air(dst_land) in gc.air_has_enemies {
 		gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += 1
 	} else {
 		gc.land_combat_status[dst_land] = .PRE_COMBAT
-		gc.active_land_planes[dst_land][Fighter_After_Moves[mm.air_distances[s2aid(src_sea)][l2aid(dst_land)]]] +=
+		gc.active_land_planes[dst_land][Fighter_After_Moves[mm.air_distances[to_air(src_sea)][to_air(dst_land)]]] +=
 		1
 	}
 	gc.idle_land_planes[dst_land][gc.cur_player][.FIGHTER] += 1
@@ -127,11 +127,11 @@ move_unmoved_fighter_from_sea_to_land :: proc(
 
 move_unmoved_fighter_from_sea_to_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) {
 	if skip_sea_fighter(gc, src_sea, dst_sea) do return
-	if s2aid(dst_sea) in gc.air_has_enemies {
+	if to_air(dst_sea) in gc.air_has_enemies {
 		gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
 	} else {
 		gc.sea_combat_status[dst_sea] = .PRE_COMBAT
-		gc.active_sea_planes[dst_sea][Fighter_After_Moves[mm.air_distances[s2aid(src_sea)][s2aid(dst_sea)]]] +=
+		gc.active_sea_planes[dst_sea][Fighter_After_Moves[mm.air_distances[to_air(src_sea)][to_air(dst_sea)]]] +=
 		1
 	}
 	gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
@@ -152,7 +152,7 @@ skip_land_fighter :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_land: Land_ID)
 
 skip_sea_fighter :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> (ok: bool) {
 	if src_sea != dst_sea do return false
-	if s2aid(src_sea) in gc.air_has_enemies do return false
+	if to_air(src_sea) in gc.air_has_enemies do return false
 	gc.active_sea_planes[src_sea][.FIGHTER_0_MOVES] +=
 		gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED]
 	gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] = 0
@@ -162,15 +162,15 @@ skip_sea_fighter :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> (
 refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 	// is allied owned and not recently conquered?
 	gc.can_fighter_land_here =
-		l2a_bitset(gc.friendly_owner & gc.land_no_combat) | s2a_bitset(gc.has_carrier_space)
+		to_air_bitset(gc.friendly_owner & gc.land_no_combat) | to_air_bitset(gc.has_carrier_space)
 	// check for possiblity to build carrier under fighter
 	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
-		gc.can_fighter_land_here += s2a_bitset(mm.l2s_1away_via_land_bitset[land])
+		gc.can_fighter_land_here += to_air_bitset(mm.l2s_1away_via_land_bitset[land])
 	}
 	for sea in Sea_ID {
 		// if player owns a carrier, then landing area is 2 spaces away
 		if gc.active_ships[sea][.CARRIER_UNMOVED] > 0 {
-			gc.can_fighter_land_here += s2a_bitset(
+			gc.can_fighter_land_here += to_air_bitset(
 				mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea] |
 				mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][sea],
 			)
@@ -186,16 +186,16 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 refresh_can_fighter_land_here_directly :: proc(gc: ^Game_Cache) {
 	// is allied owned and not recently conquered?
 	gc.can_fighter_land_here =
-		l2a_bitset(gc.friendly_owner & gc.land_no_combat) | s2a_bitset(gc.has_carrier_space)
+		to_air_bitset(gc.friendly_owner & gc.land_no_combat) | to_air_bitset(gc.has_carrier_space)
 	// check for possiblity to build carrier under fighter
 	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
-		gc.can_fighter_land_here += s2a_bitset(mm.l2s_1away_via_land_bitset[land])
+		gc.can_fighter_land_here += to_air_bitset(mm.l2s_1away_via_land_bitset[land])
 	}
 	gc.is_fighter_cache_current = true
 }
 
 add_valid_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
-	gc.valid_actions = air2action_bitset(
+	gc.valid_actions = to_action_bitset(
 		~gc.skipped_a2a[src_air] &
 		((mm.a2a_within_2_moves[src_air] & (gc.can_fighter_land_here | gc.air_has_enemies)) |
 				(mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move) |
@@ -226,7 +226,7 @@ land_fighter_from_land :: proc(
 	if gc.active_land_planes[src_land][plane] == 0 do return true
 	if ~gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 	gc.valid_actions = {}
-	add_valid_landing_fighter_moves(gc, l2aid(src_land), plane)
+	add_valid_landing_fighter_moves(gc, to_air(src_land), plane)
 	for gc.active_land_planes[src_land][plane] > 0 {
 		if card(gc.valid_actions) == 0 {
 			gc.active_land_planes[src_land][plane] = 0
@@ -234,11 +234,11 @@ land_fighter_from_land :: proc(
 			gc.team_land_units[src_land][mm.team[gc.cur_player]] = 0
 			return true
 		}
-		dst_air := get_move_input(gc, Active_Plane_Names[plane], l2aid(src_land)) or_return
+		dst_air := get_move_input(gc, Active_Plane_Names[plane], to_air(src_land)) or_return
 		if is_land(dst_air) {
-			move_fighter_from_land_to_land(gc, src_land, a2lid(dst_air), plane)
+			move_fighter_from_land_to_land(gc, src_land, to_land(dst_air), plane)
 		} else {
-			move_fighter_from_land_to_sea(gc, src_land, a2sid(dst_air), plane)
+			move_fighter_from_land_to_sea(gc, src_land, to_sea(dst_air), plane)
 		}
 	}
 	return true
@@ -286,7 +286,7 @@ land_fighter_from_sea :: proc(
 	if gc.active_sea_planes[src_sea][plane] == 0 do return true
 	if ~gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 	gc.valid_actions = {}
-	add_valid_landing_fighter_moves(gc, s2aid(src_sea), plane)
+	add_valid_landing_fighter_moves(gc, to_air(src_sea), plane)
 	for gc.active_sea_planes[src_sea][plane] > 0 {
 		if card(gc.valid_actions) == 0 {
 			gc.active_sea_planes[src_sea][plane] = 0
@@ -294,11 +294,11 @@ land_fighter_from_sea :: proc(
 			gc.team_sea_units[src_sea][mm.team[gc.cur_player]] = 0
 			return true
 		}
-		dst_air := get_move_input(gc, Active_Plane_Names[plane], s2aid(src_sea)) or_return
+		dst_air := get_move_input(gc, Active_Plane_Names[plane], to_air(src_sea)) or_return
 		if is_land(dst_air) {
-			move_fighter_from_sea_to_land(gc, src_sea, a2lid(dst_air), plane)
+			move_fighter_from_sea_to_land(gc, src_sea, to_land(dst_air), plane)
 		} else {
-			move_fighter_from_sea_to_sea(gc, src_sea, a2sid(dst_air), plane)
+			move_fighter_from_sea_to_sea(gc, src_sea, to_sea(dst_air), plane)
 		}
 	}
 	return true
@@ -338,19 +338,19 @@ move_fighter_from_sea_to_sea :: proc(
 add_valid_landing_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) {
 	#partial switch plane {
 	case .FIGHTER_1_MOVES:
-		gc.valid_actions = air2action_bitset(
+		gc.valid_actions = to_action_bitset(
 			~gc.skipped_a2a[src_air] & gc.can_fighter_land_here & mm.a2a_within_1_moves[src_air],
 		)
 	case .FIGHTER_2_MOVES:
-		gc.valid_actions = air2action_bitset(
+		gc.valid_actions = to_action_bitset(
 			~gc.skipped_a2a[src_air] & gc.can_fighter_land_here & mm.a2a_within_2_moves[src_air],
 		)
 	case .FIGHTER_3_MOVES:
-		gc.valid_actions = air2action_bitset(
+		gc.valid_actions = to_action_bitset(
 			~gc.skipped_a2a[src_air] & gc.can_fighter_land_here & mm.a2a_within_4_moves[src_air],
 		)
 	case .FIGHTER_4_MOVES:
-		gc.valid_actions = air2action_bitset(
+		gc.valid_actions = to_action_bitset(
 			~gc.skipped_a2a[src_air] & gc.can_fighter_land_here & mm.a2a_within_4_moves[src_air],
 		)
 	}

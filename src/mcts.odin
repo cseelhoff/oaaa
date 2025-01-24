@@ -14,12 +14,12 @@ MCTSNode :: struct {
 	parent:   ^MCTSNode,
 	value:    f64,
 	visits:   int,
-	action:   u8,
+	action:   Action_ID,
 }
 
 check5 := false
 
-create_node :: proc(state: ^Game_State, action: u8, parent: ^MCTSNode) -> ^MCTSNode {
+create_node :: proc(state: ^Game_State, action: Action_ID, parent: ^MCTSNode) -> ^MCTSNode {
 	node := new(MCTSNode)
 	node.state = state^ //memcopy
 	node.action = action
@@ -60,7 +60,7 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 PRINT_INTERVAL :: 10000
 //import "core:math/rand"
 mcts_search :: proc(gc: ^Game_Cache,initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
-	root := create_node(initial_state, 0, nil)
+	root := create_node(initial_state, .Skip_Action, nil)
 	for MCTS_ITERATIONS in 0 ..< iterations {
 		if MCTS_ITERATIONS % PRINT_INTERVAL == 0 {
 			fmt.println("Iteration ", MCTS_ITERATIONS)
@@ -70,7 +70,7 @@ mcts_search :: proc(gc: ^Game_Cache,initial_state: ^Game_State, iterations: int)
 		if !is_terminal_state(&node.state) {
 			expand_node(node)
 			children_len := len(node.children)
-			node = node.children[RANDOM_NUMBERS[GLOBAL_RANDOM_SEED] % children_len]
+			node = node.children[int(RANDOM_NUMBERS[GLOBAL_RANDOM_SEED]) % children_len]
 			GLOBAL_RANDOM_SEED = (GLOBAL_RANDOM_SEED + 1) % RANDOM_MAX
 		}
 		result: f64 = random_play_until_terminal(gc, &node.state)
@@ -91,9 +91,9 @@ expand_node :: proc(node: ^MCTSNode) {
 	num_actions := 0
 	actions := get_possible_actions(&node.state)
 	for next_action in actions {
-		if next_action > len(Action_ID) {
-			fmt.eprintln("Invalid action ", next_action)
-		}
+		// if next_action > len(Action_ID) {
+		// 	fmt.eprintln("Invalid action ", next_action)
+		// }
 		//new_state := clone_state(&node.state)
 		new_node := create_node(&node.state, next_action, node)
 		apply_action(&new_node.state, next_action)
@@ -197,12 +197,12 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if node.parent != nil {
 		fmt.print(PLAYER_DATA[node.parent.state.cur_player].color)
 		fmt.print("Action:")
-		if node.action < len(Land_ID) {
-			fmt.print(LANDS_DATA[node.action].name)
-		} else if node.action < len(Air_ID) {
-			fmt.print(SEAS_DATA[node.action - len(Land_ID)])
+		if is_land(node.action) {
+			fmt.print(mm.land_name[to_land(node.action)])
+		} else if int(node.action) < len(Air_ID) {
+			fmt.print(mm.sea_name[to_sea(node.action)])
 		} else {
-			fmt.print(Buy_Names[node.action - len(Air_ID)])
+			fmt.print(Buy_Names[to_buy_action(node.action)])
 		}
 		fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
 		fmt.print(", Visits:", node.visits)

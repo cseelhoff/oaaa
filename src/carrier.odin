@@ -32,7 +32,7 @@ is_carrier_available :: proc(gc: ^Game_Cache, dst_sea: Sea_ID) -> bool {
 
 carrier_now_empty :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	if is_carrier_available(gc, sea) {
-		gc.can_fighter_land_here += {s2aid(sea)}
+		gc.can_fighter_land_here += {to_air(sea)}
 	}
-	return s2aid(sea) not_in gc.can_fighter_land_here
+	return to_air(sea) not_in gc.can_fighter_land_here
 }

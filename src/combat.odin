@@ -54,16 +54,16 @@ non_dest_non_sub_exist :: proc(gc: ^Game_Cache, src_sea: Sea_ID) -> bool {
 }
 
 build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
-	//gc.valid_actions = {s2act(src_sea)}
+	//gc.valid_actions = {to_action(src_sea)}
 	if (gc.enemy_blockade_total[src_sea] == 0 && gc.enemy_fighters_total[src_sea] == 0) ||
 	   do_sea_targets_exist(gc, src_sea) {
 		// I am allowed to stay because I have combat units or no enemy blockade remains
 		// otherwise I am possibly wasting transports
-		gc.valid_actions += {s2act(src_sea)}
+		gc.valid_actions += {to_action(src_sea)}
 	}
 	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] & gc.sea_no_combat {
 		if gc.enemy_blockade_total[dst_sea] == 0 {
-			gc.valid_actions += {s2act(dst_sea)}
+			gc.valid_actions += {to_action(dst_sea)}
 		}
 	}
 }
@@ -165,7 +165,7 @@ get_attacker_hits :: proc(gc: ^Game_Cache, attacker_damage: int) -> (attacker_hi
 			return
 		}
 	}
-	attacker_hits += RANDOM_NUMBERS[gc.seed] % DICE_SIDES < attacker_damage % DICE_SIDES ? 1 : 0
+	attacker_hits += RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(attacker_damage) % DICE_SIDES ? 1 : 0
 	gc.seed = (gc.seed + 1) % RANDOM_MAX
 	return
 }
@@ -178,7 +178,7 @@ get_defender_hits :: proc(gc: ^Game_Cache, defender_damage: int) -> (defender_hi
 			return
 		}
 	}
-	defender_hits += RANDOM_NUMBERS[gc.seed] % DICE_SIDES < defender_damage % DICE_SIDES ? 1 : 0
+	defender_hits += RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(defender_damage) % DICE_SIDES ? 1 : 0
 	gc.seed = (gc.seed + 1) % RANDOM_MAX
 	return
 }
@@ -200,8 +200,8 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		for {
 			if gc.sea_combat_status[src_sea] == .MID_COMBAT {
 				build_sea_retreat_options(gc, src_sea)
-				dst_air_idx := get_retreat_input(gc, s2aid(src_sea)) or_return
-				if sea_retreat(gc, src_sea, a2sid(dst_air_idx)) do break
+				dst_air_idx := get_retreat_input(gc, to_air(src_sea)) or_return
+				if sea_retreat(gc, src_sea, to_sea(dst_air_idx)) do break
 			}
 			//if destroy_vulnerable_transports(gc, &src_sea) do break
 			gc.sea_combat_status[src_sea] = .MID_COMBAT
@@ -310,11 +310,11 @@ attempt_conquer_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> bool {
 }
 
 build_land_retreat_options :: proc(gc: ^Game_Cache, src_land: Land_ID) {
-	gc.valid_actions = {l2act(src_land)}
+	gc.valid_actions = {to_action(src_land)}
 	for &dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
 		if gc.land_combat_status[dst_land] == .NO_COMBAT &&
 		   mm.team[gc.owner[dst_land]] == mm.team[gc.cur_player] {
-			gc.valid_actions += {l2act(dst_land)}
+			gc.valid_actions += {to_action(dst_land)}
 		}
 	}
 }
@@ -350,7 +350,7 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			}
 			if gc.land_combat_status[src_land] == .MID_COMBAT {
 				build_land_retreat_options(gc, src_land)
-				dst_air := get_retreat_input(gc, l2aid(src_land)) or_return
+				dst_air := get_retreat_input(gc, to_air(src_land)) or_return
 				if retreat_land_units(gc, src_land, Land_ID(dst_air)) do break
 			}
 			gc.land_combat_status[src_land] = .MID_COMBAT

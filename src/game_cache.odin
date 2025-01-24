@@ -5,30 +5,6 @@ import "core:strings"
 
 BUY_ACTIONS_COUNT :: len(Buy_Action)
 
-Action_ID :: distinct enum u8 {
-	Washington_Action,
-	London_Action,
-	Berlin_Action,
-	Moscow_Action,
-	Tokyo_Action,
-	Pacific_Action,
-	Atlantic_Action,
-	Baltic_Action,
-	Skip_Action,
-	Inf_Action,
-	Arty_Action,
-	Tank_Action,
-	AAGun_Action,
-	Fighter_Action,
-	Bomber_Action,
-	Trans_Action,
-	Sub_Action,
-	Destroyer_Action,
-	Carrier_Action,
-	Cruiser_Action,
-	Battleship_Action,
-}
-
 // Territory_Pointers :: [len(Air_ID)]Air_ID
 SA_Territory_Pointers :: sa.Small_Array(len(Air_ID), Air_ID)
 SA_Land :: sa.Small_Array(len(Land_ID), Land_ID)
@@ -38,7 +14,7 @@ Unlucky_Teams :: bit_set[Team_ID;u8]
 Land_Bitset :: bit_set[Land_ID;u8]
 Sea_Bitset :: bit_set[Sea_ID;u8]
 Purchase_Bitset :: bit_set[Buy_Action;u16]
-Actions_Bitset :: bit_set[Action_ID;u32]
+Action_Bitset :: bit_set[Action_ID;u32]
 Air_Bitset :: bit_set[Air_ID;u16]
 
 Game_Cache :: struct {
@@ -56,7 +32,7 @@ Game_Cache :: struct {
 	allied_sea_combatants_total:    [Sea_ID]u8,
 	answers_remaining:              u16,
 	max_loops:                      u16,
-	valid_actions:                  Actions_Bitset,
+	valid_actions:                  Action_Bitset,
 	can_bomber_land_here:           Land_Bitset,
 	can_bomber_land_in_1_moves:     Air_Bitset,
 	can_bomber_land_in_2_moves:     Air_Bitset,
@@ -64,13 +40,6 @@ Game_Cache :: struct {
 	can_fighter_land_in_1_move:     Air_Bitset,
 	air_has_enemies:                Air_Bitset,
 	has_bombable_factory:           Land_Bitset,
-	// has_enemy_blockade:           Sea_Bitset,
-	// has_enemy_subs:               Sea_Bitset,
-	// has_enemy_fighters:           Sea_Bitset,
-	// has_enemy_subvuln_ships:        Sea_Bitset,
-	// has_allied_combatants:          Sea_Bitset,
-	// has_allied_antifighter_ships:   Sea_Bitset,
-	// has_allied_destroyers:        Sea_Bitset,
 	has_carrier_space:              Sea_Bitset,
 	canals_open:                    Canals_Open, //[CANALS_COUNT]bool,
 	unlucky_teams:                  Unlucky_Teams,
@@ -82,30 +51,6 @@ Game_Cache :: struct {
 	is_fighter_cache_current:       bool,
 	clear_needed:                   bool,
 	use_selected_action:            bool,
-}
-
-push_land_action :: #force_inline proc(gc: ^Game_Cache, land: Land_ID) {
-	gc.valid_actions += {l2act(land)}
-}
-
-push_sea_action :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) {
-	gc.valid_actions += {s2act(sea)}
-}
-
-l2a_bitset :: #force_inline proc(land: Land_Bitset) -> Air_Bitset {
-	return transmute(Air_Bitset)u16(transmute(u8)land)
-}
-
-s2a_bitset :: #force_inline proc(sea: Sea_Bitset) -> Air_Bitset {
-	return transmute(Air_Bitset)(u16(transmute(u8)sea) << len(Land_ID))
-}
-
-sea2action_bitset :: #force_inline proc(sea: Sea_Bitset) -> Actions_Bitset {
-	return transmute(Actions_Bitset)(u32(transmute(u8)sea) << len(Land_ID))
-}
-
-air2action_bitset :: #force_inline proc(air: Air_Bitset) -> Actions_Bitset {
-	return transmute(Actions_Bitset)u32(transmute(u16)air)
 }
 
 save_cache_to_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {

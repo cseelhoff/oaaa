@@ -16,6 +16,17 @@ SA_Adjacent_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
 Canal_Paths :: [Canal_States]Sea_Distances
 Seas_2_Moves_Away :: sa.Small_Array(SEAS_COUNT, Sea_2_Moves_Away)
 
+
+air_to_sea :: #force_inline proc(air : Air_ID) -> Sea_ID {
+	assert(int(air) >= len(Land_ID))
+	return Sea_ID(int(air) - len(Land_ID))
+}
+action_to_sea :: #force_inline proc(action: Action_ID) -> Sea_ID {
+	assert(int(action) >= len(Land_ID) && int(action) < len(Air_ID))
+	return Sea_ID(int(action) - len(Land_ID))
+}
+to_sea :: proc{air_to_sea, action_to_sea}
+
 Canal :: struct {
 	lands: [2]string,
 	seas:  [2]string,

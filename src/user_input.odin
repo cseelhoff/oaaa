@@ -26,9 +26,9 @@ print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	print_game_state(gc)
 	fmt.print(mm.color[gc.cur_player])
 	if is_land(src_air) {
-		fmt.println("Retreat From Land ", mm.land_name[a2lid(src_air)], " Valid Moves: ")
+		fmt.println("Retreat From Land ", mm.land_name[to_land(src_air)], " Valid Moves: ")
 	} else {
-		fmt.println("Retreat From Sea ", mm.sea_name[a2sid(src_air)], " Valid Moves: ")
+		fmt.println("Retreat From Sea ", mm.sea_name[sea(src_air)], " Valid Moves: ")
 	}
 	for valid_move in gc.valid_actions {
 		fmt.print(int(valid_move), valid_move, ", ")
@@ -42,10 +42,10 @@ get_retreat_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (dst_air: Air_ID,
 		if gc.answers_remaining == 0 do return Air_ID(0), false
 		if gc.cur_player in mm.is_human {
 			print_retreat_prompt(gc, src_air)
-			dst_air = act2air(get_user_input(gc))
+			dst_air = to_air(get_user_input(gc))
 		} else {
 			if ACTUALLY_PRINT do print_retreat_prompt(gc, src_air)
-			dst_air = act2air(get_ai_input(gc))
+			dst_air = to_air(get_ai_input(gc))
 			if ACTUALLY_PRINT {
 				fmt.println("AI Action:", dst_air)
 			}
@@ -77,10 +77,10 @@ get_move_input :: proc(
 		if gc.answers_remaining == 0 do return Air_ID(0), false
 		if is_human[gc.cur_player] {
 			print_move_prompt(gc, unit_name, src_air)
-			dst_air = act2air(get_user_input(gc))
+			dst_air = to_air(get_user_input(gc))
 		} else {
 			if ACTUALLY_PRINT do print_move_prompt(gc, unit_name, src_air)
-			dst_air = act2air(get_ai_input(gc))
+			dst_air = to_air(get_ai_input(gc))
 			if ACTUALLY_PRINT {
 				fmt.println("AI Action:", dst_air)
 			}
@@ -133,7 +133,7 @@ print_buy_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	fmt.print(PLAYER_DATA[gc.cur_player.index].color)
 	fmt.println("Buy At", src_air.name)
 	for buy_action_idx in sa.slice(&gc.valid_actions) {
-		fmt.print(buy_action_idx, Buy_Names[action_idx_to_buy(buy_action_idx)], ", ")
+		fmt.print(buy_action_idx, Buy_Names[to_buy_action(buy_action_idx)], ", ")
 	}
 	fmt.println(DEF_COLOR)
 }
@@ -145,10 +145,10 @@ get_buy_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (action: Buy_Action, 
 		if gc.answers_remaining == 0 do return .SKIP_BUY, false
 		if is_human[gc.cur_player] {
 			print_buy_prompt(gc, src_air)
-			action = action_idx_to_buy(get_user_input(gc))
+			action = to_buy_action(get_user_input(gc))
 		} else {
 			if ACTUALLY_PRINT do print_buy_prompt(gc, src_air)
-			action = action_idx_to_buy(get_ai_input(gc))
+			action = to_buy_action(get_ai_input(gc))
 			if ACTUALLY_PRINT {
 				fmt.println("AI Action:", action)
 			}
