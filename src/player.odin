@@ -4,33 +4,28 @@ import sa "core:container/small_array"
 import "core:fmt"
 import "core:strings"
 
-PLAYERS_COUNT :: len(PLAYER_DATA)
-
 Player_Data :: struct {
-	name:     string,
-	team:     string,
+	player:     Player_ID,
+	team:     Team_ID,
 	color:    string,
-	capital:  string,
+	capital:  Land_ID,
 	is_human: bool,
 }
 
 PLAYER_DATA := [?]Player_Data {
-	{team = "Allies", name = "Rus", color = "\033[1;31m", capital = "Moscow"},
-	{team = "Axis", name = "Ger", color = "\033[1;34m", capital = "Berlin"},
-	{team = "Allies", name = "Eng", color = "\033[1;95m", capital = "London"},
-	{team = "Axis", name = "Jap", color = "\033[1;33m", capital = "Tokyo"},
-	{team = "Allies", name = "USA", color = "\033[1;32m", capital = "Washington"},
+	{team = .Allies, player = .Rus, color = "\033[1;31m", capital = .Moscow},
+	{team = .Axis, player = .Ger, color = "\033[1;34m", capital = .Berlin},
+	{team = .Allies, player = .Eng, color = "\033[1;95m", capital = .London},
+	{team = .Axis, player = .Jap, color = "\033[1;33m", capital = .Tokyo},
+	{team = .Allies, player = .USA, color = "\033[1;32m", capital = .Washington},
 }
 
 DEF_COLOR :: "\033[1;0m"
 
-Players :: [PLAYERS_COUNT]Player
 Factory_Locations :: sa.Small_Array(len(Land_ID), Land_ID)
 
 Player :: struct {
 	factory_locations:  Factory_Locations,
-	// capital:            Land_ID,
-	// team:               ^Team,
 	index:              Player_ID,
 	money:              u8,
 	income_per_turn:    u8,
@@ -38,15 +33,6 @@ Player :: struct {
 
 TEAM_STRINGS :: [?]string{"Allies", "Axis"}
 TEAMS_COUNT :: len(TEAM_STRINGS)
-
-// Teams :: [TEAMS_COUNT]Team
-// Team :: struct {
-// 	index:         Team_ID,
-// 	players:       SA_Player_Pointers,
-// 	enemy_players: SA_Player_Pointers,
-// 	enemy_team:    ^Team, // not an array, since assumption is 2 teams
-// 	// is_allied:     [PLAYERS_COUNT]bool,
-// }
 
 Player_ID :: enum {
 	Rus,
@@ -61,47 +47,35 @@ Team_ID :: enum {
 	Axis,
 }
 
-get_player_idx_from_string :: proc(player_name: string) -> (player_idx: u8, ok: bool) {
-	for player, player_idx in PLAYER_DATA {
-		if strings.compare(player.name, player_name) == 0 {
-			return u8(player_idx), true
+// get_player_idx_from_string :: proc(player_name: string) -> (player_idx: u8, ok: bool) {
+// 	for player, player_idx in PLAYER_DATA {
+// 		if strings.compare(player.name, player_name) == 0 {
+// 			return u8(player_idx), true
+// 		}
+// 	}
+// 	fmt.eprintln("Error: Player not found: %s\n", player_name)
+// 	return 0, false
+// }
+initialize_player_data :: proc () {
+	for player_data in PLAYER_DATA {
+		mm.capital[player_data.player] = player_data.capital
+		mm.team[player_data.player] = player_data.team
+		mm.enemy_team[player_data.player] = Team_ID(len(Team_ID) - int(player_data.team) - 1)
+		mm.color[player_data.player] = player_data.color
+		for other_player in PLAYER_DATA {
+			if other_player.team == player_data.team {
+			sa.push(&mm.allies[player_data.player], other_player.player)
+			} else {
+				sa.push(&mm.enemies[player_data.player], other_player.player)
+			}
 		}
 	}
-	fmt.eprintln("Error: Player not found: %s\n", player_name)
-	return 0, false
 }
 
-initialize_teams :: proc() {
-	// for &team, team_idx in teams {
-	// 	team.index = Team_ID(team_idx)
-	// 	for &other_team in teams {
-	// 		if &team != &other_team {
-	// 			team.enemy_team = &other_team
-	// 			break
-	// 		}
-	// 	}
-	// 	for &player, player_idx in players {
-	// 		if strings.compare(PLAYER_DATA[player_idx].team, TEAM_STRINGS[team_idx]) == 0 {
-	// 			sa.push(&team.players, &player)
-	// 			// team.is_allied[player_idx] = true
-	// 			player.team = &team
-	// 			player.index = Player_ID(player_idx)
-	// 		} else {
-	// 			sa.push(&team.enemy_players, &player)
-	// 			// team.is_allied[player_idx] = false
-	// 		}
-	// 	}
-	// }
-}
-
-initialize_player_lands :: proc() -> (ok: bool) {
-	// for player in Player_ID {
-	// 	land_idx := get_land_idx_from_string(PLAYER_DATA[player_idx].capital) or_return
-	// 	player.capital = &lands[land_idx]
-	// }
-	// for &land, land_idx in lands {
-	// 	player_idx, _ := get_player_idx_from_string(LANDS_DATA[land_idx].owner)
-	// 	land.original_owner = &players[player_idx]
-	// }
+	initialize_land_data :: proc() -> (ok: bool) {
+	for land_data in LAND_DATA {
+		mm.orig_owner[land_data.land] = land_data.orig_owner
+		mm.value[land_data.land] = land_data.value
+	}
 	return true
 }

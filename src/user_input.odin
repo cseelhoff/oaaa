@@ -146,7 +146,7 @@ get_buy_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (action: Buy_Action, 
 print_game_state :: proc(gc: ^Game_Cache) {
 	color := PLAYER_DATA[gc.cur_player].color
 	fmt.println(color, "--------------------")
-	fmt.println("Current Player: ", PLAYER_DATA[gc.cur_player].name)
+	fmt.println("Current Player: ", gc.cur_player)
 	fmt.println("Money: ", gc.money[gc.cur_player], DEF_COLOR, "\n")
 	for land in Land_ID {
 		fmt.print(mm.color[gc.owner[land]])

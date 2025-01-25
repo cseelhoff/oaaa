@@ -213,7 +213,7 @@ collect_money :: proc(gc: ^Game_Cache) {
 }
 
 rotate_turns :: proc(gc: ^Game_Cache) {
-	gc.cur_player = Player_ID((u8(gc.cur_player) + 1) % PLAYERS_COUNT)
+	gc.cur_player = Player_ID((u8(gc.cur_player) + 1) % len(Player_ID))
 	gc.clear_needed = false
 	gc.is_bomber_cache_current = false
 	gc.is_fighter_cache_current = false

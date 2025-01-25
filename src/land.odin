@@ -7,19 +7,25 @@ import "core:slice"
 SA_Adjacent_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
 
 Land_Data :: struct {
-	land:  Land_ID,
-	owner: Player_ID,
-	value: u8,
+	land:       Land_ID,
+	orig_owner: Player_ID,
+	value:      u8,
 }
 
-to_land :: proc{air_to_land, action_to_land}
-is_land :: proc{is_air_land, is_action_land}
+to_land :: proc {
+	air_to_land,
+	action_to_land,
+}
+is_land :: proc {
+	is_air_land,
+	is_action_land,
+}
 
 action_to_land :: #force_inline proc(act: Action_ID) -> Land_ID {
 	return Land_ID(act)
 }
 
-air_to_land :: #force_inline proc(air : Air_ID) -> Land_ID {
+air_to_land :: #force_inline proc(air: Air_ID) -> Land_ID {
 	assert(int(air) < len(Land_ID))
 	return Land_ID(air)
 }
@@ -49,12 +55,12 @@ Land_ID :: distinct enum u8 {
 }
 
 //  PACIFIC | USA | ATLANTIC | ENG | BALTIC | GER | RUS | JAP | PAC
-LANDS_DATA := [?]Land_Data {
-	{land = .Washington, owner = .USA, value = 10},
-	{land = .London, owner = .Eng, value = 8},
-	{land = .Berlin, owner = .Ger, value = 10},
-	{land = .Moscow, owner = .Rus, value = 8},
-	{land = .Tokyo, owner = .Jap, value = 8},
+LAND_DATA := [?]Land_Data {
+	{land = .Washington, orig_owner = .USA, value = 10},
+	{land = .London, orig_owner = .Eng, value = 8},
+	{land = .Berlin, orig_owner = .Ger, value = 10},
+	{land = .Moscow, orig_owner = .Rus, value = 8},
+	{land = .Tokyo, orig_owner = .Jap, value = 8},
 }
 LAND_CONNECTIONS := [?][2]Land_ID{{.Berlin, .Moscow}}
 
@@ -71,16 +77,18 @@ LAND_CONNECTIONS := [?][2]Land_ID{{.Berlin, .Moscow}}
 initialize_l2l_2away_via_land :: proc() {
 	// Floyd-Warshall algorithm
 	// Initialize distances array to Infinity
-	distances: [len(Land_ID)][len(Land_ID)]u8
 	INFINITY :: 127
+	distances: [Land_ID][Land_ID]u8
 	mem.set(&distances, INFINITY, size_of(distances))
 	for land in Land_ID {
 		// Ensure that the distance from a land to itself is 0
 		distances[land][land] = 0
-		// Set initial distances based on adjacent lands
-		for adjacent_land in sa.slice(&mm.l2l_1away_via_land[land]) {
-			distances[land][adjacent_land] = 1
-		}
+	}
+	for connection in LAND_CONNECTIONS {
+		sa.push(&mm.l2l_1away_via_land[connection[0]],connection[1])
+		sa.push(&mm.l2l_1away_via_land[connection[1]],connection[0])
+		distances[connection[0]][connection[1]] = 1
+		distances[connection[1]][connection[0]] = 1
 	}
 	for mid_idx in Land_ID {
 		for start_idx in Land_ID {
@@ -93,26 +101,26 @@ initialize_l2l_2away_via_land :: proc() {
 		}
 	}
 	// Initialize the l2l_2away_via_land array
-	// for land in Land_ID {
-	// 	adjacent_lands := sa.slice(&mm.l2l_1away_via_land[land])
-	// 	for distance, dest_land_idx in distances[land] {
-	// 		if distance == 2 {
-	// 			dest := Land_2_Moves_Away {
-	// 				land = &lands[dest_land_idx],
-	// 			}
-	// 			for dest_adjacent_land in sa.slice(&dest.land.adjacent_lands) {
-	// 				_ = slice.linear_search(adjacent_lands, dest_adjacent_land) or_continue
-	// 				sa.push(&dest.mid_lands, dest_adjacent_land)
-	// 			}
-	// 			sa.push(&land.l2l_2away_via_land, dest)
-	// 		}
-	// 	}
-	// }
+	for land in Land_ID {
+		adjacent_lands := sa.slice(&mm.l2l_1away_via_land[land])
+		for distance, dst_land in distances[land] {
+			if distance == 2 {
+				land_2_moves_away := Land_2_Moves_Away {
+					land = dst_land,
+				}
+				for adjacent_land in adjacent_lands {
+					_ = slice.linear_search(adjacent_lands, adjacent_land) or_continue
+					sa.push(&land_2_moves_away.mid_lands, adjacent_land)
+				}
+				sa.push(&mm.l2l_2away_via_land[land], land_2_moves_away)
+			}
+		}
+	}
 }
 
 initialize_canals :: proc() -> (ok: bool) {
 	for canal_state in 0 ..< Canal_States {
-		canals_open :Canals_Open = transmute(Canals_Open)u8(canal_state)
+		canals_open: Canals_Open = transmute(Canals_Open)u8(canal_state)
 		for canal in canals_open {
 			mm.s2s_1away_via_sea[canal_state][Canal_Seas[canal][0]] += {Canal_Seas[canal][1]}
 			mm.s2s_1away_via_sea[canal_state][Canal_Seas[canal][1]] += {Canal_Seas[canal][0]}
@@ -130,7 +138,7 @@ conquer_land :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool) {
 	gc.income[old_owner] -= mm.value[dst_land]
 	new_owner := gc.cur_player
 	if mm.team[gc.cur_player] == mm.team[mm.orig_owner[dst_land]] {
-		new_owner = mm.original_owner[dst_land]
+		new_owner = mm.orig_owner[dst_land]
 	}
 	gc.owner[dst_land] = new_owner
 	gc.income[new_owner] += mm.value[dst_land]

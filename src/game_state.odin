@@ -38,7 +38,7 @@ load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
 	}
 	factory_locations :: [?]Land_ID{.Washington, .London, .Berlin, .Moscow, .Tokyo}
 	for land in factory_locations {
-		gs.factory_prod[land] = LANDS_DATA[land].value
+		gs.factory_prod[land] = LAND_DATA[land].value
 	}
 	for land in Land_ID {
 		gs.owner[land] = mm.orig_owner[land]

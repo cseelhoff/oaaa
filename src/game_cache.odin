@@ -8,7 +8,7 @@ BUY_ACTIONS_COUNT :: len(Buy_Action)
 // Territory_Pointers :: [len(Air_ID)]Air_ID
 SA_Territory_Pointers :: sa.Small_Array(len(Air_ID), Air_ID)
 SA_Land :: sa.Small_Array(len(Land_ID), Land_ID)
-SA_Player_Pointers :: sa.Small_Array(PLAYERS_COUNT, ^Player)
+SA_Player_Pointers :: sa.Small_Array(len(Player_ID), ^Player)
 Canals_Open :: bit_set[Canal_ID;u8]
 Unlucky_Teams :: bit_set[Team_ID;u8]
 Land_Bitset :: bit_set[Land_ID;u8]

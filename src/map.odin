@@ -5,6 +5,8 @@ import sa "core:container/small_array"
 MAX_LAND_TO_LAND_CONNECTIONS :: 6
 MAX_AIR_TO_AIR_CONNECTIONS :: 7
 MAX_LAND_TO_SEA_CONNECTIONS :: 4
+MAX_LAND_TO_LAND_2_AWAY :: min(20, len(Land_ID))
+MAX_SEA_TO_SEA_2_AWAY :: min(20, len(Sea_ID))
 
 MAX_PATHS_TO_LAND :: 2
 Mid_Lands :: sa.Small_Array(MAX_PATHS_TO_LAND, Land_ID)
@@ -19,12 +21,12 @@ L2S_2_Away :: struct {
 SA_Players :: sa.Small_Array(len(Player_ID), Player_ID)
 SA_L2L :: sa.Small_Array(MAX_LAND_TO_LAND_CONNECTIONS, Land_ID)
 SA_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
-SA_L2S_2_Away :: sa.Small_Array(len(Sea_ID), L2S_2_Away)
+SA_L2S_2_Away :: sa.Small_Array(MAX_LAND_TO_LAND_2_AWAY, L2S_2_Away)
 SA_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
 SA_S2L :: sa.Small_Array(MAX_SEA_TO_LAND_CONNECTIONS, Land_ID)
 SA_A2A :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, Air_ID)
-L2L_2Away_Via_Land :: [Land_ID]sa.Small_Array(len(Land_ID), Land_2_Moves_Away)
-S2S_2Away_Via_Sea :: [Land_ID]sa.Small_Array(len(Sea_ID), Sea_ID)
+L2L_2Away_Via_Land :: [Land_ID]sa.Small_Array(MAX_LAND_TO_LAND_2_AWAY, Land_2_Moves_Away)
+S2S_2Away_Via_Sea :: [Land_ID]sa.Small_Array(MAX_SEA_TO_SEA_2_AWAY, Sea_ID)
 
 MapData :: struct {
 	// teams:                     Teams,
@@ -50,7 +52,6 @@ MapData :: struct {
 	land_distances:            [Land_ID][Land_ID]u8,
 	air_distances:             [Air_ID][Air_ID]u8,
 	value:                     [Land_ID]u8,
-	original_owner:            [Land_ID]Player_ID,
 	s2s_1away_via_sea:         [Canal_States][Sea_ID]Sea_Bitset,
 	s2s_2away_via_sea:         [Canal_States][Sea_ID]Sea_Bitset,
 	s2s_2away_via_midseas:     [Canal_States][Sea_ID][Sea_ID]Mid_Seas,
@@ -69,15 +70,15 @@ Land_2_Moves_Away :: struct {
 mm: MapData = {}
 
 initialize_map_constants :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	initialize_teams()
+	initialize_player_data()
 	// initialize_territories()
-	initialize_player_lands()
+	initialize_land_data()
 	// initialize_land_connections() or_return
 	//initialize_sea_connections(&gc.canal_paths, &gc.seas) or_return
 	initialize_sea_connections() or_return
+	initialize_l2l_2away_via_land()
 	initialize_costal_connections() or_return
 	initialize_canals() or_return
-	initialize_l2l_2away_via_land()
 	// initialize_seas_2_moves_away(&gc.seas, &gc.canal_paths)
 	initialize_seas_2_moves_away()
 	initialize_air_dist()
