@@ -1,16 +1,8 @@
 package oaaa
 import sa "core:container/small_array"
-// import "core:fmt"
-// import "core:mem"
-// import "core:slice"
-// import "core:strings"
 
 MAX_SEA_TO_LAND_CONNECTIONS :: 6
 MAX_SEA_TO_SEA_CONNECTIONS :: 7
-// SEAS_COUNT :: len(SEAS_DATA)
-// Seas :: [Sea_ID]Sea
-// Canals_Count :: len(Canal_ID)
-//CANALS_COUNT :: 2
 Canal_States :: 1 << len(Canal_ID)
 SA_Adjacent_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
 Canal_Paths :: [Canal_States]Sea_Distances

@@ -1,7 +1,4 @@
 package oaaa
-// import sa "core:container/small_array"
-// import "core:mem"
-// import "core:slice"
 
 Bomber_After_Moves := [?]Active_Plane {
 	.BOMBER_0_MOVES,
@@ -104,13 +101,6 @@ refresh_can_bomber_land_here_directly :: proc(gc: ^Game_Cache) {
 	gc.can_bomber_land_here = gc.friendly_owner & gc.land_no_combat
 	gc.is_bomber_cache_current = true
 }
-
-// add_valid_attacking_bomber_moves :: proc(gc: ^Game_Cache, src_land: Land_ID) {
-// 	valid_air_moves_bitset :=
-// 		~gc.skipped_l2a_moves[src_land] &
-// 	 	to_air_bitset(mm.a2a_within_6_moves[src_land]) &
-// 		(gc.air_has_enemies | to_air_bitset(gc.has_bombable_factory) | to_air_bitset(gc.can_bomber_land_here))
-// }
 
 land_remaining_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for plane in Unlanded_Bombers {

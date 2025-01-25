@@ -383,7 +383,7 @@ move_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Shi
 	dst_sea := to_sea(dst_air_idx)
 	flag_for_sea_enemy_combat(gc, dst_sea)
 	if skip_ship(gc, src_sea, dst_sea, ship) do return true
-	move_single_ship(gc, dst_sea, Ships_Moved[ship], gc.cur_player, ship, src_sea)
+	move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
 	if ship == .CARRIER_UNMOVED {
 		carry_allied_fighters(gc, src_sea, dst_sea)
 		gc.is_fighter_cache_current = false
@@ -424,14 +424,13 @@ move_single_ship :: proc(
 	gc: ^Game_Cache,
 	dst_sea: Sea_ID,
 	dst_unit: Active_Ship,
-	player: Player_ID,
 	src_unit: Active_Ship,
 	src_sea: Sea_ID,
 ) {
 	gc.active_ships[dst_sea][dst_unit] += 1
-	gc.idle_ships[dst_sea][player][Active_Ship_To_Idle[dst_unit]] += 1
-	gc.team_sea_units[dst_sea][mm.team[player]] += 1
+	gc.idle_ships[dst_sea][gc.cur_player][Active_Ship_To_Idle[dst_unit]] += 1
+	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
 	gc.active_ships[src_sea][src_unit] -= 1
-	gc.idle_ships[src_sea][player][Active_Ship_To_Idle[dst_unit]] -= 1
-	gc.team_sea_units[src_sea][mm.team[player]] -= 1
+	gc.idle_ships[src_sea][gc.cur_player][Active_Ship_To_Idle[dst_unit]] -= 1
+	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= 1
 }

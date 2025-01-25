@@ -1,8 +1,5 @@
 package oaaa
 import sa "core:container/small_array"
-// import "core:fmt"
-// import "core:mem"
-// import "core:slice"
 
 MAX_TRANSPORT_MOVES :: 2
 
@@ -141,7 +138,7 @@ stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Sh
 		sea_distance = 2
 	}
 	ship_after_staged := Ship_After_Staged[ship][sea_distance]
-	move_single_ship(gc, dst_sea, ship_after_staged, gc.cur_player, ship, src_sea)
+	move_single_ship(gc, dst_sea, ship_after_staged, ship, src_sea)
 	return true
 }
 
@@ -186,7 +183,7 @@ move_next_trans_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Sh
 	dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], to_air(src_sea)) or_return
 	dst_sea := to_sea(dst_air_idx)
 	if skip_ship(gc, src_sea, dst_sea, ship) do return true
-	move_single_ship(gc, dst_sea, Ships_Moved[ship], gc.cur_player, ship, src_sea)
+	move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
 	return true
 }
 

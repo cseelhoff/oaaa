@@ -1,26 +1,7 @@
 package oaaa
-// import sa "core:container/small_array"
 import "core:fmt"
 import "core:os"
-// import "core:slice"
 import "core:strconv"
-
-// get_move_input :: proc(
-// 	gc: ^Game_Cache,
-// 	unit_name: string,
-// 	src_air: Air_ID,
-// ) -> (
-// 	dst_air_idx: int,
-// ) {
-// 	if (PLAYER_DATA[gc.cur_player.index].is_human) {
-// 		fmt.print("Moving ", unit_name, " From ", src_air.name, " Valid Moves: ")
-// 		for valid_move in sa.slice(&gc.valid_actions) {
-// 			fmt.print(Air_ID[valid_move].name, ", ")
-// 		}
-// 		return get_user_input(gc)
-// 	}
-// 	return get_ai_input(gc)
-// }
 
 print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	print_game_state(gc)

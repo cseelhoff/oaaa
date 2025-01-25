@@ -2,15 +2,6 @@ package oaaa
 import sa "core:container/small_array"
 import "core:fmt"
 
-// allied_fighters_exist :: proc(gc: ^Game_Cache, air: Air_ID) -> bool {
-// 	for player in sa.slice(&mm.allies[gc.cur_player]) {
-// 		if gc.idle_planes[air][player][.FIGHTER] > 0 {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
-
 no_defender_threat_exists :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	if gc.enemy_blockade_total[sea] == 0 &&
 	   gc.enemy_fighters_total[sea] == 0 &&
@@ -147,7 +138,8 @@ no_allied_units_remain :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	gc.sea_combat_status[sea] = .POST_COMBAT
 	return true
 }
-
+SUB_ATTACK :: 2
+SUB_DEFENSE :: 1
 resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for sea in Sea_ID {
 		if gc.sea_combat_status[sea] == .NO_COMBAT || gc.sea_combat_status[sea] == .POST_COMBAT do continue
