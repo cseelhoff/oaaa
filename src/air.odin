@@ -2,16 +2,9 @@ package oaaa
 import sa "core:container/small_array"
 import "core:mem"
 
-// len(Air_ID) :: LANDS_COUNT + SEAS_COUNT
-MAX_TERRITORY_TO_LAND_CONNECTIONS :: 6
-// MAX_AIR_TO_AIR_CONNECTIONS :: 7
-SA_Adjacent_Lands :: sa.Small_Array(MAX_TERRITORY_TO_LAND_CONNECTIONS, Land_ID)
-SA_Adjacent_Airs :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, Air_ID)
-Skipped_Buys :: [len(Buy_Action)]bool
-
-Coastal_Connection_String :: struct {
-	land: string,
-	sea:  string,
+Coastal_Connection :: struct {
+	land: Land_ID,
+	sea:  Sea_ID,
 }
 
 Air_ID :: distinct enum u8 {
@@ -49,41 +42,38 @@ sea_to_air_bitset :: #force_inline proc(sea: Sea_Bitset) -> Air_Bitset {
 	return transmute(Air_Bitset)(u16(transmute(u8)sea) << len(Land_ID))
 }
 
-COASTAL_CONNECTIONS := [?]Coastal_Connection_String {
-	{land = "Washington", sea = "Pacific"},
-	{land = "Washington", sea = "Atlantic"},
-	{land = "London", sea = "Atlantic"},
-	{land = "London", sea = "Baltic"},
-	{land = "Berlin", sea = "Atlantic"},
-	{land = "Berlin", sea = "Baltic"},
-	{land = "Moscow", sea = "Baltic"},
-	{land = "Tokyo", sea = "Pacific"},
+COASTAL_CONNECTIONS := [?]Coastal_Connection {
+	{land = .Washington, sea = .Pacific},
+	{land = .Washington, sea = .Atlantic},
+	{land = .London, sea = .Atlantic},
+	{land = .London, sea = .Baltic},
+	{land = .Berlin, sea = .Atlantic},
+	{land = .Berlin, sea = .Baltic},
+	{land = .Moscow, sea = .Baltic},
+	{land = .Tokyo, sea = .Pacific},
 }
 
 initialize_costal_connections :: proc() -> (ok: bool) {
-	// for connection in COASTAL_CONNECTIONS {
-	// 	land_idx := get_land_idx_from_string(connection.land) or_return
-	// 	sea_idx := get_sea_idx_from_string(connection.sea) or_return
-	// 	// sa.append(&lands[land_idx].adjacent_seas, &seas[sea_idx])
-	// 	sa.push(mm.l2s_1away_via_land[land_idx],sea_idx)
-	// 	mm.l2s_1away_via_land_bitset[land_idx].set(sea_idx)
-	// 	// sa.append(&seas[sea_idx].adjacent_lands, &lands[land_idx])
-	// }
+	for connection in COASTAL_CONNECTIONS {
+		sa.push(&mm.l2s_1away_via_land[connection.land],connection.sea)
+		mm.l2s_1away_via_land_bitset[connection.land] += {connection.sea}
+		sa.push(&mm.s2l_1away_via_sea[connection.sea],connection.land)
+	}
 	return true
 }
 
 initialize_air_dist :: proc() {
-	for terr in Air_ID {
+	for air in Air_ID {
 		INFINITY :: 127 // must be less than half of u8
-		//mem.set(&terr.air_distances, INFINITY, size_of(terr.air_distances))
-		//mm.air_distances[terr][terr] = INFINITY
-		mem.set(&mm.air_distances[terr], INFINITY, size_of(mm.air_distances[terr]))
+		//mem.set(&air.air_distances, INFINITY, size_of(air.air_distances))
+		//mm.air_distances[air][air] = INFINITY
+		mem.set(&mm.air_distances[air], INFINITY, size_of(mm.air_distances[air]))
 		// Ensure that the distance from a land to itself is 0
-		mm.air_distances[terr][terr] = 0
+		mm.air_distances[air][air] = 0
 		// Set initial distances based on adjacent lands
-		for adjacent_land in sa.slice(&mm.l2l_1away_via_land[to_land(terr)]) {
-			mm.air_distances[terr][to_air(adjacent_land)] = 1
-			mm.a2a_within_1_moves[terr] += {to_air(adjacent_land)}
+		for adjacent_land in sa.slice(&mm.l2l_1away_via_land[to_land(air)]) {
+			mm.air_distances[air][to_air(adjacent_land)] = 1
+			mm.a2a_within_1_moves[air] += {to_air(adjacent_land)}
 		}
 	}
 	for land in Land_ID {

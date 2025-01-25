@@ -11,18 +11,18 @@ Idle_Army :: enum {
 	AAGUN,
 }
 
-COST_IDLE_ARMY := [?]u8 {
-	Idle_Army.INF   = Cost_Buy[Buy_Action.BUY_INF],
-	Idle_Army.ARTY  = Cost_Buy[Buy_Action.BUY_ARTY],
-	Idle_Army.TANK  = Cost_Buy[Buy_Action.BUY_TANK],
-	Idle_Army.AAGUN = Cost_Buy[Buy_Action.BUY_AAGUN],
+COST_IDLE_ARMY := [Idle_Army]u8 {
+	.INF   = Cost_Buy[.BUY_INF],
+	.ARTY  = Cost_Buy[.BUY_ARTY],
+	.TANK  = Cost_Buy[.BUY_TANK],
+	.AAGUN = Cost_Buy[.BUY_AAGUN],
 }
 
-Idle_Army_Names := [?]string {
-	Idle_Army.INF   = "INF",
-	Idle_Army.ARTY  = "ARTY",
-	Idle_Army.TANK  = "TANK",
-	Idle_Army.AAGUN = "AAGUN",
+Idle_Army_Names := [Idle_Army]string {
+	.INF   = "INF",
+	.ARTY  = "ARTY",
+	.TANK  = "TANK",
+	.AAGUN = "AAGUN",
 }
 
 INFANTRY_ATTACK :: 1
@@ -46,46 +46,46 @@ Active_Army :: enum {
 }
 
 Active_Army_Names := [Active_Army]string {
-	Active_Army.INF_UNMOVED   = "INF_UNMOVED",
-	Active_Army.INF_0_MOVES   = "INF_0_MOVES",
-	Active_Army.ARTY_UNMOVED  = "ARTY_UNMOVED",
-	Active_Army.ARTY_0_MOVES  = "ARTY_0_MOVES",
-	Active_Army.TANK_UNMOVED  = "TANK_UNMOVED",
-	Active_Army.TANK_1_MOVES  = "TANK_1_MOVES",
-	Active_Army.TANK_0_MOVES  = "TANK_0_MOVES",
-	Active_Army.AAGUN_UNMOVED = "AAGUN_UNMOVED",
-	Active_Army.AAGUN_0_MOVES = "AAGUN_0_MOVES",
+	.INF_UNMOVED   = "INF_UNMOVED",
+	.INF_0_MOVES   = "INF_0_MOVES",
+	.ARTY_UNMOVED  = "ARTY_UNMOVED",
+	.ARTY_0_MOVES  = "ARTY_0_MOVES",
+	.TANK_UNMOVED  = "TANK_UNMOVED",
+	.TANK_1_MOVES  = "TANK_1_MOVES",
+	.TANK_0_MOVES  = "TANK_0_MOVES",
+	.AAGUN_UNMOVED = "AAGUN_UNMOVED",
+	.AAGUN_0_MOVES = "AAGUN_0_MOVES",
 }
 
 Active_Army_To_Idle := [Active_Army]Idle_Army {
-	Active_Army.INF_UNMOVED   = .INF,
-	Active_Army.INF_0_MOVES   = .INF,
-	Active_Army.ARTY_UNMOVED  = .ARTY,
-	Active_Army.ARTY_0_MOVES  = .ARTY,
-	Active_Army.TANK_UNMOVED  = .TANK,
-	Active_Army.TANK_1_MOVES  = .TANK,
-	Active_Army.TANK_0_MOVES  = .TANK,
-	Active_Army.AAGUN_UNMOVED = .AAGUN,
-	Active_Army.AAGUN_0_MOVES = .AAGUN,
+	.INF_UNMOVED   = .INF,
+	.INF_0_MOVES   = .INF,
+	.ARTY_UNMOVED  = .ARTY,
+	.ARTY_0_MOVES  = .ARTY,
+	.TANK_UNMOVED  = .TANK,
+	.TANK_1_MOVES  = .TANK,
+	.TANK_0_MOVES  = .TANK,
+	.AAGUN_UNMOVED = .AAGUN,
+	.AAGUN_0_MOVES = .AAGUN,
 }
 
 Armies_Moved := [Active_Army]Active_Army {
-	Active_Army.INF_UNMOVED   = .INF_0_MOVES,
-	Active_Army.INF_0_MOVES   = .INF_0_MOVES,
-	Active_Army.ARTY_UNMOVED  = .ARTY_0_MOVES,
-	Active_Army.ARTY_0_MOVES  = .ARTY_0_MOVES,
-	Active_Army.TANK_UNMOVED  = .TANK_0_MOVES,
-	Active_Army.TANK_1_MOVES  = .TANK_1_MOVES,
-	Active_Army.TANK_0_MOVES  = .TANK_0_MOVES,
-	Active_Army.AAGUN_UNMOVED = .AAGUN_0_MOVES,
-	Active_Army.AAGUN_0_MOVES = .AAGUN_0_MOVES,
+	.INF_UNMOVED   = .INF_0_MOVES,
+	.INF_0_MOVES   = .INF_0_MOVES,
+	.ARTY_UNMOVED  = .ARTY_0_MOVES,
+	.ARTY_0_MOVES  = .ARTY_0_MOVES,
+	.TANK_UNMOVED  = .TANK_0_MOVES,
+	.TANK_1_MOVES  = .TANK_1_MOVES,
+	.TANK_0_MOVES  = .TANK_0_MOVES,
+	.AAGUN_UNMOVED = .AAGUN_0_MOVES,
+	.AAGUN_0_MOVES = .AAGUN_0_MOVES,
 }
 
 Unmoved_Armies := [?]Active_Army {
-	Active_Army.INF_UNMOVED,
-	Active_Army.ARTY_UNMOVED,
-	Active_Army.TANK_UNMOVED,
-	Active_Army.TANK_1_MOVES,
+	.INF_UNMOVED,
+	.ARTY_UNMOVED,
+	.TANK_UNMOVED,
+	.TANK_1_MOVES,
 	//Active_Army.AAGUN_UNMOVED, //Moved in later engine version
 }
 
@@ -95,15 +95,15 @@ Army_Sizes :: distinct enum u8 {
 }
 
 Army_Size := [Active_Army]Army_Sizes {
-	Active_Army.INF_UNMOVED   = .SMALL,
-	Active_Army.INF_0_MOVES   = .SMALL,
-	Active_Army.ARTY_UNMOVED  = .LARGE,
-	Active_Army.ARTY_0_MOVES  = .LARGE,
-	Active_Army.TANK_UNMOVED  = .LARGE,
-	Active_Army.TANK_1_MOVES  = .LARGE,
-	Active_Army.TANK_0_MOVES  = .LARGE,
-	Active_Army.AAGUN_UNMOVED = .LARGE,
-	Active_Army.AAGUN_0_MOVES = .LARGE,
+	.INF_UNMOVED   = .SMALL,
+	.INF_0_MOVES   = .SMALL,
+	.ARTY_UNMOVED  = .LARGE,
+	.ARTY_0_MOVES  = .LARGE,
+	.TANK_UNMOVED  = .LARGE,
+	.TANK_1_MOVES  = .LARGE,
+	.TANK_0_MOVES  = .LARGE,
+	.AAGUN_UNMOVED = .LARGE,
+	.AAGUN_0_MOVES = .LARGE,
 }
 
 move_armies :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -153,7 +153,7 @@ blitz_checks :: proc(
 	army: Active_Army,
 	src_land: Land_ID,
 ) -> Active_Army {
-	if !flag_for_land_enemy_combat(gc, dst_land, mm.enemy_team[gc.cur_player]) &&
+	if !flag_for_land_enemy_combat(gc, dst_land) &&
 	   check_for_conquer(gc, dst_land) &&
 	   army == .TANK_UNMOVED &&
 	   mm.land_distances[src_land][dst_land] == 1 &&

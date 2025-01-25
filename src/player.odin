@@ -39,14 +39,14 @@ Player :: struct {
 TEAM_STRINGS :: [?]string{"Allies", "Axis"}
 TEAMS_COUNT :: len(TEAM_STRINGS)
 
-Teams :: [TEAMS_COUNT]Team
-Team :: struct {
-	index:         Team_ID,
-	players:       SA_Player_Pointers,
-	enemy_players: SA_Player_Pointers,
-	enemy_team:    ^Team, // not an array, since assumption is 2 teams
-	// is_allied:     [PLAYERS_COUNT]bool,
-}
+// Teams :: [TEAMS_COUNT]Team
+// Team :: struct {
+// 	index:         Team_ID,
+// 	players:       SA_Player_Pointers,
+// 	enemy_players: SA_Player_Pointers,
+// 	enemy_team:    ^Team, // not an array, since assumption is 2 teams
+// 	// is_allied:     [PLAYERS_COUNT]bool,
+// }
 
 Player_ID :: enum {
 	Rus,

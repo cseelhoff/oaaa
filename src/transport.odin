@@ -409,7 +409,7 @@ unload_unit_to_land :: proc(gc: ^Game_Cache, dst_land: Land_ID, ship: Active_Shi
 	gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[army]] += 1
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
 	gc.max_bombards[dst_land] += 1
-	if !flag_for_land_enemy_combat(gc,dst_land, mm.enemy_team[gc.cur_player]) {
+	if !flag_for_land_enemy_combat(gc, dst_land) {
 		check_for_conquer(gc, dst_land)
 	}
 }

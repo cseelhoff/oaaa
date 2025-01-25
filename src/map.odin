@@ -27,7 +27,7 @@ L2L_2Away_Via_Land :: [Land_ID]sa.Small_Array(len(Land_ID), Land_2_Moves_Away)
 S2S_2Away_Via_Sea :: [Land_ID]sa.Small_Array(len(Sea_ID), Sea_ID)
 
 MapData :: struct {
-	teams:                     Teams,
+	// teams:                     Teams,
 	capital:                   [Player_ID]Land_ID,
 	team:                      [Player_ID]Team_ID,
 	enemy_team:                [Player_ID]Team_ID,

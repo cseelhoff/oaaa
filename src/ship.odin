@@ -381,7 +381,7 @@ move_ship_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (o
 move_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
 	dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], to_air(src_sea)) or_return
 	dst_sea := to_sea(dst_air_idx)
-	flag_for_sea_enemy_combat(gc, dst_sea, mm.enemy_team[gc.cur_player])
+	flag_for_sea_enemy_combat(gc, dst_sea)
 	if skip_ship(gc, src_sea, dst_sea, ship) do return true
 	move_single_ship(gc, dst_sea, Ships_Moved[ship], gc.cur_player, ship, src_sea)
 	if ship == .CARRIER_UNMOVED {
