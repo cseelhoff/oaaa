@@ -1,8 +1,8 @@
 package oaaa
-import sa "core:container/small_array"
+// import sa "core:container/small_array"
 import "core:fmt"
 import "core:os"
-import "core:slice"
+// import "core:slice"
 import "core:strconv"
 
 // get_move_input :: proc(
@@ -95,7 +95,7 @@ get_user_input :: proc(gc: ^Game_Cache) -> (action: Action_ID) {
 	fmt.print("Enter a number between 0 and 255: ")
 	n, err := os.read(os.stdin, buffer[:])
 	fmt.println()
-	if err != 0 {
+	if err != os.General_Error.None {
 		return
 	}
 	input_str := string(buffer[:n])
@@ -118,7 +118,7 @@ get_ai_input :: proc(gc: ^Game_Cache) -> Action_ID {
 		}
 		//return gc.valid_actions.data[RANDOM_NUMBERS[gc.seed] % gc.valid_actions.len]
 	}
-	assert (gc.selected_action in gc.valid_actions)
+	assert(gc.selected_action in gc.valid_actions)
 	// _, found := slice.linear_search(sa.slice(&gc.valid_actions), gc.selected_action)
 	// if !found {
 	// 	fmt.eprintln("Invalid input ", gc.selected_action)
@@ -201,7 +201,11 @@ print_game_state :: proc(gc: ^Game_Cache) {
 			}
 			for plane in Idle_Plane {
 				if gc.idle_land_planes[land][player][plane] > 0 {
-					fmt.println(Idle_Plane_Names[plane], ":", gc.idle_land_planes[land][player][plane])
+					fmt.println(
+						Idle_Plane_Names[plane],
+						":",
+						gc.idle_land_planes[land][player][plane],
+					)
 				}
 			}
 		}
@@ -233,10 +237,13 @@ print_game_state :: proc(gc: ^Game_Cache) {
 			// 	}
 			// }
 			if gc.idle_sea_planes[sea][player][.FIGHTER] > 0 {
-				fmt.println(Idle_Plane_Names[.FIGHTER], ":", gc.idle_sea_planes[sea][player][.FIGHTER])
+				fmt.println(
+					Idle_Plane_Names[.FIGHTER],
+					":",
+					gc.idle_sea_planes[sea][player][.FIGHTER],
+				)
 			}
 		}
 	}
 	fmt.println(DEF_COLOR)
 }
-

@@ -1,7 +1,5 @@
 package oaaa
 
-import sa "core:container/small_array"
-
 Game_State :: struct {
 	active_armies:      [Land_ID][Active_Army]u8,
 	active_ships:       [Sea_ID][Active_Ship]u8,

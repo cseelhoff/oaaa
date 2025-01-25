@@ -2,7 +2,7 @@ package oaaa
 
 import sa "core:container/small_array"
 import "core:fmt"
-import "core:slice"
+// import "core:slice"
 
 Idle_Army :: enum {
 	INF,
@@ -285,7 +285,7 @@ load_available_transport :: proc(
 	dst_sea: Sea_ID,
 	player: Player_ID,
 ) {
-	active_ship_spaces := Active_Ship_Space[Army_Size[army]]
+	// active_ship_spaces := Active_Ship_Space[Army_Size[army]]
 	for transport in Active_Ship_Space[Army_Size[army]] {
 		if gc.active_ships[dst_sea][transport] > 0 {
 			load_specific_transport(gc, src_land, dst_sea, transport, army, player)

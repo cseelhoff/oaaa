@@ -1,7 +1,7 @@
 package oaaa
-import sa "core:container/small_array"
-import "core:mem"
-import "core:slice"
+// import sa "core:container/small_array"
+// import "core:mem"
+// import "core:slice"
 
 Bomber_After_Moves := [?]Active_Plane {
 	.BOMBER_0_MOVES,

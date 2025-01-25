@@ -18,6 +18,8 @@ Air_ID :: distinct enum u8 {
 	Baltic_Air,
 }
 
+x:int=0
+
 to_air :: proc{sea_to_air, land_to_air, action_to_air}
 
 to_air_bitset ::proc{sea_to_air_bitset, land_to_air_bitset}

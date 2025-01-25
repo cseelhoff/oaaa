@@ -40,8 +40,8 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 	for len(node.children) > 0 {
 		best_value: f64 = -999999.0
 		best_child: ^MCTSNode = nil
-		children := node.children
-		children_len := len(children)
+		// children := node.children
+		// children_len := len(children)
 		for child in node.children {
 			uct_value: f64 =
 				child.value / f64(child.visits + 1) +
@@ -86,9 +86,9 @@ mcts_search :: proc(gc: ^Game_Cache,initial_state: ^Game_State, iterations: int)
 	}
 	return root
 }
-import sa "core:container/small_array"
+// import sa "core:container/small_array"
 expand_node :: proc(node: ^MCTSNode) {
-	num_actions := 0
+	// num_actions := 0
 	actions := get_possible_actions(&node.state)
 	for next_action in actions {
 		// if next_action > len(Action_ID) {
@@ -176,7 +176,7 @@ print_mcts_tree :: proc(
 
 // Function to print the top 20 action sequences
 print_top_action_sequences :: proc() {
-	VISITS_WIDTH := 8
+	// VISITS_WIDTH := 8
 	for i in 0 ..< MAX_ACTION_SEQUENCES {
 		if action_sequence_values[i] > 0 {
 			fmt.print(" value:", action_sequence_values[i])
@@ -227,7 +227,7 @@ print_mcts_tree2 :: proc(node: ^MCTSNode, depth: uint) {
 	if depth > 3 {
 		return
 	}
-	for i in 0 ..< depth {
+	for _ in 0 ..< depth {
 		fmt.print("  ")
 	}
 	fmt.print("Action:", node.action)

@@ -1,7 +1,5 @@
 package oaaa
 import sa "core:container/small_array"
-import "core:mem"
-import "core:slice"
 
 Fighter_After_Moves := [?]Active_Plane {
 	.FIGHTER_4_MOVES,

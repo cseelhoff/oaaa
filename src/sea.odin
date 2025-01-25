@@ -1,20 +1,20 @@
 package oaaa
 import sa "core:container/small_array"
-import "core:fmt"
-import "core:mem"
-import "core:slice"
-import "core:strings"
+// import "core:fmt"
+// import "core:mem"
+// import "core:slice"
+// import "core:strings"
 
 MAX_SEA_TO_LAND_CONNECTIONS :: 6
 MAX_SEA_TO_SEA_CONNECTIONS :: 7
-SEAS_COUNT :: len(SEAS_DATA)
+// SEAS_COUNT :: len(SEAS_DATA)
 // Seas :: [Sea_ID]Sea
-Canals_Count :: len(Canal_ID)
+// Canals_Count :: len(Canal_ID)
 //CANALS_COUNT :: 2
-Canal_States :: 1 << Canals_Count
+Canal_States :: 1 << len(Canal_ID)
 SA_Adjacent_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
 Canal_Paths :: [Canal_States]Sea_Distances
-Seas_2_Moves_Away :: sa.Small_Array(SEAS_COUNT, Sea_2_Moves_Away)
+Seas_2_Moves_Away :: sa.Small_Array(len(Sea_ID), Sea_2_Moves_Away)
 
 to_sea :: proc {
 	air_to_sea,
@@ -32,8 +32,8 @@ action_to_sea :: #force_inline proc(action: Action_ID) -> Sea_ID {
 }
 
 Canal :: struct {
-	lands: [2]string,
-	seas:  [2]string,
+	lands: [2]Land_ID,
+	seas:  [2]Sea_ID,
 }
 
 Sea_Distances :: struct {
@@ -57,26 +57,26 @@ Canal_ID :: enum {
 	Pacific_Baltic,
 }
 
-SEAS_DATA := [?]string{"Pacific", "Atlantic", "Baltic"}
-SEA_CONNECTIONS :: [?][2]string{{"Pacific", "Atlantic"}, {"Atlantic", "Baltic"}}
-CANALS := [?]Canal{{lands = {"Moscow", "Moscow"}, seas = {"Pacific", "Baltic"}}}
-Canal_Lands := [Canals_Count][2]Land_ID{{.Moscow, .Moscow}}
-Canal_Seas := [Canals_Count][2]Sea_ID{{.Pacific, .Pacific}}
+// SEAS_DATA := [?]string{"Pacific", "Atlantic", "Baltic"}
+SEA_CONNECTIONS :: [?][2]Sea_ID{{.Pacific, .Atlantic}, {.Atlantic, .Baltic}}
+CANALS := [?]Canal{{lands = {.Moscow, .Moscow}, seas = {.Pacific, .Baltic}}}
+Canal_Lands := [Canal_ID][2]Land_ID{.Pacific_Baltic={.Moscow, .Moscow}}
+Canal_Seas := [Canal_ID][2]Sea_ID{.Pacific_Baltic={.Pacific, .Pacific}}
 
 get_sea_id :: #force_inline proc(air: Air_ID) -> Sea_ID {
 	assert(int(air) >= len(Land_ID), "Invalid air index")
 	return Sea_ID(int(air) - len(Land_ID))
 }
 
-get_sea_idx_from_string :: proc(sea_name: string) -> (sea_idx: int, ok: bool) {
-	for sea_string, sea_idx in SEAS_DATA {
-		if strings.compare(sea_string, sea_name) == 0 {
-			return sea_idx, true
-		}
-	}
-	fmt.eprintln("Error: Sea not found: %s\n", sea_name)
-	return 0, false
-}
+// get_sea_idx_from_string :: proc(sea_name: string) -> (sea_idx: int, ok: bool) {
+// 	for sea_string, sea_idx in SEAS_DATA {
+// 		if strings.compare(sea_string, sea_name) == 0 {
+// 			return sea_idx, true
+// 		}
+// 	}
+// 	fmt.eprintln("Error: Sea not found: %s\n", sea_name)
+// 	return 0, false
+// }
 initialize_sea_connections :: proc() -> (ok: bool) {
 	// for sea_name, sea_idx in SEAS_DATA {
 	// 	seas[sea_idx].name = sea_name

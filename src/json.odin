@@ -38,7 +38,7 @@ load_game_data :: proc(game_state: ^Game_State, path: string = "game_state.json"
 		fmt.eprintln("Error:", err)
 		return false
 	}
-	local_game_state := game_state
+	// local_game_state := game_state
 	json.unmarshal(data, game_state)
 	return true
 }

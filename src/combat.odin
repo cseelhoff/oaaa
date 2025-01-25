@@ -154,7 +154,7 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		if destroy_defender_transports(gc, sea) do continue
 		disable_bombardment(gc, sea)
 		def_subs_targetable := true
-		check_positive_active_ships(gc, sea)
+		// check_positive_active_ships(gc, sea)
 		for {
 			if gc.sea_combat_status[sea] == .MID_COMBAT {
 				build_sea_retreat_options(gc, sea)

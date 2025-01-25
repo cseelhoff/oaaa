@@ -1,16 +1,16 @@
 package oaaa
 
 import sa "core:container/small_array"
-import "core:fmt"
+// import "core:fmt"
 import "core:mem"
 import "core:slice"
-import "core:strings"
+// import "core:strings"
 
 SA_Adjacent_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
 
 Land_Data :: struct {
-	name:  string,
-	owner: string,
+	land:  Land_ID,
+	owner: Player_ID,
 	value: u8,
 }
 
@@ -52,23 +52,23 @@ Land_ID :: distinct enum u8 {
 
 //  PACIFIC | USA | ATLANTIC | ENG | BALTIC | GER | RUS | JAP | PAC
 LANDS_DATA := [?]Land_Data {
-	{name = "Washington", owner = "USA", value = 10},
-	{name = "London", owner = "Eng", value = 8},
-	{name = "Berlin", owner = "Ger", value = 10},
-	{name = "Moscow", owner = "Rus", value = 8},
-	{name = "Tokyo", owner = "Jap", value = 8},
+	{land = .Washington, owner = .USA, value = 10},
+	{land = .London, owner = .Eng, value = 8},
+	{land = .Berlin, owner = .Ger, value = 10},
+	{land = .Moscow, owner = .Rus, value = 8},
+	{land = .Tokyo, owner = .Jap, value = 8},
 }
-LAND_CONNECTIONS := [?][2]string{{"Berlin", "Moscow"}}
+LAND_CONNECTIONS := [?][2]Land_ID{{.Berlin, .Moscow}}
 
-get_land_idx_from_string :: proc(land_name: string) -> (land_idx: int, ok: bool) {
-	for land, land_idx in LANDS_DATA {
-		if strings.compare(land.name, land_name) == 0 {
-			return land_idx, true
-		}
-	}
-	fmt.eprintln("Error: Land not found: %s\n", land_name)
-	return 0, false
-}
+// get_land_idx_from_string :: proc(land_name: string) -> (land_idx: int, ok: bool) {
+// 	for land, land_idx in LANDS_DATA {
+// 		if strings.compare(land.name, land_name) == 0 {
+// 			return land_idx, true
+// 		}
+// 	}
+// 	fmt.eprintln("Error: Land not found: %s\n", land_name)
+// 	return 0, false
+// }
 
 initialize_l2l_2away_via_land :: proc() {
 	// Floyd-Warshall algorithm
@@ -113,30 +113,12 @@ initialize_l2l_2away_via_land :: proc() {
 }
 
 initialize_canals :: proc() -> (ok: bool) {
-	// convert canal_state to a bitmask and loop through CANALS for those
-	// enabled for example if canal_state is 0, do not process any items in
-	// CANALS, if canal_state is 1, process the first item in CANALS, if
-	// canal_state is 2, process the second item in CANALS, if canal_state is
-	// 3, process the first and second items in CANALS, etc.
-	// for canal_state in 0 ..< CANAL_STATES {
-	// 	adjacent_seas := canal[canal_state].adjacent_seas
-	// 	sea_distances := canal[canal_state].sea_distances
-	// 	for canal, canal_idx in CANALS {
-	// 		sea1 := canal.sea1
-	// 		sea2 := canal.sea2
-	// 		if (canal_state & (1 << uint(canal_idx))) == 0 {
-	// 			continue
-	// 		}
-	// 		append(&seas[sea1], adjacent_seas, sea2)
-	// 		seas[sea1], sea_distances[sea2] = 1
-	// 		append(&seas[sea2], adjacent_seas, sea1)
-	// 		seas[sea2], sea_distances[sea1] = 1
-	// 	}
-	// }	
-	for canal, canal_idx in CANALS {
-		land1_idx := get_land_idx_from_string(canal.lands[0]) or_return
-		land2_idx := get_land_idx_from_string(canal.lands[1]) or_return
-		// Canal_Lands[canal_idx] = {&lands[land1_idx], &lands[land2_idx]}
+	for canal_state in 0 ..< Canal_States {
+		canals_open :Canals_Open = transmute(Canals_Open)u8(canal_state)
+		for canal in canals_open {
+			mm.s2s_1away_via_sea[canal_state][Canal_Seas[canal][0]] += {Canal_Seas[canal][1]}
+			mm.s2s_1away_via_sea[canal_state][Canal_Seas[canal][1]] += {Canal_Seas[canal][0]}
+		}
 	}
 	return true
 }

@@ -1,8 +1,5 @@
 package oaaa
 import sa "core:container/small_array"
-import "core:fmt"
-import "core:mem"
-import "core:slice"
 
 GLOBAL_TICK := 0
 ACTUALLY_PRINT := false
@@ -150,12 +147,6 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-// add_move_if_not_skipped :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
-// 	if dst_air not_in gc.skipped_a2a[src_air] {
-// 		gc.valid_actions += {to_action(dst_air)}
-// 	}
-// }
-
 update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 	// get a list of newly skipped valid_actions
 	for valid_action in gc.valid_actions {
@@ -168,14 +159,6 @@ update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 	}
 	gc.valid_actions -= transmute(Action_Bitset)u32(transmute(u16)gc.skipped_a2a[src_air])
 }
-
-// apply_skip :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
-// 	for skipped_move, src_air_idx in dst_air.skipped_moves {
-// 		if skipped_move {
-// 			src_air.skipped_moves[src_air_idx] = true
-// 		}
-// 	}
-// }
 
 clear_move_history :: proc(gc: ^Game_Cache) {
 	for air in Air_ID {
@@ -377,7 +360,7 @@ get_possible_actions :: proc(gs: ^Game_State) -> Action_Bitset {
 	// Return the list of possible actions from the given state
 	gc: Game_Cache
 	// set unlucky teams
-	ok := initialize_map_constants(&gc)
+	initialize_map_constants(&gc)
 	load_cache_from_state(&gc, gs)
 	gc.unlucky_teams = {mm.team[gc.cur_player]}
 	gc.answers_remaining = 0
@@ -392,7 +375,7 @@ get_possible_actions :: proc(gs: ^Game_State) -> Action_Bitset {
 apply_action :: proc(gs: ^Game_State, action: Action_ID) {
 	// Apply the action to the game state
 	gc: Game_Cache
-	ok := initialize_map_constants(&gc)
+	initialize_map_constants(&gc)
 	load_cache_from_state(&gc, gs)
 	gc.answers_remaining = 1
 	gc.seed = 0
