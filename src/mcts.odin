@@ -195,7 +195,7 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if node == nil do return
 	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
 	if node.parent != nil {
-		fmt.print(PLAYER_DATA[node.parent.state.cur_player].color)
+		fmt.print(mm.color[node.parent.state.cur_player])
 		fmt.print("Action:")
 		if is_land(node.action) {
 			fmt.print(mm.land_name[to_land(node.action)])

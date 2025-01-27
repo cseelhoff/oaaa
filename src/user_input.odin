@@ -144,7 +144,7 @@ get_buy_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (action: Buy_Action, 
 }
 
 print_game_state :: proc(gc: ^Game_Cache) {
-	color := PLAYER_DATA[gc.cur_player].color
+	color := mm.color[gc.cur_player]
 	fmt.println(color, "--------------------")
 	fmt.println("Current Player: ", gc.cur_player)
 	fmt.println("Money: ", gc.money[gc.cur_player], DEF_COLOR, "\n")
@@ -161,7 +161,7 @@ print_game_state :: proc(gc: ^Game_Cache) {
 			"bombards:",
 			gc.max_bombards[land],
 		)
-		fmt.print(PLAYER_DATA[gc.cur_player].color)
+		fmt.print(mm.color[gc.cur_player])
 		for army in Active_Army {
 			if gc.active_armies[land][army] > 0 {
 				fmt.println(Active_Army_Names[army], ":", gc.active_armies[land][army])

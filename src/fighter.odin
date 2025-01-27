@@ -95,6 +95,9 @@ move_unmoved_fighter_from_land_to_sea :: proc(
 		gc.active_sea_planes[dst_sea][Fighter_After_Moves[mm.air_distances[to_air(src_land)][to_air(dst_sea)]]] +=
 		1
 	}
+	gc.allied_fighters_total[dst_sea] += 1
+	gc.allied_antifighter_ships_total[dst_sea] += 1
+	gc.allied_sea_combatants_total[dst_sea] += 1
 	gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
 	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
 	gc.active_land_planes[src_land][.FIGHTER_UNMOVED] -= 1
@@ -117,6 +120,9 @@ move_unmoved_fighter_from_sea_to_land :: proc(
 	}
 	gc.idle_land_planes[dst_land][gc.cur_player][.FIGHTER] += 1
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
+	gc.allied_fighters_total[src_sea] -= 1
+	gc.allied_antifighter_ships_total[src_sea] -= 1
+	gc.allied_sea_combatants_total[src_sea] -= 1
 	gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] -= 1
 	gc.idle_sea_planes[src_sea][gc.cur_player][.FIGHTER] -= 1
 	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= 1
@@ -132,8 +138,14 @@ move_unmoved_fighter_from_sea_to_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, d
 		gc.active_sea_planes[dst_sea][Fighter_After_Moves[mm.air_distances[to_air(src_sea)][to_air(dst_sea)]]] +=
 		1
 	}
+	gc.allied_fighters_total[dst_sea] += 1
+	gc.allied_antifighter_ships_total[dst_sea] += 1
+	gc.allied_sea_combatants_total[dst_sea] += 1
 	gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
 	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
+	gc.allied_fighters_total[src_sea] -= 1
+	gc.allied_antifighter_ships_total[src_sea] -= 1
+	gc.allied_sea_combatants_total[src_sea] -= 1
 	gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] -= 1
 	gc.idle_sea_planes[src_sea][gc.cur_player][.FIGHTER] -= 1
 	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= 1
@@ -263,6 +275,9 @@ move_fighter_from_land_to_sea :: proc(
 	dst_sea: Sea_ID,
 	plane: Active_Plane,
 ) {
+	gc.allied_fighters_total[dst_sea] += 1
+	gc.allied_antifighter_ships_total[dst_sea] += 1
+	gc.allied_sea_combatants_total[dst_sea] += 1
 	gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
 	gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
 	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
@@ -311,6 +326,9 @@ move_fighter_from_sea_to_land :: proc(
 	gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += 1
 	gc.idle_land_planes[dst_land][gc.cur_player][.FIGHTER] += 1
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
+	gc.allied_fighters_total[src_sea] -= 1
+	gc.allied_antifighter_ships_total[src_sea] -= 1
+	gc.allied_sea_combatants_total[src_sea] -= 1
 	gc.active_sea_planes[src_sea][plane] -= 1
 	gc.idle_sea_planes[src_sea][gc.cur_player][.FIGHTER] -= 1
 	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= 1
@@ -323,9 +341,15 @@ move_fighter_from_sea_to_sea :: proc(
 	dst_sea: Sea_ID,
 	plane: Active_Plane,
 ) {
+	gc.allied_fighters_total[dst_sea] += 1
+	gc.allied_antifighter_ships_total[dst_sea] += 1
+	gc.allied_sea_combatants_total[dst_sea] += 1
 	gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
 	gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
 	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
+	gc.allied_fighters_total[src_sea] -= 1
+	gc.allied_antifighter_ships_total[src_sea] -= 1
+	gc.allied_sea_combatants_total[src_sea] -= 1
 	gc.active_sea_planes[src_sea][plane] -= 1
 	gc.idle_sea_planes[src_sea][gc.cur_player][.FIGHTER] -= 1
 	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= 1

@@ -122,7 +122,7 @@ get_factory_buy :: proc(gc: ^Game_Cache) -> (action: Action_ID, ok: bool) {
 }
 
 update_factory_history :: proc(gc: ^Game_Cache, action: Action_ID) {
-	actions_to_remove:Action_Bitset={}
+	actions_to_remove: Action_Bitset = {}
 	for valid_action in gc.valid_actions {
 		// assert(card(gc.valid_actions) > 0)
 		// valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
@@ -167,7 +167,7 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 			repair_cost := u8(max(0, 1 + int(gc.factory_dmg[land]) - int(gc.builds_left[land])))
 			gc.valid_actions = {.Skip_Action}
 			if gc.money[gc.cur_player] >= Cost_Buy[.BUY_FIGHTER] + repair_cost &&
-				to_air(dst_sea) in gc.can_fighter_land_here {
+			   to_air(dst_sea) in gc.can_fighter_land_here {
 				add_buy_if_not_skipped(gc, to_air(dst_sea), .BUY_FIGHTER)
 			}
 			for buy_ship in Valid_Sea_Buys {
@@ -176,7 +176,7 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 			}
 			action := get_buy_input(gc, to_air(dst_sea)) or_return
 			if action == .SKIP_BUY {
-				gc.skipped_buys[to_air(dst_sea)]+= {.SKIP_BUY}
+				gc.skipped_buys[to_air(dst_sea)] += {.SKIP_BUY}
 				break
 			}
 			gc.builds_left[land] -= 1
@@ -194,16 +194,22 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 			if action == .BUY_FIGHTER {
 				gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
 				gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
-				if is_carrier_available(gc, dst_sea) {
-					gc.can_fighter_land_here += {to_air(dst_sea)}
-				} else {
+				gc.allied_fighters_total[dst_sea] += 1
+				gc.allied_antifighter_ships_total[dst_sea] += 1
+				gc.allied_sea_combatants_total[dst_sea] += 1			
+				if gc.allied_carriers_total[dst_sea] * 2 <= gc.allied_fighters_total[dst_sea] {
 					gc.can_fighter_land_here -= {to_air(dst_sea)}
 				}
 			} else {
 				ship := Buy_Active_Ship[action]
 				gc.active_ships[dst_sea][ship] += 1
 				gc.idle_ships[dst_sea][gc.cur_player][Active_Ship_To_Idle[ship]] += 1
-				if ship == .CARRIER_0_MOVES do gc.can_fighter_land_here += {to_air(dst_sea)}
+				if ship == .CARRIER_0_MOVES {
+					gc.allied_carriers_total[dst_sea] += 1
+					if gc.allied_carriers_total[dst_sea] * 2 > gc.allied_fighters_total[dst_sea] {
+						gc.can_fighter_land_here += {to_air(dst_sea)}
+					}
+				}
 			}
 			gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
 		}

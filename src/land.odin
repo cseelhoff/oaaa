@@ -54,79 +54,51 @@ Land_ID :: distinct enum u8 {
 	Tokyo,
 }
 
-//  PACIFIC | USA | ATLANTIC | ENG | BALTIC | GER | RUS | JAP | PAC
-LAND_DATA := [?]Land_Data {
-	{land = .Washington, orig_owner = .USA, value = 10},
-	{land = .London, orig_owner = .Eng, value = 8},
-	{land = .Berlin, orig_owner = .Ger, value = 10},
-	{land = .Moscow, orig_owner = .Rus, value = 8},
-	{land = .Tokyo, orig_owner = .Jap, value = 8},
-}
 LAND_CONNECTIONS := [?][2]Land_ID{{.Berlin, .Moscow}}
 
-// get_land_idx_from_string :: proc(land_name: string) -> (land_idx: int, ok: bool) {
-// 	for land, land_idx in LANDS_DATA {
-// 		if strings.compare(land.name, land_name) == 0 {
-// 			return land_idx, true
-// 		}
-// 	}
-// 	fmt.eprintln("Error: Land not found: %s\n", land_name)
-// 	return 0, false
-// }
-
-initialize_l2l_2away_via_land :: proc() {
+initialize_land_connections :: proc() {
 	// Floyd-Warshall algorithm
 	// Initialize distances array to Infinity
 	INFINITY :: 127
-	distances: [Land_ID][Land_ID]u8
-	mem.set(&distances, INFINITY, size_of(distances))
 	for land in Land_ID {
+		for dst_land in Land_ID {
+			mm.land_distances[land][dst_land] = INFINITY
+		}
 		// Ensure that the distance from a land to itself is 0
-		distances[land][land] = 0
+		mm.land_distances[land][land] = 0
 	}
 	for connection in LAND_CONNECTIONS {
 		sa.push(&mm.l2l_1away_via_land[connection[0]],connection[1])
 		sa.push(&mm.l2l_1away_via_land[connection[1]],connection[0])
-		distances[connection[0]][connection[1]] = 1
-		distances[connection[1]][connection[0]] = 1
+		mm.land_distances[connection[0]][connection[1]] = 1
+		mm.land_distances[connection[1]][connection[0]] = 1
 	}
 	for mid_idx in Land_ID {
 		for start_idx in Land_ID {
 			for end_idx in Land_ID {
-				new_dist := distances[start_idx][mid_idx] + distances[mid_idx][end_idx]
-				if new_dist < distances[start_idx][end_idx] {
-					distances[start_idx][end_idx] = new_dist
+				new_dist := mm.land_distances[start_idx][mid_idx] + mm.land_distances[mid_idx][end_idx]
+				if new_dist < mm.land_distances[start_idx][end_idx] {
+					mm.land_distances[start_idx][end_idx] = new_dist
 				}
 			}
 		}
 	}
 	// Initialize the l2l_2away_via_land array
-	for land in Land_ID {
-		adjacent_lands := sa.slice(&mm.l2l_1away_via_land[land])
-		for distance, dst_land in distances[land] {
+	for src_land in Land_ID {
+		adjacent_lands := sa.slice(&mm.l2l_1away_via_land[src_land])
+		for distance, dst_land in mm.land_distances[src_land] {
 			if distance == 2 {
 				land_2_moves_away := Land_2_Moves_Away {
 					land = dst_land,
 				}
-				for adjacent_land in adjacent_lands {
+				for adjacent_land in sa.slice(&mm.l2l_1away_via_land[dst_land]) {
 					_ = slice.linear_search(adjacent_lands, adjacent_land) or_continue
 					sa.push(&land_2_moves_away.mid_lands, adjacent_land)
 				}
-				sa.push(&mm.l2l_2away_via_land[land], land_2_moves_away)
+				sa.push(&mm.l2l_2away_via_land[src_land], land_2_moves_away)
 			}
 		}
 	}
-}
-
-initialize_canals :: proc() -> (ok: bool) {
-	for canal_state in 0 ..< Canal_States {
-		canals_open: Canals_Open = transmute(Canals_Open)u8(canal_state)
-		for canal in canals_open {
-			mm.s2s_1away_via_sea[canal_state][Canal_Seas[canal][0]] += {Canal_Seas[canal][1]}
-			mm.s2s_1away_via_sea[canal_state][Canal_Seas[canal][1]] += {Canal_Seas[canal][0]}
-		}
-	}
-	return true
 }
 
 conquer_land :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool) {

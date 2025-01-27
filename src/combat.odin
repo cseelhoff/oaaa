@@ -363,11 +363,13 @@ remove_sea_attackers :: proc(gc: ^Game_Cache, sea: Sea_ID, hits: ^u8) {
 		if hit_ally_battleship(gc, sea) do continue
 		if hit_my_ships(gc, sea, Attacker_Sea_Casualty_Order_1) do continue
 		if hit_ally_ships(gc, sea, Attacker_Sea_Casualty_Order_1) do continue
-		if hit_my_sea_planes(gc, sea, Air_Casualty_Order_Fighters) do continue
-		if hit_ally_sea_planes(gc, sea, .FIGHTER) do continue
+		// if hit_my_sea_planes(gc, sea, Air_Casualty_Order_Fighters) do continue
+		if hit_my_sea_fighters(gc, sea) do continue
+		// if hit_ally_sea_planes(gc, sea, .FIGHTER) do continue
+		if hit_ally_sea_fighters(gc, sea) do continue
 		if hit_my_ships(gc, sea, Attacker_Sea_Casualty_Order_2) do continue
 		if hit_ally_ships(gc, sea, Attacker_Sea_Casualty_Order_2) do continue
-		if hit_my_sea_planes(gc, sea, Air_Casualty_Order_Bombers) do continue
+		if hit_my_sea_bombers(gc, sea) do continue
 		if hit_my_ships(gc, sea, Attacker_Sea_Casualty_Order_3) do continue
 		if hit_ally_ships(gc, sea, Attacker_Sea_Casualty_Order_3) do continue
 		if hit_my_ships(gc, sea, Attacker_Sea_Casualty_Order_4) do continue
@@ -528,12 +530,33 @@ hit_my_land_planes :: proc(
 	return false
 }
 
-hit_my_sea_planes :: proc(
+hit_my_sea_fighters :: proc(
 	gc: ^Game_Cache,
 	sea: Sea_ID,
-	casualty_order: []Active_Plane,
 ) -> bool {
-	for plane in casualty_order {
+	for plane in Air_Casualty_Order_Fighters {
+		if gc.active_sea_planes[sea][plane] > 0 {
+			gc.active_sea_planes[sea][plane] -= 1
+			gc.idle_sea_planes[sea][gc.cur_player][Active_Plane_To_Idle[plane]] -= 1
+			gc.team_sea_units[sea][mm.team[gc.cur_player]] -= 1
+			gc.allied_fighters_total[sea] -= 1
+			gc.allied_antifighter_ships_total[sea] -= 1
+			gc.allied_sea_combatants_total[sea] -= 1
+			if gc.allied_carriers_total[sea] * 2 < gc.allied_fighters_total[sea] {
+				gc.can_fighter_land_here -= {to_air(sea)}
+				gc.is_fighter_cache_current = false
+			}
+			return true
+		}
+	}
+	return false
+}
+
+hit_my_sea_bombers :: proc(
+	gc: ^Game_Cache,
+	sea: Sea_ID,
+) -> bool {
+	for plane in Air_Casualty_Order_Bombers {
 		if gc.active_sea_planes[sea][plane] > 0 {
 			gc.active_sea_planes[sea][plane] -= 1
 			gc.idle_sea_planes[sea][gc.cur_player][Active_Plane_To_Idle[plane]] -= 1
@@ -559,16 +582,23 @@ hit_ally_land_planes :: proc(
 	}
 	return false
 }
-hit_ally_sea_planes :: proc(
+hit_ally_sea_fighters :: proc(
 	gc: ^Game_Cache,
 	sea: Sea_ID,
-	idle_plane: Idle_Plane,
+	// idle_plane: Idle_Plane,
 ) -> bool {
 	for ally in sa.slice(&mm.allies[gc.cur_player]) {
 		if ally == gc.cur_player do continue
-		if gc.idle_sea_planes[sea][ally][idle_plane] > 0 {
-			gc.idle_sea_planes[sea][ally][idle_plane] -= 1
+		if gc.idle_sea_planes[sea][ally][.FIGHTER] > 0 {
+			gc.idle_sea_planes[sea][ally][.FIGHTER] -= 1
 			gc.team_sea_units[sea][mm.team[gc.cur_player]] -= 1
+			gc.allied_fighters_total[sea] -= 1
+			gc.allied_antifighter_ships_total[sea] -= 1
+			gc.allied_sea_combatants_total[sea] -= 1
+			if gc.allied_carriers_total[sea] * 2 < gc.allied_fighters_total[sea] {
+				gc.can_fighter_land_here -= {to_air(sea)}
+				gc.is_fighter_cache_current = false
+			}
 			return true
 		}
 	}

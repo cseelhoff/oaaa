@@ -67,25 +67,19 @@ Land_2_Moves_Away :: struct {
 	mid_lands: Mid_Lands,
 }
 
-mm: MapData = {}
+mm: MapData = {
+	capital={.Rus=.Moscow, .Ger=.Berlin, .Eng=.London, .Jap=.Tokyo, .USA=.Washington},
+	team={.Rus=.Allies, .Ger=.Axis, .Eng=.Allies,.Jap=.Axis,.USA=.Allies},
+	value={.Moscow=8,.Berlin=10,.London=8,.Washington=10,.Tokyo=8},
+	orig_owner={.Moscow=.Rus,.Berlin=.Ger,.London=.Eng,.Tokyo=.Jap,.Washington=.USA},
+	color={.Rus="\033[1;31m",.Ger="\033[1;34m",.Eng="\033[1;95m",.Jap="\033[1;33m",.USA="\033[1;32m"},
+}
 
 initialize_map_constants :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	initialize_player_data()
-	// initialize_territories()
-	initialize_land_data()
-	// initialize_land_connections() or_return
-	//initialize_sea_connections(&gc.canal_paths, &gc.seas) or_return
-	initialize_sea_connections() or_return
-	initialize_l2l_2away_via_land()
-	initialize_costal_connections() or_return
-	initialize_canals() or_return
-	// initialize_seas_2_moves_away(&gc.seas, &gc.canal_paths)
-	initialize_seas_2_moves_away()
-	initialize_air_dist()
-	// initialize_land_path()
-	// initialize_sea_path()
-	// initialize_within_x_moves()
-	// intialize_airs_x_to_4_moves_away()
-	// initialize_skip_4air_precals()
+	initialize_land_connections()
+	initialize_sea_connections() 
+	initialize_costal_connections() 
+	initialize_air_connections()
 	return true
 }
