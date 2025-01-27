@@ -155,7 +155,7 @@ update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 		if valid_action == to_action(src_air) do continue
 		if valid_action == to_action(dst_air) do break
 		gc.skipped_a2a[src_air] += {to_air(valid_action)}
-		gc.clear_needed = true
+		gc.clear_history_needed = true
 	}
 	gc.valid_actions -= transmute(Action_Bitset)u32(transmute(u16)gc.skipped_a2a[src_air])
 }
@@ -164,11 +164,7 @@ clear_move_history :: proc(gc: ^Game_Cache) {
 	for air in Air_ID {
 		gc.skipped_a2a[air] = {}
 	}
-	gc.clear_needed = false
-}
-
-reset_valid_land_moves :: #force_inline proc(gc: ^Game_Cache, land: Land_ID) {
-	gc.valid_actions = {to_action(land)}
+	gc.clear_history_needed = false
 }
 
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -218,9 +214,13 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 	gc.land_combat_started = {}
 	gc.more_sea_combat_needed = {}
 	gc.sea_combat_started = {}
+	gc.friendly_owner = {}
 	for land in Land_ID {
 		if gc.owner[land] == gc.cur_player {
 			gc.builds_left[land] = gc.factory_prod[land]
+		}
+		if mm.team[gc.owner[land]] == mm.team[gc.cur_player] {
+			gc.friendly_owner += {land}
 		}
 		gc.max_bombards[land] = 0
 		gc.skipped_a2a[to_air(land)] = {}
@@ -381,7 +381,7 @@ apply_action :: proc(gs: ^Game_State, action: Action_ID) {
 	gc.seed = 0
 	gc.selected_action = action
 	gc.use_selected_action = true
-	//game_cache.clear_needed = false
+	//game_cache.clear_history_needed = false
 	for {
 		play_full_turn(&gc) or_break
 	}

@@ -22,7 +22,7 @@ Game_Cache :: struct {
 	enemy_fighters_total:           [Sea_ID]u8,
 	enemy_subs_total:               [Sea_ID]u8,
 	enemy_subvuln_ships_total:      [Sea_ID]u8,
-	allied_fighters_total:    			[Sea_ID]u8,
+	allied_fighters_total:          [Sea_ID]u8,
 	allied_carriers_total:          [Sea_ID]u8,
 	allied_destroyers_total:        [Sea_ID]u8,
 	allied_antifighter_ships_total: [Sea_ID]u8,
@@ -38,14 +38,14 @@ Game_Cache :: struct {
 	air_has_enemies:                Air_Bitset,
 	has_bombable_factory:           Land_Bitset,
 	has_carrier_space:              Sea_Bitset,
-	possible_factory_carriers:			Sea_Bitset,
-	canals_open:                    Canals_Open, //[CANALS_COUNT]bool,
+	possible_factory_carriers:      Sea_Bitset,
+	canals_open:                    Canals_Open,
 	unlucky_teams:                  Unlucky_Teams,
 	friendly_owner:                 Land_Bitset,
 	selected_action:                Action_ID,
 	is_bomber_cache_current:        bool,
 	is_fighter_cache_current:       bool,
-	clear_needed:                   bool,
+	clear_history_needed:           bool,
 	use_selected_action:            bool,
 }
 
@@ -53,10 +53,13 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	gc.state = gs^
 	gc.factory_locations = {}
 	gc.team_land_units = {}
+	gc.friendly_owner = {}
 	for land in Land_ID {
 		if gc.factory_prod[land] > 0 {
 			sa.push(&gc.factory_locations[gc.owner[land]], land)
-
+		}
+		if mm.team[gc.owner[land]] == mm.team[gc.cur_player] {
+			gc.friendly_owner += {land}
 		}
 		for player in Player_ID {
 			for army in gc.idle_armies[land][player] {
@@ -88,7 +91,7 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 resfresh_cache :: proc(gc: ^Game_Cache) {
 	gc.is_bomber_cache_current = false
 	gc.is_fighter_cache_current = false
-	gc.clear_needed = false
+	gc.clear_history_needed = false
 	gc.use_selected_action = false
 	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
 		for factory_location in sa.slice(&gc.factory_locations[enemy]) {
@@ -153,8 +156,14 @@ count_sea_unit_totals :: proc(gc: ^Game_Cache) {
 				gc.idle_ships[sea][ally][.BS_DAMAGED] +
 				gc.idle_ships[sea][ally][.DESTROYER]
 		}
-		gc.allied_antifighter_ships_total[sea] += gc.allied_destroyers_total[sea] + gc.allied_fighters_total[sea] + gc.allied_carriers_total[sea]
-		gc.allied_sea_combatants_total[sea] += gc.allied_destroyers_total[sea] + gc.allied_fighters_total[sea] + gc.allied_carriers_total[sea]
+		gc.allied_antifighter_ships_total[sea] +=
+			gc.allied_destroyers_total[sea] +
+			gc.allied_fighters_total[sea] +
+			gc.allied_carriers_total[sea]
+		gc.allied_sea_combatants_total[sea] +=
+			gc.allied_destroyers_total[sea] +
+			gc.allied_fighters_total[sea] +
+			gc.allied_carriers_total[sea]
 		if gc.allied_carriers_total[sea] * 2 > gc.allied_fighters_total[sea] {
 			gc.has_carrier_space += {sea}
 		}

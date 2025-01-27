@@ -142,7 +142,7 @@ update_buy_history :: proc(gc: ^Game_Cache, src_air: Air_ID, action: Buy_Action)
 		if valid_action == .Skip_Action do continue
 		if valid_action == buy_to_action_idx(action) do break
 		gc.skipped_buys[src_air] += {to_buy_action(valid_action)}
-		gc.clear_needed = true
+		gc.clear_history_needed = true
 	}
 	gc.valid_actions -= transmute(Action_Bitset)u32(transmute(u16)gc.skipped_buys[src_air])
 }
@@ -217,7 +217,7 @@ clear_buy_history :: proc(gc: ^Game_Cache, land: Land_ID) {
 		gc.skipped_buys[to_air(sea)] = {}
 		// mem.zero_slice(sea.skipped_buys[:])
 	}
-	gc.clear_needed = false
+	gc.clear_history_needed = false
 }
 
 buy_land_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
@@ -258,7 +258,7 @@ buy_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	gc.valid_actions = {.Skip_Action}
 	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
 		if gc.builds_left[land] == 0 do continue
-		if gc.clear_needed do clear_buy_history(gc, land)
+		if gc.clear_history_needed do clear_buy_history(gc, land)
 		buy_sea_units(gc, land) or_return
 		buy_land_units(gc, land) or_return
 	}

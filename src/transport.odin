@@ -109,11 +109,11 @@ stage_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 }
 
 stage_trans_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
-	gc.clear_needed = false
+	gc.clear_history_needed = false
 	for src_sea in Sea_ID {
 		stage_trans_sea(gc, src_sea, ship) or_return
 	}
-	if gc.clear_needed do clear_move_history(gc)
+	if gc.clear_history_needed do clear_move_history(gc)
 	return true
 }
 
@@ -161,11 +161,11 @@ move_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 }
 
 move_trans_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
-	gc.clear_needed = false
+	gc.clear_history_needed = false
 	for src_sea in Sea_ID {
 		move_trans_sea(gc, src_sea, ship) or_return
 	}
-	if gc.clear_needed do clear_move_history(gc)
+	if gc.clear_history_needed do clear_move_history(gc)
 	return true
 }
 
@@ -297,7 +297,7 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				replace_ship(gc, src_sea, ship, Transport_Unloaded[ship])
 			}
 		}
-		if gc.clear_needed do clear_move_history(gc)
+		if gc.clear_history_needed do clear_move_history(gc)
 	}
 	return true
 }

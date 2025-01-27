@@ -107,26 +107,17 @@ Army_Size := [Active_Army]Army_Sizes {
 
 move_armies :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for army in Unmoved_Armies {
-		move_army_lands(gc, army) or_return
-	}
-	return true
-}
-
-move_army_lands :: proc(gc: ^Game_Cache, army: Active_Army) -> (ok: bool) {
-	gc.clear_needed = false
-	for src_land in Land_ID {
-		move_army_land(gc, army, src_land) or_return
-	}
-	if gc.clear_needed do clear_move_history(gc)
-	return true
-}
-
-move_army_land :: proc(gc: ^Game_Cache, army: Active_Army, src_land: Land_ID) -> (ok: bool) {
-	if gc.active_armies[src_land][army] == 0 do return true
-	reset_valid_land_moves(gc, src_land)
-	add_valid_army_moves(gc, src_land, army)
-	for gc.active_armies[src_land][army] > 0 {
-		move_next_army_in_land(gc, army, src_land) or_return
+		gc.clear_history_needed = false
+		for src_land in Land_ID {
+			if gc.active_armies[src_land][army] == 0 do continue
+			gc.valid_actions = {to_action(src_land)}
+			add_valid_army_moves_1(gc, src_land, army)
+			if army == .TANK_UNMOVED do add_valid_army_moves_2(gc, src_land, army)
+			for gc.active_armies[src_land][army] > 0 {
+				move_next_army_in_land(gc, army, src_land) or_return
+			}
+		}
+		if gc.clear_history_needed do clear_move_history(gc)
 	}
 	return true
 }
@@ -239,12 +230,6 @@ add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
 		}
 		add_if_boat_available(gc, src_land, dst_sea_2_away.sea, army)
 	}
-}
-
-add_valid_army_moves :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
-	add_valid_army_moves_1(gc, src_land, army)
-	if army != .TANK_UNMOVED do return
-	add_valid_army_moves_2(gc, src_land, army)
 }
 
 skip_army :: proc(

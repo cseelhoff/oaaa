@@ -19,7 +19,7 @@ Unlanded_Fighters := [?]Active_Plane {
 FIGHTER_MAX_MOVES :: 4
 
 move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	gc.clear_needed = false
+	gc.clear_history_needed = false
 	for src_land in Land_ID {
 		if gc.active_land_planes[src_land][.FIGHTER_UNMOVED] == 0 do return true
 		if ~gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
@@ -184,14 +184,14 @@ add_valid_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 
 land_remaining_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for plane in Unlanded_Fighters {
-		gc.clear_needed = false
+		gc.clear_history_needed = false
 		for src_land in Land_ID {
 			land_fighter_from_land(gc, src_land, plane) or_continue
 		}
 		for src_sea in Sea_ID {
 			land_fighter_from_sea(gc, src_sea, plane) or_continue
 		}
-		if gc.clear_needed do clear_move_history(gc)
+		if gc.clear_history_needed do clear_move_history(gc)
 	}
 	return true
 }

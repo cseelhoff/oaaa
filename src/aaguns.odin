@@ -3,17 +3,17 @@ package oaaa
 import sa "core:container/small_array"
 
 move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	gc.clear_needed = false
+	gc.clear_history_needed = false
 	for src_land in Land_ID {
 		move_aagun_land(gc, src_land) or_return
 	}
-	if gc.clear_needed do clear_move_history(gc)
+	if gc.clear_history_needed do clear_move_history(gc)
 	return true 
 }
 
 move_aagun_land :: proc(gc: ^Game_Cache, src_land: Land_ID) -> (ok: bool) {
 	if gc.active_armies[src_land][.AAGUN_UNMOVED] == 0 do return true
-	reset_valid_land_moves(gc, src_land)
+	gc.valid_actions = {to_action(src_land)}
 	add_valid_aagun_moves(gc, src_land)
 	for gc.active_armies[src_land][Active_Army.AAGUN_UNMOVED] > 0 {
 		move_next_aagun_in_land(gc, src_land) or_return

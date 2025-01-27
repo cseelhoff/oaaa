@@ -360,11 +360,11 @@ move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
 }
 
 move_ship_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
-	gc.clear_needed = false
+	gc.clear_history_needed = false
 	for src_sea in Sea_ID {
 		move_ship_sea(gc, src_sea, ship) or_return
 	}
-	if gc.clear_needed do clear_move_history(gc)
+	if gc.clear_history_needed do clear_move_history(gc)
 	return true
 }
 

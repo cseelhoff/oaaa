@@ -21,7 +21,7 @@ Unlanded_Bombers := [?]Active_Plane {
 BOMBER_MAX_MOVES :: 6
 
 move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	gc.clear_needed = false
+	gc.clear_history_needed = false
 	for src_land in Land_ID {
 		if gc.active_land_planes[src_land][.BOMBER_UNMOVED] == 0 do return true
 		if ~gc.is_bomber_cache_current do refresh_can_bomber_land_here(gc)
@@ -36,7 +36,7 @@ move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			}
 		}
 	}
-	if gc.clear_needed do clear_move_history(gc)
+	if gc.clear_history_needed do clear_move_history(gc)
 	return true
 }
 
@@ -105,14 +105,14 @@ refresh_can_bomber_land_here_directly :: proc(gc: ^Game_Cache) {
 
 land_remaining_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for plane in Unlanded_Bombers {
-		gc.clear_needed = false
+		gc.clear_history_needed = false
 		for src_land in Land_ID {
 			land_bomber_from_land(gc, src_land, plane) or_return
 		}
 		for src_sea in Sea_ID {
 			land_bomber_from_sea(gc, src_sea, plane) or_return
 		}
-		if gc.clear_needed do clear_move_history(gc)
+		if gc.clear_history_needed do clear_move_history(gc)
 	}
 	return true
 }
