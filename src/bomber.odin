@@ -57,7 +57,7 @@ move_unmoved_bomber_to_land :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_land
 	if dst_land in gc.can_bomber_land_here {
 		gc.active_land_planes[dst_land][.BOMBER_0_MOVES] += 1
 	} else {
-		gc.land_combat_status[dst_land] = .PRE_COMBAT
+		gc.more_land_combat_needed += {dst_land}
 		gc.active_land_planes[dst_land][Bomber_After_Moves[mm.air_distances[to_air(src_land)][to_air(dst_land)]]] +=
 		1
 	}
@@ -78,7 +78,7 @@ skip_bomber :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_land: Land_ID) -> (o
 }
 
 move_unmoved_bomber_to_sea :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_sea: Sea_ID) {
-	gc.sea_combat_status[dst_sea] = .PRE_COMBAT
+	gc.more_sea_combat_needed += {dst_sea}
 	gc.idle_sea_planes[dst_sea][gc.cur_player][.BOMBER] += 1
 	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
 	gc.active_land_planes[src_land][.BOMBER_UNMOVED] -= 1
@@ -87,7 +87,7 @@ move_unmoved_bomber_to_sea :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_sea: 
 }
 
 refresh_can_bomber_land_here :: proc(gc: ^Game_Cache) {
-	gc.can_bomber_land_here = gc.friendly_owner & gc.land_no_combat
+	gc.can_bomber_land_here = gc.friendly_owner & ~gc.land_combat_started
 	gc.can_bomber_land_in_1_moves = {}
 	gc.can_bomber_land_in_2_moves = {}
 	for dst_land in gc.can_bomber_land_here {
@@ -98,7 +98,7 @@ refresh_can_bomber_land_here :: proc(gc: ^Game_Cache) {
 }
 
 refresh_can_bomber_land_here_directly :: proc(gc: ^Game_Cache) {
-	gc.can_bomber_land_here = gc.friendly_owner & gc.land_no_combat
+	gc.can_bomber_land_here = gc.friendly_owner & ~gc.land_combat_started
 	gc.is_bomber_cache_current = true
 }
 

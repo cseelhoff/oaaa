@@ -177,7 +177,7 @@ buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for land in Land_ID {
 		if gc.owner[land] != gc.cur_player ||
 		   gc.factory_prod[land] > 0 ||
-		   gc.land_combat_status[land] != .NO_COMBAT ||
+		   land in (gc.more_land_combat_needed | gc.land_combat_started) ||
 		   to_air(land) in gc.skipped_a2a[to_air(land)] {
 			continue
 		}
@@ -217,11 +217,14 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 	gc.clear_needed = false
 	gc.is_bomber_cache_current = false
 	gc.is_fighter_cache_current = false
+	gc.more_land_combat_needed = {}
+	gc.land_combat_started = {}
+	gc.more_sea_combat_needed = {}
+	gc.sea_combat_started = {}
 	for land in Land_ID {
 		if gc.owner[land] == gc.cur_player {
 			gc.builds_left[land] = gc.factory_prod[land]
 		}
-		gc.land_combat_status[land] = .NO_COMBAT
 		gc.max_bombards[land] = 0
 		gc.skipped_a2a[to_air(land)] = {}
 		gc.skipped_buys[to_air(land)] = {}
@@ -238,7 +241,6 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 	}
 
 	for sea in Sea_ID {
-		gc.sea_combat_status[sea] = .NO_COMBAT
 		gc.skipped_a2a[to_air(sea)] = {}
 		gc.skipped_buys[to_air(sea)] = {}
 		gc.active_ships[sea] = {}

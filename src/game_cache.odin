@@ -1,12 +1,8 @@
 package oaaa
 import sa "core:container/small_array"
-// import "core:fmt"
-// import "core:strings"
 
 BUY_ACTIONS_COUNT :: len(Buy_Action)
 
-// Territory_Pointers :: [len(Air_ID)]Air_ID
-SA_Territory_Pointers :: sa.Small_Array(len(Air_ID), Air_ID)
 SA_Land :: sa.Small_Array(len(Land_ID), Land_ID)
 Canals_Open :: bit_set[Canal_ID;u8]
 Unlucky_Teams :: bit_set[Team_ID;u8]
@@ -44,8 +40,6 @@ Game_Cache :: struct {
 	has_carrier_space:              Sea_Bitset,
 	canals_open:                    Canals_Open, //[CANALS_COUNT]bool,
 	unlucky_teams:                  Unlucky_Teams,
-	land_no_combat:                 Land_Bitset,
-	sea_no_combat:                  Sea_Bitset,
 	friendly_owner:                 Land_Bitset,
 	selected_action:                Action_ID,
 	is_bomber_cache_current:        bool,
@@ -145,10 +139,6 @@ count_sea_unit_totals :: proc(gc: ^Game_Cache) {
 		if gc.allied_carriers_total[sea] * 2 > gc.allied_fighters_total[sea] {
 			gc.has_carrier_space += {sea}
 		}
-		// gc.allied_carriers[sea] = 0
-		// for ally in sa.slice(&mm.allies[gc.cur_player]) {
-		// 	sea.allied_carriers += sea.idle_ships[ally][.CARRIER]
-		// }
 	}
 }
 load_open_canals :: proc(gc: ^Game_Cache) {

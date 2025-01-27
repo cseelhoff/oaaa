@@ -71,7 +71,7 @@ move_unmoved_fighter_from_land_to_land :: proc(
 	if to_air(dst_land) in gc.air_has_enemies {
 		gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += 1
 	} else {
-		gc.land_combat_status[dst_land] = .PRE_COMBAT
+		gc.more_land_combat_needed += {dst_land}
 		gc.active_land_planes[dst_land][Fighter_After_Moves[mm.air_distances[to_air(src_land)][to_air(dst_land)]]] +=
 		1
 	}
@@ -91,7 +91,7 @@ move_unmoved_fighter_from_land_to_sea :: proc(
 	if to_air(dst_sea) in gc.air_has_enemies {
 		gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
 	} else {
-		gc.sea_combat_status[dst_sea] = .PRE_COMBAT
+		gc.more_sea_combat_needed += {dst_sea}
 		gc.active_sea_planes[dst_sea][Fighter_After_Moves[mm.air_distances[to_air(src_land)][to_air(dst_sea)]]] +=
 		1
 	}
@@ -114,7 +114,7 @@ move_unmoved_fighter_from_sea_to_land :: proc(
 	if to_air(dst_land) in gc.air_has_enemies {
 		gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += 1
 	} else {
-		gc.land_combat_status[dst_land] = .PRE_COMBAT
+		gc.more_land_combat_needed += {dst_land}
 		gc.active_land_planes[dst_land][Fighter_After_Moves[mm.air_distances[to_air(src_sea)][to_air(dst_land)]]] +=
 		1
 	}
@@ -134,7 +134,7 @@ move_unmoved_fighter_from_sea_to_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, d
 	if to_air(dst_sea) in gc.air_has_enemies {
 		gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
 	} else {
-		gc.sea_combat_status[dst_sea] = .PRE_COMBAT
+		gc.more_sea_combat_needed += {dst_sea}
 		gc.active_sea_planes[dst_sea][Fighter_After_Moves[mm.air_distances[to_air(src_sea)][to_air(dst_sea)]]] +=
 		1
 	}
@@ -172,7 +172,7 @@ skip_sea_fighter :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> (
 refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 	// is allied owned and not recently conquered?
 	gc.can_fighter_land_here =
-		to_air_bitset(gc.friendly_owner & gc.land_no_combat) | to_air_bitset(gc.has_carrier_space)
+		to_air_bitset(gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started) | to_air_bitset(gc.has_carrier_space)
 	// check for possiblity to build carrier under fighter
 	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
 		gc.can_fighter_land_here += to_air_bitset(mm.l2s_1away_via_land_bitset[land])
@@ -196,7 +196,7 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 refresh_can_fighter_land_here_directly :: proc(gc: ^Game_Cache) {
 	// is allied owned and not recently conquered?
 	gc.can_fighter_land_here =
-		to_air_bitset(gc.friendly_owner & gc.land_no_combat) | to_air_bitset(gc.has_carrier_space)
+		to_air_bitset(gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started) | to_air_bitset(gc.has_carrier_space)
 	// check for possiblity to build carrier under fighter
 	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
 		gc.can_fighter_land_here += to_air_bitset(mm.l2s_1away_via_land_bitset[land])

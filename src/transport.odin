@@ -133,7 +133,7 @@ stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Sh
 	// sea_distance := src_sea.canal_paths[gc.canal_state].sea_distance[dst_sea_idx]
 	sea_distance := mm.sea_distances[transmute(u8)gc.canals_open][src_sea][dst_sea]
 	if skip_ship(gc, src_sea, dst_sea, ship) do return true
-	if gc.sea_combat_status[dst_sea] == .PRE_COMBAT {
+	if dst_sea in gc.more_sea_combat_needed {
 		// only allow staging to sea with enemy blockade if other unit started combat
 		sea_distance = 2
 	}
@@ -192,7 +192,7 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance
 	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
 		if to_air(dst_sea) in gc.skipped_a2a[to_air(src_sea)] ||
 		   gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] > 0 &&
-			   gc.sea_combat_status[dst_sea] != .PRE_COMBAT { 	// transport needs escort
+			 dst_sea not_in gc.sea_combat_started { 	// transport needs escort
 			continue
 		}
 		gc.valid_actions += {to_action(dst_sea)}
@@ -203,7 +203,7 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance
 	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
 		if to_air(dst_sea_2_away) in gc.skipped_a2a[to_air(src_sea)] ||
 		   gc.team_sea_units[dst_sea_2_away][mm.enemy_team[gc.cur_player]] > 0 &&
-			   gc.sea_combat_status[dst_sea_2_away] != .PRE_COMBAT { 	// transport needs escort
+			   dst_sea_2_away not_in gc.more_sea_combat_needed { 	// transport needs escort
 			continue
 		}
 		for mid_sea in sa.slice(&mid_seas[dst_sea_2_away]) {

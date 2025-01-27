@@ -152,7 +152,10 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		fmt.print(mm.color[gc.owner[land]])
 		fmt.println(
 			mm.land_name[land],
-			gc.land_combat_status[land],
+			"more combat:",
+			land in gc.more_land_combat_needed,
+			"combat started:",
+			land in gc.land_combat_started,
 			"builds:",
 			gc.builds_left[land],
 			gc.factory_dmg[land],
@@ -192,7 +195,12 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		}
 	}
 	for sea in Sea_ID {
-		fmt.println(mm.sea_name[sea], gc.sea_combat_status[sea])
+		fmt.println(mm.sea_name[sea])
+		fmt.println(
+		"more combat:",
+		sea in gc.more_sea_combat_needed,
+		"combat started:",
+		sea in gc.sea_combat_started)
 		fmt.print(mm.color[gc.cur_player])
 		for ship in Active_Ship {
 			if gc.active_ships[sea][ship] > 0 {

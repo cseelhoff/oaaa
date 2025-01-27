@@ -13,20 +13,18 @@ no_defender_threat_exists :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 
 get_allied_subs_count :: proc(gc: ^Game_Cache, sea: Sea_ID) -> (allied_subs: u8) {
 	allied_subs = 0
-	for player in sa.slice(&mm.allies[gc.cur_player]) {
-		allied_subs += gc.idle_ships[sea][player][.SUB]
+	for ally in sa.slice(&mm.allies[gc.cur_player]) {
+		allied_subs += gc.idle_ships[sea][ally][.SUB]
 	}
-	return
+	return allied_subs
 }
 
 disable_bombardment :: proc(gc: ^Game_Cache, sea: Sea_ID) {
 	gc.active_ships[sea][.CRUISER_BOMBARDED] += gc.active_ships[sea][.CRUISER_0_MOVES]
 	gc.active_ships[sea][.CRUISER_0_MOVES] = 0
-	gc.active_ships[sea][.BATTLESHIP_BOMBARDED] +=
-		gc.active_ships[sea][.BATTLESHIP_0_MOVES]
+	gc.active_ships[sea][.BATTLESHIP_BOMBARDED] += gc.active_ships[sea][.BATTLESHIP_0_MOVES]
 	gc.active_ships[sea][.BATTLESHIP_0_MOVES] = 0
-	gc.active_ships[sea][.BS_DAMAGED_BOMBARDED] +=
-		gc.active_ships[sea][.BS_DAMAGED_0_MOVES]
+	gc.active_ships[sea][.BS_DAMAGED_BOMBARDED] += gc.active_ships[sea][.BS_DAMAGED_0_MOVES]
 	gc.active_ships[sea][.BS_DAMAGED_0_MOVES] = 0
 }
 
@@ -38,11 +36,19 @@ build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
 		// otherwise I am possibly wasting transports
 		gc.valid_actions += {to_action(src_sea)}
 	}
-	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] & gc.sea_no_combat {
+	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] & ~gc.sea_combat_started {
 		if gc.enemy_blockade_total[dst_sea] == 0 {
 			gc.valid_actions += {to_action(dst_sea)}
 		}
 	}
+}
+
+do_sea_targets_exist :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	return(
+		(gc.enemy_subs_total[sea] > 0 && gc.allied_destroyers_total[sea] > 0) ||
+		(gc.enemy_fighters_total[sea] > 0 && gc.allied_antifighter_ships_total[sea] > 0) ||
+		(gc.enemy_subvuln_ships_total[sea] > 0 && gc.allied_sea_combatants_total[sea] > 0) \
+	)
 }
 
 sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> bool {
@@ -64,17 +70,8 @@ sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> bool {
 			gc.team_sea_units[src_sea][team] -= number_of_ships
 		}
 	}
-	gc.sea_combat_status[src_sea] = .POST_COMBAT
+	gc.more_sea_combat_needed -= {src_sea}
 	return true
-}
-
-do_sea_targets_exist :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
-	return(
-		(gc.enemy_subs_total[sea] > 0 && gc.allied_destroyers_total[sea] > 0) ||
-		(gc.enemy_fighters_total[sea] > 0 && gc.allied_antifighter_ships_total[sea] > 0) ||
-		(gc.enemy_subvuln_ships_total[sea] > 0 &&
-				gc.allied_sea_combatants_total[sea] > 0) \
-	)
 }
 
 destroy_defender_transports :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
@@ -88,7 +85,7 @@ destroy_defender_transports :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 			}
 		}
 	}
-	gc.sea_combat_status[sea] = .POST_COMBAT
+	gc.more_sea_combat_needed -= {sea}
 	return true
 }
 DICE_SIDES :: 6
@@ -101,7 +98,8 @@ get_attacker_hits :: proc(gc: ^Game_Cache, attacker_damage: int) -> (attacker_hi
 			return
 		}
 	}
-	attacker_hits += RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(attacker_damage) % DICE_SIDES ? 1 : 0
+	attacker_hits +=
+		RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(attacker_damage) % DICE_SIDES ? 1 : 0
 	gc.seed = (gc.seed + 1) % RANDOM_MAX
 	return
 }
@@ -114,33 +112,34 @@ get_defender_hits :: proc(gc: ^Game_Cache, defender_damage: int) -> (defender_hi
 			return
 		}
 	}
-	defender_hits += RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(defender_damage) % DICE_SIDES ? 1 : 0
+	defender_hits +=
+		RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(defender_damage) % DICE_SIDES ? 1 : 0
 	gc.seed = (gc.seed + 1) % RANDOM_MAX
 	return
 }
 
 no_allied_units_remain :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	if gc.team_sea_units[sea][mm.team[gc.cur_player]] > 0 do return false
-	gc.sea_combat_status[sea] = .POST_COMBAT
+	gc.more_sea_combat_needed -= {sea}
 	return true
 }
 SUB_ATTACK :: 2
 SUB_DEFENSE :: 1
 resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	for sea in Sea_ID {
-		if gc.sea_combat_status[sea] == .NO_COMBAT || gc.sea_combat_status[sea] == .POST_COMBAT do continue
+	for sea in gc.more_sea_combat_needed {
+		if sea not_in gc.more_sea_combat_needed do continue
 		if destroy_defender_transports(gc, sea) do continue
 		disable_bombardment(gc, sea)
 		def_subs_targetable := true
 		// check_positive_active_ships(gc, sea)
 		for {
-			if gc.sea_combat_status[sea] == .MID_COMBAT {
+			if sea in gc.sea_combat_started {
 				build_sea_retreat_options(gc, sea)
 				dst_air_idx := get_retreat_input(gc, to_air(sea)) or_return
 				if sea_retreat(gc, sea, to_sea(dst_air_idx)) do break
 			}
 			//if destroy_vulnerable_transports(gc, &sea) do break
-			gc.sea_combat_status[sea] = .MID_COMBAT
+			gc.sea_combat_started += {sea}
 			sub_attacker_damage := int(get_allied_subs_count(gc, sea)) * SUB_ATTACK
 			sub_attacker_hits := get_attacker_hits(gc, sub_attacker_damage)
 			def_subs_targetable = def_subs_targetable && gc.allied_destroyers_total[sea] > 0
@@ -165,18 +164,15 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-flag_for_land_enemy_combat :: proc(
-	gc: ^Game_Cache,
-	land: Land_ID,
-) -> bool {
+flag_for_land_enemy_combat :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 	if gc.team_land_units[land][mm.enemy_team[gc.cur_player]] == 0 do return false
-	gc.land_combat_status[land] = .PRE_COMBAT
+	gc.more_land_combat_needed += {land}
 	return true
 }
 
 flag_for_sea_enemy_combat :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	if gc.team_sea_units[sea][mm.enemy_team[gc.cur_player]] == 0 do return false
-	gc.sea_combat_status[sea] = .PRE_COMBAT
+	gc.more_sea_combat_needed += {sea}
 	return true
 }
 
@@ -247,7 +243,7 @@ attempt_conquer_land :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 build_land_retreat_options :: proc(gc: ^Game_Cache, land: Land_ID) {
 	gc.valid_actions = {to_action(land)}
 	for &dst_land in sa.slice(&mm.l2l_1away_via_land[land]) {
-		if gc.land_combat_status[dst_land] == .NO_COMBAT &&
+		if dst_land not_in (gc.more_land_combat_needed | gc.land_combat_started) &&
 		   mm.team[gc.owner[dst_land]] == mm.team[gc.cur_player] {
 			gc.valid_actions += {to_action(dst_land)}
 		}
@@ -266,10 +262,10 @@ destroy_undefended_aaguns :: proc(gc: ^Game_Cache, land: Land_ID) {
 
 MAX_COMBAT_ROUNDS :: 100
 resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	for land in Land_ID {
-		if gc.land_combat_status[land] == .NO_COMBAT || gc.land_combat_status[land] == .POST_COMBAT do continue
+	for land in gc.more_land_combat_needed {
+		if land not_in gc.more_land_combat_needed do continue
 		if no_attackers_remain(gc, land) do continue
-		if gc.land_combat_status[land] == .PRE_COMBAT {
+		if land not_in gc.land_combat_started {
 			if strategic_bombing(gc, land) do continue
 			sea_bombardment(gc, land)
 			fire_tact_aaguns(gc, land)
@@ -283,12 +279,12 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				fmt.eprintln("resolve_land_battles: MAX_COMBAT_ROUNDS reached", combat_rounds)
 				print_game_state(gc)
 			}
-			if gc.land_combat_status[land] == .MID_COMBAT {
+			if land in gc.land_combat_started {
 				build_land_retreat_options(gc, land)
 				dst_air := get_retreat_input(gc, to_air(land)) or_return
 				if retreat_land_units(gc, land, Land_ID(dst_air)) do break
 			}
-			gc.land_combat_status[land] = .MID_COMBAT
+			gc.land_combat_started += {land}
 			attacker_hits := get_attacker_hits(gc, get_attcker_damage_land(gc, land))
 			defender_hits := get_defender_hits(gc, get_defender_damage_land(gc, land))
 			remove_land_attackers(gc, land, &defender_hits)
@@ -303,7 +299,7 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 no_attackers_remain :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 	if gc.team_land_units[land][mm.team[gc.cur_player]] == 0 {
-		gc.land_combat_status[land] = .POST_COMBAT
+		gc.more_land_combat_needed -= {land}
 		return true
 	}
 	return false
@@ -314,7 +310,7 @@ strategic_bombing :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 	if bombers == 0 || gc.team_land_units[land][mm.team[gc.cur_player]] > bombers {
 		return false
 	}
-	gc.land_combat_status[land] = .POST_COMBAT
+	gc.more_land_combat_needed -= {land}
 	defender_hits := get_defender_hits(gc, int(bombers))
 	for (defender_hits > 0) {
 		defender_hits -= 1
@@ -338,7 +334,7 @@ retreat_land_units :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_land: Land_ID
 		gc.idle_armies[src_land][gc.cur_player][Active_Army_To_Idle[army]] = 0
 		gc.team_land_units[src_land][mm.team[gc.cur_player]] -= number_of_armies
 	}
-	gc.land_combat_status[src_land] = .POST_COMBAT
+	gc.more_land_combat_needed -= {src_land}
 	return true
 }
 
@@ -441,11 +437,7 @@ hit_enemy_battleship :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	return false
 }
 
-hit_my_ships :: proc(
-	gc: ^Game_Cache,
-	sea: Sea_ID,
-	casualty_order: []Active_Ship,
-) -> bool {
+hit_my_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Active_Ship) -> bool {
 	for ship in casualty_order {
 		if gc.active_ships[sea][ship] > 0 {
 			gc.active_ships[sea][ship] -= 1
@@ -457,11 +449,7 @@ hit_my_ships :: proc(
 	return false
 }
 
-hit_ally_ships :: proc(
-	gc: ^Game_Cache,
-	sea: Sea_ID,
-	casualty_order: []Active_Ship,
-) -> bool {
+hit_ally_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Active_Ship) -> bool {
 	for ship in casualty_order {
 		for ally in sa.slice(&mm.allies[gc.cur_player]) {
 			if ally == gc.cur_player do continue
@@ -475,11 +463,7 @@ hit_ally_ships :: proc(
 	return false
 }
 
-hit_enemy_ships :: proc(
-	gc: ^Game_Cache,
-	sea: Sea_ID,
-	casualty_order: []Idle_Ship,
-) -> bool {
+hit_enemy_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Idle_Ship) -> bool {
 	for ship in casualty_order {
 		for player in sa.slice(&mm.enemies[gc.cur_player]) {
 			if gc.idle_ships[sea][player][ship] > 0 {
@@ -516,10 +500,7 @@ hit_my_land_planes :: proc(
 	return false
 }
 
-hit_my_sea_fighters :: proc(
-	gc: ^Game_Cache,
-	sea: Sea_ID,
-) -> bool {
+hit_my_sea_fighters :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	for plane in Air_Casualty_Order_Fighters {
 		if gc.active_sea_planes[sea][plane] > 0 {
 			gc.active_sea_planes[sea][plane] -= 1
@@ -538,10 +519,7 @@ hit_my_sea_fighters :: proc(
 	return false
 }
 
-hit_my_sea_bombers :: proc(
-	gc: ^Game_Cache,
-	sea: Sea_ID,
-) -> bool {
+hit_my_sea_bombers :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	for plane in Air_Casualty_Order_Bombers {
 		if gc.active_sea_planes[sea][plane] > 0 {
 			gc.active_sea_planes[sea][plane] -= 1
@@ -553,11 +531,7 @@ hit_my_sea_bombers :: proc(
 	return false
 }
 
-hit_ally_land_planes :: proc(
-	gc: ^Game_Cache,
-	land: Land_ID,
-	idle_plane: Idle_Plane,
-) -> bool {
+hit_ally_land_planes :: proc(gc: ^Game_Cache, land: Land_ID, idle_plane: Idle_Plane) -> bool {
 	for ally in sa.slice(&mm.allies[gc.cur_player]) {
 		if ally == gc.cur_player do continue
 		if gc.idle_land_planes[land][ally][idle_plane] > 0 {
@@ -603,11 +577,7 @@ hit_enemy_sea_fighter :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	return false
 }
 
-hit_enemy_land_planes :: proc(
-	gc: ^Game_Cache,
-	land: Land_ID,
-	idle_plane: Idle_Plane,
-) -> bool {
+hit_enemy_land_planes :: proc(gc: ^Game_Cache, land: Land_ID, idle_plane: Idle_Plane) -> bool {
 	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
 		if gc.idle_land_planes[land][enemy][idle_plane] > 0 {
 			gc.idle_land_planes[land][enemy][idle_plane] -= 1
@@ -634,11 +604,7 @@ hit_enemy_sea_planes :: proc(
 	return false
 }
 
-hit_my_armies :: proc(
-	gc: ^Game_Cache,
-	land: Land_ID,
-	casualty_order: []Active_Army,
-) -> bool {
+hit_my_armies :: proc(gc: ^Game_Cache, land: Land_ID, casualty_order: []Active_Army) -> bool {
 	for army in casualty_order {
 		if gc.active_armies[land][army] > 0 {
 			gc.active_armies[land][army] -= 1
@@ -650,11 +616,7 @@ hit_my_armies :: proc(
 	return false
 }
 
-hit_enemy_armies :: proc(
-	gc: ^Game_Cache,
-	land: Land_ID,
-	casualty_order: []Idle_Army,
-) -> bool {
+hit_enemy_armies :: proc(gc: ^Game_Cache, land: Land_ID, casualty_order: []Idle_Army) -> bool {
 	for army in casualty_order {
 		for player in sa.slice(&mm.enemies[gc.cur_player]) {
 			if gc.idle_armies[land][player][army] > 0 {

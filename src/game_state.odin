@@ -1,35 +1,29 @@
 package oaaa
 
 Game_State :: struct {
-	active_armies:      [Land_ID][Active_Army]u8,
-	active_ships:       [Sea_ID][Active_Ship]u8,
-	active_land_planes: [Land_ID][Active_Plane]u8,
-	active_sea_planes:  [Sea_ID][Active_Plane]u8,
-	idle_armies:        [Land_ID][Player_ID][Idle_Army]u8,
-	idle_land_planes:   [Land_ID][Player_ID][Idle_Plane]u8,
-	idle_sea_planes:    [Sea_ID][Player_ID][Idle_Plane]u8,
-	idle_ships:         [Sea_ID][Player_ID][Idle_Ship]u8,
-	skipped_a2a:        [Air_ID]Air_Bitset,
-	skipped_buys:       [Air_ID]Purchase_Bitset,
-	land_combat_status: [Land_ID]Combat_Status,
-	sea_combat_status:  [Sea_ID]Combat_Status,
-	owner:              [Land_ID]Player_ID,
-	income:             [Player_ID]u8,
-	money:              [Player_ID]u8,
-	max_bombards:       [Land_ID]u8,
-	factory_dmg:        [Land_ID]u8,
-	factory_prod:       [Land_ID]u8,
-	builds_left:        [Land_ID]u8,
-	seed:               u16,
-	cur_player:         Player_ID,
-}
-
-
-Combat_Status :: enum u8 {
-	NO_COMBAT,
-	MID_COMBAT,
-	PRE_COMBAT,
-	POST_COMBAT,
+	active_armies:           [Land_ID][Active_Army]u8,
+	active_ships:            [Sea_ID][Active_Ship]u8,
+	active_land_planes:      [Land_ID][Active_Plane]u8,
+	active_sea_planes:       [Sea_ID][Active_Plane]u8,
+	idle_armies:             [Land_ID][Player_ID][Idle_Army]u8,
+	idle_land_planes:        [Land_ID][Player_ID][Idle_Plane]u8,
+	idle_sea_planes:         [Sea_ID][Player_ID][Idle_Plane]u8,
+	idle_ships:              [Sea_ID][Player_ID][Idle_Ship]u8,
+	skipped_a2a:             [Air_ID]Air_Bitset,
+	skipped_buys:            [Air_ID]Purchase_Bitset,
+	owner:                   [Land_ID]Player_ID,
+	income:                  [Player_ID]u8,
+	money:                   [Player_ID]u8,
+	max_bombards:            [Land_ID]u8,
+	factory_dmg:             [Land_ID]u8,
+	factory_prod:            [Land_ID]u8,
+	builds_left:             [Land_ID]u8,
+	seed:                    u16,
+	more_land_combat_needed: Land_Bitset,
+	more_sea_combat_needed:  Sea_Bitset,
+	land_combat_started:     Land_Bitset,
+	sea_combat_started:      Sea_Bitset,
+	cur_player:              Player_ID,
 }
 
 load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
