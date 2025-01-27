@@ -51,7 +51,7 @@ start :: proc() {
 	// fmt.println(game_cache.answers_remaining)
 	// fmt.println(game_cache.step_id)
 
-	save_cache_to_state(&game_cache, &game_state)
+	game_state = game_cache.state
 
 	root :^MCTSNode= mcts_search(&game_cache, &game_state, iterations)
 	best_action := select_best_action(root)

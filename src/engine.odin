@@ -385,7 +385,7 @@ apply_action :: proc(gs: ^Game_State, action: Action_ID) {
 	for {
 		play_full_turn(&gc) or_break
 	}
-	save_cache_to_state(&gc, gs)
+	gs^ = gc.state
 }
 
 // PYBIND11_MODULE(engine, handle) {

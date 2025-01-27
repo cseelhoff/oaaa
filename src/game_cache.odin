@@ -54,29 +54,6 @@ Game_Cache :: struct {
 	use_selected_action:            bool,
 }
 
-save_cache_to_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
-	// gs.seed = gc.seed
-	// gs.cur_player = gc.cur_player
-	// gs.money = gc.money
-	// for i in Land_ID {
-	// 	land_state := &gs.land_states[i]
-	// 	land_state.owner = u8(land.owner.index)
-	// 	land_state.factory_prod = land.factory_prod
-	// 	land_state.factory_dmg = gc.factory_dmg[land]
-	// 	land_state.max_bombards = land.max_bombards
-	// 	land_state.active_armies = land.active_armies
-	// 	land_state.builds_left = gc.builds_left[land]
-	// 	land_state.idle_armies = land.idle_armies
-	// 	save_territory_to_state(&land_state.territory_state, &land.territory)
-	// }
-	// for &sea, i in Sea_ID {
-	// 	sea_state := &gs.sea_states[i]
-	// 	sea_state.idle_ships = sea.idle_ships
-	// 	sea_state.active_ships = sea.active_ships
-	// 	save_territory_to_state(&sea_state.territory_state, &sea.territory)
-	// }
-}
-
 load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	gc.state = gs^
 	gc.is_bomber_cache_current = false
