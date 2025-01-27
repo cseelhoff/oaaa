@@ -38,6 +38,7 @@ Game_Cache :: struct {
 	air_has_enemies:                Air_Bitset,
 	has_bombable_factory:           Land_Bitset,
 	has_carrier_space:              Sea_Bitset,
+	possible_factory_carriers:			Sea_Bitset,
 	canals_open:                    Canals_Open, //[CANALS_COUNT]bool,
 	unlucky_teams:                  Unlucky_Teams,
 	friendly_owner:                 Land_Bitset,
@@ -50,13 +51,12 @@ Game_Cache :: struct {
 
 load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	gc.state = gs^
-	gc.is_bomber_cache_current = false
-	gc.is_fighter_cache_current = false
 	gc.factory_locations = {}
 	gc.team_land_units = {}
 	for land in Land_ID {
 		if gc.factory_prod[land] > 0 {
 			sa.push(&gc.factory_locations[gc.owner[land]], land)
+
 		}
 		for player in Player_ID {
 			for army in gc.idle_armies[land][player] {
@@ -78,13 +78,32 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 			}
 		}
 	}
+	resfresh_cache(gc)
 	count_sea_unit_totals(gc)
 	load_open_canals(gc)
 	// refresh_landable_planes(gc)
 	debug_checks(gc)
 }
 
+resfresh_cache :: proc(gc: ^Game_Cache) {
+	gc.is_bomber_cache_current = false
+	gc.is_fighter_cache_current = false
+	gc.clear_needed = false
+	gc.use_selected_action = false
+	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
+		for factory_location in sa.slice(&gc.factory_locations[enemy]) {
+			if gc.factory_dmg[factory_location] < gc.factory_prod[factory_location] * 2 {
+				gc.has_bombable_factory += {factory_location}
+			}
+		}
+	}
+}
+
 count_sea_unit_totals :: proc(gc: ^Game_Cache) {
+	gc.possible_factory_carriers = {}
+	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
+		gc.possible_factory_carriers += mm.l2s_1away_via_land_bitset[land]
+	}
 	for sea in Sea_ID {
 		gc.enemy_fighters_total[sea] = 0
 		gc.enemy_subs_total[sea] = 0

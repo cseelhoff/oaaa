@@ -504,15 +504,7 @@ hit_my_sea_fighters :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	for plane in Air_Casualty_Order_Fighters {
 		if gc.active_sea_planes[sea][plane] > 0 {
 			gc.active_sea_planes[sea][plane] -= 1
-			gc.idle_sea_planes[sea][gc.cur_player][Active_Plane_To_Idle[plane]] -= 1
-			gc.team_sea_units[sea][mm.team[gc.cur_player]] -= 1
-			gc.allied_fighters_total[sea] -= 1
-			gc.allied_antifighter_ships_total[sea] -= 1
-			gc.allied_sea_combatants_total[sea] -= 1
-			if gc.allied_carriers_total[sea] * 2 < gc.allied_fighters_total[sea] {
-				gc.can_fighter_land_here -= {to_air(sea)}
-				gc.is_fighter_cache_current = false
-			}
+			remove_ally_fighters_from_sea(gc, sea, gc.cur_player, 1)
 			return true
 		}
 	}
@@ -550,15 +542,7 @@ hit_ally_sea_fighters :: proc(
 	for ally in sa.slice(&mm.allies[gc.cur_player]) {
 		if ally == gc.cur_player do continue
 		if gc.idle_sea_planes[sea][ally][.FIGHTER] > 0 {
-			gc.idle_sea_planes[sea][ally][.FIGHTER] -= 1
-			gc.team_sea_units[sea][mm.team[gc.cur_player]] -= 1
-			gc.allied_fighters_total[sea] -= 1
-			gc.allied_antifighter_ships_total[sea] -= 1
-			gc.allied_sea_combatants_total[sea] -= 1
-			if gc.allied_carriers_total[sea] * 2 < gc.allied_fighters_total[sea] {
-				gc.can_fighter_land_here -= {to_air(sea)}
-				gc.is_fighter_cache_current = false
-			}
+			remove_ally_fighters_from_sea(gc, sea, ally, 1)
 			return true
 		}
 	}

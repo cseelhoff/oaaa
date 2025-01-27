@@ -74,7 +74,7 @@ Armies_Moved := [Active_Army]Active_Army {
 	.ARTY_UNMOVED  = .ARTY_0_MOVES,
 	.ARTY_0_MOVES  = .ARTY_0_MOVES,
 	.TANK_UNMOVED  = .TANK_0_MOVES,
-	.TANK_1_MOVES  = .TANK_1_MOVES,
+	.TANK_1_MOVES  = .TANK_0_MOVES,
 	.TANK_0_MOVES  = .TANK_0_MOVES,
 	.AAGUN_UNMOVED = .AAGUN_0_MOVES,
 	.AAGUN_0_MOVES = .AAGUN_0_MOVES,
@@ -199,16 +199,16 @@ add_if_boat_available :: proc(
 	dst_sea: Sea_ID,
 	army: Active_Army,
 ) {
-	if is_boat_available(gc, src_land, dst_sea, army) {
-		if to_air(dst_sea) not_in gc.skipped_a2a[to_air(src_land)] {
+	if to_air(dst_sea) not_in gc.skipped_a2a[to_air(src_land)] {
+		if is_boat_available(gc, src_land, dst_sea, army) {
 			gc.valid_actions += {to_action(dst_sea)}
 		}
 	}
 }
 
-are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands, enemy_team: Team_ID) -> bool {
+are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands) -> bool {
 	for mid_land in sa.slice(mid_lands) {
-		if gc.team_land_units[mid_land][enemy_team] == 0 do return false
+		if gc.team_land_units[mid_land][mm.enemy_team[gc.cur_player]] == 0 do return false
 	}
 	return true
 }
@@ -224,10 +224,9 @@ add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
 }
 
 add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
-	enemy_team := mm.enemy_team[gc.cur_player]
 	for &dst_land_2_away in sa.slice(&mm.l2l_2away_via_land[src_land]) {
 		if to_air(dst_land_2_away.land) in gc.skipped_a2a[to_air(src_land)] ||
-		   are_midlands_blocked(gc, &dst_land_2_away.mid_lands, enemy_team) {
+		   are_midlands_blocked(gc, &dst_land_2_away.mid_lands) {
 			continue
 		}
 		gc.valid_actions += {to_action(dst_land_2_away.land)}
@@ -235,7 +234,7 @@ add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
 	// check for moving from land to sea (two moves away)
 	for &dst_sea_2_away in sa.slice(&mm.l2s_2away_via_land[src_land]) {
 		if to_air(dst_sea_2_away.sea) in gc.skipped_a2a[to_air(src_land)] ||
-		   are_midlands_blocked(gc, &dst_sea_2_away.mid_lands, enemy_team) {
+		   are_midlands_blocked(gc, &dst_sea_2_away.mid_lands) {
 			continue
 		}
 		add_if_boat_available(gc, src_land, dst_sea_2_away.sea, army)

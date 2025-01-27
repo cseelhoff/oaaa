@@ -95,11 +95,7 @@ move_unmoved_fighter_from_land_to_sea :: proc(
 		gc.active_sea_planes[dst_sea][Fighter_After_Moves[mm.air_distances[to_air(src_land)][to_air(dst_sea)]]] +=
 		1
 	}
-	gc.allied_fighters_total[dst_sea] += 1
-	gc.allied_antifighter_ships_total[dst_sea] += 1
-	gc.allied_sea_combatants_total[dst_sea] += 1
-	gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
-	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
+	add_ally_fighters_to_sea(gc, dst_sea, gc.cur_player, 1)
 	gc.active_land_planes[src_land][.FIGHTER_UNMOVED] -= 1
 	gc.idle_land_planes[src_land][gc.cur_player][.FIGHTER] -= 1
 	gc.team_land_units[src_land][mm.team[gc.cur_player]] -= 1
@@ -120,12 +116,8 @@ move_unmoved_fighter_from_sea_to_land :: proc(
 	}
 	gc.idle_land_planes[dst_land][gc.cur_player][.FIGHTER] += 1
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
-	gc.allied_fighters_total[src_sea] -= 1
-	gc.allied_antifighter_ships_total[src_sea] -= 1
-	gc.allied_sea_combatants_total[src_sea] -= 1
 	gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] -= 1
-	gc.idle_sea_planes[src_sea][gc.cur_player][.FIGHTER] -= 1
-	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= 1
+	remove_ally_fighters_from_sea(gc, src_sea, gc.cur_player, 1)
 	return
 }
 
@@ -138,17 +130,9 @@ move_unmoved_fighter_from_sea_to_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, d
 		gc.active_sea_planes[dst_sea][Fighter_After_Moves[mm.air_distances[to_air(src_sea)][to_air(dst_sea)]]] +=
 		1
 	}
-	gc.allied_fighters_total[dst_sea] += 1
-	gc.allied_antifighter_ships_total[dst_sea] += 1
-	gc.allied_sea_combatants_total[dst_sea] += 1
-	gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
-	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
-	gc.allied_fighters_total[src_sea] -= 1
-	gc.allied_antifighter_ships_total[src_sea] -= 1
-	gc.allied_sea_combatants_total[src_sea] -= 1
+	add_ally_fighters_to_sea(gc, dst_sea, gc.cur_player, 1)
 	gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] -= 1
-	gc.idle_sea_planes[src_sea][gc.cur_player][.FIGHTER] -= 1
-	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= 1
+	remove_ally_fighters_from_sea(gc, src_sea, gc.cur_player, 1)
 	return
 }
 
@@ -172,34 +156,19 @@ skip_sea_fighter :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> (
 refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 	// is allied owned and not recently conquered?
 	gc.can_fighter_land_here =
-		to_air_bitset(gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started) | to_air_bitset(gc.has_carrier_space)
-	// check for possiblity to build carrier under fighter
-	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
-		gc.can_fighter_land_here += to_air_bitset(mm.l2s_1away_via_land_bitset[land])
-	}
+		to_air_bitset(gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started) |
+		to_air_bitset(gc.has_carrier_space | gc.possible_factory_carriers)
 	for sea in Sea_ID {
 		// if player owns a carrier, then landing area is 2 spaces away
-		if gc.active_ships[sea][.CARRIER_UNMOVED] > 0 {
-			gc.can_fighter_land_here += to_air_bitset(
-				mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea] |
-				mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][sea],
-			)
-		}
+		if gc.active_ships[sea][.CARRIER_UNMOVED] == 0 do continue
+		gc.can_fighter_land_here += to_air_bitset(
+			mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea] |
+			mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][sea],
+		)
 	}
 	gc.can_fighter_land_in_1_move = {}
 	for air in gc.can_fighter_land_here {
 		gc.can_fighter_land_in_1_move += mm.a2a_within_1_moves[air]
-	}
-	gc.is_fighter_cache_current = true
-}
-
-refresh_can_fighter_land_here_directly :: proc(gc: ^Game_Cache) {
-	// is allied owned and not recently conquered?
-	gc.can_fighter_land_here =
-		to_air_bitset(gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started) | to_air_bitset(gc.has_carrier_space)
-	// check for possiblity to build carrier under fighter
-	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
-		gc.can_fighter_land_here += to_air_bitset(mm.l2s_1away_via_land_bitset[land])
 	}
 	gc.is_fighter_cache_current = true
 }
@@ -209,7 +178,8 @@ add_valid_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 		~gc.skipped_a2a[src_air] &
 		((mm.a2a_within_2_moves[src_air] & (gc.can_fighter_land_here | gc.air_has_enemies)) |
 				(mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move) |
-				(mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here)))
+				(mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here)),
+	)
 }
 
 land_remaining_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -275,12 +245,8 @@ move_fighter_from_land_to_sea :: proc(
 	dst_sea: Sea_ID,
 	plane: Active_Plane,
 ) {
-	gc.allied_fighters_total[dst_sea] += 1
-	gc.allied_antifighter_ships_total[dst_sea] += 1
-	gc.allied_sea_combatants_total[dst_sea] += 1
 	gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
-	gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
-	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
+	add_ally_fighters_to_sea(gc, dst_sea, gc.cur_player, 1)
 	gc.active_land_planes[src_land][plane] -= 1
 	gc.idle_land_planes[src_land][gc.cur_player][.FIGHTER] -= 1
 	gc.team_land_units[src_land][mm.team[gc.cur_player]] -= 1
@@ -326,12 +292,8 @@ move_fighter_from_sea_to_land :: proc(
 	gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += 1
 	gc.idle_land_planes[dst_land][gc.cur_player][.FIGHTER] += 1
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
-	gc.allied_fighters_total[src_sea] -= 1
-	gc.allied_antifighter_ships_total[src_sea] -= 1
-	gc.allied_sea_combatants_total[src_sea] -= 1
 	gc.active_sea_planes[src_sea][plane] -= 1
-	gc.idle_sea_planes[src_sea][gc.cur_player][.FIGHTER] -= 1
-	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= 1
+	remove_ally_fighters_from_sea(gc, src_sea, gc.cur_player, 1)
 	return
 }
 
@@ -341,22 +303,15 @@ move_fighter_from_sea_to_sea :: proc(
 	dst_sea: Sea_ID,
 	plane: Active_Plane,
 ) {
-	gc.allied_fighters_total[dst_sea] += 1
-	gc.allied_antifighter_ships_total[dst_sea] += 1
-	gc.allied_sea_combatants_total[dst_sea] += 1
 	gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
-	gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
-	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
-	gc.allied_fighters_total[src_sea] -= 1
-	gc.allied_antifighter_ships_total[src_sea] -= 1
-	gc.allied_sea_combatants_total[src_sea] -= 1
+	add_ally_fighters_to_sea(gc, dst_sea, gc.cur_player, 1)
 	gc.active_sea_planes[src_sea][plane] -= 1
-	gc.idle_sea_planes[src_sea][gc.cur_player][.FIGHTER] -= 1
-	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= 1
+	remove_ally_fighters_from_sea(gc, src_sea, gc.cur_player, 1)
 	assert(false)
 	//todo recalculate carrier landings
 	return
 }
+
 add_valid_landing_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) {
 	#partial switch plane {
 	case .FIGHTER_1_MOVES:
@@ -375,5 +330,29 @@ add_valid_landing_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID, plane:
 		gc.valid_actions = to_action_bitset(
 			~gc.skipped_a2a[src_air] & gc.can_fighter_land_here & mm.a2a_within_4_moves[src_air],
 		)
+	}
+}
+
+add_ally_fighters_to_sea :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID, qty: u8) {
+	gc.idle_sea_planes[sea][player][.FIGHTER] += qty
+	gc.team_sea_units[sea][mm.team[player]] += qty
+	gc.allied_fighters_total[sea] += qty
+	gc.allied_antifighter_ships_total[sea] += qty
+	gc.allied_sea_combatants_total[sea] += qty
+	if gc.allied_carriers_total[sea] * 2 <= gc.allied_fighters_total[sea] {
+		gc.has_carrier_space -= {sea}
+		gc.is_fighter_cache_current = false
+	}
+}
+
+remove_ally_fighters_from_sea :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID, qty: u8) {
+	gc.idle_sea_planes[sea][player][.FIGHTER] -= qty
+	gc.team_sea_units[sea][mm.team[player]] -= qty
+	gc.allied_fighters_total[sea] -= qty
+	gc.allied_antifighter_ships_total[sea] -= qty
+	gc.allied_sea_combatants_total[sea] -= qty
+	if gc.allied_carriers_total[sea] * 2 > gc.allied_fighters_total[sea] {
+		gc.has_carrier_space += {sea}
+		gc.is_fighter_cache_current = false
 	}
 }

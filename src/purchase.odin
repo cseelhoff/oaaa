@@ -193,13 +193,7 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 			// fmt.println(gc.cur_player.money)
 			if action == .BUY_FIGHTER {
 				gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
-				gc.idle_sea_planes[dst_sea][gc.cur_player][.FIGHTER] += 1
-				gc.allied_fighters_total[dst_sea] += 1
-				gc.allied_antifighter_ships_total[dst_sea] += 1
-				gc.allied_sea_combatants_total[dst_sea] += 1			
-				if gc.allied_carriers_total[dst_sea] * 2 <= gc.allied_fighters_total[dst_sea] {
-					gc.can_fighter_land_here -= {to_air(dst_sea)}
-				}
+				add_ally_fighters_to_sea(gc, dst_sea, gc.cur_player, 1)
 			} else {
 				ship := Buy_Active_Ship[action]
 				gc.active_ships[dst_sea][ship] += 1
@@ -207,7 +201,8 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 				if ship == .CARRIER_0_MOVES {
 					gc.allied_carriers_total[dst_sea] += 1
 					if gc.allied_carriers_total[dst_sea] * 2 > gc.allied_fighters_total[dst_sea] {
-						gc.can_fighter_land_here += {to_air(dst_sea)}
+						gc.has_carrier_space += {dst_sea}
+						gc.is_fighter_cache_current = false
 					}
 				}
 			}

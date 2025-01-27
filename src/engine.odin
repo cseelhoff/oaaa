@@ -167,7 +167,7 @@ clear_move_history :: proc(gc: ^Game_Cache) {
 	gc.clear_needed = false
 }
 
-reset_valid_land_moves :: proc(gc: ^Game_Cache, land: Land_ID) {
+reset_valid_land_moves :: #force_inline proc(gc: ^Game_Cache, land: Land_ID) {
 	gc.valid_actions = {to_action(land)}
 }
 
@@ -214,9 +214,6 @@ collect_money :: proc(gc: ^Game_Cache) {
 
 rotate_turns :: proc(gc: ^Game_Cache) {
 	gc.cur_player = Player_ID((u8(gc.cur_player) + 1) % len(Player_ID))
-	gc.clear_needed = false
-	gc.is_bomber_cache_current = false
-	gc.is_fighter_cache_current = false
 	gc.more_land_combat_needed = {}
 	gc.land_combat_started = {}
 	gc.more_sea_combat_needed = {}
@@ -263,6 +260,7 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		gc.active_sea_planes[sea][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
 		gc.active_sea_planes[sea][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
 	}
+	resfresh_cache(gc)
 	count_sea_unit_totals(gc)
 	load_open_canals(gc)
 	// refresh_landable_planes(gc)

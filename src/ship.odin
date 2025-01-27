@@ -385,7 +385,20 @@ move_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Shi
 	if skip_ship(gc, src_sea, dst_sea, ship) do return true
 	move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
 	if ship == .CARRIER_UNMOVED {
+		gc.allied_carriers_total[dst_sea] += 1
+		gc.allied_carriers_total[src_sea] -= 1
 		carry_allied_fighters(gc, src_sea, dst_sea)
+		// todo - not sure if next few lines are needed. But maybe since carriers are moved
+		if gc.allied_carriers_total[dst_sea] * 2 <= gc.allied_fighters_total[dst_sea] {
+			gc.has_carrier_space += {dst_sea}
+		} else {
+			gc.has_carrier_space -= {dst_sea}
+		}
+		if gc.allied_carriers_total[src_sea] * 2 > gc.allied_fighters_total[src_sea] {
+			gc.has_carrier_space += {src_sea}
+		} else {
+			gc.has_carrier_space -= {src_sea}
+		}
 		gc.is_fighter_cache_current = false
 	}
 	return true

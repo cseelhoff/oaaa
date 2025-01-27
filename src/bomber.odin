@@ -36,6 +36,7 @@ move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			}
 		}
 	}
+	if gc.clear_needed do clear_move_history(gc)
 	return true
 }
 
