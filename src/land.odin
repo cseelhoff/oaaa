@@ -1,7 +1,6 @@
 package oaaa
 
 import sa "core:container/small_array"
-import "core:mem"
 import "core:slice"
 
 SA_Adjacent_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)

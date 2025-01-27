@@ -1,6 +1,5 @@
 package oaaa
 import sa "core:container/small_array"
-import "core:mem"
 import "core:slice"
 
 Coastal_Connection :: struct {
@@ -70,20 +69,18 @@ initialize_costal_connections :: proc() {
 	for src_land in Land_ID {
 		for dst_sea in Sea_ID {
 			if dst_sea in mm.l2s_1away_via_land_bitset[src_land] do continue
-			for l2s_2_away in sa.slice(&mm.l2s_2away_via_land[src_land]) {
-				l2s_2_away := L2S_2_Away {
-					sea = dst_sea,
-				}
-				for mid_land in sa.slice(&mm.s2l_1away_via_sea[dst_sea]) {
-					_ =
-					slice.linear_search(
-						sa.slice(&mm.l2l_1away_via_land[src_land]),
-						mid_land,
-					) or_continue
-					sa.push(&l2s_2_away.mid_lands, mid_land)
-				}
-				sa.push(&mm.l2s_2away_via_land[src_land], l2s_2_away)
+			l2s_2_away := L2S_2_Away {
+				sea = dst_sea,
 			}
+			for mid_land in sa.slice(&mm.s2l_1away_via_sea[dst_sea]) {
+				_ =
+				slice.linear_search(
+					sa.slice(&mm.l2l_1away_via_land[src_land]),
+					mid_land,
+				) or_continue
+				sa.push(&l2s_2_away.mid_lands, mid_land)
+			}
+			sa.push(&mm.l2s_2away_via_land[src_land], l2s_2_away)
 		}
 	}
 }

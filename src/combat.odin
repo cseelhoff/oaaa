@@ -30,20 +30,6 @@ disable_bombardment :: proc(gc: ^Game_Cache, sea: Sea_ID) {
 	gc.active_ships[sea][.BS_DAMAGED_0_MOVES] = 0
 }
 
-non_dest_non_sub_exist :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
-	for player in sa.slice(&mm.allies[gc.cur_player]) {
-		if gc.idle_ships[sea][player][.CARRIER] > 0 ||
-		   gc.idle_ships[sea][player][.CRUISER] > 0 ||
-		   gc.idle_ships[sea][player][.BATTLESHIP] > 0 ||
-		   gc.idle_ships[sea][player][.BS_DAMAGED] > 0 ||
-		   gc.idle_sea_planes[sea][player][.FIGHTER] > 0 ||
-		   gc.idle_sea_planes[sea][player][.BOMBER] > 0 {
-			return true
-		}
-	}
-	return false
-}
-
 build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
 	//gc.valid_actions = {to_action(src_sea)}
 	if (gc.enemy_blockade_total[src_sea] == 0 && gc.enemy_fighters_total[src_sea] == 0) ||

@@ -25,22 +25,3 @@ carry_allied_fighters :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID)
 		if fighters_remaining == 0 do break
 	}
 }
-
-// is_carrier_available :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
-// 	return gc.allied_carriers_total[sea] * 2 > gc.allied_fighters_total[sea]
-// }
-
-// carrier_now_empty :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
-// 	if is_carrier_available(gc, sea) {
-// 		gc.can_fighter_land_here += {to_air(sea)}
-// 	}
-// 	return to_air(sea) not_in gc.can_fighter_land_here
-// }
-
-// refresh_can_fighter_land_on_carrier :: proc(gc: ^Game_Cache, sea: Sea_ID) {
-// 	if is_carrier_available(gc, sea) {
-// 		gc.can_fighter_land_here += {to_air(sea)}
-// 	} else {
-// 		gc.can_fighter_land_here -= {to_air(sea)}
-// 	}
-// }

@@ -1,8 +1,6 @@
 package oaaa
 
 import sa "core:container/small_array"
-import "core:fmt"
-import "core:strings"
 
 Player_Data :: struct {
 	player:   Player_ID,
