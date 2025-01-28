@@ -29,6 +29,14 @@ to_air_bitset :: proc {
 	land_to_air_bitset,
 }
 
+to_land_bitset :: proc {
+	air_to_land_bitset,
+}
+
+to_sea_bitset :: proc {
+	air_to_sea_bitset,
+}
+
 sea_to_air :: #force_inline proc(sea: Sea_ID) -> Air_ID {
 	return Air_ID(u8(sea) + u8(len(Land_ID)))
 }
@@ -47,6 +55,14 @@ land_to_air_bitset :: #force_inline proc(land: Land_Bitset) -> Air_Bitset {
 
 sea_to_air_bitset :: #force_inline proc(sea: Sea_Bitset) -> Air_Bitset {
 	return transmute(Air_Bitset)(u16(transmute(u8)sea) << len(Land_ID))
+}
+
+air_to_land_bitset :: #force_inline proc(air: Air_Bitset) -> Land_Bitset {
+	return transmute(Land_Bitset)u8(transmute(u16)air)
+}
+
+air_to_sea_bitset :: #force_inline proc(air: Air_Bitset) -> Sea_Bitset {
+	return transmute(Sea_Bitset)(u8(transmute(u16)air >> len(Land_ID)))
 }
 
 COASTAL_CONNECTIONS := [?]Coastal_Connection {
@@ -80,7 +96,8 @@ initialize_costal_connections :: proc() {
 				) or_continue
 				sa.push(&l2s_2_away.mid_lands, mid_land)
 			}
-			sa.push(&mm.l2s_2away_via_land[src_land], l2s_2_away)
+			mm.l2s_2away_via_land_bitset[src_land] += {dst_sea}
+			// sa.push(&mm.l2s_2away_via_land[src_land], l2s_2_away)
 		}
 	}
 }
@@ -91,8 +108,6 @@ initialize_air_connections :: proc() {
 		for dst_air in Air_ID {
 			mm.air_distances[air][dst_air] = INFINITY
 		}
-		//mem.set(&air.air_distances, INFINITY, size_of(air.air_distances))
-		//mm.air_distances[air][air] = INFINITY
 		// Ensure that the distance from a land to itself is 0
 		mm.air_distances[air][air] = 0
 		// Set initial distances based on adjacent lands

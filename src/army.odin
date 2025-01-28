@@ -199,36 +199,34 @@ add_if_boat_available :: proc(
 
 are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands) -> bool {
 	for mid_land in sa.slice(mid_lands) {
-		if gc.team_land_units[mid_land][mm.enemy_team[gc.cur_player]] == 0 do return false
+		if mid_land in (gc.has_enemy_factory | gc.has_enemy_units) do return false
 	}
 	return true
 }
 
 add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
-	for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
-		if to_air(dst_land) in gc.skipped_a2a[to_air(src_land)] do continue
-		gc.valid_actions += {to_action(dst_land)}
-	}
+	gc.valid_actions += to_action_bitset(
+		mm.l2l_1away_via_land_bitset[src_land] & ~to_land_bitset(gc.skipped_a2a[to_air(src_land)]),
+	)
+	//todo game_cache bitset for is_boat_available large, small
 	for dst_sea in sa.slice(&mm.l2s_1away_via_land[src_land]) {
 		add_if_boat_available(gc, src_land, dst_sea, army)
 	}
 }
 
 add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
-	for &dst_land_2_away in sa.slice(&mm.l2l_2away_via_land[src_land]) {
-		if to_air(dst_land_2_away.land) in gc.skipped_a2a[to_air(src_land)] ||
-		   are_midlands_blocked(gc, &dst_land_2_away.mid_lands) {
+	for dst_land in (mm.l2l_2away_via_land_bitset[src_land] & to_land_bitset(~gc.skipped_a2a[to_air(src_land)])) {
+		if (mm.l2l_2away_via_midland_bitset[src_land][dst_land] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
 			continue
 		}
-		gc.valid_actions += {to_action(dst_land_2_away.land)}
+		gc.valid_actions += {to_action(dst_land)}
 	}
 	// check for moving from land to sea (two moves away)
-	for &dst_sea_2_away in sa.slice(&mm.l2s_2away_via_land[src_land]) {
-		if to_air(dst_sea_2_away.sea) in gc.skipped_a2a[to_air(src_land)] ||
-		   are_midlands_blocked(gc, &dst_sea_2_away.mid_lands) {
+	for dst_sea in (mm.l2s_2away_via_land_bitset[src_land] & to_sea_bitset(~gc.skipped_a2a[to_air(src_land)])) {
+		if (mm.l2s_2away_via_midland_bitset[src_land][dst_sea] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
 			continue
 		}
-		add_if_boat_available(gc, src_land, dst_sea_2_away.sea, army)
+		add_if_boat_available(gc, src_land, dst_sea, army)
 	}
 }
 

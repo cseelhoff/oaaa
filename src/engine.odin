@@ -1,5 +1,6 @@
 package oaaa
 import sa "core:container/small_array"
+import "core:fmt"
 
 GLOBAL_TICK := 0
 ACTUALLY_PRINT := false
@@ -235,6 +236,11 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		idle_planes := &gc.idle_land_planes[land][gc.cur_player]
 		gc.active_land_planes[land][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
 		gc.active_land_planes[land][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
+		if gc.team_land_units[land][mm.team[gc.cur_player]] > 0 {
+			gc.has_enemy_units += {land}
+		} else {
+			gc.has_enemy_units -= {land}
+		}
 	}
 
 	for sea in Sea_ID {

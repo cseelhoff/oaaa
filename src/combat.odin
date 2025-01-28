@@ -75,12 +75,14 @@ sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> bool {
 }
 
 destroy_defender_transports :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
-	if !no_defender_threat_exists(gc, sea) do return false
-	if do_sea_targets_exist(gc, sea) {
+	if ~no_defender_threat_exists(gc, sea) do return false
+	if gc.allied_sea_combatants_total[sea] > 0 {
+		// todo - we can use a SIMD 'AND' to zero out the transports
 		enemy_team := mm.enemy_team[gc.cur_player]
 		for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
 			for transport in Idle_Transports {
 				gc.team_sea_units[sea][enemy_team] -= gc.idle_ships[sea][enemy][transport]
+				gc.enemy_subvuln_ships_total[sea] -= gc.idle_ships[sea][enemy][transport]
 				gc.idle_ships[sea][enemy][transport] = 0
 			}
 		}
@@ -88,15 +90,13 @@ destroy_defender_transports :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	gc.more_sea_combat_needed -= {sea}
 	return true
 }
+
 DICE_SIDES :: 6
-get_attacker_hits :: proc(gc: ^Game_Cache, attacker_damage: int) -> (attacker_hits: u8) {
+get_attacker_hits_low_luck :: proc(gc: ^Game_Cache, attacker_damage: int) -> (attacker_hits: u8) {
 	attacker_hits = u8(attacker_damage / DICE_SIDES)
-	// todo why does this check for 2 answers remaining?
-	if gc.answers_remaining <= 1 {
-		if mm.enemy_team[gc.cur_player] in gc.unlucky_teams { 	// attacker is lucky
-			attacker_hits += 0 < attacker_damage % DICE_SIDES ? 1 : 0 // no dice, round up
-			return
-		}
+	if gc.answers_remaining <= 1 && mm.enemy_team[gc.cur_player] in gc.unlucky_teams { 	// attacker is lucky
+		attacker_hits += 0 < attacker_damage % DICE_SIDES ? 1 : 0 // no dice, round up
+		return
 	}
 	attacker_hits +=
 		RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(attacker_damage) % DICE_SIDES ? 1 : 0
@@ -104,13 +104,11 @@ get_attacker_hits :: proc(gc: ^Game_Cache, attacker_damage: int) -> (attacker_hi
 	return
 }
 
-get_defender_hits :: proc(gc: ^Game_Cache, defender_damage: int) -> (defender_hits: u8) {
+get_defender_hits_low_luck :: proc(gc: ^Game_Cache, defender_damage: int) -> (defender_hits: u8) {
 	defender_hits = u8(defender_damage / DICE_SIDES)
-	if gc.answers_remaining <= 1 {
-		if mm.team[gc.cur_player] in gc.unlucky_teams { 	// attacker is unlucky
-			defender_hits += 0 < defender_damage % DICE_SIDES ? 1 : 0 // no dice, round up
-			return
-		}
+	if gc.answers_remaining <= 1 && mm.team[gc.cur_player] in gc.unlucky_teams { 	// attacker is unlucky
+		defender_hits += 0 < defender_damage % DICE_SIDES ? 1 : 0 // no dice, round up
+		return
 	}
 	defender_hits +=
 		RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(defender_damage) % DICE_SIDES ? 1 : 0
@@ -123,6 +121,7 @@ no_allied_units_remain :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	gc.more_sea_combat_needed -= {sea}
 	return true
 }
+
 SUB_ATTACK :: 2
 SUB_DEFENSE :: 1
 resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -141,7 +140,7 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			//if destroy_vulnerable_transports(gc, &sea) do break
 			gc.sea_combat_started += {sea}
 			sub_attacker_damage := int(get_allied_subs_count(gc, sea)) * SUB_ATTACK
-			sub_attacker_hits := get_attacker_hits(gc, sub_attacker_damage)
+			sub_attacker_hits := get_attacker_hits_low_luck(gc, sub_attacker_damage)
 			def_subs_targetable = def_subs_targetable && gc.allied_destroyers_total[sea] > 0
 			if gc.enemy_destroyer_total[sea] == 0 {
 				remove_sea_defenders(gc, sea, &sub_attacker_hits, def_subs_targetable, false)
@@ -149,9 +148,9 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			def_damage := 0
 			if def_subs_targetable do def_damage = get_defender_damage_sub(gc, sea)
 			attacker_damage := get_attacker_damage_sea(gc, sea)
-			attacker_hits := get_attacker_hits(gc, attacker_damage)
+			attacker_hits := get_attacker_hits_low_luck(gc, attacker_damage)
 			def_damage += get_defender_damage_sea(gc, sea)
-			def_hits := get_defender_hits(gc, def_damage)
+			def_hits := get_defender_hits_low_luck(gc, def_damage)
 			remove_sea_attackers(gc, sea, &def_hits)
 			if gc.enemy_destroyer_total[sea] > 0 {
 				remove_sea_defenders(gc, sea, &sub_attacker_hits, def_subs_targetable, false)
@@ -207,7 +206,7 @@ sea_bombardment :: proc(gc: ^Game_Cache, land: Land_ID) {
 			if gc.max_bombards[land] == 0 do break
 		}
 		gc.max_bombards[land] = 0
-		attack_hits := get_attacker_hits(gc, attacker_damage)
+		attack_hits := get_attacker_hits_low_luck(gc, attacker_damage)
 		remove_land_defenders(gc, land, &attack_hits)
 	}
 }
@@ -221,7 +220,7 @@ fire_tact_aaguns :: proc(gc: ^Game_Cache, land: Land_ID) {
 		gc.idle_land_planes[land][gc.cur_player][.FIGHTER] +
 		gc.idle_land_planes[land][gc.cur_player][.BOMBER]
 	defender_damage := int(min(total_aaguns * 3, total_air_units))
-	defender_hits := get_defender_hits(gc, defender_damage)
+	defender_hits := get_defender_hits_low_luck(gc, defender_damage)
 	for (defender_hits > 0) {
 		defender_hits -= 1
 		if hit_my_land_planes(gc, land, Air_Casualty_Order_Fighters) do continue
@@ -243,8 +242,8 @@ attempt_conquer_land :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 build_land_retreat_options :: proc(gc: ^Game_Cache, land: Land_ID) {
 	gc.valid_actions = {to_action(land)}
 	for &dst_land in sa.slice(&mm.l2l_1away_via_land[land]) {
-		if dst_land not_in (gc.more_land_combat_needed | gc.land_combat_started) &&
-		   mm.team[gc.owner[dst_land]] == mm.team[gc.cur_player] {
+		if dst_land in (gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started)
+		{
 			gc.valid_actions += {to_action(dst_land)}
 		}
 	}
@@ -252,9 +251,9 @@ build_land_retreat_options :: proc(gc: ^Game_Cache, land: Land_ID) {
 
 destroy_undefended_aaguns :: proc(gc: ^Game_Cache, land: Land_ID) {
 	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
-		if gc.idle_armies[land][enemy][Idle_Army.AAGUN] > 0 {
-			aaguns := gc.idle_armies[land][enemy][Idle_Army.AAGUN]
-			gc.idle_armies[land][enemy][Idle_Army.AAGUN] = 0
+		if gc.idle_armies[land][enemy][.AAGUN] > 0 {
+			aaguns := gc.idle_armies[land][enemy][.AAGUN]
+			gc.idle_armies[land][enemy][.AAGUN] = 0
 			gc.team_land_units[land][mm.team[enemy]] -= aaguns
 		}
 	}
@@ -263,8 +262,12 @@ destroy_undefended_aaguns :: proc(gc: ^Game_Cache, land: Land_ID) {
 MAX_COMBAT_ROUNDS :: 100
 resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for land in gc.more_land_combat_needed {
-		if land not_in gc.more_land_combat_needed do continue
-		if no_attackers_remain(gc, land) do continue
+		// if land not_in gc.more_land_combat_needed do continue
+		if no_attackers_remain(gc, land) {
+			// todo optimize - test code if reachable
+			gc.more_land_combat_needed -= {land}
+			continue
+		}
 		if land not_in gc.land_combat_started {
 			if strategic_bombing(gc, land) do continue
 			sea_bombardment(gc, land)
@@ -285,8 +288,8 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				if retreat_land_units(gc, land, Land_ID(dst_air)) do break
 			}
 			gc.land_combat_started += {land}
-			attacker_hits := get_attacker_hits(gc, get_attcker_damage_land(gc, land))
-			defender_hits := get_defender_hits(gc, get_defender_damage_land(gc, land))
+			attacker_hits := get_attacker_hits_low_luck(gc, get_attcker_damage_land(gc, land))
+			defender_hits := get_defender_hits_low_luck(gc, get_defender_damage_land(gc, land))
 			remove_land_attackers(gc, land, &defender_hits)
 			remove_land_defenders(gc, land, &attacker_hits)
 			destroy_undefended_aaguns(gc, land)
@@ -311,14 +314,14 @@ strategic_bombing :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 		return false
 	}
 	gc.more_land_combat_needed -= {land}
-	defender_hits := get_defender_hits(gc, int(bombers))
+	defender_hits := get_defender_hits_low_luck(gc, int(bombers))
 	for (defender_hits > 0) {
 		defender_hits -= 1
 		if hit_my_land_planes(gc, land, Air_Casualty_Order_Bombers) do continue
 		break
 	}
 	attacker_damage := int(gc.idle_land_planes[land][gc.cur_player][.BOMBER]) * 21
-	attacker_hits := get_attacker_hits(gc, attacker_damage)
+	attacker_hits := get_attacker_hits_low_luck(gc, attacker_damage)
 	gc.factory_dmg[land] = max(gc.factory_dmg[land] + attacker_hits, gc.factory_prod[land] * 2)
 	return true
 }

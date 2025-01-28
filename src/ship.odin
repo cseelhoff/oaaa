@@ -172,7 +172,7 @@ Defender_Sea_Casualty_Order_2 := []Idle_Ship {
 
 Defender_Land_Casualty_Order_1 := []Idle_Army{.AAGUN}
 Defender_Land_Casualty_Order_2 := []Idle_Army{.INF, .ARTY, .TANK}
-Bombard_Ships := []Active_Ship{.BATTLESHIP_0_MOVES, .BS_DAMAGED_0_MOVES, .CRUISER_0_MOVES}
+Bombard_Ships := []Active_Ship{.BATTLESHIP_0_MOVES, .BS_DAMAGED_0_MOVES, .CRUISER_0_MOVES} //Battleships first, since they have higher attack damage
 
 
 Active_Ship_Names := [?]string {

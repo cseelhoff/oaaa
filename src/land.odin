@@ -69,6 +69,8 @@ initialize_land_connections :: proc() {
 	for connection in LAND_CONNECTIONS {
 		sa.push(&mm.l2l_1away_via_land[connection[0]],connection[1])
 		sa.push(&mm.l2l_1away_via_land[connection[1]],connection[0])
+		mm.l2l_1away_via_land_bitset[connection[0]] += {connection[1]}
+		mm.l2l_1away_via_land_bitset[connection[1]] += {connection[0]}
 		mm.land_distances[connection[0]][connection[1]] = 1
 		mm.land_distances[connection[1]][connection[0]] = 1
 	}
@@ -87,14 +89,11 @@ initialize_land_connections :: proc() {
 		adjacent_lands := sa.slice(&mm.l2l_1away_via_land[src_land])
 		for distance, dst_land in mm.land_distances[src_land] {
 			if distance == 2 {
-				land_2_moves_away := Land_2_Moves_Away {
-					land = dst_land,
-				}
 				for adjacent_land in sa.slice(&mm.l2l_1away_via_land[dst_land]) {
 					_ = slice.linear_search(adjacent_lands, adjacent_land) or_continue
-					sa.push(&land_2_moves_away.mid_lands, adjacent_land)
+					mm.l2l_2away_via_midland_bitset[src_land][dst_land] += {adjacent_land}
 				}
-				sa.push(&mm.l2l_2away_via_land[src_land], land_2_moves_away)
+				mm.l2l_2away_via_land_bitset[src_land] += {dst_land}
 			}
 		}
 	}
