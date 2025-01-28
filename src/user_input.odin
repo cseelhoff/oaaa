@@ -167,12 +167,12 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		fmt.print(mm.color[gc.cur_player])
 		for army in Active_Army {
 			if gc.active_armies[land][army] > 0 {
-				fmt.println(Active_Army_Names[army], ":", gc.active_armies[land][army])
+				fmt.println(fmt.tprint(army), ":", gc.active_armies[land][army])
 			}
 		}
 		for plane in Active_Plane {
 			if gc.active_land_planes[land][plane] > 0 {
-				fmt.println(Active_Plane_Names[plane], ":", gc.active_land_planes[land][plane])
+				fmt.println(fmt.tprint(plane), ":", gc.active_land_planes[land][plane])
 			}
 		}
 		for player in Player_ID {
@@ -204,12 +204,12 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		fmt.print(mm.color[gc.cur_player])
 		for ship in Active_Ship {
 			if gc.active_ships[sea][ship] > 0 {
-				fmt.println(Active_Ship_Names[ship], ":", gc.active_ships[sea][ship])
+				fmt.println(fmt.tprint(ship), ":", gc.active_ships[sea][ship])
 			}
 		}
 		for plane in Active_Plane {
 			if gc.active_sea_planes[sea][plane] > 0 {
-				fmt.println(Active_Plane_Names[plane], ":", gc.active_sea_planes[sea][plane])
+				fmt.println(fmt.tprint(plane), ":", gc.active_sea_planes[sea][plane])
 			}
 		}
 		for player in Player_ID {

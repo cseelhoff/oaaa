@@ -44,18 +44,6 @@ Active_Army :: enum {
 	AAGUN_0_MOVES,
 }
 
-Active_Army_Names := [Active_Army]string {
-	.INF_UNMOVED   = "INF_UNMOVED",
-	.INF_0_MOVES   = "INF_0_MOVES",
-	.ARTY_UNMOVED  = "ARTY_UNMOVED",
-	.ARTY_0_MOVES  = "ARTY_0_MOVES",
-	.TANK_UNMOVED  = "TANK_UNMOVED",
-	.TANK_1_MOVES  = "TANK_1_MOVES",
-	.TANK_0_MOVES  = "TANK_0_MOVES",
-	.AAGUN_UNMOVED = "AAGUN_UNMOVED",
-	.AAGUN_0_MOVES = "AAGUN_0_MOVES",
-}
-
 Active_Army_To_Idle := [Active_Army]Idle_Army {
 	.INF_UNMOVED   = .INF,
 	.INF_0_MOVES   = .INF,
@@ -129,7 +117,7 @@ move_next_army_in_land :: proc(
 ) -> (
 	ok: bool,
 ) {
-	dst_air := get_move_input(gc, Active_Army_Names[army], to_air(src_land)) or_return
+	dst_air := get_move_input(gc, fmt.tprint(army), to_air(src_land)) or_return
 	if check_load_transport(gc, army, src_land, dst_air) do return true
 	if skip_army(gc, src_land, to_land(dst_air), army) do return true
 	army_after_move := blitz_checks(gc, to_land(dst_air), army, src_land)

@@ -1,5 +1,5 @@
 package oaaa
-
+import "core:fmt"
 import sa "core:container/small_array"
 
 move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -12,10 +12,10 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			gc.friendly_owner &
 			~to_land_bitset(gc.skipped_a2a[to_air(src_land)]),
 		)
-		for gc.active_armies[src_land][Active_Army.AAGUN_UNMOVED] > 0 {
+		for gc.active_armies[src_land][.AAGUN_UNMOVED] > 0 {
 			dst_air := get_move_input(
 				gc,
-				Active_Army_Names[.AAGUN_UNMOVED],
+				fmt.tprint(Active_Army.AAGUN_UNMOVED),
 				to_air(src_land),
 			) or_return
 			if skip_army(gc, src_land, to_land(dst_air), .AAGUN_UNMOVED) do continue

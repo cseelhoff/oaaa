@@ -1,5 +1,6 @@
 package oaaa
 import sa "core:container/small_array"
+import "core:fmt"
 
 MAX_TRANSPORT_MOVES :: 2
 
@@ -128,7 +129,7 @@ stage_trans_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> 
 }
 
 stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
-	dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], to_air(src_sea)) or_return
+	dst_air_idx := get_move_input(gc, fmt.tprint(ship), to_air(src_sea)) or_return
 	dst_sea := get_sea_id(dst_air_idx)
 	// sea_distance := src_sea.canal_paths[gc.canal_state].sea_distance[dst_sea_idx]
 	sea_distance := mm.sea_distances[transmute(u8)gc.canals_open][src_sea][dst_sea]
@@ -180,7 +181,7 @@ move_trans_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (
 }
 
 move_next_trans_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
-	dst_air_idx := get_move_input(gc, Active_Ship_Names[ship], to_air(src_sea)) or_return
+	dst_air_idx := get_move_input(gc, fmt.tprint(ship), to_air(src_sea)) or_return
 	dst_sea := to_sea(dst_air_idx)
 	if skip_ship(gc, src_sea, dst_sea, ship) do return true
 	move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
@@ -286,7 +287,7 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			gc.valid_actions = {to_action(src_sea)}
 			add_valid_unload_moves(gc, src_sea)
 			for gc.active_ships[src_sea][ship] > 0 {
-				dst_air := get_move_input(gc, Active_Ship_Names[ship], to_air(src_sea)) or_return
+				dst_air := get_move_input(gc, fmt.tprint(ship), to_air(src_sea)) or_return
 				if dst_air == to_air(src_sea) {
 					gc.active_ships[src_sea][Skipped_Transports[ship]] +=
 						gc.active_ships[src_sea][ship]
