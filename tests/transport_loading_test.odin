@@ -1,3 +1,30 @@
+/*
+Transport Loading Test Suite
+This file tests the transport loading/unloading mechanics for Axis & Allies.
+
+Test Categories:
+1. Basic Loading/Unloading
+   - Single unit loading
+   - Multiple unit loading
+   - Unloading to friendly territory
+   - Unloading to enemy territory
+
+2. Movement Validation
+   - Pre-staging movement
+   - Post-loading movement
+   - Post-unloading restrictions
+
+3. Capacity Rules
+   - Maximum capacity checks
+   - Valid unit combinations
+   - Invalid unit combinations
+
+4. Game State Updates
+   - Territory control changes
+   - Unit count tracking
+   - Movement state transitions
+*/
+
 package oaaa_test
 
 import "core:testing"
@@ -274,13 +301,13 @@ test_transport_loading_unloaded :: proc(t: ^testing.T) {
 test_transport_loading_invalid :: proc(t: ^testing.T) {
     // Test that loading onto non-transport ships returns the same state
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.INF][oaaa.Active_Ship.SUB_UNMOVED] == oaaa.Active_Ship.SUB_UNMOVED,
+        oaaa.Transport_Load_Unit[oaaa.Idle_Army.INF][oaaa.Active_Ship.SUB_2_MOVES] == oaaa.Active_Ship.SUB_2_MOVES,
         "Loading onto submarine should not change state")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.CARRIER_UNMOVED] == oaaa.Active_Ship.CARRIER_UNMOVED,
+        oaaa.Transport_Load_Unit[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.CARRIER_2_MOVES] == oaaa.Active_Ship.CARRIER_2_MOVES,
         "Loading onto carrier should not change state")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.TANK][oaaa.Active_Ship.BATTLESHIP_UNMOVED] == oaaa.Active_Ship.BATTLESHIP_UNMOVED,
+        oaaa.Transport_Load_Unit[oaaa.Idle_Army.TANK][oaaa.Active_Ship.BATTLESHIP_2_MOVES] == oaaa.Active_Ship.BATTLESHIP_2_MOVES,
         "Loading onto battleship should not change state")
 }
 
@@ -351,4 +378,41 @@ test_transport_multiple_units :: proc(t: ^testing.T) {
         "Artillery should be added to idle armies in destination")
     testing.expect(t, gc.team_land_units[dst_land][.Allies] == 2,
         "Destination should have two allied units")
+}
+
+@(test)
+test_transport_basic_loading :: proc(t: ^testing.T) {
+    // Test loading a single infantry onto an empty transport
+    gc := oaaa.Game_Cache{}
+    gc.cur_player = .USA
+    test_sea := oaaa.Sea_ID.Pacific
+    src_land := oaaa.Land_ID.Washington
+    
+    // Setup initial state
+    gc.active_ships[test_sea][oaaa.Active_Ship.TRANS_EMPTY_UNMOVED] = 1
+    gc.idle_ships[test_sea][.USA][oaaa.Idle_Ship.TRANS_EMPTY] = 1
+    gc.active_armies[src_land][oaaa.Active_Army.INF_UNMOVED] = 1
+    gc.idle_armies[src_land][.USA][oaaa.Idle_Army.INF] = 1
+    gc.team_land_units[src_land][.Allies] = 1
+    
+    // Perform loading
+    loaded_ship := oaaa.Active_Ship.TRANS_1I_UNMOVED
+    oaaa.replace_ship(&gc, test_sea, oaaa.Active_Ship.TRANS_EMPTY_UNMOVED, loaded_ship)
+    
+    // Update source land
+    gc.active_armies[src_land][oaaa.Active_Army.INF_UNMOVED] -= 1
+    gc.idle_armies[src_land][.USA][oaaa.Idle_Army.INF] -= 1
+    gc.team_land_units[src_land][.Allies] -= 1
+    
+    // Verify transport state
+    testing.expect(t, gc.active_ships[test_sea][loaded_ship] == 1,
+        "Transport should be in loaded state")
+    testing.expect(t, gc.idle_ships[test_sea][.USA][oaaa.Idle_Ship.TRANS_1I] == 1,
+        "Idle ship should reflect loaded infantry")
+    
+    // Verify source land state
+    testing.expect(t, gc.team_land_units[src_land][.Allies] == 0,
+        "Source land should have no units")
+    testing.expect(t, gc.active_armies[src_land][oaaa.Active_Army.INF_UNMOVED] == 0,
+        "Source land should have no infantry")
 }

@@ -160,7 +160,7 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 		to_air_bitset(gc.has_carrier_space | gc.possible_factory_carriers)
 	for sea in Sea_ID {
 		// if player owns a carrier, then landing area is 2 spaces away
-		if gc.active_ships[sea][.CARRIER_UNMOVED] == 0 do continue
+		if gc.active_ships[sea][.CARRIER_2_MOVES] == 0 do continue
 		gc.can_fighter_land_here += to_air_bitset(
 			mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea] |
 			mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][sea],

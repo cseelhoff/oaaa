@@ -89,19 +89,19 @@ Active_Ship :: enum {
 	TRANS_1I_1T_1_MOVES,
 	TRANS_1I_1T_0_MOVES,
 	TRANS_1I_1T_UNLOADED,
-	SUB_UNMOVED,
+	SUB_2_MOVES,
 	SUB_0_MOVES,
-	DESTROYER_UNMOVED,
+	DESTROYER_2_MOVES,
 	DESTROYER_0_MOVES,
-	CARRIER_UNMOVED,
+	CARRIER_2_MOVES,
 	CARRIER_0_MOVES,
-	CRUISER_UNMOVED,
+	CRUISER_2_MOVES,
 	CRUISER_0_MOVES,
 	CRUISER_BOMBARDED,
-	BATTLESHIP_UNMOVED,
+	BATTLESHIP_2_MOVES,
 	BATTLESHIP_0_MOVES,
 	BATTLESHIP_BOMBARDED,
-	BS_DAMAGED_UNMOVED,
+	BS_DAMAGED_2_MOVES,
 	BS_DAMAGED_0_MOVES,
 	BS_DAMAGED_BOMBARDED,
 }
@@ -191,30 +191,30 @@ Active_Ship_To_Idle := [Active_Ship]Idle_Ship {
 	.TRANS_1I_1T_1_MOVES  = .TRANS_1I_1T,
 	.TRANS_1I_1T_0_MOVES  = .TRANS_1I_1T,
 	.TRANS_1I_1T_UNLOADED = .TRANS_1I_1T,
-	.SUB_UNMOVED          = .SUB,
+	.SUB_2_MOVES          = .SUB,
 	.SUB_0_MOVES          = .SUB,
-	.DESTROYER_UNMOVED    = .DESTROYER,
+	.DESTROYER_2_MOVES    = .DESTROYER,
 	.DESTROYER_0_MOVES    = .DESTROYER,
-	.CARRIER_UNMOVED      = .CARRIER,
+	.CARRIER_2_MOVES      = .CARRIER,
 	.CARRIER_0_MOVES      = .CARRIER,
-	.CRUISER_UNMOVED      = .CRUISER,
+	.CRUISER_2_MOVES      = .CRUISER,
 	.CRUISER_0_MOVES      = .CRUISER,
 	.CRUISER_BOMBARDED    = .CRUISER,
-	.BATTLESHIP_UNMOVED   = .BATTLESHIP,
+	.BATTLESHIP_2_MOVES   = .BATTLESHIP,
 	.BATTLESHIP_0_MOVES   = .BATTLESHIP,
 	.BATTLESHIP_BOMBARDED = .BATTLESHIP,
-	.BS_DAMAGED_UNMOVED   = .BS_DAMAGED,
+	.BS_DAMAGED_2_MOVES   = .BS_DAMAGED,
 	.BS_DAMAGED_0_MOVES   = .BS_DAMAGED,
 	.BS_DAMAGED_BOMBARDED = .BS_DAMAGED,
 }
 
 Unmoved_Blockade_Ships := [?]Active_Ship {
-	.SUB_UNMOVED,
-	.DESTROYER_UNMOVED,
-	.CARRIER_UNMOVED,
-	.CRUISER_UNMOVED,
-	.BATTLESHIP_UNMOVED,
-	.BS_DAMAGED_UNMOVED,
+	.SUB_2_MOVES,
+	.DESTROYER_2_MOVES,
+	.CARRIER_2_MOVES,
+	.CRUISER_2_MOVES,
+	.BATTLESHIP_2_MOVES,
+	.BS_DAMAGED_2_MOVES,
 }
 
 Ships_Moved := [?]Active_Ship {
@@ -234,12 +234,12 @@ Ships_Moved := [?]Active_Ship {
 	Active_Ship.TRANS_1I_1A_1_MOVES = .TRANS_1I_1A_0_MOVES,
 	Active_Ship.TRANS_1I_1T_2_MOVES = .TRANS_1I_1T_0_MOVES,
 	Active_Ship.TRANS_1I_1T_1_MOVES = .TRANS_1I_1T_0_MOVES,
-	Active_Ship.SUB_UNMOVED         = .SUB_0_MOVES,
-	Active_Ship.DESTROYER_UNMOVED   = .DESTROYER_0_MOVES,
-	Active_Ship.CARRIER_UNMOVED     = .CARRIER_0_MOVES,
-	Active_Ship.CRUISER_UNMOVED     = .CRUISER_0_MOVES,
-	Active_Ship.BATTLESHIP_UNMOVED  = .BATTLESHIP_0_MOVES,
-	Active_Ship.BS_DAMAGED_UNMOVED  = .BS_DAMAGED_0_MOVES,
+	Active_Ship.SUB_2_MOVES         = .SUB_0_MOVES,
+	Active_Ship.DESTROYER_2_MOVES   = .DESTROYER_0_MOVES,
+	Active_Ship.CARRIER_2_MOVES     = .CARRIER_0_MOVES,
+	Active_Ship.CRUISER_2_MOVES     = .CRUISER_0_MOVES,
+	Active_Ship.BATTLESHIP_2_MOVES  = .BATTLESHIP_0_MOVES,
+	Active_Ship.BS_DAMAGED_2_MOVES  = .BS_DAMAGED_0_MOVES,
 }
 
 Ships_Moves := [?]int {
@@ -319,7 +319,7 @@ move_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Shi
 	flag_for_sea_enemy_combat(gc, dst_sea)
 	if skip_ship(gc, src_sea, dst_sea, ship) do return true
 	move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
-	if ship == .CARRIER_UNMOVED {
+	if ship == .CARRIER_2_MOVES {
 		gc.allied_carriers_total[dst_sea] += 1
 		gc.allied_carriers_total[src_sea] -= 1
 		carry_allied_fighters(gc, src_sea, dst_sea)
@@ -361,7 +361,7 @@ add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship
 		}
 		for mid_sea in sa.slice(&mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][dst_sea_2_away]) {
 			if gc.enemy_destroyer_total[mid_sea] > 0 do continue
-			if ship != .SUB_UNMOVED && gc.enemy_blockade_total[mid_sea] > 0 do continue
+			if ship != .SUB_2_MOVES && gc.enemy_blockade_total[mid_sea] > 0 do continue
 			gc.valid_actions += {to_action(dst_sea_2_away)}
 			break
 		}
