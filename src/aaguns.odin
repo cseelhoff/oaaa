@@ -1,6 +1,6 @@
 package oaaa
-import "core:fmt"
 import sa "core:container/small_array"
+import "core:fmt"
 
 move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	gc.clear_history_needed = false
@@ -18,14 +18,14 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				fmt.tprint(Active_Army.AAGUN_UNMOVED),
 				to_air(src_land),
 			) or_return
-			if skip_army(gc, src_land, to_land(dst_air), .AAGUN_UNMOVED) do continue
+			dst_land := to_land(dst_air)
+			if skip_army(gc, src_land, dst_land, .AAGUN_UNMOVED) do continue
 			move_single_army_land(
 				gc,
-				to_land(dst_air),
-				.AAGUN_0_MOVES,
-				gc.cur_player,
 				src_land,
+				dst_land,
 				.AAGUN_UNMOVED,
+				.AAGUN_0_MOVES,
 			)
 		}
 	}

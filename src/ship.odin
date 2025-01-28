@@ -19,22 +19,6 @@ Idle_Ship :: enum {
 	BS_DAMAGED,
 }
 
-Idle_Ship_Names := [?]string {
-	Idle_Ship.TRANS_EMPTY = "TRANS_EMPTY",
-	Idle_Ship.TRANS_1I    = "TRANS_1I",
-	Idle_Ship.TRANS_1A    = "TRANS_1A",
-	Idle_Ship.TRANS_1T    = "TRANS_1T",
-	Idle_Ship.TRANS_2I    = "TRANS_2I",
-	Idle_Ship.TRANS_1I_1A = "TRANS_1I_1A",
-	Idle_Ship.TRANS_1I_1T = "TRANS_1I_1T",
-	Idle_Ship.SUB         = "SUB",
-	Idle_Ship.DESTROYER   = "DESTROYER",
-	Idle_Ship.CARRIER     = "CARRIER",
-	Idle_Ship.CRUISER     = "CRUISER",
-	Idle_Ship.BATTLESHIP  = "BATTLESHIP",
-	Idle_Ship.BS_DAMAGED  = "BS_DAMAGED",
-}
-
 COST_IDLE_SHIP := [?]u8 {
 	Idle_Ship.TRANS_EMPTY = Cost_Buy[Buy_Action.BUY_TRANS],
 	Idle_Ship.TRANS_1I    = Cost_Buy[Buy_Action.BUY_TRANS],

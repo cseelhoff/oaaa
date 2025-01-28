@@ -1,0 +1,68 @@
+/*
+Game Overview:
+This is an implementation of Axis & Allies Second Edition, a turn-based strategy game.
+The game features two teams (Allies and Axis) with 5 players:
+- Allies: Russia (RUS), England (ENG), United States (USA)
+- Axis: Germany (GER), Japan (JAP)
+
+Unit Movement System:
+1. Movement States:
+   - UNMOVED: Unit has not been offered a chance to move this turn
+   - X_MOVES: Unit has X moves remaining this turn (0, 1, or 2)
+   - UNLOADED: (Transport specific) Transport has declined to unload cargo
+
+2. Transport System:
+   - Capacity: 5 spaces total
+     * Infantry (INF): 2 spaces
+     * Artillery (ARTY): 3 spaces
+     * Tank (TANK): 3 spaces
+     * AA Gun: 6 spaces (exceeds transport capacity)
+   - Valid Configurations:
+     * TRANS_EMPTY: No cargo
+     * TRANS_1I: 1 Infantry
+     * TRANS_1A: 1 Artillery
+     * TRANS_1T: 1 Tank
+     * TRANS_1I_1A: 1 Infantry + 1 Artillery
+     * TRANS_2I: 2 Infantry
+
+3. Pre-staging System:
+   Transports have a unique "pre-staging" phase where they can move early in a turn
+   to position themselves for loading units. This is tracked through state transitions:
+   UNMOVED -> [pre-stage decision] -> {2_MOVES, 1_MOVES, 0_MOVES}
+
+Map Structure:
+1. Movement Connections:
+   - Land-to-Land (l2l): Direct land connections
+   - Sea-to-Sea (s2s): Direct sea connections
+   - Land-to-Sea (l2s): Where units can load/unload from transports
+   - Air-to-Air (a2a): Combines all other connection types for air movement
+
+2. Canals:
+   - Connect two sea zones when both required land territories are controlled
+   - Tracked via canals_open bitset in game state
+
+State Management:
+1. Game_State: Core game state required for save/load
+2. Game_Cache: Derived data rebuilt from Game_State, includes:
+   - Movement validation tables
+   - Territory control status
+   - Unit availability
+
+3. Unit Tracking:
+   - Active units: Belong to current player, includes movement state
+   - Idle units: All other players' units, no movement tracking needed
+
+Combat System:
+1. Naval Combat:
+   - Transports are vulnerable but have no combat power
+   - Must be protected by combat ships
+
+2. Bombardment:
+   - Battleships and Cruisers can bombard once per turn
+   - Tracked via _BOMBARDED state
+
+3. AA Defense:
+   - AA guns roll against attacking aircraft
+   - 1 die per plane (max 3 dice per AA gun)
+   - Rolls occur before regular combat
+*/

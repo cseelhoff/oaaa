@@ -217,7 +217,7 @@ print_game_state :: proc(gc: ^Game_Cache) {
 			fmt.print(mm.color[player])
 			for ship in Idle_Ship {
 				if gc.idle_ships[sea][player][ship] > 0 {
-					fmt.println(Idle_Ship_Names[ship], ":", gc.idle_ships[sea][player][ship])
+					fmt.println(ship, ":", gc.idle_ships[sea][player][ship])
 				}
 			}
 			//for plane in Idle_Plane {

@@ -119,17 +119,18 @@ move_next_army_in_land :: proc(
 ) {
 	dst_air := get_move_input(gc, fmt.tprint(army), to_air(src_land)) or_return
 	if check_load_transport(gc, army, src_land, dst_air) do return true
-	if skip_army(gc, src_land, to_land(dst_air), army) do return true
-	army_after_move := blitz_checks(gc, to_land(dst_air), army, src_land)
-	move_single_army_land(gc, to_land(dst_air), army_after_move, gc.cur_player, src_land, army)
+	dst_land := to_land(dst_air)
+	if skip_army(gc, src_land, dst_land, army) do return true
+	army_after_move := blitz_checks(gc, src_land, dst_land, army)
+	move_single_army_land(gc, src_land, dst_land, army, army_after_move)
 	return true
 }
 
 blitz_checks :: proc(
 	gc: ^Game_Cache,
+	src_land: Land_ID,
 	dst_land: Land_ID,
 	army: Active_Army,
-	src_land: Land_ID,
 ) -> Active_Army {
 	if !flag_for_land_enemy_combat(gc, dst_land) &&
 	   check_for_conquer(gc, dst_land) &&
@@ -143,18 +144,17 @@ blitz_checks :: proc(
 
 move_single_army_land :: proc(
 	gc: ^Game_Cache,
-	dst_land: Land_ID,
-	dst_unit: Active_Army,
-	player: Player_ID,
 	src_land: Land_ID,
+	dst_land: Land_ID,
 	src_unit: Active_Army,
+	dst_unit: Active_Army,
 ) {
 	gc.active_armies[dst_land][dst_unit] += 1
-	gc.idle_armies[dst_land][player][Active_Army_To_Idle[dst_unit]] += 1
-	gc.team_land_units[dst_land][mm.team[player]] += 1
+	gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[dst_unit]] += 1
+	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
 	gc.active_armies[src_land][src_unit] -= 1
-	gc.idle_armies[src_land][player][Active_Army_To_Idle[src_unit]] -= 1
-	gc.team_land_units[src_land][mm.team[player]] -= 1
+	gc.idle_armies[src_land][gc.cur_player][Active_Army_To_Idle[src_unit]] -= 1
+	gc.team_land_units[src_land][mm.team[gc.cur_player]] -= 1
 }
 
 is_boat_available :: proc(
