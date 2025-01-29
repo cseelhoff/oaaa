@@ -311,12 +311,12 @@ add_valid_unload_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
 }
 
 Transports_With_Cargo := [?]Active_Ship {
-	.TRANS_1I_0_MOVES,
-	.TRANS_1A_0_MOVES,
-	.TRANS_1T_0_MOVES,
 	.TRANS_2I_0_MOVES,
 	.TRANS_1I_1A_0_MOVES,
 	.TRANS_1I_1T_0_MOVES,
+	.TRANS_1I_0_MOVES,
+	.TRANS_1A_0_MOVES,
+	.TRANS_1T_0_MOVES,
 }
 
 /*
@@ -362,7 +362,7 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-Transport_Unload_Unit_1 := [Active_Ship]Active_Army {
+Transport_Unload_Unit : [Active_Ship]Active_Army
     /*
     Game Rule: Transport Unloading
     
@@ -374,101 +374,27 @@ Transport_Unload_Unit_1 := [Active_Ship]Active_Army {
     - How far the transport moved
     - Whether they moved before loading
     */
-    .TRANS_EMPTY_UNMOVED  = .INF_0_MOVES,
-    .TRANS_EMPTY_2_MOVES  = .INF_0_MOVES,
-    .TRANS_EMPTY_1_MOVES  = .INF_0_MOVES,
-    .TRANS_EMPTY_0_MOVES  = .INF_0_MOVES,
-    .TRANS_1I_UNMOVED     = .INF_0_MOVES,
-    .TRANS_1I_2_MOVES     = .INF_0_MOVES,
-    .TRANS_1I_1_MOVES     = .INF_0_MOVES,
-    .TRANS_1I_UNLOADED    = .INF_0_MOVES,
-    .TRANS_1A_UNMOVED     = .INF_0_MOVES,
-    .TRANS_1A_2_MOVES     = .INF_0_MOVES,
-    .TRANS_1A_1_MOVES     = .INF_0_MOVES,
-    .TRANS_1A_UNLOADED    = .INF_0_MOVES,
-    .TRANS_1T_UNMOVED     = .INF_0_MOVES,
-    .TRANS_1T_2_MOVES     = .INF_0_MOVES,
-    .TRANS_1T_1_MOVES     = .INF_0_MOVES,
-    .TRANS_1T_UNLOADED    = .INF_0_MOVES,
-    .TRANS_2I_2_MOVES     = .INF_0_MOVES,
-    .TRANS_2I_1_MOVES     = .INF_0_MOVES,
-    .TRANS_2I_UNLOADED    = .INF_0_MOVES,
-    .TRANS_1I_1A_2_MOVES  = .INF_0_MOVES,
-    .TRANS_1I_1A_1_MOVES  = .INF_0_MOVES,
-    .TRANS_1I_1A_UNLOADED = .INF_0_MOVES,
-    .TRANS_1I_1T_2_MOVES  = .INF_0_MOVES,
-    .TRANS_1I_1T_1_MOVES  = .INF_0_MOVES,
-    .TRANS_1I_1T_UNLOADED = .INF_0_MOVES,
-    .SUB_2_MOVES          = .INF_0_MOVES,
-    .SUB_0_MOVES          = .INF_0_MOVES,
-    .DESTROYER_2_MOVES    = .INF_0_MOVES,
-    .DESTROYER_0_MOVES    = .INF_0_MOVES,
-    .CARRIER_2_MOVES      = .INF_0_MOVES,
-    .CARRIER_0_MOVES      = .INF_0_MOVES,
-    .CRUISER_2_MOVES      = .INF_0_MOVES,
-    .CRUISER_0_MOVES      = .INF_0_MOVES,
-    .CRUISER_BOMBARDED    = .INF_0_MOVES,
-    .BATTLESHIP_2_MOVES   = .INF_0_MOVES,
-    .BATTLESHIP_0_MOVES   = .INF_0_MOVES,
-    .BATTLESHIP_BOMBARDED = .INF_0_MOVES,
-    .BS_DAMAGED_2_MOVES   = .INF_0_MOVES,
-    .BS_DAMAGED_0_MOVES   = .INF_0_MOVES,
-    .BS_DAMAGED_BOMBARDED = .INF_0_MOVES,
-    .TRANS_1I_0_MOVES     = .INF_0_MOVES,
-    .TRANS_1A_0_MOVES     = .ARTY_0_MOVES,
-    .TRANS_1T_0_MOVES     = .TANK_0_MOVES,
-    .TRANS_2I_0_MOVES     = .INF_0_MOVES,
-    .TRANS_1I_1A_0_MOVES  = .INF_0_MOVES,
-    .TRANS_1I_1T_0_MOVES  = .INF_0_MOVES,
+
+@(init)
+init_transport_unload_unit :: proc() {
+	Transport_Unload_Unit[.TRANS_1I_0_MOVES] = .INF_0_MOVES
+	Transport_Unload_Unit[.TRANS_1A_0_MOVES] = .ARTY_0_MOVES
+	Transport_Unload_Unit[.TRANS_1T_0_MOVES] = .TANK_0_MOVES
+	Transport_Unload_Unit[.TRANS_2I_0_MOVES] = .INF_0_MOVES
+	Transport_Unload_Unit[.TRANS_1I_1A_0_MOVES] = .INF_0_MOVES
+	Transport_Unload_Unit[.TRANS_1I_1T_0_MOVES] = .INF_0_MOVES
 }
 
-Transport_Unloaded := [Active_Ship]Active_Ship {
-	.TRANS_1I_0_MOVES     = .TRANS_EMPTY_0_MOVES,
-	.TRANS_1A_0_MOVES     = .TRANS_EMPTY_0_MOVES,
-	.TRANS_1T_0_MOVES     = .TRANS_EMPTY_0_MOVES,
-	.TRANS_2I_0_MOVES     = .TRANS_1I_0_MOVES,
-	.TRANS_1I_1A_0_MOVES  = .TRANS_1A_0_MOVES,
-	.TRANS_1I_1T_0_MOVES  = .TRANS_1T_0_MOVES,
-	.TRANS_EMPTY_UNMOVED  = .TRANS_EMPTY_0_MOVES,
-	.TRANS_EMPTY_2_MOVES  = .TRANS_EMPTY_0_MOVES,
-	.TRANS_EMPTY_1_MOVES  = .TRANS_EMPTY_0_MOVES,
-	.TRANS_EMPTY_0_MOVES  = .TRANS_EMPTY_0_MOVES,
-	.TRANS_1I_UNMOVED     = .TRANS_1I_0_MOVES,
-	.TRANS_1I_2_MOVES     = .TRANS_1I_0_MOVES,
-	.TRANS_1I_1_MOVES     = .TRANS_1I_0_MOVES,
-	.TRANS_1I_UNLOADED    = .TRANS_1I_0_MOVES,
-	.TRANS_1A_UNMOVED     = .TRANS_1A_0_MOVES,
-	.TRANS_1A_2_MOVES     = .TRANS_1A_0_MOVES,
-	.TRANS_1A_1_MOVES     = .TRANS_1A_0_MOVES,
-	.TRANS_1A_UNLOADED    = .TRANS_1A_0_MOVES,
-	.TRANS_1T_UNMOVED     = .TRANS_1T_0_MOVES,
-	.TRANS_1T_2_MOVES     = .TRANS_1T_0_MOVES,
-	.TRANS_1T_1_MOVES     = .TRANS_1T_0_MOVES,
-	.TRANS_1T_UNLOADED    = .TRANS_1T_0_MOVES,
-	.TRANS_2I_2_MOVES     = .TRANS_2I_0_MOVES,
-	.TRANS_2I_1_MOVES     = .TRANS_2I_0_MOVES,
-	.TRANS_2I_UNLOADED    = .TRANS_2I_0_MOVES,
-	.TRANS_1I_1A_2_MOVES  = .TRANS_1I_1A_0_MOVES,
-	.TRANS_1I_1A_1_MOVES  = .TRANS_1I_1A_0_MOVES,
-	.TRANS_1I_1A_UNLOADED = .TRANS_1I_1A_0_MOVES,
-	.TRANS_1I_1T_2_MOVES  = .TRANS_1I_1T_0_MOVES,
-	.TRANS_1I_1T_1_MOVES  = .TRANS_1I_1T_0_MOVES,
-	.TRANS_1I_1T_UNLOADED = .TRANS_1I_1T_0_MOVES,
-	.SUB_2_MOVES          = .TRANS_EMPTY_0_MOVES,
-	.SUB_0_MOVES          = .TRANS_EMPTY_0_MOVES,
-	.DESTROYER_2_MOVES    = .TRANS_EMPTY_0_MOVES,
-	.DESTROYER_0_MOVES    = .TRANS_EMPTY_0_MOVES,
-	.CARRIER_2_MOVES      = .TRANS_EMPTY_0_MOVES,
-	.CARRIER_0_MOVES      = .TRANS_EMPTY_0_MOVES,
-	.CRUISER_2_MOVES      = .TRANS_EMPTY_0_MOVES,
-	.CRUISER_0_MOVES      = .TRANS_EMPTY_0_MOVES,
-	.CRUISER_BOMBARDED    = .TRANS_EMPTY_0_MOVES,
-	.BATTLESHIP_2_MOVES   = .TRANS_EMPTY_0_MOVES,
-	.BATTLESHIP_0_MOVES   = .TRANS_EMPTY_0_MOVES,
-	.BATTLESHIP_BOMBARDED = .TRANS_EMPTY_0_MOVES,
-	.BS_DAMAGED_2_MOVES   = .TRANS_EMPTY_0_MOVES,
-	.BS_DAMAGED_0_MOVES   = .TRANS_EMPTY_0_MOVES,
-	.BS_DAMAGED_BOMBARDED = .TRANS_EMPTY_0_MOVES,
+Transport_Unloaded :[Active_Ship]Active_Ship 
+
+@(init)
+init_transport_unloaded :: proc() {
+	Transport_Unloaded[.TRANS_1I_0_MOVES] = .TRANS_EMPTY_0_MOVES
+	Transport_Unloaded[.TRANS_1A_0_MOVES] = .TRANS_EMPTY_0_MOVES
+	Transport_Unloaded[.TRANS_1T_0_MOVES] = .TRANS_EMPTY_0_MOVES
+	Transport_Unloaded[.TRANS_2I_0_MOVES] = .TRANS_1I_0_MOVES
+	Transport_Unloaded[.TRANS_1I_1A_0_MOVES] = .TRANS_1A_0_MOVES
+	Transport_Unloaded[.TRANS_1I_1T_0_MOVES] = .TRANS_1T_0_MOVES
 }
 
 /*
@@ -479,7 +405,7 @@ Unloads a unit from transport, updating:
 4. Checks for potential combat or conquest
 */
 unload_unit :: proc(gc: ^Game_Cache, dst_land: Land_ID, ship: Active_Ship) {
-	army := Transport_Unload_Unit_1[ship]
+	army := Transport_Unload_Unit[ship]
 	gc.active_armies[dst_land][army] += 1
 	gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[army]] += 1
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
