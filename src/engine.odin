@@ -168,6 +168,22 @@ clear_move_history :: proc(gc: ^Game_Cache) {
 	gc.clear_history_needed = false
 }
 
+/*
+Factory Building Process
+1. Validation Phase:
+   - Checks player's money and territory ownership
+   - Verifies no existing production or combat
+   - Builds list of valid locations
+2. Purchase Phase:
+   - Gets player's choice of location
+   - Deducts cost and sets up production
+   - Records factory in player's list
+Returns true when:
+- Player can't afford factory
+- No valid build locations
+- Player chooses to skip
+- Purchase completed successfully
+*/
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	if gc.money[gc.cur_player] < FACTORY_COST do return true
 	gc.valid_actions = {.Skip_Action}
@@ -191,6 +207,7 @@ buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
+// Repairs all damaged battleships at turn start
 reset_units_fully :: proc(gc: ^Game_Cache) {
 	for sea in Sea_ID {
 		gc.active_ships[sea][.BATTLESHIP_0_MOVES] += gc.active_ships[sea][.BS_DAMAGED_0_MOVES]
@@ -319,7 +336,6 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 		}
 	}
 	score: f64 = f64(allied_score) / f64(enemy_score + allied_score)
-	// ??? if starting_player >= PLAYERS_COUNT do return 1 - score
 	return score
 }
 

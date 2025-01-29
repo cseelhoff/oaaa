@@ -86,7 +86,7 @@ Transports_Needing_Staging := [?]Active_Ship {
 	.TRANS_1T_UNMOVED,
 }
 
-Trans_After_Move_Used : [Active_Ship][MAX_TRANSPORT_MOVES + 1]Active_Ship 
+Trans_After_Move_Used: [Active_Ship][MAX_TRANSPORT_MOVES + 1]Active_Ship
 
 @(init)
 init_trans_after_move_used :: proc() {
@@ -108,60 +108,80 @@ Trans_After_Loading: [Idle_Army][Active_Ship]Active_Ship
 
 @(init)
 init_transport_after_loading :: proc() {
-    // INF valid transitions
-    Trans_After_Loading[.INF][.TRANS_EMPTY_UNMOVED] = .TRANS_1I_UNMOVED
-    Trans_After_Loading[.INF][.TRANS_EMPTY_2_MOVES] = .TRANS_1I_2_MOVES
-    Trans_After_Loading[.INF][.TRANS_EMPTY_1_MOVES] = .TRANS_1I_1_MOVES
-    Trans_After_Loading[.INF][.TRANS_EMPTY_0_MOVES] = .TRANS_1I_0_MOVES
-    Trans_After_Loading[.INF][.TRANS_1I_UNMOVED] = .TRANS_2I_2_MOVES
-    Trans_After_Loading[.INF][.TRANS_1I_2_MOVES] = .TRANS_2I_2_MOVES
-    Trans_After_Loading[.INF][.TRANS_1I_1_MOVES] = .TRANS_2I_1_MOVES
-    Trans_After_Loading[.INF][.TRANS_1I_0_MOVES] = .TRANS_2I_0_MOVES
-    Trans_After_Loading[.INF][.TRANS_1I_UNLOADED] = .TRANS_2I_UNLOADED
-    Trans_After_Loading[.INF][.TRANS_1A_UNMOVED] = .TRANS_1I_1A_2_MOVES
-    Trans_After_Loading[.INF][.TRANS_1A_2_MOVES] = .TRANS_1I_1A_2_MOVES
-    Trans_After_Loading[.INF][.TRANS_1A_1_MOVES] = .TRANS_1I_1A_1_MOVES
-    Trans_After_Loading[.INF][.TRANS_1A_0_MOVES] = .TRANS_1I_1A_0_MOVES
-    Trans_After_Loading[.INF][.TRANS_1A_UNLOADED] = .TRANS_1I_1A_UNLOADED
-    Trans_After_Loading[.INF][.TRANS_1T_UNMOVED] = .TRANS_1I_1T_2_MOVES
-    Trans_After_Loading[.INF][.TRANS_1T_2_MOVES] = .TRANS_1I_1T_2_MOVES
-    Trans_After_Loading[.INF][.TRANS_1T_1_MOVES] = .TRANS_1I_1T_1_MOVES
-    Trans_After_Loading[.INF][.TRANS_1T_0_MOVES] = .TRANS_1I_1T_0_MOVES
-    Trans_After_Loading[.INF][.TRANS_1T_UNLOADED] = .TRANS_1I_1T_UNLOADED
+    /*
+    AI NOTE: Transport Loading State Machine
+    
+    Loading transitions preserve remaining moves:
+    1. Empty Transport States:
+       TRANS_EMPTY_UNMOVED -> TRANS_1I_UNMOVED (load infantry)
+       TRANS_EMPTY_2_MOVES -> TRANS_1I_2_MOVES
+       TRANS_EMPTY_1_MOVES -> TRANS_1I_1_MOVES
+    
+    2. Partial Load States:
+       TRANS_1I_2_MOVES -> TRANS_2I_2_MOVES (add second infantry)
+       TRANS_1I_2_MOVES -> TRANS_1I_1A_2_MOVES (add artillery)
+       TRANS_1I_2_MOVES -> TRANS_1I_1T_2_MOVES (add tank)
+    
+    3. Capacity Rules:
+       - Infantry: 2 spaces
+       - Artillery/Tank: 3 spaces
+       - Total capacity: 5 spaces
+       - Invalid combinations not represented in enum
+    */
+	// INF valid transitions
+	Trans_After_Loading[.INF][.TRANS_EMPTY_UNMOVED] = .TRANS_1I_UNMOVED
+	Trans_After_Loading[.INF][.TRANS_EMPTY_2_MOVES] = .TRANS_1I_2_MOVES
+	Trans_After_Loading[.INF][.TRANS_EMPTY_1_MOVES] = .TRANS_1I_1_MOVES
+	Trans_After_Loading[.INF][.TRANS_EMPTY_0_MOVES] = .TRANS_1I_0_MOVES
+	Trans_After_Loading[.INF][.TRANS_1I_UNMOVED] = .TRANS_2I_2_MOVES
+	Trans_After_Loading[.INF][.TRANS_1I_2_MOVES] = .TRANS_2I_2_MOVES
+	Trans_After_Loading[.INF][.TRANS_1I_1_MOVES] = .TRANS_2I_1_MOVES
+	Trans_After_Loading[.INF][.TRANS_1I_0_MOVES] = .TRANS_2I_0_MOVES
+	Trans_After_Loading[.INF][.TRANS_1I_UNLOADED] = .TRANS_2I_UNLOADED
+	Trans_After_Loading[.INF][.TRANS_1A_UNMOVED] = .TRANS_1I_1A_2_MOVES
+	Trans_After_Loading[.INF][.TRANS_1A_2_MOVES] = .TRANS_1I_1A_2_MOVES
+	Trans_After_Loading[.INF][.TRANS_1A_1_MOVES] = .TRANS_1I_1A_1_MOVES
+	Trans_After_Loading[.INF][.TRANS_1A_0_MOVES] = .TRANS_1I_1A_0_MOVES
+	Trans_After_Loading[.INF][.TRANS_1A_UNLOADED] = .TRANS_1I_1A_UNLOADED
+	Trans_After_Loading[.INF][.TRANS_1T_UNMOVED] = .TRANS_1I_1T_2_MOVES
+	Trans_After_Loading[.INF][.TRANS_1T_2_MOVES] = .TRANS_1I_1T_2_MOVES
+	Trans_After_Loading[.INF][.TRANS_1T_1_MOVES] = .TRANS_1I_1T_1_MOVES
+	Trans_After_Loading[.INF][.TRANS_1T_0_MOVES] = .TRANS_1I_1T_0_MOVES
+	Trans_After_Loading[.INF][.TRANS_1T_UNLOADED] = .TRANS_1I_1T_UNLOADED
 
-    // ARTY valid transitions
-    Trans_After_Loading[.ARTY][.TRANS_EMPTY_UNMOVED] = .TRANS_1A_UNMOVED
-    Trans_After_Loading[.ARTY][.TRANS_EMPTY_2_MOVES] = .TRANS_1A_2_MOVES
-    Trans_After_Loading[.ARTY][.TRANS_EMPTY_1_MOVES] = .TRANS_1A_1_MOVES
-    Trans_After_Loading[.ARTY][.TRANS_EMPTY_0_MOVES] = .TRANS_1A_0_MOVES
-    Trans_After_Loading[.ARTY][.TRANS_1I_UNMOVED] = .TRANS_1I_UNMOVED
-    Trans_After_Loading[.ARTY][.TRANS_1I_2_MOVES] = .TRANS_1I_1A_2_MOVES
-    Trans_After_Loading[.ARTY][.TRANS_1I_1_MOVES] = .TRANS_1I_1A_1_MOVES
-    Trans_After_Loading[.ARTY][.TRANS_1I_0_MOVES] = .TRANS_1I_1A_0_MOVES
-    Trans_After_Loading[.ARTY][.TRANS_1I_UNLOADED] = .TRANS_1I_1A_UNLOADED
+	// ARTY valid transitions
+	Trans_After_Loading[.ARTY][.TRANS_EMPTY_UNMOVED] = .TRANS_1A_UNMOVED
+	Trans_After_Loading[.ARTY][.TRANS_EMPTY_2_MOVES] = .TRANS_1A_2_MOVES
+	Trans_After_Loading[.ARTY][.TRANS_EMPTY_1_MOVES] = .TRANS_1A_1_MOVES
+	Trans_After_Loading[.ARTY][.TRANS_EMPTY_0_MOVES] = .TRANS_1A_0_MOVES
+	Trans_After_Loading[.ARTY][.TRANS_1I_UNMOVED] = .TRANS_1I_UNMOVED
+	Trans_After_Loading[.ARTY][.TRANS_1I_2_MOVES] = .TRANS_1I_1A_2_MOVES
+	Trans_After_Loading[.ARTY][.TRANS_1I_1_MOVES] = .TRANS_1I_1A_1_MOVES
+	Trans_After_Loading[.ARTY][.TRANS_1I_0_MOVES] = .TRANS_1I_1A_0_MOVES
+	Trans_After_Loading[.ARTY][.TRANS_1I_UNLOADED] = .TRANS_1I_1A_UNLOADED
 
-    // TANK valid transitions
-    Trans_After_Loading[.TANK][.TRANS_EMPTY_UNMOVED] = .TRANS_1T_UNMOVED
-    Trans_After_Loading[.TANK][.TRANS_EMPTY_2_MOVES] = .TRANS_1T_2_MOVES
-    Trans_After_Loading[.TANK][.TRANS_EMPTY_1_MOVES] = .TRANS_1T_1_MOVES
-    Trans_After_Loading[.TANK][.TRANS_EMPTY_0_MOVES] = .TRANS_1T_0_MOVES
-    Trans_After_Loading[.TANK][.TRANS_1I_UNMOVED] = .TRANS_1I_1T_2_MOVES
-    Trans_After_Loading[.TANK][.TRANS_1I_2_MOVES] = .TRANS_1I_1T_2_MOVES
-    Trans_After_Loading[.TANK][.TRANS_1I_1_MOVES] = .TRANS_1I_1T_1_MOVES
-    Trans_After_Loading[.TANK][.TRANS_1I_0_MOVES] = .TRANS_1I_1T_0_MOVES
-    Trans_After_Loading[.TANK][.TRANS_1I_UNLOADED] = .TRANS_1I_1T_UNLOADED
+	// TANK valid transitions
+	Trans_After_Loading[.TANK][.TRANS_EMPTY_UNMOVED] = .TRANS_1T_UNMOVED
+	Trans_After_Loading[.TANK][.TRANS_EMPTY_2_MOVES] = .TRANS_1T_2_MOVES
+	Trans_After_Loading[.TANK][.TRANS_EMPTY_1_MOVES] = .TRANS_1T_1_MOVES
+	Trans_After_Loading[.TANK][.TRANS_EMPTY_0_MOVES] = .TRANS_1T_0_MOVES
+	Trans_After_Loading[.TANK][.TRANS_1I_UNMOVED] = .TRANS_1I_1T_2_MOVES
+	Trans_After_Loading[.TANK][.TRANS_1I_2_MOVES] = .TRANS_1I_1T_2_MOVES
+	Trans_After_Loading[.TANK][.TRANS_1I_1_MOVES] = .TRANS_1I_1T_1_MOVES
+	Trans_After_Loading[.TANK][.TRANS_1I_0_MOVES] = .TRANS_1I_1T_0_MOVES
+	Trans_After_Loading[.TANK][.TRANS_1I_UNLOADED] = .TRANS_1I_1T_UNLOADED
 
-    // AAGUN has no valid transitions (all remain ERROR_INVALID_ACTIVE_SHIP)
+	// AAGUN has no valid transitions (all remain ERROR_INVALID_ACTIVE_SHIP)
 }
 
-Idle_Ship_Space := [?][]Idle_Ship {
-	Army_Sizes.SMALL = {.TRANS_EMPTY, .TRANS_1I, .TRANS_1A, .TRANS_1T},
-	Army_Sizes.LARGE = {.TRANS_EMPTY, .TRANS_1I},
+Trans_Allowed_By_Army_Size := [Army_Sizes][]Idle_Ship {
+	.SMALL = {.TRANS_EMPTY, .TRANS_1I, .TRANS_1A, .TRANS_1T},
+	.LARGE = {.TRANS_EMPTY, .TRANS_1I},
 }
 
-Active_Ship_Space := [?][]Active_Ship {
-	Army_Sizes.SMALL = {.TRANS_1T_2_MOVES, .TRANS_1A_2_MOVES, .TRANS_1T_1_MOVES, .TRANS_1A_1_MOVES, .TRANS_1T_0_MOVES, .TRANS_1A_0_MOVES, .TRANS_1I_2_MOVES, .TRANS_EMPTY_2_MOVES, .TRANS_1I_1_MOVES, .TRANS_EMPTY_1_MOVES, .TRANS_1I_0_MOVES, .TRANS_EMPTY_0_MOVES},
-	Army_Sizes.LARGE = {.TRANS_1I_2_MOVES, .TRANS_EMPTY_2_MOVES, .TRANS_1I_1_MOVES, .TRANS_EMPTY_1_MOVES, .TRANS_1I_0_MOVES, .TRANS_EMPTY_0_MOVES},
+Active_Trans_By_Army_Size := [Army_Sizes][]Active_Ship {
+	.SMALL = {.TRANS_1T_2_MOVES, .TRANS_1A_2_MOVES, .TRANS_1T_1_MOVES, .TRANS_1A_1_MOVES, .TRANS_1T_0_MOVES, .TRANS_1A_0_MOVES, .TRANS_1I_2_MOVES, .TRANS_EMPTY_2_MOVES, .TRANS_1I_1_MOVES, .TRANS_EMPTY_1_MOVES, .TRANS_1I_0_MOVES, .TRANS_EMPTY_0_MOVES},
+	.LARGE = {.TRANS_1I_2_MOVES, .TRANS_EMPTY_2_MOVES, .TRANS_1I_1_MOVES, .TRANS_EMPTY_1_MOVES, .TRANS_1I_0_MOVES, .TRANS_EMPTY_0_MOVES},
 }
 
 stage_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -268,7 +288,7 @@ Optimization:
 2. Uses pre-computed movement tables based on canal state
 */
 add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance: int) {
-    /*
+	/*
     Transport Movement Safety Rules
     
     Transports require protection when entering hostile waters:
@@ -278,30 +298,30 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance
     
     This ensures transports don't move through hostile waters without escort.
     */
-    for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-        if to_air(dst_sea) in gc.rejected_moves_from[to_air(src_sea)] ||
-           gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] > 0 &&
-           gc.allied_sea_combatants_total[dst_sea] == 0 {  // Transport needs combat ship escort
-            continue
-        }
-        gc.valid_actions += {to_action(dst_sea)}
-    }
-    if max_distance == 1 do return
-    
-    mid_seas := &mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea]
-    for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-        if to_air(dst_sea_2_away) in gc.rejected_moves_from[to_air(src_sea)] ||
-           gc.team_sea_units[dst_sea_2_away][mm.enemy_team[gc.cur_player]] > 0 &&
-            gc.allied_sea_combatants_total[dst_sea_2_away] == 0 {  // Transport needs combat ship escort
-            continue
-        }
-        for mid_sea in sa.slice(&mid_seas[dst_sea_2_away]) {
-            if (gc.enemy_blockade_total[mid_sea] == 0) {  // Path must be free of enemy blockades
-                gc.valid_actions += {to_action(dst_sea_2_away)}
-                break
-            }
-        }
-    }
+	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
+		if to_air(dst_sea) in gc.rejected_moves_from[to_air(src_sea)] ||
+		   gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] > 0 &&
+			   gc.allied_sea_combatants_total[dst_sea] == 0 { 	// Transport needs combat ship escort
+			continue
+		}
+		gc.valid_actions += {to_action(dst_sea)}
+	}
+	if max_distance == 1 do return
+
+	mid_seas := &mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea]
+	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
+		if to_air(dst_sea_2_away) in gc.rejected_moves_from[to_air(src_sea)] ||
+		   gc.team_sea_units[dst_sea_2_away][mm.enemy_team[gc.cur_player]] > 0 &&
+			   gc.allied_sea_combatants_total[dst_sea_2_away] == 0 { 	// Transport needs combat ship escort
+			continue
+		}
+		for mid_sea in sa.slice(&mid_seas[dst_sea_2_away]) {
+			if (gc.enemy_blockade_total[mid_sea] == 0) { 	// Path must be free of enemy blockades
+				gc.valid_actions += {to_action(dst_sea_2_away)}
+				break
+			}
+		}
+	}
 }
 
 add_valid_unload_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
@@ -327,19 +347,37 @@ When a player explicitly chooses not to unload units from a transport that has t
 2. This prevents re-prompting the player about unloading from this transport
 3. Helps optimize the Monte Carlo search by avoiding already-rejected options
 */
-Trans_After_Rejecting_Unload : [Active_Ship]Active_Ship
+Trans_After_Rejecting_Unload: [Active_Ship]Active_Ship
 
 @(init)
 init_trans_after_rejecting_unload :: proc() {
-    Trans_After_Rejecting_Unload[.TRANS_1I_0_MOVES] = .TRANS_1I_UNLOADED
-    Trans_After_Rejecting_Unload[.TRANS_1A_0_MOVES] = .TRANS_1A_UNLOADED
-    Trans_After_Rejecting_Unload[.TRANS_1T_0_MOVES] = .TRANS_1T_UNLOADED
-    Trans_After_Rejecting_Unload[.TRANS_2I_0_MOVES] = .TRANS_2I_UNLOADED
-    Trans_After_Rejecting_Unload[.TRANS_1I_1A_0_MOVES] = .TRANS_1I_1A_UNLOADED
-    Trans_After_Rejecting_Unload[.TRANS_1I_1T_0_MOVES] = .TRANS_1I_1T_UNLOADED
+	Trans_After_Rejecting_Unload[.TRANS_1I_0_MOVES] = .TRANS_1I_UNLOADED
+	Trans_After_Rejecting_Unload[.TRANS_1A_0_MOVES] = .TRANS_1A_UNLOADED
+	Trans_After_Rejecting_Unload[.TRANS_1T_0_MOVES] = .TRANS_1T_UNLOADED
+	Trans_After_Rejecting_Unload[.TRANS_2I_0_MOVES] = .TRANS_2I_UNLOADED
+	Trans_After_Rejecting_Unload[.TRANS_1I_1A_0_MOVES] = .TRANS_1I_1A_UNLOADED
+	Trans_After_Rejecting_Unload[.TRANS_1I_1T_0_MOVES] = .TRANS_1I_1T_UNLOADED
 }
 
 unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
+    /*
+    AI NOTE: Transport Unloading System
+    
+    Unloading has several key rules:
+    1. Can only unload when transport has 0 moves left
+       - Prevents unload-move-unload exploitation
+       - Forces commitment to unload location
+    
+    2. Must unload to adjacent land territory
+       - Uses s2l_1away_via_sea connections
+       - Territory must be friendly or empty
+    
+    3. Rejection Handling:
+       - If player chooses not to unload
+       - Transport marked as UNLOADED
+       - Prevents re-prompting about same unload
+       - Helps Monte Carlo search efficiency
+    */
 	for ship in Transports_With_Cargo {
 		for src_sea in Sea_ID {
 			if gc.active_ships[src_sea][ship] == 0 do continue
@@ -354,7 +392,7 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 					continue
 				}
 				unload_unit(gc, to_land(dst_air), ship)
-				replace_ship(gc, src_sea, ship, Transport_Unloaded[ship])
+				replace_ship(gc, src_sea, ship, Trans_After_Unload[ship])
 			}
 		}
 		if gc.clear_history_needed do clear_move_history(gc)
@@ -362,8 +400,8 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-Transport_Unload_Unit : [Active_Ship]Active_Army
-    /*
+Transport_Unload_Unit: [Active_Ship]Active_Army
+/*
     Game Rule: Transport Unloading
     
     When a unit unloads from a transport, it cannot move further that turn.
@@ -385,16 +423,16 @@ init_transport_unload_unit :: proc() {
 	Transport_Unload_Unit[.TRANS_1I_1T_0_MOVES] = .INF_0_MOVES
 }
 
-Transport_Unloaded :[Active_Ship]Active_Ship 
+Trans_After_Unload: [Active_Ship]Active_Ship
 
 @(init)
-init_transport_unloaded :: proc() {
-	Transport_Unloaded[.TRANS_1I_0_MOVES] = .TRANS_EMPTY_0_MOVES
-	Transport_Unloaded[.TRANS_1A_0_MOVES] = .TRANS_EMPTY_0_MOVES
-	Transport_Unloaded[.TRANS_1T_0_MOVES] = .TRANS_EMPTY_0_MOVES
-	Transport_Unloaded[.TRANS_2I_0_MOVES] = .TRANS_1I_0_MOVES
-	Transport_Unloaded[.TRANS_1I_1A_0_MOVES] = .TRANS_1A_0_MOVES
-	Transport_Unloaded[.TRANS_1I_1T_0_MOVES] = .TRANS_1T_0_MOVES
+init_Trans_After_Unload :: proc() {
+	Trans_After_Unload[.TRANS_1I_0_MOVES] = .TRANS_EMPTY_0_MOVES
+	Trans_After_Unload[.TRANS_1A_0_MOVES] = .TRANS_EMPTY_0_MOVES
+	Trans_After_Unload[.TRANS_1T_0_MOVES] = .TRANS_EMPTY_0_MOVES
+	Trans_After_Unload[.TRANS_2I_0_MOVES] = .TRANS_1I_0_MOVES
+	Trans_After_Unload[.TRANS_1I_1A_0_MOVES] = .TRANS_1A_0_MOVES
+	Trans_After_Unload[.TRANS_1I_1T_0_MOVES] = .TRANS_1T_0_MOVES
 }
 
 /*
@@ -410,8 +448,8 @@ unload_unit :: proc(gc: ^Game_Cache, dst_land: Land_ID, ship: Active_Ship) {
 	gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[army]] += 1
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
 	gc.max_bombards[dst_land] += 1
-	if !flag_for_land_enemy_combat(gc, dst_land) {
-		check_for_conquer(gc, dst_land)
+	if !mark_land_for_combat_resolution(gc, dst_land) {
+		check_and_process_land_conquest(gc, dst_land)
 	}
 }
 

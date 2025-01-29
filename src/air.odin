@@ -76,7 +76,7 @@ COASTAL_CONNECTIONS := [?]Coastal_Connection {
 	{land = .Tokyo, sea = .Pacific},
 }
 
-initialize_costal_connections :: proc() {
+initialize_coastal_connections :: proc() {
 	for connection in COASTAL_CONNECTIONS {
 		sa.push(&mm.l2s_1away_via_land[connection.land], connection.sea)
 		mm.l2s_1away_via_land_bitset[connection.land] += {connection.sea}
@@ -128,6 +128,13 @@ initialize_air_connections :: proc() {
 			mm.a2a_within_1_moves[to_air(sea)] += {to_air(adjacent_land)}
 		}
 		for adjacent_sea in mm.s2s_1away_via_sea[Canal_States - 1][sea] {
+			/*
+			AI NOTE: Air Movement Over Sea Zones
+			Use Canal_States - 1 (all canals open) because:
+			- Air units can move between connected sea zones
+			- Air movement ignores canal state restrictions
+			- If seas are ever connected (any canal state), air can fly between them
+			*/
 			mm.air_distances[to_air(sea)][to_air(adjacent_sea)] = 1
 			mm.a2a_within_1_moves[to_air(sea)] += {to_air(adjacent_sea)}
 		}

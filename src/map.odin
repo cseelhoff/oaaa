@@ -88,7 +88,7 @@ initialize_map_constants :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	initialize_player_data()
 	initialize_land_connections()
 	initialize_sea_connections()
-	initialize_costal_connections()
+	initialize_coastal_connections()
 	initialize_air_connections()
 	return true
 }

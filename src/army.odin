@@ -33,15 +33,29 @@ ARTILLERY_DEFENSE :: 2
 TANK_DEFENSE :: 3
 
 Active_Army :: enum {
-	INF_1_MOVES,
-	INF_0_MOVES,
-	ARTY_1_MOVES,
-	ARTY_0_MOVES,
-	TANK_2_MOVES,
-	TANK_1_MOVES,
-	TANK_0_MOVES,
-	AAGUN_1_MOVES,
-	AAGUN_0_MOVES,
+    /*
+    AI NOTE: Army Movement States
+    
+    Each unit type has different movement capabilities:
+    - Infantry: 1 move (INF_1_MOVES -> INF_0_MOVES)
+    - Artillery: 1 move (ARTY_1_MOVES -> ARTY_0_MOVES)
+    - Tank: 2 moves (TANK_2_MOVES -> TANK_1_MOVES -> TANK_0_MOVES)
+    - AA Gun: 1 move (AAGUN_1_MOVES -> AAGUN_0_MOVES)
+    
+    Movement states track remaining moves and are used to:
+    1. Validate legal moves based on distance
+    2. Handle special cases like tank blitz
+    3. Track units that have finished moving
+    */
+    INF_1_MOVES,
+    INF_0_MOVES,
+    ARTY_1_MOVES,
+    ARTY_0_MOVES,
+    TANK_2_MOVES,
+    TANK_1_MOVES,
+    TANK_0_MOVES,
+    AAGUN_1_MOVES,
+    AAGUN_0_MOVES,
 }
 
 Active_Army_To_Idle := [Active_Army]Idle_Army {
@@ -170,6 +184,20 @@ move_next_army_in_land :: proc(
 ) -> (
 	ok: bool,
 ) {
+    /*
+    AI NOTE: Army Movement Logic
+    
+    Armies can move in two ways:
+    1. Land Movement:
+       - Must follow connected territories
+       - Blocked by enemy units and factories
+       - Tanks can move through friendly territory (blitz)
+    
+    2. Sea Transport:
+       - Can load onto transport ships in adjacent sea zones
+       - Must have available transport capacity
+       - Transport must be able to move after loading
+    */
 	dst_air := get_move_input(gc, fmt.tprint(army), to_air(src_land)) or_return
     
     // Handle sea movement (transport loading) first
@@ -218,8 +246,8 @@ blitz_checks :: proc(
     - Gives player strategic control over which territories to capture
     - Handles cases where different paths have different strategic value
     */
-	if !flag_for_land_enemy_combat(gc, dst_land) &&
-	   check_for_conquer(gc, dst_land) &&
+	if !mark_land_for_combat_resolution(gc, dst_land) &&
+	   check_and_process_land_conquest(gc, dst_land) &&
 	   army == .TANK_2_MOVES &&
 	   mm.land_distances[src_land][dst_land] == 1 &&
 	   gc.factory_prod[dst_land] == 0 {
@@ -272,7 +300,7 @@ is_boat_available :: proc(
 	army: Active_Army,
 ) -> bool {
 	idle_ships := &gc.idle_ships[dst_sea][gc.cur_player]
-	for transport in Idle_Ship_Space[Army_Size[army]] {
+	for transport in Trans_Allowed_By_Army_Size[Army_Size[army]] {
 		if idle_ships[transport] > 0 {
 			return true
 		}
@@ -387,7 +415,7 @@ load_available_transport :: proc(
 	dst_sea: Sea_ID,
 	player: Player_ID,
 ) {
-	for transport in Active_Ship_Space[Army_Size[army]] {
+	for transport in Active_Trans_By_Army_Size[Army_Size[army]] {
 		if gc.active_ships[dst_sea][transport] > 0 {
 			load_specific_transport(gc, src_land, dst_sea, transport, army, player)
 			return

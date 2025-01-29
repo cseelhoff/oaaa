@@ -99,7 +99,7 @@ initialize_land_connections :: proc() {
 	}
 }
 
-conquer_land :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool) {
+transfer_land_ownership :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool) {
 	old_owner := gc.owner[dst_land]
 	if mm.capital[old_owner] == dst_land {
 		gc.money[gc.cur_player] += gc.money[old_owner]

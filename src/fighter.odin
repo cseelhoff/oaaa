@@ -154,10 +154,18 @@ skip_sea_fighter :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> (
 }
 
 refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
-	// is allied owned and not recently conquered?
-	gc.can_fighter_land_here =
-		to_air_bitset(gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started) |
-		to_air_bitset(gc.has_carrier_space | gc.possible_factory_carriers)
+    /*
+    AI NOTE: Fighter Landing Requirements
+    Fighters can land in three types of locations:
+    1. Friendly territories (not in combat)
+    2. Spaces with available carrier capacity
+    3. Spaces within 2 moves of a friendly carrier
+       - This allows fighters to land on carriers that move after them
+       - Uses current canal state since carriers must navigate canals
+    */
+    gc.can_fighter_land_here =
+        to_air_bitset(gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started) |
+        to_air_bitset(gc.has_carrier_space | gc.possible_factory_carriers)
 	for sea in Sea_ID {
 		// if player owns a carrier, then landing area is 2 spaces away
 		if gc.active_ships[sea][.CARRIER_2_MOVES] == 0 do continue
@@ -174,12 +182,21 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 }
 
 add_valid_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
-	gc.valid_actions = to_action_bitset(
-		~gc.rejected_moves_from[src_air] &
-		((mm.a2a_within_2_moves[src_air] & (gc.can_fighter_land_here | gc.air_has_enemies)) |
-				(mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move) |
-				(mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here)),
-	)
+    /*
+    AI NOTE: Fighter Movement Rules
+    Fighters can move in three ways:
+    1. Up to 2 spaces if they can land at destination or there are enemies
+    2. Up to 3 spaces if they can land 1 space away from destination
+    3. Up to 4 spaces if they can land at destination (e.g., carrier will be there)
+    
+    This ensures fighters always have a valid landing spot within range
+    after completing their move, even if they engage in combat.
+    */
+    gc.valid_actions = to_action_bitset(
+        ~gc.rejected_moves_from[src_air] & ((mm.a2a_within_2_moves[src_air] & (gc.can_fighter_land_here | gc.air_has_enemies)) |
+                (mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move) |
+                (mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here)),
+    )
 }
 
 land_remaining_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {

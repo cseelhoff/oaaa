@@ -194,7 +194,7 @@ test_transport_staging :: proc(t: ^testing.T) {
 @(test)
 test_transport_space :: proc(t: ^testing.T) {
     // Test transport space for small armies
-    small_ships := oaaa.Idle_Ship_Space[oaaa.Army_Sizes.SMALL]
+    small_ships := oaaa.Trans_Allowed_By_Army_Size[oaaa.Army_Sizes.SMALL]
     
     // Check if ship types exist in the slice
     contains_ship :: proc(ships: []oaaa.Idle_Ship, ship: oaaa.Idle_Ship) -> bool {
@@ -218,7 +218,7 @@ test_transport_space :: proc(t: ^testing.T) {
         "Small armies should be able to use transports with tanks")
         
     // Test transport space for large armies
-    large_ships := oaaa.Idle_Ship_Space[oaaa.Army_Sizes.LARGE]
+    large_ships := oaaa.Trans_Allowed_By_Army_Size[oaaa.Army_Sizes.LARGE]
     testing.expect(t, 
         contains_ship(large_ships, oaaa.Idle_Ship.TRANS_EMPTY),
         "Large armies should be able to use empty transports")
@@ -237,24 +237,24 @@ test_transport_space :: proc(t: ^testing.T) {
 test_transport_unloading :: proc(t: ^testing.T) {
     // Test unloading single units
     testing.expect(t,
-        oaaa.Transport_Unloaded[oaaa.Active_Ship.TRANS_1I_0_MOVES] == oaaa.Active_Ship.TRANS_EMPTY_0_MOVES,
+        oaaa.Trans_After_Unload[oaaa.Active_Ship.TRANS_1I_0_MOVES] == oaaa.Active_Ship.TRANS_EMPTY_0_MOVES,
         "Unloading infantry from transport with only infantry should leave empty transport")
     testing.expect(t,
-        oaaa.Transport_Unloaded[oaaa.Active_Ship.TRANS_1A_0_MOVES] == oaaa.Active_Ship.TRANS_EMPTY_0_MOVES,
+        oaaa.Trans_After_Unload[oaaa.Active_Ship.TRANS_1A_0_MOVES] == oaaa.Active_Ship.TRANS_EMPTY_0_MOVES,
         "Unloading artillery from transport with only artillery should leave empty transport")
     testing.expect(t,
-        oaaa.Transport_Unloaded[oaaa.Active_Ship.TRANS_1T_0_MOVES] == oaaa.Active_Ship.TRANS_EMPTY_0_MOVES,
+        oaaa.Trans_After_Unload[oaaa.Active_Ship.TRANS_1T_0_MOVES] == oaaa.Active_Ship.TRANS_EMPTY_0_MOVES,
         "Unloading tank from transport with only tank should leave empty transport")
         
     // Test unloading from transports with multiple units
     testing.expect(t,
-        oaaa.Transport_Unloaded[oaaa.Active_Ship.TRANS_2I_0_MOVES] == oaaa.Active_Ship.TRANS_1I_0_MOVES,
+        oaaa.Trans_After_Unload[oaaa.Active_Ship.TRANS_2I_0_MOVES] == oaaa.Active_Ship.TRANS_1I_0_MOVES,
         "Unloading infantry from transport with two infantry should leave one infantry")
     testing.expect(t,
-        oaaa.Transport_Unloaded[oaaa.Active_Ship.TRANS_1I_1A_0_MOVES] == oaaa.Active_Ship.TRANS_1A_0_MOVES,
+        oaaa.Trans_After_Unload[oaaa.Active_Ship.TRANS_1I_1A_0_MOVES] == oaaa.Active_Ship.TRANS_1A_0_MOVES,
         "Unloading infantry from transport with infantry and artillery should leave artillery")
     testing.expect(t,
-        oaaa.Transport_Unloaded[oaaa.Active_Ship.TRANS_1I_1T_0_MOVES] == oaaa.Active_Ship.TRANS_1T_0_MOVES,
+        oaaa.Trans_After_Unload[oaaa.Active_Ship.TRANS_1I_1T_0_MOVES] == oaaa.Active_Ship.TRANS_1T_0_MOVES,
         "Unloading infantry from transport with infantry and tank should leave tank")
 }
 
