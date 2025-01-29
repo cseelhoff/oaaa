@@ -3,12 +3,26 @@ import sa "core:container/small_array"
 import "core:fmt"
 
 no_defender_threat_exists :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
-	if gc.enemy_blockade_total[sea] == 0 &&
-	   gc.enemy_fighters_total[sea] == 0 &&
-	   ~(gc.enemy_subs_total[sea] > 0 && gc.allied_destroyers_total[sea] > 0) {
-		return true
-	}
-	return false
+    /*
+    AI NOTE: Submarine Combat Logic
+    Submarines have a special "submerge" mechanic that affects when they are threats:
+    1. Subs ALWAYS submerge if they can (makes them untargetable but also unable to attack)
+    2. Enemy destroyers PREVENT subs from submerging (act as sub detectors)
+    3. Therefore, enemy subs are only a threat when:
+       - Enemy has subs in the sea zone AND
+       - Friendly forces have destroyers that prevent sub submerging
+    
+    This is why we check (enemy_subs > 0 && allied_destroyers > 0)
+    - If no allied destroyers: enemy subs will submerge (no threat)
+    - If no enemy subs: obviously no sub threat
+    - Only when BOTH present do subs pose a threat
+    */
+    if gc.enemy_blockade_total[sea] == 0 &&
+       gc.enemy_fighters_total[sea] == 0 &&
+       ~(gc.enemy_subs_total[sea] > 0 && gc.allied_destroyers_total[sea] > 0) {
+        return true
+    }
+    return false
 }
 
 get_allied_subs_count :: proc(gc: ^Game_Cache, sea: Sea_ID) -> (allied_subs: u8) {
@@ -20,35 +34,98 @@ get_allied_subs_count :: proc(gc: ^Game_Cache, sea: Sea_ID) -> (allied_subs: u8)
 }
 
 disable_bombardment :: proc(gc: ^Game_Cache, sea: Sea_ID) {
-	gc.active_ships[sea][.CRUISER_BOMBARDED] += gc.active_ships[sea][.CRUISER_0_MOVES]
-	gc.active_ships[sea][.CRUISER_0_MOVES] = 0
-	gc.active_ships[sea][.BATTLESHIP_BOMBARDED] += gc.active_ships[sea][.BATTLESHIP_0_MOVES]
-	gc.active_ships[sea][.BATTLESHIP_0_MOVES] = 0
-	gc.active_ships[sea][.BS_DAMAGED_BOMBARDED] += gc.active_ships[sea][.BS_DAMAGED_0_MOVES]
-	gc.active_ships[sea][.BS_DAMAGED_0_MOVES] = 0
+    /*
+    AI NOTE: Bombardment Mechanics
+    Bombardment is a special ability for supporting land invasions:
+    1. Triggers when transports unload units for land combat
+    2. Only cruisers/battleships that haven't engaged in sea combat can bombard
+    3. Each ship gets ONE bombardment per turn
+    4. Bombardment happens BEFORE first round of land combat
+    5. Only affects defending land units
+    
+    State tracking:
+    - Ships start in _0_MOVES state (eligible to bombard)
+    - After bombarding, convert to _BOMBARDED state
+    - _BOMBARDED ships are lower priority in casualty order since:
+      a) They've already used their special ability
+      b) Fresh ships still have bombardment available
+    */
+    gc.active_ships[sea][.CRUISER_BOMBARDED] += gc.active_ships[sea][.CRUISER_0_MOVES]
+    gc.active_ships[sea][.CRUISER_0_MOVES] = 0
+    gc.active_ships[sea][.BATTLESHIP_BOMBARDED] += gc.active_ships[sea][.BATTLESHIP_0_MOVES]
+    gc.active_ships[sea][.BATTLESHIP_0_MOVES] = 0
+    gc.active_ships[sea][.BS_DAMAGED_BOMBARDED] += gc.active_ships[sea][.BS_DAMAGED_0_MOVES]
+    gc.active_ships[sea][.BS_DAMAGED_0_MOVES] = 0
 }
 
 build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
-	//gc.valid_actions = {to_action(src_sea)}
-	if (gc.enemy_blockade_total[src_sea] == 0 && gc.enemy_fighters_total[src_sea] == 0) ||
-	   do_sea_targets_exist(gc, src_sea) {
-		// I am allowed to stay because I have combat units or no enemy blockade remains
-		// otherwise I am possibly wasting transports
-		gc.valid_actions += {to_action(src_sea)}
-	}
-	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] & ~gc.sea_combat_started {
-		if gc.enemy_blockade_total[dst_sea] == 0 {
-			gc.valid_actions += {to_action(dst_sea)}
-		}
-	}
+    /*
+    AI NOTE: Sea Combat Retreat Logic
+    
+    Blockade mechanics:
+    1. enemy_blockade_total = sum of enemy:
+       - Destroyers
+       - Carriers
+       - Cruisers
+       - Battleships (including damaged)
+    2. These ships prevent enemy movement through their sea zone
+    
+    Retreat validation:
+    1. Can stay in current sea if either:
+       a) No enemy blockade/fighters (safe to stay)
+       b) Have combat units that can fight (do_sea_targets_exist)
+    2. NEVER allow staying with just transports because:
+       - Transports have no combat value
+       - They will be automatically destroyed if they stay
+       - This would be a "wasted" move
+    
+    Valid retreat destinations:
+    - Must be 1 sea zone away (mm.s2s_1away_via_sea)
+    - Must not have enemy blockade
+    - Must not already have combat (sea_combat_started)
+    */
+    if (gc.enemy_blockade_total[src_sea] == 0 && gc.enemy_fighters_total[src_sea] == 0) ||
+       do_sea_targets_exist(gc, src_sea) {
+        gc.valid_actions += {to_action(src_sea)}
+    }
+    for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] & ~gc.sea_combat_started {
+        if gc.enemy_blockade_total[dst_sea] == 0 {
+            gc.valid_actions += {to_action(dst_sea)}
+        }
+    }
 }
 
 do_sea_targets_exist :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
-	return(
-		(gc.enemy_subs_total[sea] > 0 && gc.allied_destroyers_total[sea] > 0) ||
-		(gc.enemy_fighters_total[sea] > 0 && gc.allied_antifighter_ships_total[sea] > 0) ||
-		(gc.enemy_subvuln_ships_total[sea] > 0 && gc.allied_sea_combatants_total[sea] > 0) \
-	)
+    /*
+    AI NOTE: Valid Combat Target Relationships
+    This checks if we have appropriate units to fight what's in the sea zone:
+
+    1. Submarine Combat:
+       - Need destroyers to prevent sub submerging
+       - Then subs can be targeted normally
+
+    2. Anti-Fighter Combat:
+       Enemy fighters can be targeted by:
+       - Cruisers, Battleships (including damaged)
+       - Destroyers
+       - Our own Fighters
+       - Carriers
+       - Bombers
+       
+    3. General Ship Combat:
+       Enemy vulnerable ships (transports, carriers, etc) can be targeted by:
+       - All combat ships (subs, cruisers, battleships, destroyers)
+       - Fighters
+       - Carriers
+       - Bombers
+
+    If ANY of these valid combat matchups exist, we have a reason to stay and fight
+    */
+    return(
+        (gc.enemy_subs_total[sea] > 0 && gc.allied_destroyers_total[sea] > 0) ||
+        (gc.enemy_fighters_total[sea] > 0 && gc.allied_antifighter_ships_total[sea] > 0) ||
+        (gc.enemy_subvuln_ships_total[sea] > 0 && gc.allied_sea_combatants_total[sea] > 0)
+    )
 }
 
 sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> bool {
@@ -390,6 +467,22 @@ remove_sea_defenders :: proc(
 	subs_targetable: bool,
 	planes_targetable: bool,
 ) {
+    /*
+    AI NOTE: Battleship Damage Mechanics
+    Battleships are unique in having two "health states":
+    1. Undamaged (.BATTLESHIP) -> Can be damaged to (.BS_DAMAGED)
+    2. Damaged (.BS_DAMAGED) -> Can be destroyed
+    
+    Critical: We ALWAYS check undamaged battleships first because:
+    - They effectively have 2 HP (can take 2 hits before dying)
+    - A damaged battleship functions identically to an undamaged one
+    - Therefore, damaging an undamaged battleship "soaks" a hit without losing capability
+    - This is more efficient than losing a different ship entirely
+    
+    After battleships, targeting depends on:
+    - subs_targetable: Only true if destroyers present to prevent submerging
+    - planes_targetable: Affects when fighters can be hit
+    */
 	for (hits^ > 0) {
 		hits^ -= 1
 		if hit_enemy_battleship(gc, sea) do continue
