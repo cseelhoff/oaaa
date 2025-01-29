@@ -250,6 +250,23 @@ move_next_trans_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Sh
 	return true
 }
 
+/*
+Determines valid moves for a transport based on:
+
+Movement Range Rules:
+1. Can move 1-2 sea zones per turn
+2. Movement paths affected by open/closed canals
+3. Max_distance parameter can restrict to 1-space moves only
+
+Safety Rules:
+1. Cannot enter enemy-occupied sea zones without escort
+2. Requires allied combat ships present to move into hostile waters
+3. For 2-space moves, path must be free of enemy blockades
+
+Optimization:
+1. Skips moves previously rejected by player
+2. Uses pre-computed movement tables based on canal state
+*/
 add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance: int) {
     /*
     Transport Movement Safety Rules
@@ -310,16 +327,16 @@ When a player explicitly chooses not to unload units from a transport that has t
 2. This prevents re-prompting the player about unloading from this transport
 3. Helps optimize the Monte Carlo search by avoiding already-rejected options
 */
-Transport_State_After_Rejecting_Unload : [Active_Ship]Active_Ship
+Trans_After_Rejecting_Unload : [Active_Ship]Active_Ship
 
 @(init)
-init_transport_state_after_rejecting_unload :: proc() {
-    Transport_State_After_Rejecting_Unload[TRANS_1I_0_MOVES] = .TRANS_1I_UNLOADED
-    Transport_State_After_Rejecting_Unload[TRANS_1A_0_MOVES] = .TRANS_1A_UNLOADED
-    Transport_State_After_Rejecting_Unload[TRANS_1T_0_MOVES] = .TRANS_1T_UNLOADED
-    Transport_State_After_Rejecting_Unload[TRANS_2I_0_MOVES] = .TRANS_2I_UNLOADED
-    Transport_State_After_Rejecting_Unload[TRANS_1I_1A_0_MOVES] = .TRANS_1I_1A_UNLOADED
-    Transport_State_After_Rejecting_Unload[TRANS_1I_1T_0_MOVES] = .TRANS_1I_1T_UNLOADED
+init_trans_after_rejecting_unload :: proc() {
+    Trans_After_Rejecting_Unload[.TRANS_1I_0_MOVES] = .TRANS_1I_UNLOADED
+    Trans_After_Rejecting_Unload[.TRANS_1A_0_MOVES] = .TRANS_1A_UNLOADED
+    Trans_After_Rejecting_Unload[.TRANS_1T_0_MOVES] = .TRANS_1T_UNLOADED
+    Trans_After_Rejecting_Unload[.TRANS_2I_0_MOVES] = .TRANS_2I_UNLOADED
+    Trans_After_Rejecting_Unload[.TRANS_1I_1A_0_MOVES] = .TRANS_1I_1A_UNLOADED
+    Trans_After_Rejecting_Unload[.TRANS_1I_1T_0_MOVES] = .TRANS_1I_1T_UNLOADED
 }
 
 unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -331,12 +348,12 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			for gc.active_ships[src_sea][ship] > 0 {
 				dst_air := get_move_input(gc, fmt.tprint(ship), to_air(src_sea)) or_return
 				if dst_air == to_air(src_sea) {
-					gc.active_ships[src_sea][Transport_State_After_Rejecting_Unload[ship]] +=
+					gc.active_ships[src_sea][Trans_After_Rejecting_Unload[ship]] +=
 						gc.active_ships[src_sea][ship]
 					gc.active_ships[src_sea][ship] = 0
 					continue
 				}
-				unload_unit_to_land(gc, to_land(dst_air), ship)
+				unload_unit(gc, to_land(dst_air), ship)
 				replace_ship(gc, src_sea, ship, Transport_Unloaded[ship])
 			}
 		}
@@ -454,7 +471,14 @@ Transport_Unloaded := [Active_Ship]Active_Ship {
 	.BS_DAMAGED_BOMBARDED = .TRANS_EMPTY_0_MOVES,
 }
 
-unload_unit_to_land :: proc(gc: ^Game_Cache, dst_land: Land_ID, ship: Active_Ship) {
+/*
+Unloads a unit from transport, updating:
+1. Active and idle armies in destination
+2. Team unit counts
+3. Combat potential (bombard capability)
+4. Checks for potential combat or conquest
+*/
+unload_unit :: proc(gc: ^Game_Cache, dst_land: Land_ID, ship: Active_Ship) {
 	army := Transport_Unload_Unit_1[ship]
 	gc.active_armies[dst_land][army] += 1
 	gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[army]] += 1
