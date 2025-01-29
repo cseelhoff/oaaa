@@ -18,7 +18,7 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
     - They can only move into friendly territory
     
     Movement States:
-    - Start as AAGUN_UNMOVED (ready to move)
+    - Start as AAGUN_1_MOVES (ready to move)
     - Change to AAGUN_0_MOVES (done moving)
     - This prevents multiple moves per turn
     
@@ -35,26 +35,26 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
     */
     gc.clear_history_needed = false
 	for src_land in Land_ID {
-		if gc.active_armies[src_land][.AAGUN_UNMOVED] == 0 do continue
+		if gc.active_armies[src_land][.AAGUN_1_MOVES] == 0 do continue
 		gc.valid_actions = {to_action(src_land)}
 		gc.valid_actions += to_action_bitset(
 			mm.l2l_1away_via_land_bitset[src_land] &  // All adjacent lands
 			gc.friendly_owner &                        // Only friendly territory
 			~to_land_bitset(gc.rejected_moves_from[to_air(src_land)]), // Remove rejected moves
 		)
-		for gc.active_armies[src_land][.AAGUN_UNMOVED] > 0 {
+		for gc.active_armies[src_land][.AAGUN_1_MOVES] > 0 {
 			dst_air := get_move_input(
 				gc,
-				fmt.tprint(Active_Army.AAGUN_UNMOVED),
+				fmt.tprint(Active_Army.AAGUN_1_MOVES),
 				to_air(src_land),
 			) or_return
 			dst_land := to_land(dst_air)
-			if skip_army(gc, src_land, dst_land, .AAGUN_UNMOVED) do continue
+			if skip_army(gc, src_land, dst_land, .AAGUN_1_MOVES) do continue
 			move_single_army_land(
 				gc,
 				src_land,
 				dst_land,
-				.AAGUN_UNMOVED,
+				.AAGUN_1_MOVES,
 				.AAGUN_0_MOVES,
 			)
 		}

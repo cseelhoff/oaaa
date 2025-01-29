@@ -13,6 +13,36 @@ Action_Bitset :: bit_set[Action_ID;u32]
 Air_Bitset :: bit_set[Air_ID;u16]
 
 Game_Cache :: struct {
+    /*
+    AI NOTE: Combat Total Caching
+    
+    Pre-calculated unit totals serve multiple purposes:
+    
+    1. Performance Optimization:
+       - Avoids recounting units repeatedly
+       - Updated incrementally during moves
+       - Used heavily in threat detection
+    
+    2. Combat Type Detection:
+       enemy_subvuln_ships_total: Ships vulnerable to subs
+       - Transports and other non-combat ships
+       - Used to check if subs have valid targets
+       
+    3. Combat Resolution:
+       allied_antifighter_ships_total: Ships that can shoot fighters
+       - Cruisers, carriers, battleships
+       - Used to determine if fighters must retreat
+       
+    4. Threat Assessment:
+       allied_sea_combatants_total: All combat-capable ships
+       - Everything except transports
+       - Used for general naval threat checks
+    
+    These totals are maintained by:
+    - Incrementing when units move in
+    - Decrementing when units move out
+    - Resetting at start of each turn
+    */
 	using state:                    Game_State,
 	team_land_units:                [Land_ID][Team_ID]u8,
 	team_sea_units:                 [Sea_ID][Team_ID]u8,

@@ -228,10 +228,10 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		gc.skipped_buys[to_air(land)] = {}
 		gc.active_armies[land] = {}
 		idle_armies := &gc.idle_armies[land][gc.cur_player]
-		gc.active_armies[land][.INF_UNMOVED] = idle_armies[.INF]
-		gc.active_armies[land][.ARTY_UNMOVED] = idle_armies[.ARTY]
-		gc.active_armies[land][.TANK_UNMOVED] = idle_armies[.TANK]
-		gc.active_armies[land][.AAGUN_UNMOVED] = idle_armies[.AAGUN]
+		gc.active_armies[land][.INF_1_MOVES] = idle_armies[.INF]
+		gc.active_armies[land][.ARTY_1_MOVES] = idle_armies[.ARTY]
+		gc.active_armies[land][.TANK_2_MOVES] = idle_armies[.TANK]
+		gc.active_armies[land][.AAGUN_1_MOVES] = idle_armies[.AAGUN]
 		gc.active_land_planes[land] = {}
 		idle_planes := &gc.idle_land_planes[land][gc.cur_player]
 		gc.active_land_planes[land][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]

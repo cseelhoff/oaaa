@@ -2,6 +2,35 @@ package oaaa
 
 Game_State :: struct {
     /*
+    AI NOTE: Unit State Tracking System
+    
+    The game uses two parallel unit tracking systems:
+    
+    1. Idle Units (All Players):
+       - Tracks units for ALL players
+       - Used for:
+         * Combat calculations (need all units)
+         * Territory control (need unit counts)
+         * Movement validation (checking threats)
+       - Indexed by [location][player][unit_type]
+       
+    2. Active Units (Current Player Only):
+       - Only tracks current player's units
+       - Used for:
+         * Movement tracking (which units moved)
+         * Combat state (which units fought)
+         * Special abilities (bombardment used)
+       - Saves memory by not tracking inactive players
+       - Indexed by [location][unit_state]
+    
+    Active_Army_To_Idle mapping:
+    - Converts between the two systems
+    - Example: .INF_0_MOVES -> .INF
+    - Needed when:
+      * Converting moved units back to idle
+      * Updating both systems after combat
+    */
+    /*
     AI NOTE: Monte Carlo Search Optimization Fields
     Several fields help optimize the Monte Carlo search by tracking
     player decisions to avoid re-exploring rejected paths:
@@ -54,10 +83,10 @@ load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
 		gs.idle_armies[land][gs.owner[land]][.INF] = 0
 		if gs.owner[land] == gs.cur_player {
 			gs.builds_left[land] = gs.factory_prod[land]
-			gs.active_armies[land][.INF_UNMOVED] = 0
+			gs.active_armies[land][.INF_1_MOVES] = 0
 		}
 	}
-	// gs.land_states[Land_ID.Moscow].active_armies[Active_Army.TANK_UNMOVED] = 2
+	// gs.land_states[Land_ID.Moscow].active_armies[Active_Army.TANK_2_MOVES] = 2
 	// gs.land_states[Land_ID.Moscow].idle_armies[Player_ID.Rus][Idle_Army.TANK] = 2
 	// gs.land_states[Land_ID.Moscow].active_planes[Active_Plane.FIGHTER_UNMOVED] = 1
 	// gs.land_states[Land_ID.Moscow].idle_planes[Player_ID.Rus][Idle_Plane.FIGHTER] = 1

@@ -13,9 +13,9 @@ test_army_costs :: proc(t: ^testing.T) {
 
 @(test)
 test_active_to_idle_army_conversion :: proc(t: ^testing.T) {
-    testing.expect(t, oaaa.Active_Army_To_Idle[oaaa.Active_Army.INF_UNMOVED] == oaaa.Idle_Army.INF, "Infantry unmoved conversion failed")
+    testing.expect(t, oaaa.Active_Army_To_Idle[oaaa.Active_Army.INF_1_MOVES] == oaaa.Idle_Army.INF, "Infantry unmoved conversion failed")
     testing.expect(t, oaaa.Active_Army_To_Idle[oaaa.Active_Army.INF_0_MOVES] == oaaa.Idle_Army.INF, "Infantry 0 moves conversion failed")
-    testing.expect(t, oaaa.Active_Army_To_Idle[oaaa.Active_Army.ARTY_UNMOVED] == oaaa.Idle_Army.ARTY, "Artillery unmoved conversion failed")
+    testing.expect(t, oaaa.Active_Army_To_Idle[oaaa.Active_Army.ARTY_1_MOVES] == oaaa.Idle_Army.ARTY, "Artillery unmoved conversion failed")
     testing.expect(t, oaaa.Active_Army_To_Idle[oaaa.Active_Army.ARTY_0_MOVES] == oaaa.Idle_Army.ARTY, "Artillery 0 moves conversion failed")
 }
 

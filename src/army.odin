@@ -33,47 +33,47 @@ ARTILLERY_DEFENSE :: 2
 TANK_DEFENSE :: 3
 
 Active_Army :: enum {
-	INF_UNMOVED,
+	INF_1_MOVES,
 	INF_0_MOVES,
-	ARTY_UNMOVED,
+	ARTY_1_MOVES,
 	ARTY_0_MOVES,
-	TANK_UNMOVED,
+	TANK_2_MOVES,
 	TANK_1_MOVES,
 	TANK_0_MOVES,
-	AAGUN_UNMOVED,
+	AAGUN_1_MOVES,
 	AAGUN_0_MOVES,
 }
 
 Active_Army_To_Idle := [Active_Army]Idle_Army {
-	.INF_UNMOVED   = .INF,
+	.INF_1_MOVES   = .INF,
 	.INF_0_MOVES   = .INF,
-	.ARTY_UNMOVED  = .ARTY,
+	.ARTY_1_MOVES  = .ARTY,
 	.ARTY_0_MOVES  = .ARTY,
-	.TANK_UNMOVED  = .TANK,
+	.TANK_2_MOVES  = .TANK,
 	.TANK_1_MOVES  = .TANK,
 	.TANK_0_MOVES  = .TANK,
-	.AAGUN_UNMOVED = .AAGUN,
+	.AAGUN_1_MOVES = .AAGUN,
 	.AAGUN_0_MOVES = .AAGUN,
 }
 
 Armies_Moved := [Active_Army]Active_Army {
-	.INF_UNMOVED   = .INF_0_MOVES,
+	.INF_1_MOVES   = .INF_0_MOVES,
 	.INF_0_MOVES   = .INF_0_MOVES,
-	.ARTY_UNMOVED  = .ARTY_0_MOVES,
+	.ARTY_1_MOVES  = .ARTY_0_MOVES,
 	.ARTY_0_MOVES  = .ARTY_0_MOVES,
-	.TANK_UNMOVED  = .TANK_0_MOVES,
+	.TANK_2_MOVES  = .TANK_0_MOVES,
 	.TANK_1_MOVES  = .TANK_0_MOVES,
 	.TANK_0_MOVES  = .TANK_0_MOVES,
-	.AAGUN_UNMOVED = .AAGUN_0_MOVES,
+	.AAGUN_1_MOVES = .AAGUN_0_MOVES,
 	.AAGUN_0_MOVES = .AAGUN_0_MOVES,
 }
 
 Unmoved_Armies := [?]Active_Army {
-	.INF_UNMOVED,
-	.ARTY_UNMOVED,
-	.TANK_UNMOVED,
+	.INF_1_MOVES,
+	.ARTY_1_MOVES,
+	.TANK_2_MOVES,
 	.TANK_1_MOVES,
-	//Active_Army.AAGUN_UNMOVED, //Moved in later engine version
+	//Active_Army.AAGUN_1_MOVES, //Moved in later engine version
 }
 
 Army_Sizes :: distinct enum u8 {
@@ -82,14 +82,14 @@ Army_Sizes :: distinct enum u8 {
 }
 
 Army_Size := [Active_Army]Army_Sizes {
-	.INF_UNMOVED   = .SMALL,
+	.INF_1_MOVES   = .SMALL,
 	.INF_0_MOVES   = .SMALL,
-	.ARTY_UNMOVED  = .LARGE,
+	.ARTY_1_MOVES  = .LARGE,
 	.ARTY_0_MOVES  = .LARGE,
-	.TANK_UNMOVED  = .LARGE,
+	.TANK_2_MOVES  = .LARGE,
 	.TANK_1_MOVES  = .LARGE,
 	.TANK_0_MOVES  = .LARGE,
-	.AAGUN_UNMOVED = .LARGE,
+	.AAGUN_1_MOVES = .LARGE,
 	.AAGUN_0_MOVES = .LARGE,
 }
 
@@ -100,7 +100,7 @@ move_armies :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			if gc.active_armies[src_land][army] == 0 do continue
 			gc.valid_actions = {to_action(src_land)}
 			add_valid_army_moves_1(gc, src_land, army)
-			if army == .TANK_UNMOVED do add_valid_army_moves_2(gc, src_land, army)
+			if army == .TANK_2_MOVES do add_valid_army_moves_2(gc, src_land, army)
 			for gc.active_armies[src_land][army] > 0 {
 				move_next_army_in_land(gc, army, src_land) or_return
 			}
@@ -134,7 +134,7 @@ blitz_checks :: proc(
 ) -> Active_Army {
 	if !flag_for_land_enemy_combat(gc, dst_land) &&
 	   check_for_conquer(gc, dst_land) &&
-	   army == .TANK_UNMOVED &&
+	   army == .TANK_2_MOVES &&
 	   mm.land_distances[src_land][dst_land] == 1 &&
 	   gc.factory_prod[dst_land] == 0 {
 		return .TANK_1_MOVES //blitz!
@@ -203,6 +203,25 @@ add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
 }
 
 add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
+    /*
+    AI NOTE: Territory Control Validation
+    
+    When validating 2-space army moves, we must check both:
+    1. Enemy Units (has_enemy_units):
+       - Enemy armies that moved into the territory
+       - Blocks movement even without a factory
+       - Dynamic, changes as units move
+    
+    2. Enemy Factories (has_enemy_factory):
+       - Permanent structures that indicate territory control
+       - Blocks movement even without units present
+       - Static, only changes when factories built/destroyed
+    
+    Both checks are needed since:
+    - Territory can have enemy units without factory (from movement)
+    - Territory can have enemy factory without units (newly built)
+    - Movement blocked if either condition is true
+    */
 	for dst_land in (mm.l2l_2away_via_land_bitset[src_land] & to_land_bitset(~gc.rejected_moves_from[to_air(src_land)])) {
 		if (mm.l2l_2away_via_midland_bitset[src_land][dst_land] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
 			continue
@@ -254,7 +273,6 @@ load_available_transport :: proc(
 	dst_sea: Sea_ID,
 	player: Player_ID,
 ) {
-	// active_ship_spaces := Active_Ship_Space[Army_Size[army]]
 	for transport in Active_Ship_Space[Army_Size[army]] {
 		if gc.active_ships[dst_sea][transport] > 0 {
 			load_specific_transport(gc, src_land, dst_sea, transport, army, player)
@@ -272,6 +290,30 @@ load_specific_transport :: proc(
 	army: Active_Army,
 	player: Player_ID,
 ) {
+    /*
+    AI NOTE: Transport Loading System
+    
+    This procedure handles the state transitions when loading an army onto a transport:
+    
+    1. Transport State Transition:
+       - Use Transport_Load_Unit[army_type][current_state] to get new transport state
+       - Example: [.INF][.TRANS_EMPTY] -> .TRANS_1I
+       - Handles all valid combinations within 5-space capacity
+    
+    2. Game State Updates:
+       a) Create new transport in loaded state:
+          - Increment active_ships[new_state]
+          - Increment idle_ships[new_state]
+       
+       b) Remove army from source land:
+          - Decrement active_armies
+          - Decrement idle_armies
+          - Decrement team_land_units
+       
+       c) Remove old empty transport:
+          - Decrement active_ships[old_state]
+          - Decrement idle_ships[old_state]
+    */
 	idle_army := Active_Army_To_Idle[army]
 	new_ship := Transport_Load_Unit[idle_army][ship]
 	gc.active_ships[dst_sea][new_ship] += 1

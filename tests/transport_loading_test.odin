@@ -76,7 +76,7 @@ test_transport_load_and_stage :: proc(t: ^testing.T) {
     // Place an empty transport and infantry
     gc.active_ships[test_sea][oaaa.Active_Ship.TRANS_EMPTY_UNMOVED] = 1
     gc.idle_ships[test_sea][.USA][oaaa.Idle_Ship.TRANS_EMPTY] = 1
-    gc.active_armies[test_land][oaaa.Active_Army.INF_UNMOVED] = 1
+    gc.active_armies[test_land][oaaa.Active_Army.INF_1_MOVES] = 1
     gc.idle_armies[test_land][.USA][oaaa.Idle_Army.INF] = 1
     gc.team_land_units[test_land][.Allies] = 1
     
@@ -85,7 +85,7 @@ test_transport_load_and_stage :: proc(t: ^testing.T) {
     oaaa.replace_ship(&gc, test_sea, oaaa.Active_Ship.TRANS_EMPTY_UNMOVED, loaded_ship)
     
     // Update land units
-    gc.active_armies[test_land][oaaa.Active_Army.INF_UNMOVED] -= 1
+    gc.active_armies[test_land][oaaa.Active_Army.INF_1_MOVES] -= 1
     gc.idle_armies[test_land][.USA][oaaa.Idle_Army.INF] -= 1
     gc.team_land_units[test_land][.Allies] -= 1
     
@@ -96,7 +96,7 @@ test_transport_load_and_stage :: proc(t: ^testing.T) {
         "Idle ship should be updated to loaded state")
     
     // Verify land state
-    testing.expect(t, gc.active_armies[test_land][oaaa.Active_Army.INF_UNMOVED] == 0,
+    testing.expect(t, gc.active_armies[test_land][oaaa.Active_Army.INF_1_MOVES] == 0,
         "Infantry should be removed from land")
     testing.expect(t, gc.team_land_units[test_land][.Allies] == 0,
         "Team land units should be decremented")
@@ -325,8 +325,8 @@ test_transport_multiple_units :: proc(t: ^testing.T) {
     gc.idle_ships[test_sea][.USA][oaaa.Idle_Ship.TRANS_EMPTY] = 1
     
     // Place infantry and artillery in source land
-    gc.active_armies[src_land][oaaa.Active_Army.INF_UNMOVED] = 1
-    gc.active_armies[src_land][oaaa.Active_Army.ARTY_UNMOVED] = 1
+    gc.active_armies[src_land][oaaa.Active_Army.INF_1_MOVES] = 1
+    gc.active_armies[src_land][oaaa.Active_Army.ARTY_1_MOVES] = 1
     gc.idle_armies[src_land][.USA][oaaa.Idle_Army.INF] = 1
     gc.idle_armies[src_land][.USA][oaaa.Idle_Army.ARTY] = 1
     gc.team_land_units[src_land][.Allies] = 2
@@ -336,7 +336,7 @@ test_transport_multiple_units :: proc(t: ^testing.T) {
     oaaa.replace_ship(&gc, test_sea, oaaa.Active_Ship.TRANS_EMPTY_UNMOVED, loaded_ship)
     
     // Update source land after loading infantry
-    gc.active_armies[src_land][oaaa.Active_Army.INF_UNMOVED] -= 1
+    gc.active_armies[src_land][oaaa.Active_Army.INF_1_MOVES] -= 1
     gc.idle_armies[src_land][.USA][oaaa.Idle_Army.INF] -= 1
     gc.team_land_units[src_land][.Allies] -= 1
     
@@ -345,16 +345,16 @@ test_transport_multiple_units :: proc(t: ^testing.T) {
     oaaa.replace_ship(&gc, test_sea, oaaa.Active_Ship.TRANS_1I_UNMOVED, loaded_ship)
     
     // Update source land after loading artillery
-    gc.active_armies[src_land][oaaa.Active_Army.ARTY_UNMOVED] -= 1
+    gc.active_armies[src_land][oaaa.Active_Army.ARTY_1_MOVES] -= 1
     gc.idle_armies[src_land][.USA][oaaa.Idle_Army.ARTY] -= 1
     gc.team_land_units[src_land][.Allies] -= 1
     
     // Verify source land state
     testing.expect(t, gc.team_land_units[src_land][.Allies] == 0,
         "Source land should have no units")
-    testing.expect(t, gc.active_armies[src_land][oaaa.Active_Army.INF_UNMOVED] == 0,
+    testing.expect(t, gc.active_armies[src_land][oaaa.Active_Army.INF_1_MOVES] == 0,
         "Source land should have no infantry")
-    testing.expect(t, gc.active_armies[src_land][oaaa.Active_Army.ARTY_UNMOVED] == 0,
+    testing.expect(t, gc.active_armies[src_land][oaaa.Active_Army.ARTY_1_MOVES] == 0,
         "Source land should have no artillery")
     
     // Verify transport state after loading both units
@@ -391,7 +391,7 @@ test_transport_basic_loading :: proc(t: ^testing.T) {
     // Setup initial state
     gc.active_ships[test_sea][oaaa.Active_Ship.TRANS_EMPTY_UNMOVED] = 1
     gc.idle_ships[test_sea][.USA][oaaa.Idle_Ship.TRANS_EMPTY] = 1
-    gc.active_armies[src_land][oaaa.Active_Army.INF_UNMOVED] = 1
+    gc.active_armies[src_land][oaaa.Active_Army.INF_1_MOVES] = 1
     gc.idle_armies[src_land][.USA][oaaa.Idle_Army.INF] = 1
     gc.team_land_units[src_land][.Allies] = 1
     
@@ -400,7 +400,7 @@ test_transport_basic_loading :: proc(t: ^testing.T) {
     oaaa.replace_ship(&gc, test_sea, oaaa.Active_Ship.TRANS_EMPTY_UNMOVED, loaded_ship)
     
     // Update source land
-    gc.active_armies[src_land][oaaa.Active_Army.INF_UNMOVED] -= 1
+    gc.active_armies[src_land][oaaa.Active_Army.INF_1_MOVES] -= 1
     gc.idle_armies[src_land][.USA][oaaa.Idle_Army.INF] -= 1
     gc.team_land_units[src_land][.Allies] -= 1
     
@@ -413,6 +413,6 @@ test_transport_basic_loading :: proc(t: ^testing.T) {
     // Verify source land state
     testing.expect(t, gc.team_land_units[src_land][.Allies] == 0,
         "Source land should have no units")
-    testing.expect(t, gc.active_armies[src_land][oaaa.Active_Army.INF_UNMOVED] == 0,
+    testing.expect(t, gc.active_armies[src_land][oaaa.Active_Army.INF_1_MOVES] == 0,
         "Source land should have no infantry")
 }
