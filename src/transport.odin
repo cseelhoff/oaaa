@@ -86,42 +86,28 @@ Transports_Needing_Staging := [?]Active_Ship {
 	.TRANS_1T_UNMOVED,
 }
 
-Ship_After_Staged := [?][MAX_TRANSPORT_MOVES + 1]Active_Ship {
-	Active_Ship.TRANS_EMPTY_UNMOVED = {
-		0 = .TRANS_EMPTY_2_MOVES,
-		1 = .TRANS_EMPTY_1_MOVES,
-		2 = .TRANS_EMPTY_0_MOVES,
-	},
-	Active_Ship.TRANS_1I_UNMOVED = {
-		0 = .TRANS_1I_2_MOVES,
-		1 = .TRANS_1I_1_MOVES,
-		2 = .TRANS_1I_0_MOVES,
-	},
-	Active_Ship.TRANS_1A_UNMOVED = {
-		0 = .TRANS_1A_2_MOVES,
-		1 = .TRANS_1A_1_MOVES,
-		2 = .TRANS_1A_0_MOVES,
-	},
-	Active_Ship.TRANS_1T_UNMOVED = {
-		0 = .TRANS_1T_2_MOVES,
-		1 = .TRANS_1T_1_MOVES,
-		2 = .TRANS_1T_0_MOVES,
-	},
-}
+Ship_After_Staged : [Active_Ship][MAX_TRANSPORT_MOVES + 1]Active_Ship 
 
-ERROR_INVALID_ACTIVE_SHIP: Active_Ship = .TRANS_EMPTY_UNMOVED
+@(init)
+init_ship_after_staged :: proc() {
+	Ship_After_Staged[.TRANS_EMPTY_UNMOVED][0] = .TRANS_EMPTY_2_MOVES
+	Ship_After_Staged[.TRANS_EMPTY_UNMOVED][1] = .TRANS_EMPTY_1_MOVES
+	Ship_After_Staged[.TRANS_EMPTY_UNMOVED][2] = .TRANS_EMPTY_0_MOVES
+	Ship_After_Staged[.TRANS_1I_UNMOVED][0] = .TRANS_1I_2_MOVES
+	Ship_After_Staged[.TRANS_1I_UNMOVED][1] = .TRANS_1I_1_MOVES
+	Ship_After_Staged[.TRANS_1I_UNMOVED][2] = .TRANS_1I_0_MOVES
+	Ship_After_Staged[.TRANS_1A_UNMOVED][0] = .TRANS_1A_2_MOVES
+	Ship_After_Staged[.TRANS_1A_UNMOVED][1] = .TRANS_1A_1_MOVES
+	Ship_After_Staged[.TRANS_1A_UNMOVED][2] = .TRANS_1A_0_MOVES
+	Ship_After_Staged[.TRANS_1T_UNMOVED][0] = .TRANS_1T_2_MOVES
+	Ship_After_Staged[.TRANS_1T_UNMOVED][1] = .TRANS_1T_1_MOVES
+	Ship_After_Staged[.TRANS_1T_UNMOVED][2] = .TRANS_1T_0_MOVES
+}
 
 Transport_Load_Unit: [Idle_Army][Active_Ship]Active_Ship
 
 @(init)
 init_transport_load_unit :: proc() {
-    // Initialize all values to ERROR_INVALID_ACTIVE_SHIP first
-    for army in Idle_Army {
-        for ship in Active_Ship {
-            Transport_Load_Unit[army][ship] = ERROR_INVALID_ACTIVE_SHIP
-        }
-    }
-
     // INF valid transitions
     Transport_Load_Unit[.INF][.TRANS_EMPTY_UNMOVED] = .TRANS_1I_UNMOVED
     Transport_Load_Unit[.INF][.TRANS_EMPTY_2_MOVES] = .TRANS_1I_2_MOVES
@@ -265,31 +251,40 @@ move_next_trans_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Sh
 }
 
 add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance: int) {
-	// for dst_sea in sa.slice(&src_sea.canal_paths[gc.canal_state].adjacent_seas) {
-	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if to_air(dst_sea) in gc.rejected_moves_from[to_air(src_sea)] ||
-		   gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] > 0 &&
-			   dst_sea not_in gc.more_sea_combat_needed { 	// transport needs escort
-			continue
-		}
-		gc.valid_actions += {to_action(dst_sea)}
-	}
-	if max_distance == 1 do return
-	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
-	mid_seas := &mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea]
-	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if to_air(dst_sea_2_away) in gc.rejected_moves_from[to_air(src_sea)] ||
-		   gc.team_sea_units[dst_sea_2_away][mm.enemy_team[gc.cur_player]] > 0 &&
-			   dst_sea_2_away not_in gc.more_sea_combat_needed { 	// transport needs escort
-			continue
-		}
-		for mid_sea in sa.slice(&mid_seas[dst_sea_2_away]) {
-			if (gc.enemy_blockade_total[mid_sea] == 0) {
-				gc.valid_actions += {to_action(dst_sea_2_away)}
-				break
-			}
-		}
-	}
+    /*
+    Transport Movement Safety Rules
+    
+    Transports require protection when entering hostile waters:
+    1. If a sea zone contains enemy units (team_sea_units[enemy] > 0)
+    2. Then transports can ONLY enter if friendly combat ships are present (allied_sea_combatants_total > 0)
+    3. For 2-space moves, all intermediate sea zones must be free of enemy blockades
+    
+    This ensures transports don't move through hostile waters without escort.
+    */
+    for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
+        if to_air(dst_sea) in gc.rejected_moves_from[to_air(src_sea)] ||
+           gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] > 0 &&
+           gc.allied_sea_combatants_total[dst_sea] == 0 {  // Transport needs combat ship escort
+            continue
+        }
+        gc.valid_actions += {to_action(dst_sea)}
+    }
+    if max_distance == 1 do return
+    
+    mid_seas := &mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea]
+    for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
+        if to_air(dst_sea_2_away) in gc.rejected_moves_from[to_air(src_sea)] ||
+           gc.team_sea_units[dst_sea_2_away][mm.enemy_team[gc.cur_player]] > 0 &&
+            gc.allied_sea_combatants_total[dst_sea_2_away] == 0 {  // Transport needs combat ship escort
+            continue
+        }
+        for mid_sea in sa.slice(&mid_seas[dst_sea_2_away]) {
+            if (gc.enemy_blockade_total[mid_sea] == 0) {  // Path must be free of enemy blockades
+                gc.valid_actions += {to_action(dst_sea_2_away)}
+                break
+            }
+        }
+    }
 }
 
 add_valid_unload_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
@@ -307,53 +302,15 @@ Transports_With_Cargo := [?]Active_Ship {
 	.TRANS_1I_1T_0_MOVES,
 }
 
-Skipped_Transports := [Active_Ship]Active_Ship {
-	.TRANS_EMPTY_UNMOVED  = .TRANS_EMPTY_UNMOVED,
-	.TRANS_EMPTY_2_MOVES  = .TRANS_EMPTY_2_MOVES,
-	.TRANS_EMPTY_1_MOVES  = .TRANS_EMPTY_1_MOVES,
-	.TRANS_EMPTY_0_MOVES  = .TRANS_EMPTY_0_MOVES,
-	.TRANS_1I_UNMOVED     = .TRANS_1I_UNMOVED,
-	.TRANS_1I_2_MOVES     = .TRANS_1I_2_MOVES,
-	.TRANS_1I_1_MOVES     = .TRANS_1I_1_MOVES,
-	.TRANS_1I_UNLOADED    = .TRANS_1I_UNLOADED,
-	.TRANS_1A_UNMOVED     = .TRANS_1A_UNMOVED,
-	.TRANS_1A_2_MOVES     = .TRANS_1A_2_MOVES,
-	.TRANS_1A_1_MOVES     = .TRANS_1A_1_MOVES,
-	.TRANS_1A_UNLOADED    = .TRANS_1A_UNLOADED,
-	.TRANS_1T_UNMOVED     = .TRANS_1T_UNMOVED,
-	.TRANS_1T_2_MOVES     = .TRANS_1T_2_MOVES,
-	.TRANS_1T_1_MOVES     = .TRANS_1T_1_MOVES,
-	.TRANS_1T_UNLOADED    = .TRANS_1T_UNLOADED,
-	.TRANS_2I_2_MOVES     = .TRANS_2I_2_MOVES,
-	.TRANS_2I_1_MOVES     = .TRANS_2I_1_MOVES,
-	.TRANS_2I_UNLOADED    = .TRANS_2I_UNLOADED,
-	.TRANS_1I_1A_2_MOVES  = .TRANS_1I_1A_2_MOVES,
-	.TRANS_1I_1A_1_MOVES  = .TRANS_1I_1A_1_MOVES,
-	.TRANS_1I_1A_UNLOADED = .TRANS_1I_1A_UNLOADED,
-	.TRANS_1I_1T_2_MOVES  = .TRANS_1I_1T_2_MOVES,
-	.TRANS_1I_1T_1_MOVES  = .TRANS_1I_1T_1_MOVES,
-	.TRANS_1I_1T_UNLOADED = .TRANS_1I_1T_UNLOADED,
-	.SUB_2_MOVES          = .SUB_2_MOVES,
-	.SUB_0_MOVES          = .SUB_0_MOVES,
-	.DESTROYER_2_MOVES    = .DESTROYER_2_MOVES,
-	.DESTROYER_0_MOVES    = .DESTROYER_0_MOVES,
-	.CARRIER_2_MOVES      = .CARRIER_2_MOVES,
-	.CARRIER_0_MOVES      = .CARRIER_0_MOVES,
-	.CRUISER_2_MOVES      = .CRUISER_2_MOVES,
-	.CRUISER_0_MOVES      = .CRUISER_0_MOVES,
-	.CRUISER_BOMBARDED    = .CRUISER_BOMBARDED,
-	.BATTLESHIP_2_MOVES   = .BATTLESHIP_2_MOVES,
-	.BATTLESHIP_0_MOVES   = .BATTLESHIP_0_MOVES,
-	.BATTLESHIP_BOMBARDED = .BATTLESHIP_BOMBARDED,
-	.BS_DAMAGED_2_MOVES   = .BS_DAMAGED_2_MOVES,
-	.BS_DAMAGED_0_MOVES   = .BS_DAMAGED_0_MOVES,
-	.BS_DAMAGED_BOMBARDED = .BS_DAMAGED_BOMBARDED,
-	.TRANS_1I_0_MOVES     = .TRANS_1I_UNLOADED,
-	.TRANS_1A_0_MOVES     = .TRANS_1A_UNLOADED,
-	.TRANS_1T_0_MOVES     = .TRANS_1T_UNLOADED,
-	.TRANS_2I_0_MOVES     = .TRANS_2I_UNLOADED,
-	.TRANS_1I_1A_0_MOVES  = .TRANS_1I_1A_UNLOADED,
-	.TRANS_1I_1T_0_MOVES  = .TRANS_1I_1T_UNLOADED,
+Skipped_Transports : [Active_Ship]Active_Ship
+@(init)
+init_skipped_transports :: proc() {
+	Skipped_Transports[TRANS_1I_0_MOVES] = .TRANS_1I_UNLOADED,
+	Skipped_Transports[TRANS_1A_0_MOVES] = .TRANS_1A_UNLOADED,
+	Skipped_Transports[TRANS_1T_0_MOVES] = .TRANS_1T_UNLOADED,
+	Skipped_Transports[TRANS_2I_0_MOVES] = .TRANS_2I_UNLOADED,
+	Skipped_Transports[TRANS_1I_1A_0_MOVES] = .TRANS_1I_1A_UNLOADED,
+	Skipped_Transports[TRANS_1I_1T_0_MOVES] = .TRANS_1I_1T_UNLOADED,
 }
 
 unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
