@@ -3,8 +3,8 @@ package oaaa
 import "core:fmt"
 import "core:math"
 
-// EXPLORATION_CONSTANT :: 1.414
-EXPLORATION_CONSTANT :: 0.5
+// Standard UCT exploration constant of √2 for balanced exploration vs exploitation
+EXPLORATION_CONSTANT :: 1.4142135623730950488 // math.sqrt(2)
 
 Children :: [dynamic]^MCTSNode
 
@@ -43,10 +43,12 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 		// children := node.children
 		// children_len := len(children)
 		for child in node.children {
+			// Add 1 to visits to avoid division by zero when a node is newly created (visits = 0)
+			// UCT formula: exploitation_term + exploration_constant * sqrt(ln(parent_visits) / child_visits)
 			uct_value: f64 =
-				child.value / f64(child.visits + 1) +
+				child.value / f64(child.visits + 1) +  // exploitation term
 				EXPLORATION_CONSTANT *
-					math.sqrt(math.ln_f64(f64(node.visits + 1)) / f64(child.visits + 1))
+					math.sqrt(math.ln_f64(f64(node.visits + 1)) / f64(child.visits + 1))  // exploration term
 			if uct_value > best_value {
 				best_value = uct_value
 				best_child = child

@@ -38,7 +38,7 @@ Game_Cache :: struct {
 	air_has_enemies:                Air_Bitset,
 	has_bombable_factory:           Land_Bitset,
 	has_enemy_factory:              Land_Bitset,
-	has_enemy_units:								Land_Bitset,
+	has_enemy_units:                Land_Bitset,
 	has_carrier_space:              Sea_Bitset,
 	possible_factory_carriers:      Sea_Bitset,
 	canals_open:                    Canals_Open,

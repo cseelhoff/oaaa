@@ -51,7 +51,7 @@ Canal_ID :: enum {
 
 // SEAS_DATA := [?]string{"Pacific", "Atlantic", "Baltic"}
 SEA_CONNECTIONS :: [?][2]Sea_ID{{.Pacific, .Atlantic}, {.Atlantic, .Baltic}}
-CANALS := [?]Canal{{lands = {.Moscow, .Moscow}, seas = {.Pacific, .Baltic}}}
+CANALS := [?]Canal{{lands = {.Berlin, .Moscow}, seas = {.Pacific, .Baltic}}}
 
 get_sea_id :: #force_inline proc(air: Air_ID) -> Sea_ID {
 	assert(int(air) >= len(Land_ID), "Invalid air index")

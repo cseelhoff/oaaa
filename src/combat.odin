@@ -92,28 +92,48 @@ destroy_defender_transports :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 }
 
 DICE_SIDES :: 6
+
+// Low luck combat system:
+// 1. Base hits = damage / DICE_SIDES (guaranteed hits)
+// 2. Fractional part handled by either:
+//    - Random roll when doing deep search (answers_remaining > 1)
+//    - Forced worst case when evaluating single move (answers_remaining <= 1)
+// This reduces variance while maintaining same average as regular dice
+
 get_attacker_hits_low_luck :: proc(gc: ^Game_Cache, attacker_damage: int) -> (attacker_hits: u8) {
-	attacker_hits = u8(attacker_damage / DICE_SIDES)
-	if gc.answers_remaining <= 1 && mm.enemy_team[gc.cur_player] in gc.unlucky_teams { 	// attacker is lucky
-		attacker_hits += 0 < attacker_damage % DICE_SIDES ? 1 : 0 // no dice, round up
-		return
-	}
-	attacker_hits +=
-		RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(attacker_damage) % DICE_SIDES ? 1 : 0
-	gc.seed = (gc.seed + 1) % RANDOM_MAX
-	return
+    // Calculate guaranteed hits (whole number division)
+    attacker_hits = u8(attacker_damage / DICE_SIDES)
+    
+    // When evaluating a single move (answers_remaining <= 1) and enemy team is marked unlucky,
+    // the attacker becomes "lucky" because defender will always miss
+    if gc.answers_remaining <= 1 && mm.enemy_team[gc.cur_player] in gc.unlucky_teams {
+        attacker_hits += 0 < attacker_damage % DICE_SIDES ? 1 : 0 // Round up fractional hits
+        return
+    }
+    
+    // For deep search, use random roll for fractional part
+    attacker_hits +=
+        RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(attacker_damage) % DICE_SIDES ? 1 : 0
+    gc.seed = (gc.seed + 1) % RANDOM_MAX
+    return
 }
 
 get_defender_hits_low_luck :: proc(gc: ^Game_Cache, defender_damage: int) -> (defender_hits: u8) {
-	defender_hits = u8(defender_damage / DICE_SIDES)
-	if gc.answers_remaining <= 1 && mm.team[gc.cur_player] in gc.unlucky_teams { 	// attacker is unlucky
-		defender_hits += 0 < defender_damage % DICE_SIDES ? 1 : 0 // no dice, round up
-		return
-	}
-	defender_hits +=
-		RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(defender_damage) % DICE_SIDES ? 1 : 0
-	gc.seed = (gc.seed + 1) % RANDOM_MAX
-	return
+    // Calculate guaranteed hits (whole number division)
+    defender_hits = u8(defender_damage / DICE_SIDES)
+    
+    // When evaluating a single move (answers_remaining <= 1) and current team is marked unlucky,
+    // the defender becomes "unlucky" and will always miss their fractional attacks
+    if gc.answers_remaining <= 1 && mm.team[gc.cur_player] in gc.unlucky_teams {
+        defender_hits += 0 < defender_damage % DICE_SIDES ? 1 : 0 // Round up fractional hits
+        return
+    }
+    
+    // For deep search, use random roll for fractional part
+    defender_hits +=
+        RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(defender_damage) % DICE_SIDES ? 1 : 0
+    gc.seed = (gc.seed + 1) % RANDOM_MAX
+    return
 }
 
 no_allied_units_remain :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
