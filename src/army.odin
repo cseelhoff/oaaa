@@ -57,23 +57,58 @@ Active_Army_To_Idle := [Active_Army]Idle_Army {
 }
 
 Armies_Moved := [Active_Army]Active_Army {
-	.INF_1_MOVES   = .INF_0_MOVES,
-	.INF_0_MOVES   = .INF_0_MOVES,
-	.ARTY_1_MOVES  = .ARTY_0_MOVES,
-	.ARTY_0_MOVES  = .ARTY_0_MOVES,
-	.TANK_2_MOVES  = .TANK_0_MOVES,
-	.TANK_1_MOVES  = .TANK_0_MOVES,
-	.TANK_0_MOVES  = .TANK_0_MOVES,
-	.AAGUN_1_MOVES = .AAGUN_0_MOVES,
-	.AAGUN_0_MOVES = .AAGUN_0_MOVES,
+    /*
+    AI NOTE: Movement Exhaustion and Monte Carlo Optimization
+    
+    Most moves exhaust all movement points immediately (e.g. TANK_2_MOVES -> TANK_0_MOVES) because:
+    1. Forces player to choose final destination in one step
+    2. Simplifies the Monte Carlo search tree by eliminating intermediate states
+    3. Prevents having to evaluate all possible movement combinations
+    
+    Blitz moves are the only exception (TANK_2_MOVES -> TANK_1_MOVES) because:
+    1. The path matters - different midland territories can be conquered
+    2. Multiple valid paths may exist to same destination
+    3. Special moves possible (e.g. blitz forward then move back)
+    
+    Example scenarios:
+    1. Normal move: A->C uses all moves (simpler tree)
+    2. Blitz options: A->C via B1 or B2 (must specify path)
+       - A->B1->C (conquers B1)
+       - A->B2->C (conquers B2)
+    3. Blitz special: A->B->A (conquer B, return home)
+    */
+    .INF_1_MOVES   = .INF_0_MOVES,
+    .INF_0_MOVES   = .INF_0_MOVES,
+    .ARTY_1_MOVES  = .ARTY_0_MOVES,
+    .ARTY_0_MOVES  = .ARTY_0_MOVES,
+    .TANK_2_MOVES  = .TANK_0_MOVES,  // Skip exhausts all moves
+    .TANK_1_MOVES  = .TANK_0_MOVES,  // Skip exhausts remaining move
+    .TANK_0_MOVES  = .TANK_0_MOVES,
+    .AAGUN_1_MOVES = .AAGUN_0_MOVES,
+    .AAGUN_0_MOVES = .AAGUN_0_MOVES,
 }
 
 Unmoved_Armies := [?]Active_Army {
-	.INF_1_MOVES,
-	.ARTY_1_MOVES,
-	.TANK_2_MOVES,
-	.TANK_1_MOVES,
-	//Active_Army.AAGUN_1_MOVES, //Moved in later engine version
+    /*
+    AI NOTE: Tank Movement Ordering
+    
+    The order of infantry/artillery movement is not significant.
+    However, tanks must be processed in order of remaining movement:
+    
+    1. TANK_2_MOVES must be handled before TANK_1_MOVES because:
+       - A tank with 2 moves can blitz, becoming TANK_1_MOVES
+       - That same tank may need to use its remaining move
+       - So we must process all potential blitz moves first
+    
+    Example sequence:
+    1. TANK_2_MOVES blitzes from A->B, becomes TANK_1_MOVES
+    2. That same tank, now as TANK_1_MOVES, moves B->C
+    */
+    .INF_1_MOVES,
+    .ARTY_1_MOVES,
+    .TANK_2_MOVES,  // Must process full-movement tanks first
+    .TANK_1_MOVES,  // Then handle tanks that have already moved/blitzed
+    //Active_Army.AAGUN_1_MOVES, //Moved in later engine version
 }
 
 Army_Sizes :: distinct enum u8 {
@@ -94,20 +129,38 @@ Army_Size := [Active_Army]Army_Sizes {
 }
 
 move_armies :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	for army in Unmoved_Armies {
-		gc.clear_history_needed = false
-		for src_land in Land_ID {
-			if gc.active_armies[src_land][army] == 0 do continue
-			gc.valid_actions = {to_action(src_land)}
-			add_valid_army_moves_1(gc, src_land, army)
-			if army == .TANK_2_MOVES do add_valid_army_moves_2(gc, src_land, army)
-			for gc.active_armies[src_land][army] > 0 {
-				move_next_army_in_land(gc, army, src_land) or_return
-			}
-		}
-		if gc.clear_history_needed do clear_move_history(gc)
-	}
-	return true
+    /*
+    AI NOTE: Move History Management
+    
+    The game tracks which moves have been rejected by the player to:
+    1. Avoid re-offering moves the player explicitly declined
+    2. Prevent duplicate suggestions for the same move
+    
+    Move history is preserved within a single unit type's moves,
+    but cleared when switching unit types because:
+    - Different units have different movement capabilities
+    - A path rejected for infantry might be valid for tanks
+    - Keeps the AI from being overly constrained by previous decisions
+    
+    Example:
+    1. Player rejects moving infantry from Moscow to Ukraine
+    2. That move won't be offered again for other infantry
+    3. But will be available when moving tanks (after history clear)
+    */
+    for army in Unmoved_Armies {
+        gc.clear_history_needed = false
+        for src_land in Land_ID {
+            if gc.active_armies[src_land][army] == 0 do continue
+            gc.valid_actions = {to_action(src_land)}
+            add_valid_army_moves_1(gc, src_land, army)
+            if army == .TANK_2_MOVES do add_valid_army_moves_2(gc, src_land, army)
+            for gc.active_armies[src_land][army] > 0 {
+                move_next_army_in_land(gc, army, src_land) or_return
+            }
+        }
+        if gc.clear_history_needed do clear_move_history(gc)
+    }
+    return true
 }
 
 move_next_army_in_land :: proc(
@@ -182,6 +235,28 @@ move_single_army_land :: proc(
 	src_unit: Active_Army,
 	dst_unit: Active_Army,
 ) {
+    /*
+    AI NOTE: Unit Counter Caching
+    
+    The game maintains three parallel unit counting systems for performance:
+    
+    1. active_armies[land][state] - Units by movement state
+       - Tracks exact movement points remaining (e.g. TANK_2_MOVES)
+       - Used for movement validation and offering valid moves
+    
+    2. idle_armies[land][player][type] - Units by base type and owner
+       - Simplified view (e.g. just TANK)
+       - Used for combat resolution and unit type counting
+    
+    3. team_land_units[land][team] - Total units by team
+       - Quick strength check without looping through unit types
+       - Used for territory control and battle resolution
+    
+    This redundancy optimizes common operations by avoiding:
+    - Summing unit counts during battles
+    - Converting between unit states when checking strength
+    - Looping through owners when checking team control
+    */
 	gc.active_armies[dst_land][dst_unit] += 1
 	gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[dst_unit]] += 1
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1

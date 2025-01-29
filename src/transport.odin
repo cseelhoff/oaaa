@@ -269,7 +269,7 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance
 	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
 		if to_air(dst_sea) in gc.rejected_moves_from[to_air(src_sea)] ||
 		   gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] > 0 &&
-			   dst_sea not_in gc.sea_combat_started { 	// transport needs escort
+			   dst_sea not_in gc.more_sea_combat_needed { 	// transport needs escort
 			continue
 		}
 		gc.valid_actions += {to_action(dst_sea)}
@@ -380,52 +380,63 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 }
 
 Transport_Unload_Unit_1 := [Active_Ship]Active_Army {
-	.TRANS_EMPTY_UNMOVED  = .INF_0_MOVES,
-	.TRANS_EMPTY_2_MOVES  = .INF_0_MOVES,
-	.TRANS_EMPTY_1_MOVES  = .INF_0_MOVES,
-	.TRANS_EMPTY_0_MOVES  = .INF_0_MOVES,
-	.TRANS_1I_UNMOVED     = .INF_0_MOVES,
-	.TRANS_1I_2_MOVES     = .INF_0_MOVES,
-	.TRANS_1I_1_MOVES     = .INF_0_MOVES,
-	.TRANS_1I_UNLOADED    = .INF_0_MOVES,
-	.TRANS_1A_UNMOVED     = .INF_0_MOVES,
-	.TRANS_1A_2_MOVES     = .INF_0_MOVES,
-	.TRANS_1A_1_MOVES     = .INF_0_MOVES,
-	.TRANS_1A_UNLOADED    = .INF_0_MOVES,
-	.TRANS_1T_UNMOVED     = .INF_0_MOVES,
-	.TRANS_1T_2_MOVES     = .INF_0_MOVES,
-	.TRANS_1T_1_MOVES     = .INF_0_MOVES,
-	.TRANS_1T_UNLOADED    = .INF_0_MOVES,
-	.TRANS_2I_2_MOVES     = .INF_0_MOVES,
-	.TRANS_2I_1_MOVES     = .INF_0_MOVES,
-	.TRANS_2I_UNLOADED    = .INF_0_MOVES,
-	.TRANS_1I_1A_2_MOVES  = .INF_0_MOVES,
-	.TRANS_1I_1A_1_MOVES  = .INF_0_MOVES,
-	.TRANS_1I_1A_UNLOADED = .INF_0_MOVES,
-	.TRANS_1I_1T_2_MOVES  = .INF_0_MOVES,
-	.TRANS_1I_1T_1_MOVES  = .INF_0_MOVES,
-	.TRANS_1I_1T_UNLOADED = .INF_0_MOVES,
-	.SUB_2_MOVES          = .INF_0_MOVES,
-	.SUB_0_MOVES          = .INF_0_MOVES,
-	.DESTROYER_2_MOVES    = .INF_0_MOVES,
-	.DESTROYER_0_MOVES    = .INF_0_MOVES,
-	.CARRIER_2_MOVES      = .INF_0_MOVES,
-	.CARRIER_0_MOVES      = .INF_0_MOVES,
-	.CRUISER_2_MOVES      = .INF_0_MOVES,
-	.CRUISER_0_MOVES      = .INF_0_MOVES,
-	.CRUISER_BOMBARDED    = .INF_0_MOVES,
-	.BATTLESHIP_2_MOVES   = .INF_0_MOVES,
-	.BATTLESHIP_0_MOVES   = .INF_0_MOVES,
-	.BATTLESHIP_BOMBARDED = .INF_0_MOVES,
-	.BS_DAMAGED_2_MOVES   = .INF_0_MOVES,
-	.BS_DAMAGED_0_MOVES   = .INF_0_MOVES,
-	.BS_DAMAGED_BOMBARDED = .INF_0_MOVES,
-	.TRANS_1I_0_MOVES     = .INF_0_MOVES,
-	.TRANS_1A_0_MOVES     = .ARTY_0_MOVES,
-	.TRANS_1T_0_MOVES     = .TANK_0_MOVES,
-	.TRANS_2I_0_MOVES     = .INF_0_MOVES,
-	.TRANS_1I_1A_0_MOVES  = .INF_0_MOVES,
-	.TRANS_1I_1T_0_MOVES  = .INF_0_MOVES,
+    /*
+    Game Rule: Transport Unloading
+    
+    When a unit unloads from a transport, it cannot move further that turn.
+    This is a core game rule, not an optimization choice.
+    
+    Therefore all units unload with 0 moves remaining, regardless of:
+    - Their original movement allowance
+    - How far the transport moved
+    - Whether they moved before loading
+    */
+    .TRANS_EMPTY_UNMOVED  = .INF_0_MOVES,
+    .TRANS_EMPTY_2_MOVES  = .INF_0_MOVES,
+    .TRANS_EMPTY_1_MOVES  = .INF_0_MOVES,
+    .TRANS_EMPTY_0_MOVES  = .INF_0_MOVES,
+    .TRANS_1I_UNMOVED     = .INF_0_MOVES,
+    .TRANS_1I_2_MOVES     = .INF_0_MOVES,
+    .TRANS_1I_1_MOVES     = .INF_0_MOVES,
+    .TRANS_1I_UNLOADED    = .INF_0_MOVES,
+    .TRANS_1A_UNMOVED     = .INF_0_MOVES,
+    .TRANS_1A_2_MOVES     = .INF_0_MOVES,
+    .TRANS_1A_1_MOVES     = .INF_0_MOVES,
+    .TRANS_1A_UNLOADED    = .INF_0_MOVES,
+    .TRANS_1T_UNMOVED     = .INF_0_MOVES,
+    .TRANS_1T_2_MOVES     = .INF_0_MOVES,
+    .TRANS_1T_1_MOVES     = .INF_0_MOVES,
+    .TRANS_1T_UNLOADED    = .INF_0_MOVES,
+    .TRANS_2I_2_MOVES     = .INF_0_MOVES,
+    .TRANS_2I_1_MOVES     = .INF_0_MOVES,
+    .TRANS_2I_UNLOADED    = .INF_0_MOVES,
+    .TRANS_1I_1A_2_MOVES  = .INF_0_MOVES,
+    .TRANS_1I_1A_1_MOVES  = .INF_0_MOVES,
+    .TRANS_1I_1A_UNLOADED = .INF_0_MOVES,
+    .TRANS_1I_1T_2_MOVES  = .INF_0_MOVES,
+    .TRANS_1I_1T_1_MOVES  = .INF_0_MOVES,
+    .TRANS_1I_1T_UNLOADED = .INF_0_MOVES,
+    .SUB_2_MOVES          = .INF_0_MOVES,
+    .SUB_0_MOVES          = .INF_0_MOVES,
+    .DESTROYER_2_MOVES    = .INF_0_MOVES,
+    .DESTROYER_0_MOVES    = .INF_0_MOVES,
+    .CARRIER_2_MOVES      = .INF_0_MOVES,
+    .CARRIER_0_MOVES      = .INF_0_MOVES,
+    .CRUISER_2_MOVES      = .INF_0_MOVES,
+    .CRUISER_0_MOVES      = .INF_0_MOVES,
+    .CRUISER_BOMBARDED    = .INF_0_MOVES,
+    .BATTLESHIP_2_MOVES   = .INF_0_MOVES,
+    .BATTLESHIP_0_MOVES   = .INF_0_MOVES,
+    .BATTLESHIP_BOMBARDED = .INF_0_MOVES,
+    .BS_DAMAGED_2_MOVES   = .INF_0_MOVES,
+    .BS_DAMAGED_0_MOVES   = .INF_0_MOVES,
+    .BS_DAMAGED_BOMBARDED = .INF_0_MOVES,
+    .TRANS_1I_0_MOVES     = .INF_0_MOVES,
+    .TRANS_1A_0_MOVES     = .ARTY_0_MOVES,
+    .TRANS_1T_0_MOVES     = .TANK_0_MOVES,
+    .TRANS_2I_0_MOVES     = .INF_0_MOVES,
+    .TRANS_1I_1A_0_MOVES  = .INF_0_MOVES,
+    .TRANS_1I_1T_0_MOVES  = .INF_0_MOVES,
 }
 
 Transport_Unloaded := [Active_Ship]Active_Ship {
