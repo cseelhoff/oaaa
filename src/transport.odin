@@ -86,70 +86,70 @@ Transports_Needing_Staging := [?]Active_Ship {
 	.TRANS_1T_UNMOVED,
 }
 
-Ship_After_Staged : [Active_Ship][MAX_TRANSPORT_MOVES + 1]Active_Ship 
+Trans_After_Move_Used : [Active_Ship][MAX_TRANSPORT_MOVES + 1]Active_Ship 
 
 @(init)
-init_ship_after_staged :: proc() {
-	Ship_After_Staged[.TRANS_EMPTY_UNMOVED][0] = .TRANS_EMPTY_2_MOVES
-	Ship_After_Staged[.TRANS_EMPTY_UNMOVED][1] = .TRANS_EMPTY_1_MOVES
-	Ship_After_Staged[.TRANS_EMPTY_UNMOVED][2] = .TRANS_EMPTY_0_MOVES
-	Ship_After_Staged[.TRANS_1I_UNMOVED][0] = .TRANS_1I_2_MOVES
-	Ship_After_Staged[.TRANS_1I_UNMOVED][1] = .TRANS_1I_1_MOVES
-	Ship_After_Staged[.TRANS_1I_UNMOVED][2] = .TRANS_1I_0_MOVES
-	Ship_After_Staged[.TRANS_1A_UNMOVED][0] = .TRANS_1A_2_MOVES
-	Ship_After_Staged[.TRANS_1A_UNMOVED][1] = .TRANS_1A_1_MOVES
-	Ship_After_Staged[.TRANS_1A_UNMOVED][2] = .TRANS_1A_0_MOVES
-	Ship_After_Staged[.TRANS_1T_UNMOVED][0] = .TRANS_1T_2_MOVES
-	Ship_After_Staged[.TRANS_1T_UNMOVED][1] = .TRANS_1T_1_MOVES
-	Ship_After_Staged[.TRANS_1T_UNMOVED][2] = .TRANS_1T_0_MOVES
+init_trans_after_move_used :: proc() {
+	Trans_After_Move_Used[.TRANS_EMPTY_UNMOVED][0] = .TRANS_EMPTY_2_MOVES
+	Trans_After_Move_Used[.TRANS_EMPTY_UNMOVED][1] = .TRANS_EMPTY_1_MOVES
+	Trans_After_Move_Used[.TRANS_EMPTY_UNMOVED][2] = .TRANS_EMPTY_0_MOVES
+	Trans_After_Move_Used[.TRANS_1I_UNMOVED][0] = .TRANS_1I_2_MOVES
+	Trans_After_Move_Used[.TRANS_1I_UNMOVED][1] = .TRANS_1I_1_MOVES
+	Trans_After_Move_Used[.TRANS_1I_UNMOVED][2] = .TRANS_1I_0_MOVES
+	Trans_After_Move_Used[.TRANS_1A_UNMOVED][0] = .TRANS_1A_2_MOVES
+	Trans_After_Move_Used[.TRANS_1A_UNMOVED][1] = .TRANS_1A_1_MOVES
+	Trans_After_Move_Used[.TRANS_1A_UNMOVED][2] = .TRANS_1A_0_MOVES
+	Trans_After_Move_Used[.TRANS_1T_UNMOVED][0] = .TRANS_1T_2_MOVES
+	Trans_After_Move_Used[.TRANS_1T_UNMOVED][1] = .TRANS_1T_1_MOVES
+	Trans_After_Move_Used[.TRANS_1T_UNMOVED][2] = .TRANS_1T_0_MOVES
 }
 
-Transport_Load_Unit: [Idle_Army][Active_Ship]Active_Ship
+Trans_After_Loading: [Idle_Army][Active_Ship]Active_Ship
 
 @(init)
-init_transport_load_unit :: proc() {
+init_transport_after_loading :: proc() {
     // INF valid transitions
-    Transport_Load_Unit[.INF][.TRANS_EMPTY_UNMOVED] = .TRANS_1I_UNMOVED
-    Transport_Load_Unit[.INF][.TRANS_EMPTY_2_MOVES] = .TRANS_1I_2_MOVES
-    Transport_Load_Unit[.INF][.TRANS_EMPTY_1_MOVES] = .TRANS_1I_1_MOVES
-    Transport_Load_Unit[.INF][.TRANS_EMPTY_0_MOVES] = .TRANS_1I_0_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1I_UNMOVED] = .TRANS_2I_2_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1I_2_MOVES] = .TRANS_2I_2_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1I_1_MOVES] = .TRANS_2I_1_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1I_0_MOVES] = .TRANS_2I_0_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1I_UNLOADED] = .TRANS_2I_UNLOADED
-    Transport_Load_Unit[.INF][.TRANS_1A_UNMOVED] = .TRANS_1I_1A_2_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1A_2_MOVES] = .TRANS_1I_1A_2_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1A_1_MOVES] = .TRANS_1I_1A_1_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1A_0_MOVES] = .TRANS_1I_1A_0_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1A_UNLOADED] = .TRANS_1I_1A_UNLOADED
-    Transport_Load_Unit[.INF][.TRANS_1T_UNMOVED] = .TRANS_1I_1T_2_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1T_2_MOVES] = .TRANS_1I_1T_2_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1T_1_MOVES] = .TRANS_1I_1T_1_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1T_0_MOVES] = .TRANS_1I_1T_0_MOVES
-    Transport_Load_Unit[.INF][.TRANS_1T_UNLOADED] = .TRANS_1I_1T_UNLOADED
+    Trans_After_Loading[.INF][.TRANS_EMPTY_UNMOVED] = .TRANS_1I_UNMOVED
+    Trans_After_Loading[.INF][.TRANS_EMPTY_2_MOVES] = .TRANS_1I_2_MOVES
+    Trans_After_Loading[.INF][.TRANS_EMPTY_1_MOVES] = .TRANS_1I_1_MOVES
+    Trans_After_Loading[.INF][.TRANS_EMPTY_0_MOVES] = .TRANS_1I_0_MOVES
+    Trans_After_Loading[.INF][.TRANS_1I_UNMOVED] = .TRANS_2I_2_MOVES
+    Trans_After_Loading[.INF][.TRANS_1I_2_MOVES] = .TRANS_2I_2_MOVES
+    Trans_After_Loading[.INF][.TRANS_1I_1_MOVES] = .TRANS_2I_1_MOVES
+    Trans_After_Loading[.INF][.TRANS_1I_0_MOVES] = .TRANS_2I_0_MOVES
+    Trans_After_Loading[.INF][.TRANS_1I_UNLOADED] = .TRANS_2I_UNLOADED
+    Trans_After_Loading[.INF][.TRANS_1A_UNMOVED] = .TRANS_1I_1A_2_MOVES
+    Trans_After_Loading[.INF][.TRANS_1A_2_MOVES] = .TRANS_1I_1A_2_MOVES
+    Trans_After_Loading[.INF][.TRANS_1A_1_MOVES] = .TRANS_1I_1A_1_MOVES
+    Trans_After_Loading[.INF][.TRANS_1A_0_MOVES] = .TRANS_1I_1A_0_MOVES
+    Trans_After_Loading[.INF][.TRANS_1A_UNLOADED] = .TRANS_1I_1A_UNLOADED
+    Trans_After_Loading[.INF][.TRANS_1T_UNMOVED] = .TRANS_1I_1T_2_MOVES
+    Trans_After_Loading[.INF][.TRANS_1T_2_MOVES] = .TRANS_1I_1T_2_MOVES
+    Trans_After_Loading[.INF][.TRANS_1T_1_MOVES] = .TRANS_1I_1T_1_MOVES
+    Trans_After_Loading[.INF][.TRANS_1T_0_MOVES] = .TRANS_1I_1T_0_MOVES
+    Trans_After_Loading[.INF][.TRANS_1T_UNLOADED] = .TRANS_1I_1T_UNLOADED
 
     // ARTY valid transitions
-    Transport_Load_Unit[.ARTY][.TRANS_EMPTY_UNMOVED] = .TRANS_1A_UNMOVED
-    Transport_Load_Unit[.ARTY][.TRANS_EMPTY_2_MOVES] = .TRANS_1A_2_MOVES
-    Transport_Load_Unit[.ARTY][.TRANS_EMPTY_1_MOVES] = .TRANS_1A_1_MOVES
-    Transport_Load_Unit[.ARTY][.TRANS_EMPTY_0_MOVES] = .TRANS_1A_0_MOVES
-    Transport_Load_Unit[.ARTY][.TRANS_1I_UNMOVED] = .TRANS_1I_UNMOVED
-    Transport_Load_Unit[.ARTY][.TRANS_1I_2_MOVES] = .TRANS_1I_1A_2_MOVES
-    Transport_Load_Unit[.ARTY][.TRANS_1I_1_MOVES] = .TRANS_1I_1A_1_MOVES
-    Transport_Load_Unit[.ARTY][.TRANS_1I_0_MOVES] = .TRANS_1I_1A_0_MOVES
-    Transport_Load_Unit[.ARTY][.TRANS_1I_UNLOADED] = .TRANS_1I_1A_UNLOADED
+    Trans_After_Loading[.ARTY][.TRANS_EMPTY_UNMOVED] = .TRANS_1A_UNMOVED
+    Trans_After_Loading[.ARTY][.TRANS_EMPTY_2_MOVES] = .TRANS_1A_2_MOVES
+    Trans_After_Loading[.ARTY][.TRANS_EMPTY_1_MOVES] = .TRANS_1A_1_MOVES
+    Trans_After_Loading[.ARTY][.TRANS_EMPTY_0_MOVES] = .TRANS_1A_0_MOVES
+    Trans_After_Loading[.ARTY][.TRANS_1I_UNMOVED] = .TRANS_1I_UNMOVED
+    Trans_After_Loading[.ARTY][.TRANS_1I_2_MOVES] = .TRANS_1I_1A_2_MOVES
+    Trans_After_Loading[.ARTY][.TRANS_1I_1_MOVES] = .TRANS_1I_1A_1_MOVES
+    Trans_After_Loading[.ARTY][.TRANS_1I_0_MOVES] = .TRANS_1I_1A_0_MOVES
+    Trans_After_Loading[.ARTY][.TRANS_1I_UNLOADED] = .TRANS_1I_1A_UNLOADED
 
     // TANK valid transitions
-    Transport_Load_Unit[.TANK][.TRANS_EMPTY_UNMOVED] = .TRANS_1T_UNMOVED
-    Transport_Load_Unit[.TANK][.TRANS_EMPTY_2_MOVES] = .TRANS_1T_2_MOVES
-    Transport_Load_Unit[.TANK][.TRANS_EMPTY_1_MOVES] = .TRANS_1T_1_MOVES
-    Transport_Load_Unit[.TANK][.TRANS_EMPTY_0_MOVES] = .TRANS_1T_0_MOVES
-    Transport_Load_Unit[.TANK][.TRANS_1I_UNMOVED] = .TRANS_1I_1T_2_MOVES
-    Transport_Load_Unit[.TANK][.TRANS_1I_2_MOVES] = .TRANS_1I_1T_2_MOVES
-    Transport_Load_Unit[.TANK][.TRANS_1I_1_MOVES] = .TRANS_1I_1T_1_MOVES
-    Transport_Load_Unit[.TANK][.TRANS_1I_0_MOVES] = .TRANS_1I_1T_0_MOVES
-    Transport_Load_Unit[.TANK][.TRANS_1I_UNLOADED] = .TRANS_1I_1T_UNLOADED
+    Trans_After_Loading[.TANK][.TRANS_EMPTY_UNMOVED] = .TRANS_1T_UNMOVED
+    Trans_After_Loading[.TANK][.TRANS_EMPTY_2_MOVES] = .TRANS_1T_2_MOVES
+    Trans_After_Loading[.TANK][.TRANS_EMPTY_1_MOVES] = .TRANS_1T_1_MOVES
+    Trans_After_Loading[.TANK][.TRANS_EMPTY_0_MOVES] = .TRANS_1T_0_MOVES
+    Trans_After_Loading[.TANK][.TRANS_1I_UNMOVED] = .TRANS_1I_1T_2_MOVES
+    Trans_After_Loading[.TANK][.TRANS_1I_2_MOVES] = .TRANS_1I_1T_2_MOVES
+    Trans_After_Loading[.TANK][.TRANS_1I_1_MOVES] = .TRANS_1I_1T_1_MOVES
+    Trans_After_Loading[.TANK][.TRANS_1I_0_MOVES] = .TRANS_1I_1T_0_MOVES
+    Trans_After_Loading[.TANK][.TRANS_1I_UNLOADED] = .TRANS_1I_1T_UNLOADED
 
     // AAGUN has no valid transitions (all remain ERROR_INVALID_ACTIVE_SHIP)
 }
@@ -200,8 +200,8 @@ stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Sh
 		// only allow staging to sea with enemy blockade if other unit started combat
 		sea_distance = 2
 	}
-	ship_after_staged := Ship_After_Staged[ship][sea_distance]
-	move_single_ship(gc, dst_sea, ship_after_staged, ship, src_sea)
+	Transport_State_After_Movement_Used := Trans_After_Move_Used[ship][sea_distance]
+	move_single_ship(gc, dst_sea, Transport_State_After_Movement_Used, ship, src_sea)
 	return true
 }
 
@@ -302,15 +302,24 @@ Transports_With_Cargo := [?]Active_Ship {
 	.TRANS_1I_1T_0_MOVES,
 }
 
-Skipped_Transports : [Active_Ship]Active_Ship
+/*
+Transport State Transitions After Rejecting Unload
+
+When a player explicitly chooses not to unload units from a transport that has the option to unload:
+1. The transport's state transitions to an UNLOADED state
+2. This prevents re-prompting the player about unloading from this transport
+3. Helps optimize the Monte Carlo search by avoiding already-rejected options
+*/
+Transport_State_After_Rejecting_Unload : [Active_Ship]Active_Ship
+
 @(init)
-init_skipped_transports :: proc() {
-	Skipped_Transports[TRANS_1I_0_MOVES] = .TRANS_1I_UNLOADED,
-	Skipped_Transports[TRANS_1A_0_MOVES] = .TRANS_1A_UNLOADED,
-	Skipped_Transports[TRANS_1T_0_MOVES] = .TRANS_1T_UNLOADED,
-	Skipped_Transports[TRANS_2I_0_MOVES] = .TRANS_2I_UNLOADED,
-	Skipped_Transports[TRANS_1I_1A_0_MOVES] = .TRANS_1I_1A_UNLOADED,
-	Skipped_Transports[TRANS_1I_1T_0_MOVES] = .TRANS_1I_1T_UNLOADED,
+init_transport_state_after_rejecting_unload :: proc() {
+    Transport_State_After_Rejecting_Unload[TRANS_1I_0_MOVES] = .TRANS_1I_UNLOADED
+    Transport_State_After_Rejecting_Unload[TRANS_1A_0_MOVES] = .TRANS_1A_UNLOADED
+    Transport_State_After_Rejecting_Unload[TRANS_1T_0_MOVES] = .TRANS_1T_UNLOADED
+    Transport_State_After_Rejecting_Unload[TRANS_2I_0_MOVES] = .TRANS_2I_UNLOADED
+    Transport_State_After_Rejecting_Unload[TRANS_1I_1A_0_MOVES] = .TRANS_1I_1A_UNLOADED
+    Transport_State_After_Rejecting_Unload[TRANS_1I_1T_0_MOVES] = .TRANS_1I_1T_UNLOADED
 }
 
 unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -322,7 +331,7 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			for gc.active_ships[src_sea][ship] > 0 {
 				dst_air := get_move_input(gc, fmt.tprint(ship), to_air(src_sea)) or_return
 				if dst_air == to_air(src_sea) {
-					gc.active_ships[src_sea][Skipped_Transports[ship]] +=
+					gc.active_ships[src_sea][Transport_State_After_Rejecting_Unload[ship]] +=
 						gc.active_ships[src_sea][ship]
 					gc.active_ships[src_sea][ship] = 0
 					continue

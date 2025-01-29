@@ -129,29 +129,29 @@ test_skip_empty_transports :: proc(t: ^testing.T) {
 test_transport_loading :: proc(t: ^testing.T) {
     // Test loading infantry onto different transport states
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_EMPTY_2_MOVES] == oaaa.Active_Ship.TRANS_1I_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_EMPTY_2_MOVES] == oaaa.Active_Ship.TRANS_1I_2_MOVES,
         "Loading infantry onto empty transport with 2 moves failed")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_1T_2_MOVES] == oaaa.Active_Ship.TRANS_1I_1T_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_1T_2_MOVES] == oaaa.Active_Ship.TRANS_1I_1T_2_MOVES,
         "Loading infantry onto transport with tank and 2 moves failed")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_1A_2_MOVES] == oaaa.Active_Ship.TRANS_1I_1A_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_1A_2_MOVES] == oaaa.Active_Ship.TRANS_1I_1A_2_MOVES,
         "Loading infantry onto transport with artillery and 2 moves failed")
         
     // Test loading artillery
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.TRANS_EMPTY_2_MOVES] == oaaa.Active_Ship.TRANS_1A_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.TRANS_EMPTY_2_MOVES] == oaaa.Active_Ship.TRANS_1A_2_MOVES,
         "Loading artillery onto empty transport with 2 moves failed")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.TRANS_1I_2_MOVES] == oaaa.Active_Ship.TRANS_1I_1A_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.TRANS_1I_2_MOVES] == oaaa.Active_Ship.TRANS_1I_1A_2_MOVES,
         "Loading artillery onto transport with infantry and 2 moves failed")
         
     // Test loading tank
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.TANK][oaaa.Active_Ship.TRANS_EMPTY_2_MOVES] == oaaa.Active_Ship.TRANS_1T_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.TANK][oaaa.Active_Ship.TRANS_EMPTY_2_MOVES] == oaaa.Active_Ship.TRANS_1T_2_MOVES,
         "Loading tank onto empty transport with 2 moves failed")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.TANK][oaaa.Active_Ship.TRANS_1I_2_MOVES] == oaaa.Active_Ship.TRANS_1I_1T_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.TANK][oaaa.Active_Ship.TRANS_1I_2_MOVES] == oaaa.Active_Ship.TRANS_1I_1T_2_MOVES,
         "Loading tank onto transport with infantry and 2 moves failed")
 }
 
@@ -159,35 +159,35 @@ test_transport_loading :: proc(t: ^testing.T) {
 test_transport_staging :: proc(t: ^testing.T) {
     // Test staging empty transport
     testing.expect(t,
-        oaaa.Ship_After_Staged[oaaa.Active_Ship.TRANS_EMPTY_UNMOVED][0] == oaaa.Active_Ship.TRANS_EMPTY_2_MOVES,
+        oaaa.Trans_After_Move_Used[oaaa.Active_Ship.TRANS_EMPTY_UNMOVED][0] == oaaa.Active_Ship.TRANS_EMPTY_2_MOVES,
         "Staging empty transport with 0 distance failed")
     testing.expect(t,
-        oaaa.Ship_After_Staged[oaaa.Active_Ship.TRANS_EMPTY_UNMOVED][1] == oaaa.Active_Ship.TRANS_EMPTY_1_MOVES,
+        oaaa.Trans_After_Move_Used[oaaa.Active_Ship.TRANS_EMPTY_UNMOVED][1] == oaaa.Active_Ship.TRANS_EMPTY_1_MOVES,
         "Staging empty transport with 1 distance failed")
     testing.expect(t,
-        oaaa.Ship_After_Staged[oaaa.Active_Ship.TRANS_EMPTY_UNMOVED][2] == oaaa.Active_Ship.TRANS_EMPTY_0_MOVES,
+        oaaa.Trans_After_Move_Used[oaaa.Active_Ship.TRANS_EMPTY_UNMOVED][2] == oaaa.Active_Ship.TRANS_EMPTY_0_MOVES,
         "Staging empty transport with 2 distance failed")
         
     // Test staging transport with infantry
     testing.expect(t,
-        oaaa.Ship_After_Staged[oaaa.Active_Ship.TRANS_1I_UNMOVED][0] == oaaa.Active_Ship.TRANS_1I_2_MOVES,
+        oaaa.Trans_After_Move_Used[oaaa.Active_Ship.TRANS_1I_UNMOVED][0] == oaaa.Active_Ship.TRANS_1I_2_MOVES,
         "Staging transport with infantry at 0 distance failed")
     testing.expect(t,
-        oaaa.Ship_After_Staged[oaaa.Active_Ship.TRANS_1I_UNMOVED][1] == oaaa.Active_Ship.TRANS_1I_1_MOVES,
+        oaaa.Trans_After_Move_Used[oaaa.Active_Ship.TRANS_1I_UNMOVED][1] == oaaa.Active_Ship.TRANS_1I_1_MOVES,
         "Staging transport with infantry at 1 distance failed")
     testing.expect(t,
-        oaaa.Ship_After_Staged[oaaa.Active_Ship.TRANS_1I_UNMOVED][2] == oaaa.Active_Ship.TRANS_1I_0_MOVES,
+        oaaa.Trans_After_Move_Used[oaaa.Active_Ship.TRANS_1I_UNMOVED][2] == oaaa.Active_Ship.TRANS_1I_0_MOVES,
         "Staging transport with infantry at 2 distance failed")
         
     // Test staging transport with artillery
     testing.expect(t,
-        oaaa.Ship_After_Staged[oaaa.Active_Ship.TRANS_1A_UNMOVED][0] == oaaa.Active_Ship.TRANS_1A_2_MOVES,
+        oaaa.Trans_After_Move_Used[oaaa.Active_Ship.TRANS_1A_UNMOVED][0] == oaaa.Active_Ship.TRANS_1A_2_MOVES,
         "Staging transport with artillery at 0 distance failed")
     testing.expect(t,
-        oaaa.Ship_After_Staged[oaaa.Active_Ship.TRANS_1A_UNMOVED][1] == oaaa.Active_Ship.TRANS_1A_1_MOVES,
+        oaaa.Trans_After_Move_Used[oaaa.Active_Ship.TRANS_1A_UNMOVED][1] == oaaa.Active_Ship.TRANS_1A_1_MOVES,
         "Staging transport with artillery at 1 distance failed")
     testing.expect(t,
-        oaaa.Ship_After_Staged[oaaa.Active_Ship.TRANS_1A_UNMOVED][2] == oaaa.Active_Ship.TRANS_1A_0_MOVES,
+        oaaa.Trans_After_Move_Used[oaaa.Active_Ship.TRANS_1A_UNMOVED][2] == oaaa.Active_Ship.TRANS_1A_0_MOVES,
         "Staging transport with artillery at 2 distance failed")
 }
 
@@ -262,24 +262,24 @@ test_transport_unloading :: proc(t: ^testing.T) {
 test_transport_loading_unmoved :: proc(t: ^testing.T) {
     // Test loading onto unmoved transports
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_EMPTY_UNMOVED] == oaaa.Active_Ship.TRANS_1I_UNMOVED,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_EMPTY_UNMOVED] == oaaa.Active_Ship.TRANS_1I_UNMOVED,
         "Loading infantry onto unmoved empty transport failed")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.TRANS_EMPTY_UNMOVED] == oaaa.Active_Ship.TRANS_1A_UNMOVED,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.TRANS_EMPTY_UNMOVED] == oaaa.Active_Ship.TRANS_1A_UNMOVED,
         "Loading artillery onto unmoved empty transport failed")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.TANK][oaaa.Active_Ship.TRANS_EMPTY_UNMOVED] == oaaa.Active_Ship.TRANS_1T_UNMOVED,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.TANK][oaaa.Active_Ship.TRANS_EMPTY_UNMOVED] == oaaa.Active_Ship.TRANS_1T_UNMOVED,
         "Loading tank onto unmoved empty transport failed")
         
     // Test loading onto transports with one unit
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_1I_UNMOVED] == oaaa.Active_Ship.TRANS_2I_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_1I_UNMOVED] == oaaa.Active_Ship.TRANS_2I_2_MOVES,
         "Loading infantry onto transport with infantry unmoved failed")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.TRANS_1I_UNMOVED] == oaaa.Active_Ship.TRANS_1I_UNMOVED,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.TRANS_1I_UNMOVED] == oaaa.Active_Ship.TRANS_1I_UNMOVED,
         "Loading artillery onto transport with infantry unmoved failed")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.TANK][oaaa.Active_Ship.TRANS_1I_UNMOVED] == oaaa.Active_Ship.TRANS_1I_1T_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.TANK][oaaa.Active_Ship.TRANS_1I_UNMOVED] == oaaa.Active_Ship.TRANS_1I_1T_2_MOVES,
         "Loading tank onto transport with infantry unmoved failed")
 }
 
@@ -287,13 +287,13 @@ test_transport_loading_unmoved :: proc(t: ^testing.T) {
 test_transport_loading_unloaded :: proc(t: ^testing.T) {
     // Test that loading onto unloaded transports maintains unloaded state
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_1I_UNLOADED] == oaaa.Active_Ship.TRANS_2I_UNLOADED,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.INF][oaaa.Active_Ship.TRANS_1I_UNLOADED] == oaaa.Active_Ship.TRANS_2I_UNLOADED,
         "Loading infantry onto unloaded transport with infantry failed")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.TRANS_1I_UNLOADED] == oaaa.Active_Ship.TRANS_1I_1A_UNLOADED,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.TRANS_1I_UNLOADED] == oaaa.Active_Ship.TRANS_1I_1A_UNLOADED,
         "Loading artillery onto unloaded transport with infantry failed")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.TANK][oaaa.Active_Ship.TRANS_1I_UNLOADED] == oaaa.Active_Ship.TRANS_1I_1T_UNLOADED,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.TANK][oaaa.Active_Ship.TRANS_1I_UNLOADED] == oaaa.Active_Ship.TRANS_1I_1T_UNLOADED,
         "Loading tank onto unloaded transport with infantry failed")
 }
 
@@ -301,13 +301,13 @@ test_transport_loading_unloaded :: proc(t: ^testing.T) {
 test_transport_loading_invalid :: proc(t: ^testing.T) {
     // Test that loading onto non-transport ships returns the same state
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.INF][oaaa.Active_Ship.SUB_2_MOVES] == oaaa.Active_Ship.SUB_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.INF][oaaa.Active_Ship.SUB_2_MOVES] == oaaa.Active_Ship.SUB_2_MOVES,
         "Loading onto submarine should not change state")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.CARRIER_2_MOVES] == oaaa.Active_Ship.CARRIER_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.ARTY][oaaa.Active_Ship.CARRIER_2_MOVES] == oaaa.Active_Ship.CARRIER_2_MOVES,
         "Loading onto carrier should not change state")
     testing.expect(t, 
-        oaaa.Transport_Load_Unit[oaaa.Idle_Army.TANK][oaaa.Active_Ship.BATTLESHIP_2_MOVES] == oaaa.Active_Ship.BATTLESHIP_2_MOVES,
+        oaaa.Trans_After_Loading[oaaa.Idle_Army.TANK][oaaa.Active_Ship.BATTLESHIP_2_MOVES] == oaaa.Active_Ship.BATTLESHIP_2_MOVES,
         "Loading onto battleship should not change state")
 }
 

@@ -429,7 +429,7 @@ load_specific_transport :: proc(
           - Decrement idle_ships[old_state]
     */
 	idle_army := Active_Army_To_Idle[army]
-	new_ship := Transport_Load_Unit[idle_army][ship]
+	new_ship := Trans_After_Loading[idle_army][ship]
 	gc.active_ships[dst_sea][new_ship] += 1
 	gc.idle_ships[dst_sea][player][Active_Ship_To_Idle[new_ship]] += 1
 	gc.active_armies[src_land][army] -= 1
