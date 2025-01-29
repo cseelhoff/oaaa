@@ -5,8 +5,28 @@ import "core:fmt"
 MAX_TRANSPORT_MOVES :: 2
 
 /*
-Transport states combine both cargo and movement information in a single enum
-Cargo configurations (5 space capacity):
+PERFORMANCE-CRITICAL DESIGN NOTE:
+Transport states use a combined enum approach that merges cargo and movement information.
+This is a deliberately chosen optimization pattern - DO NOT REFACTOR into separate tracking
+without careful consideration of the performance implications.
+
+RATIONALE FOR COMBINED STATES:
+1. Memory Layout Optimization:
+   - Current: [sea_zone][combined_state]int for counting ships
+   - Alternative (separate tracking): [sea_zone][cargo_type][movement_state]int
+   - Memory Impact: ~3x memory reduction with combined approach
+   - Cache Impact: Better locality, single array lookup vs multiple indirections
+
+2. Valid State Management:
+   - Combined: Invalid combinations cannot exist by enum definition
+   - Separate: Would require runtime validation of cargo+movement combinations
+   
+3. Game State Storage:
+   - Efficient bitset representation in game_state.idle_ships and active_ships
+   - Perfect fit for Monte Carlo Tree Search (MCTS) state exploration
+   - Minimal memory footprint for game state serialization
+
+Cargo Configurations (5 space capacity):
 - EMPTY: No cargo
 - 1I: 1 Infantry (2 spaces)
 - 1A: 1 Artillery (3 spaces)
@@ -18,6 +38,12 @@ Cargo configurations (5 space capacity):
 Movement states are appended to cargo state:
 - UNMOVED: Not yet moved this turn
 - X_MOVES: Has X moves remaining (0,1,2)
+- UNLOADED: Transport has unloaded its cargo
+
+Example State Flow:
+TRANS_EMPTY_UNMOVED -> TRANS_1I_2_MOVES -> TRANS_1I_1_MOVES -> TRANS_EMPTY_0_MOVES
+(Empty transport) -> (Loads infantry) -> (Moves once) -> (Unloads infantry)
+
 Example: TRANS_1I_2_MOVES = Transport with 1 infantry and 2 moves left
 
 Transport states combine both cargo configuration (e.g., 1I = one infantry) and movement state 

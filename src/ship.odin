@@ -1,3 +1,28 @@
+/*
+AI NOTE: Ship Casualty Priority System
+Casualty orders optimize for preserving combat effectiveness by taking weaker units first.
+Attack/Defense values differ, leading to different optimal orders:
+
+ATTACK VALUES:          DEFENSE VALUES:
+- Battleship: 4        - Battleship: 4
+- Cruiser: 3          - Cruiser: 3
+- Destroyer: 2        - Destroyer: 2
+- Carrier: 1          - Carrier: 2
+- Transport: 0        - Transport: 0
+
+Key patterns in casualty orders:
+1. Transports always last (no combat value)
+2. Take weaker units first to preserve strong attackers/defenders
+3. Damaged battleships taken before transports but after intact combat ships
+4. Bombarded ships (used bombardment) are lower priority than fresh ships
+
+Example sequence (attackers):
+Attacker_Sea_Casualty_Order_1: Subs/Destroyers (weakest combat ships)
+Attacker_Sea_Casualty_Order_2: Carriers/Used Cruisers (medium value)
+Attacker_Sea_Casualty_Order_3: Used/Damaged Battleships
+Attacker_Sea_Casualty_Order_4: Transports (no combat value)
+*/
+
 package oaaa
 
 import sa "core:container/small_array"
@@ -19,20 +44,20 @@ Idle_Ship :: enum {
 	BS_DAMAGED,
 }
 
-COST_IDLE_SHIP := [?]u8 {
-	Idle_Ship.TRANS_EMPTY = Cost_Buy[Buy_Action.BUY_TRANS],
-	Idle_Ship.TRANS_1I    = Cost_Buy[Buy_Action.BUY_TRANS],
-	Idle_Ship.TRANS_1A    = Cost_Buy[Buy_Action.BUY_TRANS],
-	Idle_Ship.TRANS_1T    = Cost_Buy[Buy_Action.BUY_TRANS],
-	Idle_Ship.TRANS_2I    = Cost_Buy[Buy_Action.BUY_TRANS],
-	Idle_Ship.TRANS_1I_1A = Cost_Buy[Buy_Action.BUY_TRANS],
-	Idle_Ship.TRANS_1I_1T = Cost_Buy[Buy_Action.BUY_TRANS],
-	Idle_Ship.SUB         = Cost_Buy[Buy_Action.BUY_SUB],
-	Idle_Ship.DESTROYER   = Cost_Buy[Buy_Action.BUY_DESTROYER],
-	Idle_Ship.CARRIER     = Cost_Buy[Buy_Action.BUY_CARRIER],
-	Idle_Ship.CRUISER     = Cost_Buy[Buy_Action.BUY_CRUISER],
-	Idle_Ship.BATTLESHIP  = Cost_Buy[Buy_Action.BUY_BATTLESHIP],
-	Idle_Ship.BS_DAMAGED  = Cost_Buy[Buy_Action.BUY_BATTLESHIP],
+COST_IDLE_SHIP := [Idle_Ship]u8 {
+	.TRANS_EMPTY = Cost_Buy[.BUY_TRANS],
+	.TRANS_1I    = Cost_Buy[.BUY_TRANS],
+	.TRANS_1A    = Cost_Buy[.BUY_TRANS],
+	.TRANS_1T    = Cost_Buy[.BUY_TRANS],
+	.TRANS_2I    = Cost_Buy[.BUY_TRANS],
+	.TRANS_1I_1A = Cost_Buy[.BUY_TRANS],
+	.TRANS_1I_1T = Cost_Buy[.BUY_TRANS],
+	.SUB         = Cost_Buy[.BUY_SUB],
+	.DESTROYER   = Cost_Buy[.BUY_DESTROYER],
+	.CARRIER     = Cost_Buy[.BUY_CARRIER],
+	.CRUISER     = Cost_Buy[.BUY_CRUISER],
+	.BATTLESHIP  = Cost_Buy[.BUY_BATTLESHIP],
+	.BS_DAMAGED  = Cost_Buy[.BUY_BATTLESHIP],
 }
 
 DESTROYER_ATTACK :: 2
