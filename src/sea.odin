@@ -53,11 +53,6 @@ Canal_ID :: enum {
 SEA_CONNECTIONS :: [?][2]Sea_ID{{.Pacific, .Atlantic}, {.Atlantic, .Baltic}}
 CANALS := [?]Canal{{lands = {.Berlin, .Moscow}, seas = {.Pacific, .Baltic}}}
 
-get_sea_id :: #force_inline proc(air: Air_ID) -> Sea_ID {
-	assert(int(air) >= len(Land_ID), "Invalid air index")
-	return Sea_ID(int(air) - len(Land_ID))
-}
-
 initialize_sea_connections :: proc() {
 	INFINITY :: 127
 	for canal_state in 0 ..< Canal_States {

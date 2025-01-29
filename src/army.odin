@@ -118,12 +118,24 @@ move_next_army_in_land :: proc(
 	ok: bool,
 ) {
 	dst_air := get_move_input(gc, fmt.tprint(army), to_air(src_land)) or_return
-	if check_load_transport(gc, army, src_land, dst_air) do return true
-	dst_land := to_land(dst_air)
-	if skip_army(gc, src_land, dst_land, army) do return true
-	army_after_move := blitz_checks(gc, src_land, dst_land, army)
-	move_single_army_land(gc, src_land, dst_land, army, army_after_move)
-	return true
+    
+    // Handle sea movement (transport loading) first
+    if ~is_land(dst_air) {
+        dst_sea := to_sea(dst_air)
+		load_available_transport(gc, army, src_land, dst_sea, gc.cur_player)
+		if ~is_boat_available(gc, src_land, dst_sea, army) {
+			gc.valid_actions -= {to_action(dst_sea)}
+		}
+        return true
+    }
+    
+    // Handle land movement
+    dst_land := to_land(dst_air)
+    if skip_army(gc, src_land, dst_land, army) do return true
+    
+    next_state := get_next_army_state(gc, src_land, dst_land, army)
+    move_single_army_land(gc, src_land, dst_land, army, next_state)
+    return true
 }
 
 blitz_checks :: proc(
@@ -132,6 +144,27 @@ blitz_checks :: proc(
 	dst_land: Land_ID,
 	army: Active_Army,
 ) -> Active_Army {
+    /*
+    AI NOTE: Tank Blitz Path Selection
+    
+    When a tank blitzes (moves 2 spaces), the player must explicitly choose
+    which territory to conquer on the way to their final destination.
+    
+    Example:
+    Tank in Land A wants to reach Land D
+    Can blitz through either:
+    1. Land A -> Land B -> Land D
+    2. Land A -> Land C -> Land D
+    
+    The engine requires this to be two separate moves:
+    1. First move: Choose which middle territory to conquer (B or C)
+    2. Second move: Continue to final destination (D)
+    
+    This explicit path selection:
+    - Avoids engine making assumptions about preferred path
+    - Gives player strategic control over which territories to capture
+    - Handles cases where different paths have different strategic value
+    */
 	if !flag_for_land_enemy_combat(gc, dst_land) &&
 	   check_for_conquer(gc, dst_land) &&
 	   army == .TANK_2_MOVES &&
@@ -251,19 +284,25 @@ skip_army :: proc(
 	return true
 }
 
-check_load_transport :: proc(
-	gc: ^Game_Cache,
-	army: Active_Army,
-	src_land: Land_ID,
-	dst_air: Air_ID,
-) -> (
-	ok: bool,
+is_sea_destination :: proc(dst_air: Air_ID) -> bool {
+    return int(dst_air) >= len(Land_ID)
+}
+
+attempt_transport_loading :: proc(
+    gc: ^Game_Cache,
+    army: Active_Army,
+    src_land: Land_ID,
+    dst_sea: Sea_ID,
 ) {
-	if int(dst_air) < len(Land_ID) do return false
-	load_available_transport(gc, army, src_land, get_sea_id(dst_air), gc.cur_player)
-	if is_boat_available(gc, src_land, get_sea_id(dst_air), army) do return true
-	gc.valid_actions -= {to_action(dst_air)}
-	return true
+}
+
+get_next_army_state :: proc(
+    gc: ^Game_Cache,
+    src_land: Land_ID,
+    dst_land: Land_ID,
+    army: Active_Army,
+) -> Active_Army {
+    return blitz_checks(gc, src_land, dst_land, army)
 }
 
 load_available_transport :: proc(
