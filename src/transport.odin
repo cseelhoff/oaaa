@@ -267,7 +267,7 @@ move_next_trans_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Sh
 add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance: int) {
 	// for dst_sea in sa.slice(&src_sea.canal_paths[gc.canal_state].adjacent_seas) {
 	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if to_air(dst_sea) in gc.skipped_a2a[to_air(src_sea)] ||
+		if to_air(dst_sea) in gc.rejected_moves_from[to_air(src_sea)] ||
 		   gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] > 0 &&
 			   dst_sea not_in gc.sea_combat_started { 	// transport needs escort
 			continue
@@ -278,7 +278,7 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance
 	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
 	mid_seas := &mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea]
 	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if to_air(dst_sea_2_away) in gc.skipped_a2a[to_air(src_sea)] ||
+		if to_air(dst_sea_2_away) in gc.rejected_moves_from[to_air(src_sea)] ||
 		   gc.team_sea_units[dst_sea_2_away][mm.enemy_team[gc.cur_player]] > 0 &&
 			   dst_sea_2_away not_in gc.more_sea_combat_needed { 	// transport needs escort
 			continue

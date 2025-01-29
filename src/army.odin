@@ -178,7 +178,7 @@ add_if_boat_available :: proc(
 	dst_sea: Sea_ID,
 	army: Active_Army,
 ) {
-	if to_air(dst_sea) not_in gc.skipped_a2a[to_air(src_land)] {
+	if to_air(dst_sea) not_in gc.rejected_moves_from[to_air(src_land)] {
 		if is_boat_available(gc, src_land, dst_sea, army) {
 			gc.valid_actions += {to_action(dst_sea)}
 		}
@@ -194,7 +194,7 @@ are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands) -> bool {
 
 add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
 	gc.valid_actions += to_action_bitset(
-		mm.l2l_1away_via_land_bitset[src_land] & ~to_land_bitset(gc.skipped_a2a[to_air(src_land)]),
+		mm.l2l_1away_via_land_bitset[src_land] & ~to_land_bitset(gc.rejected_moves_from[to_air(src_land)]),
 	)
 	//todo game_cache bitset for is_boat_available large, small
 	for dst_sea in sa.slice(&mm.l2s_1away_via_land[src_land]) {
@@ -203,14 +203,14 @@ add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
 }
 
 add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
-	for dst_land in (mm.l2l_2away_via_land_bitset[src_land] & to_land_bitset(~gc.skipped_a2a[to_air(src_land)])) {
+	for dst_land in (mm.l2l_2away_via_land_bitset[src_land] & to_land_bitset(~gc.rejected_moves_from[to_air(src_land)])) {
 		if (mm.l2l_2away_via_midland_bitset[src_land][dst_land] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
 			continue
 		}
 		gc.valid_actions += {to_action(dst_land)}
 	}
 	// check for moving from land to sea (two moves away)
-	for dst_sea in (mm.l2s_2away_via_land_bitset[src_land] & to_sea_bitset(~gc.skipped_a2a[to_air(src_land)])) {
+	for dst_sea in (mm.l2s_2away_via_land_bitset[src_land] & to_sea_bitset(~gc.rejected_moves_from[to_air(src_land)])) {
 		if (mm.l2s_2away_via_midland_bitset[src_land][dst_sea] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
 			continue
 		}

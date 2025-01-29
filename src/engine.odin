@@ -155,15 +155,15 @@ update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
 		// valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
 		if valid_action == to_action(src_air) do continue
 		if valid_action == to_action(dst_air) do break
-		gc.skipped_a2a[src_air] += {to_air(valid_action)}
+		gc.rejected_moves_from[src_air] += {to_air(valid_action)}
 		gc.clear_history_needed = true
 	}
-	gc.valid_actions -= transmute(Action_Bitset)u32(transmute(u16)gc.skipped_a2a[src_air])
+	gc.valid_actions -= transmute(Action_Bitset)u32(transmute(u16)gc.rejected_moves_from[src_air])
 }
 
 clear_move_history :: proc(gc: ^Game_Cache) {
 	for air in Air_ID {
-		gc.skipped_a2a[air] = {}
+		gc.rejected_moves_from[air] = {}
 	}
 	gc.clear_history_needed = false
 }
@@ -175,7 +175,7 @@ buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		if gc.owner[land] != gc.cur_player ||
 		   gc.factory_prod[land] > 0 ||
 		   land in (gc.more_land_combat_needed | gc.land_combat_started) ||
-		   to_air(land) in gc.skipped_a2a[to_air(land)] {
+		   to_air(land) in gc.rejected_moves_from[to_air(land)] {
 			continue
 		}
 		gc.valid_actions += {to_action(land)}
@@ -224,7 +224,7 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 			gc.friendly_owner += {land}
 		}
 		gc.max_bombards[land] = 0
-		gc.skipped_a2a[to_air(land)] = {}
+		gc.rejected_moves_from[to_air(land)] = {}
 		gc.skipped_buys[to_air(land)] = {}
 		gc.active_armies[land] = {}
 		idle_armies := &gc.idle_armies[land][gc.cur_player]
@@ -244,7 +244,7 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 	}
 
 	for sea in Sea_ID {
-		gc.skipped_a2a[to_air(sea)] = {}
+		gc.rejected_moves_from[to_air(sea)] = {}
 		gc.skipped_buys[to_air(sea)] = {}
 		gc.active_ships[sea] = {}
 		idle_ships := &gc.idle_ships[sea][gc.cur_player]

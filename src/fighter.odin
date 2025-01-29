@@ -53,7 +53,7 @@ move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 add_valid_unmoved_fighter_moves :: #force_inline proc(gc: ^Game_Cache, src_air: Air_ID) {
 	gc.valid_actions += to_action_bitset(
-		(~gc.skipped_a2a[src_air] &
+		(~gc.rejected_moves_from[src_air] &
 			((mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here) |
 					(gc.air_has_enemies &
 							(mm.a2a_within_2_moves[src_air] |
@@ -175,7 +175,7 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 
 add_valid_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	gc.valid_actions = to_action_bitset(
-		~gc.skipped_a2a[src_air] &
+		~gc.rejected_moves_from[src_air] &
 		((mm.a2a_within_2_moves[src_air] & (gc.can_fighter_land_here | gc.air_has_enemies)) |
 				(mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move) |
 				(mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here)),
@@ -316,19 +316,19 @@ add_valid_landing_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID, plane:
 	#partial switch plane {
 	case .FIGHTER_1_MOVES:
 		gc.valid_actions = to_action_bitset(
-			~gc.skipped_a2a[src_air] & gc.can_fighter_land_here & mm.a2a_within_1_moves[src_air],
+			~gc.rejected_moves_from[src_air] & gc.can_fighter_land_here & mm.a2a_within_1_moves[src_air],
 		)
 	case .FIGHTER_2_MOVES:
 		gc.valid_actions = to_action_bitset(
-			~gc.skipped_a2a[src_air] & gc.can_fighter_land_here & mm.a2a_within_2_moves[src_air],
+			~gc.rejected_moves_from[src_air] & gc.can_fighter_land_here & mm.a2a_within_2_moves[src_air],
 		)
 	case .FIGHTER_3_MOVES:
 		gc.valid_actions = to_action_bitset(
-			~gc.skipped_a2a[src_air] & gc.can_fighter_land_here & mm.a2a_within_4_moves[src_air],
+			~gc.rejected_moves_from[src_air] & gc.can_fighter_land_here & mm.a2a_within_4_moves[src_air],
 		)
 	case .FIGHTER_4_MOVES:
 		gc.valid_actions = to_action_bitset(
-			~gc.skipped_a2a[src_air] & gc.can_fighter_land_here & mm.a2a_within_4_moves[src_air],
+			~gc.rejected_moves_from[src_air] & gc.can_fighter_land_here & mm.a2a_within_4_moves[src_air],
 		)
 	}
 }

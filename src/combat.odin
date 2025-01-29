@@ -124,8 +124,7 @@ do_sea_targets_exist :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) -> bool
     return(
         (gc.enemy_subs_total[sea] > 0 && gc.allied_destroyers_total[sea] > 0) ||
         (gc.enemy_fighters_total[sea] > 0 && gc.allied_antifighter_ships_total[sea] > 0) ||
-        (gc.enemy_subvuln_ships_total[sea] > 0 && gc.allied_sea_combatants_total[sea] > 0)
-    )
+        (gc.enemy_subvuln_ships_total[sea] > 0 && gc.allied_sea_combatants_total[sea] > 0))
 }
 
 sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> bool {
@@ -178,6 +177,24 @@ DICE_SIDES :: 6
 // This reduces variance while maintaining same average as regular dice
 
 get_attacker_hits_low_luck :: proc(gc: ^Game_Cache, attacker_damage: int) -> (attacker_hits: u8) {
+    /*
+    AI NOTE: Low Luck Combat System
+    Instead of rolling individual dice, low luck:
+    1. Sums all unit damage
+    2. Divides by DICE_SIDES (6) to get guaranteed hits
+    3. Uses ONE roll for the remainder to determine fractional hits
+    
+    MCTS Strategy Considerations:
+    - When evaluating single moves (answers_remaining <= 1):
+      * Mark certain teams as "unlucky" to be pessimistic
+      * Always round fractional hits DOWN for unlucky teams
+      * This prevents MCTS from overvaluing risky moves
+      * A path isn't "good" just because we got lucky once
+    
+    - For deep search (answers_remaining > 1):
+      * Use random rolls for fractional parts
+      * This gives more realistic long-term evaluation
+    */
     // Calculate guaranteed hits (whole number division)
     attacker_hits = u8(attacker_damage / DICE_SIDES)
     
@@ -222,42 +239,55 @@ no_allied_units_remain :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 SUB_ATTACK :: 2
 SUB_DEFENSE :: 1
 resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	for sea in gc.more_sea_combat_needed {
-		if sea not_in gc.more_sea_combat_needed do continue
-		if destroy_defender_transports(gc, sea) do continue
-		disable_bombardment(gc, sea)
-		def_subs_targetable := true
-		// check_positive_active_ships(gc, sea)
-		for {
-			if sea in gc.sea_combat_started {
-				build_sea_retreat_options(gc, sea)
-				dst_air_idx := get_retreat_input(gc, to_air(sea)) or_return
-				if sea_retreat(gc, sea, to_sea(dst_air_idx)) do break
-			}
-			//if destroy_vulnerable_transports(gc, &sea) do break
-			gc.sea_combat_started += {sea}
-			sub_attacker_damage := int(get_allied_subs_count(gc, sea)) * SUB_ATTACK
-			sub_attacker_hits := get_attacker_hits_low_luck(gc, sub_attacker_damage)
-			def_subs_targetable = def_subs_targetable && gc.allied_destroyers_total[sea] > 0
-			if gc.enemy_destroyer_total[sea] == 0 {
-				remove_sea_defenders(gc, sea, &sub_attacker_hits, def_subs_targetable, false)
-			}
-			def_damage := 0
-			if def_subs_targetable do def_damage = get_defender_damage_sub(gc, sea)
-			attacker_damage := get_attacker_damage_sea(gc, sea)
-			attacker_hits := get_attacker_hits_low_luck(gc, attacker_damage)
-			def_damage += get_defender_damage_sea(gc, sea)
-			def_hits := get_defender_hits_low_luck(gc, def_damage)
-			remove_sea_attackers(gc, sea, &def_hits)
-			if gc.enemy_destroyer_total[sea] > 0 {
-				remove_sea_defenders(gc, sea, &sub_attacker_hits, def_subs_targetable, false)
-			}
-			remove_sea_defenders(gc, sea, &attacker_hits, def_subs_targetable, true)
-			if no_allied_units_remain(gc, sea) do break
-			if destroy_defender_transports(gc, sea) do break
-		}
-	}
-	return true
+    /*
+    AI NOTE: Sea Combat Resolution Order
+    Combat has special ordering rules for submarines:
+    1. If NO enemy destroyers present:
+       - Subs get "sneak attack" (fire first before any other combat)
+       - This represents subs surprising the enemy fleet
+    2. If enemy destroyers present:
+       - Subs attack AFTER regular combat
+       - Destroyers prevent the surprise attack advantage
+    
+    This is why sub attacks are conditionally executed either before
+    or after the main combat phase based on enemy destroyer presence.
+    */
+    for sea in gc.more_sea_combat_needed {
+        if sea not_in gc.more_sea_combat_needed do continue
+        if destroy_defender_transports(gc, sea) do continue
+        disable_bombardment(gc, sea)
+        def_subs_targetable := true
+        // check_positive_active_ships(gc, sea)
+        for {
+            if sea in gc.sea_combat_started {
+                build_sea_retreat_options(gc, sea)
+                dst_air_idx := get_retreat_input(gc, to_air(sea)) or_return
+                if sea_retreat(gc, sea, to_sea(dst_air_idx)) do break
+            }
+            //if destroy_vulnerable_transports(gc, &sea) do break
+            gc.sea_combat_started += {sea}
+            sub_attacker_damage := int(get_allied_subs_count(gc, sea)) * SUB_ATTACK
+            sub_attacker_hits := get_attacker_hits_low_luck(gc, sub_attacker_damage)
+            def_subs_targetable = def_subs_targetable && gc.allied_destroyers_total[sea] > 0
+            if gc.enemy_destroyer_total[sea] == 0 {
+                remove_sea_defenders(gc, sea, &sub_attacker_hits, def_subs_targetable, false)
+            }
+            def_damage := 0
+            if def_subs_targetable do def_damage = get_defender_damage_sub(gc, sea)
+            attacker_damage := get_attacker_damage_sea(gc, sea)
+            attacker_hits := get_attacker_hits_low_luck(gc, attacker_damage)
+            def_damage += get_defender_damage_sea(gc, sea)
+            def_hits := get_defender_hits_low_luck(gc, def_damage)
+            remove_sea_attackers(gc, sea, &def_hits)
+            if gc.enemy_destroyer_total[sea] > 0 {
+                remove_sea_defenders(gc, sea, &sub_attacker_hits, def_subs_targetable, false)
+            }
+            remove_sea_defenders(gc, sea, &attacker_hits, def_subs_targetable, true)
+            if no_allied_units_remain(gc, sea) do break
+            if destroy_defender_transports(gc, sea) do break
+        }
+    }
+    return true
 }
 
 flag_for_land_enemy_combat :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
@@ -279,61 +309,162 @@ check_for_conquer :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 }
 
 sea_bombardment :: proc(gc: ^Game_Cache, land: Land_ID) {
-	//todo fix so allied ships don't get unlimited bombards
-	//since idle_ship doesn't distinguish
-	for sea in sa.slice(&mm.l2s_1away_via_land[land]) {
-		if gc.max_bombards[land] == 0 do return
-		attacker_damage := 0
-		for ship in Bombard_Ships {
-			bombarding_ships: u8 = 0
-			for ally in sa.slice(&mm.allies[gc.cur_player]) {
-				if ally == gc.cur_player do continue
-				bombarding_ships = min(
-					gc.max_bombards[land],
-					gc.idle_ships[sea][ally][Active_Ship_To_Idle[ship]],
-				)
-				gc.max_bombards[land] -= bombarding_ships
-				attacker_damage += int(bombarding_ships) * Active_Ship_Attack[ship]
-			}
-			bombarding_ships = min(gc.max_bombards[land], gc.active_ships[sea][ship])
-			gc.max_bombards[land] -= bombarding_ships
-			attacker_damage += int(bombarding_ships) * Active_Ship_Attack[ship]
-			gc.active_ships[sea][ship] -= bombarding_ships
-			gc.active_ships[sea][Ship_After_Bombard[ship]] += bombarding_ships
-			if gc.max_bombards[land] == 0 do break
-		}
-		gc.max_bombards[land] = 0
-		attack_hits := get_attacker_hits_low_luck(gc, attacker_damage)
-		remove_land_defenders(gc, land, &attack_hits)
-	}
+    /*
+    AI NOTE: Bombardment Tracking System
+    
+    Bombardment Limits:
+    1. max_bombards[land] is set when units unload from transports
+       - Each unloaded unit allows 1 bombardment support
+       - This prevents excessive bombardment for small landings
+    
+    Current Limitation:
+    - active_ships track bombardment state (_BOMBARDED suffix)
+    - idle_ships (allied ships) don't track bombardment state
+    - This means allied ships could theoretically bombard multiple times
+    
+    Impact Assessment:
+    1. This is a known limitation but low priority because:
+       - Requires specific circumstances (allied ships near invasion)
+       - Bombardments rarely significantly impact battle outcomes
+       - Actual occurrence in gameplay is very rare
+    
+    Future Enhancement:
+    - Add bombardment state tracking to idle_ships
+    - Would need new idle ship states like CRUISER_BOMBARDED
+    - Consider memory/performance tradeoff of additional states
+    */
+    //todo fix so allied ships don't get unlimited bombards
+    //since idle_ship doesn't distinguish
+    for sea in sa.slice(&mm.l2s_1away_via_land[land]) {
+        if gc.max_bombards[land] == 0 do return
+        attacker_damage := 0
+        for ship in Bombard_Ships {
+            bombarding_ships: u8 = 0
+            for ally in sa.slice(&mm.allies[gc.cur_player]) {
+                if ally == gc.cur_player do continue
+                bombarding_ships = min(
+                    gc.max_bombards[land],
+                    gc.idle_ships[sea][ally][Active_Ship_To_Idle[ship]],
+                )
+                gc.max_bombards[land] -= bombarding_ships
+                attacker_damage += int(bombarding_ships) * Active_Ship_Attack[ship]
+            }
+            bombarding_ships = min(gc.max_bombards[land], gc.active_ships[sea][ship])
+            gc.max_bombards[land] -= bombarding_ships
+            attacker_damage += int(bombarding_ships) * Active_Ship_Attack[ship]
+            gc.active_ships[sea][ship] -= bombarding_ships
+            gc.active_ships[sea][Ship_After_Bombard[ship]] += bombarding_ships
+            if gc.max_bombards[land] == 0 do break
+        }
+        gc.max_bombards[land] = 0
+        attack_hits := get_attacker_hits_low_luck(gc, attacker_damage)
+        remove_land_defenders(gc, land, &attack_hits)
+    }
 }
 
 fire_tact_aaguns :: proc(gc: ^Game_Cache, land: Land_ID) {
-	total_aaguns: u8 = 0
-	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
-		total_aaguns += gc.idle_armies[land][enemy][.AAGUN]
-	}
-	total_air_units :=
-		gc.idle_land_planes[land][gc.cur_player][.FIGHTER] +
-		gc.idle_land_planes[land][gc.cur_player][.BOMBER]
-	defender_damage := int(min(total_aaguns * 3, total_air_units))
-	defender_hits := get_defender_hits_low_luck(gc, defender_damage)
-	for (defender_hits > 0) {
-		defender_hits -= 1
-		if hit_my_land_planes(gc, land, Air_Casualty_Order_Fighters) do continue
-		if hit_my_land_planes(gc, land, Air_Casualty_Order_Bombers) do continue
-	}
+    /*
+    AI NOTE: Anti-Aircraft Systems
+    The game has TWO distinct AA systems:
+
+    1. Tactical AA (this procedure):
+       - Mobile AA gun units that can be built/moved
+       - Fire at start of FIRST round of land combat
+       - Can target up to 3 air units per AA gun
+       - Target priority: Fighters first, then Bombers
+       - Used for defending against tactical air support
+
+    2. Strategic AA (in strategic_bombing):
+       - Built into factories (1 per factory)
+       - Only fire during strategic bombing raids
+       - Only target bombers (fighters can't strategic bomb)
+       - Used for defending industrial capacity
+    
+    This split system means:
+    - Tactical AA protects ground forces from air support
+    - Strategic AA protects economy from bombing raids
+    */
+    total_aaguns: u8 = 0
+    for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
+        total_aaguns += gc.idle_armies[land][enemy][.AAGUN]
+    }
+    total_air_units :=
+        gc.idle_land_planes[land][gc.cur_player][.FIGHTER] +
+        gc.idle_land_planes[land][gc.cur_player][.BOMBER]
+    // Each AA gun can target up to 3 planes
+    defender_damage := int(min(total_aaguns * 3, total_air_units))
+    defender_hits := get_defender_hits_low_luck(gc, defender_damage)
+    for (defender_hits > 0) {
+        defender_hits -= 1
+        if hit_my_land_planes(gc, land, Air_Casualty_Order_Fighters) do continue
+        if hit_my_land_planes(gc, land, Air_Casualty_Order_Bombers) do continue
+    }
+}
+
+strategic_bombing :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+    /*
+    AI NOTE: Strategic Bombing Sequence
+    This is a special combat phase that happens before regular land combat:
+    1. Check if this is a pure bombing raid:
+       - Must have bombers
+       - Total friendly units must not exceed bomber count
+         (prevents mixing with ground assault)
+    
+    2. Strategic AA Defense:
+       - Factory's built-in AA fires at bombers
+       - No fighter targeting (unlike tactical AA)
+       - One shot per bomber present
+    
+    3. Bombing Damage:
+       - Each surviving bomber rolls to damage factory
+       - Factory damage caps at 2x production value
+       - This prevents complete factory destruction
+    */
+    bombers := gc.idle_land_planes[land][gc.cur_player][.BOMBER]
+    if bombers == 0 || gc.team_land_units[land][mm.team[gc.cur_player]] > bombers {
+        return false
+    }
+    gc.more_land_combat_needed -= {land}
+    // Strategic AA fire
+    defender_hits := get_defender_hits_low_luck(gc, int(bombers))
+    for (defender_hits > 0) {
+        defender_hits -= 1
+        if hit_my_land_planes(gc, land, Air_Casualty_Order_Bombers) do continue
+        break
+    }
+    // Bombing damage
+    attacker_damage := int(gc.idle_land_planes[land][gc.cur_player][.BOMBER]) * 21
+    attacker_hits := get_attacker_hits_low_luck(gc, attacker_damage)
+    gc.factory_dmg[land] = max(gc.factory_dmg[land] + attacker_hits, gc.factory_prod[land] * 2)
+    return true
 }
 
 attempt_conquer_land :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
-	if gc.team_land_units[land][mm.enemy_team[gc.cur_player]] > 0 do return false
-	// if infantry, artillery, tanks exist then capture
-	if gc.idle_armies[land][gc.cur_player][.INF] > 0 ||
-	   gc.idle_armies[land][gc.cur_player][.ARTY] > 0 ||
-	   gc.idle_armies[land][gc.cur_player][.TANK] > 0 {
-		conquer_land(gc, land)
-	}
-	return true
+    /*
+    AI NOTE: Territory Conquest Rules
+    1. Only ground combat units can conquer territory:
+       - Infantry, Artillery, Tanks
+       - Air units cannot capture (fighters/bombers)
+       
+    2. AA Gun Movement Timing:
+       - AA guns are technically ground units
+       - BUT they move AFTER resolve_land_battles()
+       - So they're never present during conquest checks
+       - This is why we don't check for AA guns here
+    
+    This timing sequence (AA moves after combat) means:
+    - AA guns can't participate in attacks
+    - They're purely defensive units
+    - They must wait for territory to be secured before moving in
+    */
+    if gc.team_land_units[land][mm.enemy_team[gc.cur_player]] > 0 do return false
+    // Only check for combat units that can be present during conquest
+    if gc.idle_armies[land][gc.cur_player][.INF] > 0 ||
+       gc.idle_armies[land][gc.cur_player][.ARTY] > 0 ||
+       gc.idle_armies[land][gc.cur_player][.TANK] > 0 {
+        conquer_land(gc, land)
+    }
+    return true
 }
 
 build_land_retreat_options :: proc(gc: ^Game_Cache, land: Land_ID) {
@@ -358,43 +489,65 @@ destroy_undefended_aaguns :: proc(gc: ^Game_Cache, land: Land_ID) {
 
 MAX_COMBAT_ROUNDS :: 100
 resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	for land in gc.more_land_combat_needed {
-		// if land not_in gc.more_land_combat_needed do continue
-		if no_attackers_remain(gc, land) {
-			// todo optimize - test code if reachable
-			gc.more_land_combat_needed -= {land}
-			continue
-		}
-		if land not_in gc.land_combat_started {
-			if strategic_bombing(gc, land) do continue
-			sea_bombardment(gc, land)
-			fire_tact_aaguns(gc, land)
-			if no_attackers_remain(gc, land) do continue
-			if attempt_conquer_land(gc, land) do continue
-		}
-		combat_rounds := 0
-		for {
-			combat_rounds += 1
-			if combat_rounds > MAX_COMBAT_ROUNDS {
-				fmt.eprintln("resolve_land_battles: MAX_COMBAT_ROUNDS reached", combat_rounds)
-				print_game_state(gc)
-			}
-			if land in gc.land_combat_started {
-				build_land_retreat_options(gc, land)
-				dst_air := get_retreat_input(gc, to_air(land)) or_return
-				if retreat_land_units(gc, land, Land_ID(dst_air)) do break
-			}
-			gc.land_combat_started += {land}
-			attacker_hits := get_attacker_hits_low_luck(gc, get_attcker_damage_land(gc, land))
-			defender_hits := get_defender_hits_low_luck(gc, get_defender_damage_land(gc, land))
-			remove_land_attackers(gc, land, &defender_hits)
-			remove_land_defenders(gc, land, &attacker_hits)
-			destroy_undefended_aaguns(gc, land)
-			if no_attackers_remain(gc, land) do break
-			if attempt_conquer_land(gc, land) do break
-		}
-	}
-	return true
+    /*
+    AI NOTE: Land Combat Types
+    A land battle will be ONE of two types, never both:
+    1. Strategic Bombing:
+       - Only bombers present (no ground units)
+       - Targets factory production
+       - Uses factory's built-in AA defense
+       - Ends after one round
+       
+    2. Traditional Land Combat:
+       - Ground units and/or mixed air support
+       - Follows full combat sequence:
+         a) Sea bombardment support
+         b) Tactical AA defense
+         c) Regular combat rounds
+       - Can continue multiple rounds
+    
+    This is why we check strategic_bombing first:
+    - If it succeeds, skip all other combat
+    - If it fails, proceed with traditional combat
+    */
+    for land in gc.more_land_combat_needed {
+        if no_attackers_remain(gc, land) {
+            gc.more_land_combat_needed -= {land}
+            continue
+        }
+        if land not_in gc.land_combat_started {
+            // Try strategic bombing first - if successful, skip traditional combat
+            if strategic_bombing(gc, land) do continue
+            
+            // Otherwise proceed with traditional combat sequence
+            sea_bombardment(gc, land)
+            fire_tact_aaguns(gc, land)
+            if no_attackers_remain(gc, land) do continue
+            if attempt_conquer_land(gc, land) do continue
+        }
+        combat_rounds := 0
+        for {
+            combat_rounds += 1
+            if combat_rounds > MAX_COMBAT_ROUNDS {
+                fmt.eprintln("resolve_land_battles: MAX_COMBAT_ROUNDS reached", combat_rounds)
+                print_game_state(gc)
+            }
+            if land in gc.land_combat_started {
+                build_land_retreat_options(gc, land)
+                dst_air := get_retreat_input(gc, to_air(land)) or_return
+                if retreat_land_units(gc, land, Land_ID(dst_air)) do break
+            }
+            gc.land_combat_started += {land}
+            attacker_hits := get_attacker_hits_low_luck(gc, get_attcker_damage_land(gc, land))
+            defender_hits := get_defender_hits_low_luck(gc, get_defender_damage_land(gc, land))
+            remove_land_attackers(gc, land, &defender_hits)
+            remove_land_defenders(gc, land, &attacker_hits)
+            destroy_undefended_aaguns(gc, land)
+            if no_attackers_remain(gc, land) do break
+            if attempt_conquer_land(gc, land) do break
+        }
+    }
+    return true
 }
 
 no_attackers_remain :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
@@ -403,24 +556,6 @@ no_attackers_remain :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 		return true
 	}
 	return false
-}
-
-strategic_bombing :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
-	bombers := gc.idle_land_planes[land][gc.cur_player][.BOMBER]
-	if bombers == 0 || gc.team_land_units[land][mm.team[gc.cur_player]] > bombers {
-		return false
-	}
-	gc.more_land_combat_needed -= {land}
-	defender_hits := get_defender_hits_low_luck(gc, int(bombers))
-	for (defender_hits > 0) {
-		defender_hits -= 1
-		if hit_my_land_planes(gc, land, Air_Casualty_Order_Bombers) do continue
-		break
-	}
-	attacker_damage := int(gc.idle_land_planes[land][gc.cur_player][.BOMBER]) * 21
-	attacker_hits := get_attacker_hits_low_luck(gc, attacker_damage)
-	gc.factory_dmg[land] = max(gc.factory_dmg[land] + attacker_hits, gc.factory_prod[land] * 2)
-	return true
 }
 
 retreat_land_units :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_land: Land_ID) -> bool {

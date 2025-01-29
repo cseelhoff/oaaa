@@ -127,7 +127,7 @@ update_factory_history :: proc(gc: ^Game_Cache, action: Action_ID) {
 		// assert(card(gc.valid_actions) > 0)
 		// valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
 		if (valid_action == action) do break
-		gc.skipped_a2a[to_air(valid_action)] += {to_air(valid_action)}
+		gc.rejected_moves_from[to_air(valid_action)] += {to_air(valid_action)}
 		actions_to_remove += {valid_action}
 		// Air_ID[valid_action].skipped_moves[valid_action] = true
 		// gc.valid_actions.len -= 1

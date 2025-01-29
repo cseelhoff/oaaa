@@ -42,7 +42,7 @@ move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 add_valid_unmoved_bomber_moves :: #force_inline proc(gc: ^Game_Cache, src_land: Land_ID) {
 	gc.valid_actions += to_action_bitset(
-		(~gc.skipped_a2a[to_air(src_land)] &
+		(~gc.rejected_moves_from[to_air(src_land)] &
 			(mm.a2a_within_6_moves[to_air(src_land)] & to_air_bitset(gc.can_bomber_land_here) |
 					((gc.air_has_enemies | to_air_bitset(gc.has_bombable_factory)) &
 							(mm.a2a_within_3_moves[to_air(src_land)] |
@@ -186,31 +186,31 @@ add_valid_landing_bomber_moves :: proc(
 	#partial switch plane {
 	case .BOMBER_1_MOVES:
 		gc.valid_actions = to_action_bitset(
-			~gc.skipped_a2a[src_air] &
+			~gc.rejected_moves_from[src_air] &
 			to_air_bitset(gc.can_bomber_land_here) &
 			mm.a2a_within_1_moves[src_air],
 		)
 	case .BOMBER_2_MOVES:
 		gc.valid_actions = to_action_bitset(
-			~gc.skipped_a2a[src_air] &
+			~gc.rejected_moves_from[src_air] &
 			to_air_bitset(gc.can_bomber_land_here) &
 			mm.a2a_within_2_moves[src_air],
 		)
 	case .BOMBER_3_MOVES:
 		gc.valid_actions = to_action_bitset(
-			~gc.skipped_a2a[src_air] &
+			~gc.rejected_moves_from[src_air] &
 			to_air_bitset(gc.can_bomber_land_here) &
 			mm.a2a_within_3_moves[src_air],
 		)
 	case .BOMBER_4_MOVES:
 		gc.valid_actions = to_action_bitset(
-			~gc.skipped_a2a[src_air] &
+			~gc.rejected_moves_from[src_air] &
 			to_air_bitset(gc.can_bomber_land_here) &
 			mm.a2a_within_4_moves[src_air],
 		)
 	case .BOMBER_5_MOVES:
 		gc.valid_actions = to_action_bitset(
-			~gc.skipped_a2a[src_air] &
+			~gc.rejected_moves_from[src_air] &
 			to_air_bitset(gc.can_bomber_land_here) &
 			mm.a2a_within_5_moves[src_air],
 		)

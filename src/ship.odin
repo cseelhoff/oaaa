@@ -374,14 +374,14 @@ skip_ship :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID, ship: Activ
 add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) {
 	// for dst_sea in sa.slice(&src_sea.canal_paths[gc.canal_state].adjacent_seas) {
 	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if to_air(dst_sea) in gc.skipped_a2a[to_air(src_sea)] {
+		if to_air(dst_sea) in gc.rejected_moves_from[to_air(src_sea)] {
 			continue
 		}
 		gc.valid_actions += {to_action(dst_sea)}
 	}
 	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
 	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if to_air(dst_sea_2_away) in gc.skipped_a2a[to_air(src_sea)] {
+		if to_air(dst_sea_2_away) in gc.rejected_moves_from[to_air(src_sea)] {
 			continue
 		}
 		for mid_sea in sa.slice(&mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][dst_sea_2_away]) {
