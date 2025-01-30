@@ -27,24 +27,13 @@ Key Components:
 // Standard UCT exploration constant of √2 for balanced exploration vs exploitation
 EXPLORATION_CONSTANT :: 1.4142135623730950488 // math.sqrt(2)
 
-// Children :: [dynamic]^MCTSNode
-LargeChildren :: [dynamic]^MCTSLargeNode
+Children :: [dynamic]^MCTSNode
 
-// MCTSNode :: struct {
-// 	// state:    Game_State,
-// 	cur_player:  Player_ID,
-// 	children:    Children,
-// 	parent:      ^MCTSNode,
-// 	value:       f64,
-// 	visits:      int,
-// 	action:      Action_ID,
-// 	is_terminal: bool,
-// }
-MCTSLargeNode :: struct {
-	state:    Game_State,
+MCTSNode :: struct {
+	// state:    Game_State,
 	cur_player:  Player_ID,
-	children:    LargeChildren,
-	parent:      ^MCTSLargeNode,
+	children:    Children,
+	parent:      ^MCTSNode,
 	value:       f64,
 	visits:      int,
 	action:      Action_ID,
@@ -53,21 +42,9 @@ MCTSLargeNode :: struct {
 
 check5 := false
 
-// create_node :: proc(state: ^Game_State, action: Action_ID, parent: ^MCTSNode) -> ^MCTSNode {
-// 	node := new(MCTSNode)
-// 	// node.state = state^ //memcopy
-// 	node.cur_player = state.cur_player
-// 	node.is_terminal = is_terminal_state(state)
-// 	node.action = action
-// 	node.parent = parent
-// 	node.visits = 0
-// 	node.value = 0.0
-// 	return node
-// }
-
-create_large_node :: proc(state: ^Game_State, action: Action_ID, parent: ^MCTSLargeNode) -> ^MCTSLargeNode {
-	node := new(MCTSLargeNode)
-	node.state = state^ //memcopy
+create_node :: proc(state: ^Game_State, action: Action_ID, parent: ^MCTSNode) -> ^MCTSNode {
+	node := new(MCTSNode)
+	// node.state = state^ //memcopy
 	node.cur_player = state.cur_player
 	node.is_terminal = is_terminal_state(state)
 	node.action = action
@@ -77,11 +54,11 @@ create_large_node :: proc(state: ^Game_State, action: Action_ID, parent: ^MCTSLa
 	return node
 }
 
-select_best_large_leaf :: proc(root_node: ^MCTSLargeNode) -> (node: ^MCTSLargeNode) {
+select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 	node = root_node
 	for len(node.children) > 0 {
 		best_value: f64 = -999999.0
-		best_child: ^MCTSLargeNode = nil
+		best_child: ^MCTSNode = nil
 		for child in node.children {
 			// Add 1 to visits to avoid division by zero when a node is newly created (visits = 0)
 			// UCT formula: exploitation_term + exploration_constant * sqrt(ln(parent_visits) / child_visits)
@@ -99,81 +76,8 @@ select_best_large_leaf :: proc(root_node: ^MCTSLargeNode) -> (node: ^MCTSLargeNo
 	return node
 }
 
-// select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
-// 	node = root_node
-// 	for len(node.children) > 0 {
-// 		best_value: f64 = -999999.0
-// 		best_child: ^MCTSNode = nil
-// 		for child in node.children {
-// 			// Add 1 to visits to avoid division by zero when a node is newly created (visits = 0)
-// 			// UCT formula: exploitation_term + exploration_constant * sqrt(ln(parent_visits) / child_visits)
-// 			uct_value: f64 =
-// 				child.value / f64(child.visits + 1) +
-// 				EXPLORATION_CONSTANT *
-// 					math.sqrt(math.ln_f64(f64(node.visits + 1)) / f64(child.visits + 1)) // exploitation term// exploration term
-// 			if uct_value > best_value {
-// 				best_value = uct_value
-// 				best_child = child
-// 			}
-// 		}
-// 		node = best_child
-// 	}
-// 	return node
-// }
-
-PRINT_INTERVAL :: 10000
-
-// mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
-// 	/*
-//     AI NOTE: Main MCTS Loop
-    
-//     For each iteration:
-//     1. Selection: Find most promising leaf using UCT
-//     2. Expansion: Generate children for chosen leaf
-//     3. Simulation: Random playout from new state
-//     4. Backpropagation: Update values up the tree
-    
-//     Key Optimizations:
-//     - Rejected moves tracked in gc.rejected_moves_from
-//     - Deterministic random numbers for reproducibility
-//     - Progress updates every PRINT_INTERVAL iterations
-    
-//     Random Number Usage:
-//     - Child Selection: node.children[RANDOM_NUMBERS[seed] % len]
-//     - Seed Updates: (seed + 1) % RANDOM_MAX
-//     - Ensures consistent behavior across runs
-//     */
-// 	root := create_node(initial_state, .Skip_Action, nil)
-// 	for MCTS_ITERATIONS in 0 ..< iterations {
-// 		if MCTS_ITERATIONS % PRINT_INTERVAL == 0 {
-// 			fmt.println("Iteration ", MCTS_ITERATIONS)
-// 			print_mcts(root)
-// 			if MCTS_ITERATIONS > 1_000_000 {
-// 				prune_tree(root)
-// 			}
-// 		}
-// 		node := select_best_leaf(root)
-// 		// if !is_terminal_state(&node.state) {
-// 		if !node.is_terminal {
-// 			expand_node(node)
-// 			children_len := len(node.children)
-// 			node = node.children[int(RANDOM_NUMBERS[GLOBAL_RANDOM_SEED]) % children_len]
-// 			GLOBAL_RANDOM_SEED = (GLOBAL_RANDOM_SEED + 1) % RANDOM_MAX
-// 		}
-// 		result: f64 = random_play_until_terminal_by_action_replay(node)
-// 		for node != nil {
-// 			node.visits += 1
-// 			if node.parent != nil && mm.team[node.parent.cur_player] == .Allies { 	//test is Allies turn?
-// 				node.value += result
-// 			} else {
-// 				node.value += 1 - result
-// 			}
-// 			node = node.parent
-// 		}
-// 	}
-// 	return root
-// }
-mcts_large_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSLargeNode {
+PRINT_INTERVAL :: 1000
+mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 	/*
     AI NOTE: Main MCTS Loop
     
@@ -193,24 +97,24 @@ mcts_large_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSL
     - Seed Updates: (seed + 1) % RANDOM_MAX
     - Ensures consistent behavior across runs
     */
-	root := create_large_node(initial_state, .Skip_Action, nil)
+	root := create_node(initial_state, .Skip_Action, nil)
 	for MCTS_ITERATIONS in 0 ..< iterations {
 		if MCTS_ITERATIONS % PRINT_INTERVAL == 0 {
 			fmt.println("Iteration ", MCTS_ITERATIONS)
-			print_large_mcts(root)
-			if MCTS_ITERATIONS > 1_000_000 {
-				prune_large_tree(root)
+			print_mcts(root)
+			if MCTS_ITERATIONS > 0 {
+				prune_tree(root)
 			}
 		}
-		node := select_best_large_leaf(root)
+		node := select_best_leaf(root)
 		// if !is_terminal_state(&node.state) {
 		if !node.is_terminal {
-			expand_large_node(node)
+			expand_node(node)
 			children_len := len(node.children)
 			node = node.children[int(RANDOM_NUMBERS[GLOBAL_RANDOM_SEED]) % children_len]
 			GLOBAL_RANDOM_SEED = (GLOBAL_RANDOM_SEED + 1) % RANDOM_MAX
 		}
-		result: f64 = random_play_until_terminal(&node.state)
+		result: f64 = random_play_until_terminal_by_action_replay(node)
 		for node != nil {
 			node.visits += 1
 			if node.parent != nil && mm.team[node.parent.cur_player] == .Allies { 	//test is Allies turn?
@@ -224,78 +128,48 @@ mcts_large_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSL
 	return root
 }
 
-// get_action_sequence_from_node :: proc(node: ^MCTSNode) -> [dynamic]Action_ID {
-// 	action_sequence: [dynamic]Action_ID
-// 	// Walk up the tree from current node to root, collecting actions
-// 	current := node
-// 	for current.parent != nil {
-// 		append(&action_sequence, current.action)
-// 		current = current.parent
-// 	}
-// 	return action_sequence
-// }
-// action_sequence: [dynamic]Action_ID
+get_action_sequence_from_node :: proc(node: ^MCTSNode) -> [dynamic]Action_ID {
+	action_sequence: [dynamic]Action_ID
+	// Walk up the tree from current node to root, collecting actions
+	current := node
+	for current.parent != nil {
+		append(&action_sequence, current.action)
+		current = current.parent
+	}
+	return action_sequence
+}
+action_sequence: [dynamic]Action_ID
 
-// get_state_from_node :: proc(node: ^MCTSNode, new_gs: ^Game_State) {
-// 	// prepare a sequence of actions by examining the parent node of each node and replaying the action
-// 	// the intial games should start with the same original state
-// 	load_default_game_state(new_gs)
+get_state_from_node :: proc(node: ^MCTSNode, new_gs: ^Game_State) {
+	// prepare a sequence of actions by examining the parent node of each node and replaying the action
+	// the intial games should start with the same original state
+	load_default_game_state(new_gs)
 
-// 	// Create dynamic array to store actions in reverse order
-// 	// defer delete(action_sequence)
-// 	action_sequence = {}
-// 	// Walk up the tree from current node to root, collecting actions
-// 	current := node
-// 	for current.parent != nil {
-// 		append(&action_sequence, current.action)
-// 		current = current.parent
-// 	}
+	// Create dynamic array to store actions in reverse order
+	// defer delete(action_sequence)
+	action_sequence = {}
+	// Walk up the tree from current node to root, collecting actions
+	current := node
+	for current.parent != nil {
+		append(&action_sequence, current.action)
+		current = current.parent
+	}
 
-// 	// Replay actions in reverse order to reconstruct the state
-// 	for i := len(action_sequence) - 1; i >= 0; i -= 1 {
-// 		action := action_sequence[i]
-// 		apply_action(new_gs, action)
-// 	}
-// }
+	// Replay actions in reverse order to reconstruct the state
+	for i := len(action_sequence) - 1; i >= 0; i -= 1 {
+		action := action_sequence[i]
+		apply_action(new_gs, action)
+	}
+}
 
-// random_play_until_terminal_by_action_replay :: proc(node: ^MCTSNode) -> f64 {
-// 	new_gs: Game_State
-// 	get_state_from_node(node, &new_gs)
-// 	// Now new_gs is in the same state as node.state, continue with random playout
-// 	return random_play_until_terminal(&new_gs)
-// }
+random_play_until_terminal_by_action_replay :: proc(node: ^MCTSNode) -> f64 {
+	new_gs: Game_State
+	get_state_from_node(node, &new_gs)
+	// Now new_gs is in the same state as node.state, continue with random playout
+	return random_play_until_terminal(&new_gs)
+}
 
-// expand_node :: proc(node: ^MCTSNode) {
-// 	/*
-//     AI NOTE: Node Expansion with Deterministic Randomness
-    
-//     Uses fixed random number array for reproducibility:
-//     1. Random Selection:
-//        - RANDOM_NUMBERS: Pre-generated array of values
-//        - GLOBAL_RANDOM_SEED: Current index into array
-//        - RANDOM_MAX: Array size for wrapping
-    
-//     2. Usage:
-//        - Child selection during tree expansion
-//        - Move selection during random playouts
-//        - Consistent behavior for debugging
-    
-//     3. Benefits:
-//        - Reproducible search behavior
-//        - Easier to debug and test
-//        - Still provides good exploration
-//     */
-// 	new_gs: Game_State
-// 	get_state_from_node(node, &new_gs)
-// 	actions := get_possible_actions(&new_gs)
-// 	for next_action in actions {
-// 		new_node := create_node(&new_gs, next_action, node)
-// 		game_state_copy := new_gs
-// 		apply_action(&game_state_copy, next_action)
-// 		append(&node.children, new_node)
-// 	}
-// }
-expand_large_node :: proc(node: ^MCTSLargeNode) {
+expand_node :: proc(node: ^MCTSNode) {
 	/*
     AI NOTE: Node Expansion with Deterministic Randomness
     
@@ -315,11 +189,11 @@ expand_large_node :: proc(node: ^MCTSLargeNode) {
        - Easier to debug and test
        - Still provides good exploration
     */
-	new_gs:=node.state
-	// get_state_from_node(node, &new_gs)
+	new_gs: Game_State
+	get_state_from_node(node, &new_gs)
 	actions := get_possible_actions(&new_gs)
 	for next_action in actions {
-		new_node := create_large_node(&new_gs, next_action, node)
+		new_node := create_node(&new_gs, next_action, node)
 		game_state_copy := new_gs
 		apply_action(&game_state_copy, next_action)
 		append(&node.children, new_node)
@@ -379,63 +253,8 @@ copy_full_array :: proc(src: ^[MAX_ACTIONS]Action_ID, dest: ^[MAX_ACTIONS]Action
 MAX_DEPTH :: 40
 MIN_VISITS :: 10000
 
-// print_mcts_tree :: proc(
-// 	node: ^MCTSNode,
-// 	depth: uint,
-// 	current_sequence: ^Action_Sequence,
-// 	length: int,
-// ) {
-// 	/*
-//     AI NOTE: Action Sequence Analysis
-    
-//     Tracks and analyzes complete paths through MCTS tree:
-//     1. Sequence Building:
-//        - Follows most visited paths
-//        - Limited by MAX_DEPTH to control complexity
-//        - Records both actions and their values
-    
-//     2. Sequence Selection:
-//        - Requires MIN_VISITS to filter noise
-//        - Sorted by value/visit ratio
-//        - Top sequences represent best strategies
-    
-//     3. Usage:
-//        - Provides move suggestions to player
-//        - Shows alternative strategic options
-//        - Helps explain AI decision making
-//     */
-// 	if node == nil do return
-// 	new_length := length
-// 	current_sequence[new_length] = node.action
-// 	new_length += 1
-// 	if len(node.children) == 0 || depth == MAX_DEPTH {
-// 		update_top_action_sequences(
-// 			current_sequence,
-// 			new_length,
-// 			node.value / f64(node.visits),
-// 			node.visits,
-// 		)
-// 		return
-// 	}
-// 	has_mature_child := false
-// 	for child in node.children {
-// 		if child.visits > MIN_VISITS {
-// 			has_mature_child = true
-// 			print_mcts_tree(child, depth + 1, current_sequence, new_length)
-// 		}
-// 	}
-// 	if !has_mature_child {
-// 		update_top_action_sequences(
-// 			current_sequence,
-// 			new_length,
-// 			node.value / f64(node.visits),
-// 			node.visits,
-// 		)
-// 	}
-// }
-
-print_mcts_large_tree :: proc(
-	node: ^MCTSLargeNode,
+print_mcts_tree :: proc(
+	node: ^MCTSNode,
 	depth: uint,
 	current_sequence: ^Action_Sequence,
 	length: int,
@@ -476,7 +295,7 @@ print_mcts_large_tree :: proc(
 	for child in node.children {
 		if child.visits > MIN_VISITS {
 			has_mature_child = true
-			print_mcts_large_tree(child, depth + 1, current_sequence, new_length)
+			print_mcts_tree(child, depth + 1, current_sequence, new_length)
 		}
 	}
 	if !has_mature_child {
@@ -506,30 +325,7 @@ print_top_action_sequences :: proc() {
 }
 MAX_PRINT_DEPTH :: 40
 
-// print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
-// 	if node == nil do return
-// 	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
-// 	if node.parent != nil {
-// 		fmt.print(mm.color[node.parent.cur_player])
-// 		fmt.print("Action:", node.action)
-// 		// fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
-// 		fmt.print(", Visits:", node.visits)
-// 		fmt.print(", Value:", node.value)
-// 		fmt.print(", Avg:", node.value / f64(node.visits))
-// 		fmt.println(DEF_COLOR)
-// 	}
-// 	best_index := 0
-// 	best_value: f64 = 0.0
-// 	for child, i in node.children {
-// 		new_value := child.value / f64(child.visits)
-// 		if new_value > best_value {
-// 			best_value = new_value
-// 			best_index = i
-// 		}
-// 	}
-// 	print_mcts_tree3(node.children[best_index], depth + 1)
-// }
-print_mcts_large_tree3 :: proc(node: ^MCTSLargeNode, depth: int) {
+print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if node == nil do return
 	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
 	if node.parent != nil {
@@ -550,62 +346,34 @@ print_mcts_large_tree3 :: proc(node: ^MCTSLargeNode, depth: int) {
 			best_index = i
 		}
 	}
-	print_mcts_large_tree3(node.children[best_index], depth + 1)
+	print_mcts_tree3(node.children[best_index], depth + 1)
 }
 
-// print_mcts_tree2 :: proc(node: ^MCTSNode, depth: uint) {
-// 	if node == nil do return
-// 	if depth > 3 {
-// 		return
-// 	}
-// 	for _ in 0 ..< depth {
-// 		fmt.print("  ")
-// 	}
-// 	fmt.print("Action:", node.action)
-// 	// fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
-// 	fmt.print(", Visits:", node.visits)
-// 	fmt.print(", Value:", node.value)
-// 	fmt.print(", Avg:", node.value / f64(node.visits))
-// 	fmt.println()
-// 	for child in node.children {
-// 		print_mcts_tree2(child, depth + 1)
-// 	}
-// }
+print_mcts_tree2 :: proc(node: ^MCTSNode, depth: uint) {
+	if node == nil do return
+	if depth > 3 {
+		return
+	}
+	for _ in 0 ..< depth {
+		fmt.print("  ")
+	}
+	fmt.print("Action:", node.action)
+	// fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
+	fmt.print(", Visits:", node.visits)
+	fmt.print(", Value:", node.value)
+	fmt.print(", Avg:", node.value / f64(node.visits))
+	fmt.println()
+	for child in node.children {
+		print_mcts_tree2(child, depth + 1)
+	}
+}
 
 // Public function to print the MCTS tree starting from the root
-// print_mcts :: proc(root: ^MCTSNode) {
-// 	print_mcts_tree3(root, 0)
-// }
-
-print_large_mcts :: proc(root: ^MCTSLargeNode) {
-	print_mcts_large_tree3(root, 0)
+print_mcts :: proc(root: ^MCTSNode) {
+	print_mcts_tree3(root, 0)
 }
 
-// select_best_action :: proc(root: ^MCTSNode) -> Action_ID {
-// 	/*
-//     AI NOTE: Final Move Selection
-    
-//     Standard MCTS approach:
-//     - Select most visited child at root
-//     - Visit count is most reliable metric
-//     - More robust than using raw value
-//     - Naturally balances exploration/exploitation
-//     */
-// 	best_child: ^MCTSNode = nil
-// 	most_visits: int = -1
-// 	// 	best_value: f64 = -999999.0
-// 	for child in root.children {
-// 		if child.visits > most_visits {
-// 			// 		if child.value > best_value {
-// 			// best_value = child.value
-// 			most_visits = child.visits
-// 			best_child = child
-// 		}
-// 	}
-// 	return best_child.action
-// }
-
-select_best_large_action :: proc(root: ^MCTSLargeNode) -> Action_ID {
+select_best_action :: proc(root: ^MCTSNode) -> Action_ID {
 	/*
     AI NOTE: Final Move Selection
     
@@ -615,7 +383,7 @@ select_best_large_action :: proc(root: ^MCTSLargeNode) -> Action_ID {
     - More robust than using raw value
     - Naturally balances exploration/exploitation
     */
-	best_child: ^MCTSLargeNode = nil
+	best_child: ^MCTSNode = nil
 	most_visits: int = -1
 	// 	best_value: f64 = -999999.0
 	for child in root.children {
@@ -635,33 +403,7 @@ PRUNE_VALUE_THRESHOLD :: 0.3 // Prune nodes with normalized value < 0.3
 PRUNE_DEPTH_LIMIT :: 20 // Maximum depth to maintain in tree
 PRUNE_MIN_PARENT_VISITS :: 1000 // Only prune nodes whose parents have this many visits
 
-// prune_tree :: proc(root: ^MCTSNode) {
-// 	/*
-//     AI NOTE: MCTS Tree Pruning
-    
-//     Prunes low-value branches to reduce memory usage:
-//     1. Visit-based pruning:
-//        - Remove nodes with few visits relative to siblings
-//        - Keeps frequently visited paths
-    
-//     2. Value-based pruning:
-//        - Remove nodes with consistently poor outcomes
-//        - Normalized relative to sibling performance
-    
-//     3. Depth-based pruning:
-//        - Remove deep nodes beyond PRUNE_DEPTH_LIMIT
-//        - Keeps tree focused on near-term decisions
-    
-//     4. Memory Management:
-//        - Properly frees all pruned node resources
-//        - Maintains parent-child relationships
-//     */
-// 	if root == nil do return
-
-// 	prune_node_recursive(root, 0)
-// }
-
-prune_large_tree :: proc(root: ^MCTSLargeNode) {
+prune_tree :: proc(root: ^MCTSNode) {
 	/*
     AI NOTE: MCTS Tree Pruning
     
@@ -684,56 +426,10 @@ prune_large_tree :: proc(root: ^MCTSLargeNode) {
     */
 	if root == nil do return
 
-	prune_node_large_recursive(root, 0)
+	prune_node_recursive(root, 0)
 }
 
-// prune_node_recursive :: proc(node: ^MCTSNode, depth: int) {
-// 	if node == nil do return
-
-// 	// First recursively process all children
-// 	if len(node.children) > 0 {
-// 		i := 0
-// 		for i < len(node.children) {
-// 			child := node.children[i]
-
-// 			should_prune := false
-// 			if depth >= PRUNE_DEPTH_LIMIT {
-// 				should_prune = true
-// 			} else if node.visits >= PRUNE_MIN_PARENT_VISITS {
-// 				// Calculate normalized visit and value ratios
-// 				visit_ratio := f64(child.visits) / f64(node.visits)
-
-// 				// Find best sibling value for normalization
-// 				best_sibling_value := -999999.0
-// 				for sibling in node.children {
-// 					if sibling.value > best_sibling_value {
-// 						best_sibling_value = sibling.value
-// 					}
-// 				}
-
-// 				// Normalize value relative to best sibling
-// 				normalized_value :=
-// 					child.value / best_sibling_value if best_sibling_value > 0 else 0
-
-// 				should_prune =
-// 					visit_ratio < PRUNE_VISIT_THRESHOLD || normalized_value < PRUNE_VALUE_THRESHOLD
-// 			}
-
-// 			if should_prune {
-// 				// Free the pruned subtree
-// 				free_node_recursive(child)
-// 				// Remove from children array
-// 				ordered_remove(&node.children, i)
-// 			} else {
-// 				// Process this child's subtree
-// 				prune_node_recursive(child, depth + 1)
-// 				i += 1
-// 			}
-// 		}
-// 	}
-// }
-
-prune_node_large_recursive :: proc(node: ^MCTSLargeNode, depth: int) {
+prune_node_recursive :: proc(node: ^MCTSNode, depth: int) {
 	if node == nil do return
 
 	// First recursively process all children
@@ -767,39 +463,24 @@ prune_node_large_recursive :: proc(node: ^MCTSLargeNode, depth: int) {
 
 			if should_prune {
 				// Free the pruned subtree
-				free_node_large_recursive(child)
+				free_node_recursive(child)
 				// Remove from children array
 				ordered_remove(&node.children, i)
 			} else {
 				// Process this child's subtree
-				prune_node_large_recursive(child, depth + 1)
+				prune_node_recursive(child, depth + 1)
 				i += 1
 			}
 		}
 	}
 }
 
-// free_node_recursive :: proc(node: ^MCTSNode) {
-// 	if node == nil do return
-
-// 	// First free all children
-// 	for child in node.children {
-// 		free_node_recursive(child)
-// 	}
-
-// 	// Free the dynamic array of children
-// 	delete(node.children)
-
-// 	// Free the node itself
-// 	free(node)
-// }
-
-free_node_large_recursive :: proc(node: ^MCTSLargeNode) {
+free_node_recursive :: proc(node: ^MCTSNode) {
 	if node == nil do return
 
 	// First free all children
 	for child in node.children {
-		free_node_large_recursive(child)
+		free_node_recursive(child)
 	}
 
 	// Free the dynamic array of children
