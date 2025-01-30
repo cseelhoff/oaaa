@@ -205,8 +205,8 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 						gc.is_fighter_cache_current = false
 					}
 				}
+				gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
 			}
-			gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
 		}
 	}
 	return true

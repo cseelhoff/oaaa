@@ -36,7 +36,7 @@ move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
     gc.clear_history_needed = false
     for src_land in Land_ID {
         if gc.active_land_planes[src_land][.BOMBER_UNMOVED] == 0 do return true
-        if ~gc.is_bomber_cache_current do refresh_can_bomber_land_here(gc)
+        if !gc.is_bomber_cache_current do refresh_can_bomber_land_here(gc)
         gc.valid_actions = {to_action(src_land)}
         add_valid_unmoved_bomber_moves(gc, src_land)
         for gc.active_land_planes[src_land][.BOMBER_UNMOVED] > 0 {

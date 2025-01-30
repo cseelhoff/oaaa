@@ -1,3 +1,15 @@
 {
-  "nixEnvSelector.nixFile": "${workspaceFolder}/shell.nix"
+  "testing": {
+    "configurations": {
+      "odin": {
+        "type": "task",
+        "request": "launch",
+        "task": "run-tests"
+      }
+    }
+  },
+"lldb.showDisassembly": "auto",
+"lldb.dereferencePointers": true,
+"lldb.consoleMode": "commands",
+"lldb.displayFormat": "auto"
 }

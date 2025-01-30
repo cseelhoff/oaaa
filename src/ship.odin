@@ -1,28 +1,3 @@
-/*
-AI NOTE: Ship Casualty Priority System
-Casualty orders optimize for preserving combat effectiveness by taking weaker units first.
-Attack/Defense values differ, leading to different optimal orders:
-
-ATTACK VALUES:          DEFENSE VALUES:
-- Battleship: 4        - Battleship: 4
-- Cruiser: 3          - Cruiser: 3
-- Destroyer: 2        - Destroyer: 2
-- Carrier: 1          - Carrier: 2
-- Transport: 0        - Transport: 0
-
-Key patterns in casualty orders:
-1. Transports always last (no combat value)
-2. Take weaker units first to preserve strong attackers/defenders
-3. Damaged battleships taken before transports but after intact combat ships
-4. Bombarded ships (used bombardment) are lower priority than fresh ships
-
-Example sequence (attackers):
-Attacker_Sea_Casualty_Order_1: Subs/Destroyers (weakest combat ships)
-Attacker_Sea_Casualty_Order_2: Carriers/Used Cruisers (medium value)
-Attacker_Sea_Casualty_Order_3: Used/Damaged Battleships
-Attacker_Sea_Casualty_Order_4: Transports (no combat value)
-*/
-
 package oaaa
 
 import sa "core:container/small_array"
@@ -130,58 +105,6 @@ Active_Ship :: enum {
 	BS_DAMAGED_0_MOVES,
 	BS_DAMAGED_BOMBARDED,
 }
-
-Attacker_Sea_Casualty_Order_1 := []Active_Ship{.SUB_0_MOVES, .DESTROYER_0_MOVES}
-
-Air_Casualty_Order_Fighters := []Active_Plane {
-	.FIGHTER_0_MOVES,
-	.FIGHTER_1_MOVES,
-	.FIGHTER_2_MOVES,
-	.FIGHTER_3_MOVES,
-	.FIGHTER_4_MOVES,
-}
-
-Attacker_Sea_Casualty_Order_2 := []Active_Ship{.CARRIER_0_MOVES, .CRUISER_BOMBARDED}
-
-Air_Casualty_Order_Bombers := []Active_Plane {
-	.BOMBER_0_MOVES,
-	.BOMBER_1_MOVES,
-	.BOMBER_2_MOVES,
-	.BOMBER_3_MOVES,
-	.BOMBER_4_MOVES,
-	.BOMBER_5_MOVES,
-}
-Attacker_Sea_Casualty_Order_3 := []Active_Ship{.BS_DAMAGED_BOMBARDED}
-
-Attacker_Sea_Casualty_Order_4 := []Active_Ship {
-	.TRANS_EMPTY_0_MOVES,
-	.TRANS_1I_0_MOVES,
-	.TRANS_1A_0_MOVES,
-	.TRANS_1T_0_MOVES,
-	.TRANS_2I_0_MOVES,
-	.TRANS_1I_1A_0_MOVES,
-	.TRANS_1I_1T_0_MOVES,
-}
-
-Attacker_Land_Casualty_Order_1 := []Active_Army{.INF_0_MOVES, .ARTY_0_MOVES, .TANK_0_MOVES}
-
-Defender_Sub_Casualty := []Idle_Ship{.SUB}
-
-Defender_Sea_Casualty_Order_1 := []Idle_Ship{.DESTROYER, .CARRIER, .CRUISER}
-
-Defender_Sea_Casualty_Order_2 := []Idle_Ship {
-	.BS_DAMAGED,
-	.TRANS_EMPTY,
-	.TRANS_1I,
-	.TRANS_1A,
-	.TRANS_1T,
-	.TRANS_2I,
-	.TRANS_1I_1A,
-	.TRANS_1I_1T,
-}
-
-Defender_Land_Casualty_Order_1 := []Idle_Army{.AAGUN}
-Defender_Land_Casualty_Order_2 := []Idle_Army{.INF, .ARTY, .TANK}
 Bombard_Ships := []Active_Ship{.BATTLESHIP_0_MOVES, .BS_DAMAGED_0_MOVES, .CRUISER_0_MOVES} //Battleships first, since they have higher attack damage
 
 Active_Ship_To_Idle := [Active_Ship]Idle_Ship {

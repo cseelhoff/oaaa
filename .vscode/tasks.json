@@ -1,5 +1,18 @@
 {
   "version": "2.0.0",
+  "problemMatcher": {
+    "owner": "odin",
+    "source": "Odin",
+    "fileLocation": "absolute",
+    "pattern": {
+      "regexp": "^(.*?)(\\((\\d+):(\\d+)\\))\\s+(Syntax\\s+)?(Error|Warning):\\s+(.+)$",
+      "file": 1,
+      "line": 3,
+      "column": 4,
+      "severity": 6,
+      "message": 7
+    }
+  },
   "tasks": [
     {
       "label": "build-debug",
@@ -22,11 +35,35 @@
         "src",
         "-out:bin/main",
         "-o:aggressive",
+        // "-debug",
         "-no-bounds-check",
         "-disable-assert",
-        "-no-type-assert",
+        "-no-type-assert"
       ],
       "problemMatcher": []
+    },
+    {
+      "label": "build-test-debug",
+      "type": "process",
+      "command": "odin",
+      "args": [
+        "build",
+        "tests",
+        "-out:bin/tests",
+        "-debug",
+        "-collection:src=src"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "run-tests",
+      "type": "shell",
+      "command": "odin test tests",
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
     }
   ]
 }

@@ -71,7 +71,7 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 	return node
 }
 
-PRINT_INTERVAL :: 10000
+PRINT_INTERVAL :: 1000
 mcts_search :: proc(gc: ^Game_Cache, initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 	/*
     AI NOTE: Main MCTS Loop

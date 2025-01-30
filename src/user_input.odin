@@ -19,8 +19,9 @@ print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 
 get_retreat_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (dst_air: Air_ID, ok: bool) {
 	debug_checks(gc)
+	dst_air = src_air
 	if card(gc.valid_actions) > 1 {
-		if gc.answers_remaining == 0 do return Air_ID(0), false
+		if gc.answers_remaining == 0 do return dst_air, false
 		if gc.cur_player in mm.is_human {
 			print_retreat_prompt(gc, src_air)
 			dst_air = to_air(get_user_input(gc))
@@ -28,7 +29,7 @@ get_retreat_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (dst_air: Air_ID,
 			if ACTUALLY_PRINT do print_retreat_prompt(gc, src_air)
 			dst_air = to_air(get_ai_input(gc))
 			if ACTUALLY_PRINT {
-				fmt.println("AI Action:", dst_air)
+				fmt.println("-->AI Action:", dst_air)
 			}
 		}
 	}
@@ -54,8 +55,9 @@ get_move_input :: proc(
 	ok: bool,
 ) {
 	debug_checks(gc)
+	dst_air = src_air
 	if card(gc.valid_actions) > 1 {
-		if gc.answers_remaining == 0 do return Air_ID(0), false
+		if gc.answers_remaining == 0 do return dst_air, false
 		if is_human[gc.cur_player] {
 			print_move_prompt(gc, unit_name, src_air)
 			dst_air = to_air(get_user_input(gc))
@@ -63,7 +65,7 @@ get_move_input :: proc(
 			if ACTUALLY_PRINT do print_move_prompt(gc, unit_name, src_air)
 			dst_air = to_air(get_ai_input(gc))
 			if ACTUALLY_PRINT {
-				fmt.println("AI Action:", dst_air)
+				fmt.println("--->AI Action:", dst_air)
 			}
 		}
 	}
@@ -135,7 +137,7 @@ get_buy_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (action: Buy_Action, 
 			if ACTUALLY_PRINT do print_buy_prompt(gc, src_air)
 			action = to_buy_action(get_ai_input(gc))
 			if ACTUALLY_PRINT {
-				fmt.println("AI Action:", action)
+				fmt.println("--->AI Action:", action)
 			}
 		}
 	}
@@ -150,20 +152,14 @@ print_game_state :: proc(gc: ^Game_Cache) {
 	fmt.println("Money: ", gc.money[gc.cur_player], DEF_COLOR, "\n")
 	for land in Land_ID {
 		fmt.print(mm.color[gc.owner[land]])
-		fmt.println(
-			mm.land_name[land],
-			"more combat:",
-			land in gc.more_land_combat_needed,
-			"combat started:",
-			land in gc.land_combat_started,
-			"builds:",
-			gc.builds_left[land],
-			gc.factory_dmg[land],
-			"/",
-			gc.factory_prod[land],
-			"bombards:",
-			gc.max_bombards[land],
-		)
+		fmt.print(land)
+		if land in gc.more_land_combat_needed do fmt.print(" more-combat")
+		if land in gc.land_combat_started do fmt.print(" combat-started")
+		if gc.builds_left[land] > 0 do fmt.print(" builds:", gc.builds_left[land])
+		if gc.factory_dmg[land] > 0 do fmt.print(" factory-dmg:", gc.factory_dmg[land])
+		if gc.factory_prod[land] > 0 do fmt.print(" factory-prod:", gc.factory_prod[land])
+		if gc.max_bombards[land] > 0 do fmt.print(" bombards:", gc.max_bombards[land])
+		fmt.println()
 		fmt.print(mm.color[gc.cur_player])
 		for army in Active_Army {
 			if gc.active_armies[land][army] > 0 {
@@ -176,7 +172,7 @@ print_game_state :: proc(gc: ^Game_Cache) {
 			}
 		}
 		for player in Player_ID {
-			// if &player == gc.cur_player do continue
+			if player == gc.cur_player do continue
 			fmt.print(mm.color[player])
 			for army in Idle_Army {
 				if gc.idle_armies[land][player][army] > 0 {
@@ -193,14 +189,14 @@ print_game_state :: proc(gc: ^Game_Cache) {
 				}
 			}
 		}
+		fmt.println()
 	}
 	for sea in Sea_ID {
-		fmt.println(mm.sea_name[sea])
-		fmt.println(
-		"more combat:",
-		sea in gc.more_sea_combat_needed,
-		"combat started:",
-		sea in gc.sea_combat_started)
+		fmt.print(DEF_COLOR)
+		fmt.print(sea)
+		if sea in gc.more_sea_combat_needed do fmt.print(" more-combat")
+		if sea in gc.sea_combat_started do fmt.print(" combat-started")
+		fmt.println()
 		fmt.print(mm.color[gc.cur_player])
 		for ship in Active_Ship {
 			if gc.active_ships[sea][ship] > 0 {
@@ -213,18 +209,13 @@ print_game_state :: proc(gc: ^Game_Cache) {
 			}
 		}
 		for player in Player_ID {
-			// if &player == gc.cur_player do continue
+			if player == gc.cur_player do continue
 			fmt.print(mm.color[player])
 			for ship in Idle_Ship {
 				if gc.idle_ships[sea][player][ship] > 0 {
 					fmt.println(ship, ":", gc.idle_ships[sea][player][ship])
 				}
 			}
-			//for plane in Idle_Plane {
-			// 	if gc.idle_sea_planes plane > 0 {
-			// 		fmt.println(Idle_Plane_Names[plane], ":", plane)
-			// 	}
-			// }
 			if gc.idle_sea_planes[sea][player][.FIGHTER] > 0 {
 				fmt.println(
 					Idle_Plane_Names[.FIGHTER],
@@ -233,6 +224,7 @@ print_game_state :: proc(gc: ^Game_Cache) {
 				)
 			}
 		}
+		fmt.println()
 	}
 	fmt.println(DEF_COLOR)
 }

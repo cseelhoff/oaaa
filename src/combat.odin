@@ -1,6 +1,82 @@
 package oaaa
 import sa "core:container/small_array"
 import "core:fmt"
+/*
+AI NOTE: Ship Casualty Priority System
+Casualty orders optimize for preserving combat effectiveness by taking weaker units first.
+Attack/Defense values differ, leading to different optimal orders:
+
+ATTACK VALUES:          DEFENSE VALUES:
+- Battleship: 4        - Battleship: 4
+- Cruiser: 3          - Cruiser: 3
+- Destroyer: 2        - Destroyer: 2
+- Carrier: 1          - Carrier: 2
+- Transport: 0        - Transport: 0
+
+Key patterns in casualty orders:
+1. Transports always last (no combat value)
+2. Take weaker units first to preserve strong attackers/defenders
+3. Damaged battleships taken before transports but after intact combat ships
+4. Bombarded ships (used bombardment) are lower priority than fresh ships
+
+Example sequence (attackers):
+Attacker_Sea_Casualty_Order_1: Subs/Destroyers (weakest combat ships)
+Attacker_Sea_Casualty_Order_2: Carriers/Used Cruisers (medium value)
+Attacker_Sea_Casualty_Order_3: Used/Damaged Battleships
+Attacker_Sea_Casualty_Order_4: Transports (no combat value)
+*/
+
+Attacker_Sea_Casualty_Order_1 := []Active_Ship{.SUB_0_MOVES, .DESTROYER_0_MOVES}
+
+Air_Casualty_Order_Fighters := []Active_Plane {
+	.FIGHTER_0_MOVES,
+	.FIGHTER_1_MOVES,
+	.FIGHTER_2_MOVES,
+	.FIGHTER_3_MOVES,
+	.FIGHTER_4_MOVES,
+}
+
+Attacker_Sea_Casualty_Order_2 := []Active_Ship{.CARRIER_0_MOVES, .CRUISER_BOMBARDED}
+
+Air_Casualty_Order_Bombers := []Active_Plane {
+	.BOMBER_0_MOVES,
+	.BOMBER_1_MOVES,
+	.BOMBER_2_MOVES,
+	.BOMBER_3_MOVES,
+	.BOMBER_4_MOVES,
+	.BOMBER_5_MOVES,
+}
+Attacker_Sea_Casualty_Order_3 := []Active_Ship{.BS_DAMAGED_BOMBARDED}
+
+Attacker_Sea_Casualty_Order_4 := []Active_Ship {
+	.TRANS_EMPTY_0_MOVES,
+	.TRANS_1I_0_MOVES,
+	.TRANS_1A_0_MOVES,
+	.TRANS_1T_0_MOVES,
+	.TRANS_2I_0_MOVES,
+	.TRANS_1I_1A_0_MOVES,
+	.TRANS_1I_1T_0_MOVES,
+}
+
+Attacker_Land_Casualty_Order_1 := []Active_Army{.INF_0_MOVES, .ARTY_0_MOVES, .TANK_0_MOVES}
+
+Defender_Sub_Casualty := []Idle_Ship{.SUB}
+
+Defender_Sea_Casualty_Order_1 := []Idle_Ship{.DESTROYER, .CARRIER, .CRUISER}
+
+Defender_Sea_Casualty_Order_2 := []Idle_Ship {
+	.BS_DAMAGED,
+	.TRANS_EMPTY,
+	.TRANS_1I,
+	.TRANS_1A,
+	.TRANS_1T,
+	.TRANS_2I,
+	.TRANS_1I_1A,
+	.TRANS_1I_1T,
+}
+
+Defender_Land_Casualty_Order_1 := []Idle_Army{.AAGUN}
+Defender_Land_Casualty_Order_2 := []Idle_Army{.INF, .ARTY, .TANK}
 
 no_defender_threat_exists :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
     /*
@@ -19,7 +95,7 @@ no_defender_threat_exists :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
     */
     if gc.enemy_blockade_total[sea] == 0 &&
        gc.enemy_fighters_total[sea] == 0 &&
-       ~(gc.enemy_subs_total[sea] > 0 && gc.allied_destroyers_total[sea] > 0) {
+       !(gc.enemy_subs_total[sea] > 0 && gc.allied_destroyers_total[sea] > 0) {
         return true
     }
     return false
@@ -84,12 +160,13 @@ build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
     - Must not have enemy blockade
     - Must not already have combat (sea_combat_started)
     */
+    gc.valid_actions = {}
     if (gc.enemy_blockade_total[src_sea] == 0 && gc.enemy_fighters_total[src_sea] == 0) ||
        do_sea_targets_exist(gc, src_sea) {
         gc.valid_actions += {to_action(src_sea)}
     }
     for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] & ~gc.sea_combat_started {
-        if gc.enemy_blockade_total[dst_sea] == 0 {
+        if gc.enemy_blockade_total[dst_sea] == 0 && dst_sea not_in gc.more_sea_combat_needed {
             gc.valid_actions += {to_action(dst_sea)}
         }
     }
@@ -137,12 +214,12 @@ sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> bool {
 		gc.active_ships[src_sea][active_ship] = 0
 		gc.idle_ships[src_sea][gc.cur_player][Active_Ship_To_Idle[active_ship]] = 0
 		gc.team_sea_units[src_sea][team] -= number_of_ships
-		for player in sa.slice(&mm.allies[gc.cur_player]) {
-			if player == gc.cur_player do continue
-			number_of_ships = gc.idle_ships[src_sea][player][Active_Ship_To_Idle[active_ship]]
-			gc.idle_ships[dst_sea][player][Active_Ship_To_Idle[active_ship]] += number_of_ships
+		for ally in sa.slice(&mm.allies[gc.cur_player]) {
+			if ally == gc.cur_player do continue
+			number_of_ships = gc.idle_ships[src_sea][ally][Active_Ship_To_Idle[active_ship]]
+			gc.idle_ships[dst_sea][ally][Active_Ship_To_Idle[active_ship]] += number_of_ships
 			gc.team_sea_units[dst_sea][team] += number_of_ships
-			gc.idle_ships[src_sea][player][Active_Ship_To_Idle[active_ship]] = 0
+			gc.idle_ships[src_sea][ally][Active_Ship_To_Idle[active_ship]] = 0
 			gc.team_sea_units[src_sea][team] -= number_of_ships
 		}
 	}
@@ -151,7 +228,7 @@ sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> bool {
 }
 
 destroy_defender_transports :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
-	if ~no_defender_threat_exists(gc, sea) do return false
+	if !no_defender_threat_exists(gc, sea) do return false
 	if gc.allied_sea_combatants_total[sea] > 0 {
 		// todo - we can use a SIMD 'AND' to zero out the transports
 		enemy_team := mm.enemy_team[gc.cur_player]
@@ -281,8 +358,9 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
         for {
             if sea in gc.sea_combat_started {
                 build_sea_retreat_options(gc, sea)
-                dst_air_idx := get_retreat_input(gc, to_air(sea)) or_return
-                if sea_retreat(gc, sea, to_sea(dst_air_idx)) do break
+                dst_air := get_retreat_input(gc, to_air(sea)) or_return
+                dst_sea := to_sea(dst_air)
+                if dst_sea != sea && sea_retreat(gc, sea, dst_sea) do break
             }
             //if destroy_vulnerable_transports(gc, &sea) do break
             gc.sea_combat_started += {sea}
@@ -758,8 +836,8 @@ remove_sea_defenders :: proc(
 		if remove_enemy_ships(gc, sea, Defender_Sea_Casualty_Order_2) do continue
 		assert(
 			gc.team_sea_units[sea][mm.enemy_team[gc.cur_player]] == 0 ||
-			~subs_targetable ||
-			~planes_targetable,
+			!subs_targetable ||
+			!planes_targetable,
 		)
 		return
 	}
@@ -885,19 +963,10 @@ hit_ally_battleship :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 }
 
 hit_enemy_battleship :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
-    /*
-    AI NOTE: Enemy Battleship Damage
-    
-    Enemy battleships are destroyed, not damaged:
-    - Remove from all unit counts
-    - Update blockade total (loses capability)
-    - This is different from player battleships
-    */
 	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
 		if gc.idle_ships[sea][enemy][.BATTLESHIP] > 0 {
 			gc.idle_ships[sea][enemy][.BATTLESHIP] -= 1
-			gc.team_sea_units[sea][mm.team[enemy]] -= 1
-			gc.enemy_blockade_total[sea] -= 1
+            gc.idle_ships[sea][enemy][.BS_DAMAGED] += 1
 			return true
 		}
 	}
@@ -969,10 +1038,10 @@ remove_ally_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Active
 
 remove_enemy_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Idle_Ship) -> bool {
 	for ship in casualty_order {
-		for player in sa.slice(&mm.enemies[gc.cur_player]) {
-			if gc.idle_ships[sea][player][ship] > 0 {
-				gc.idle_ships[sea][player][ship] -= 1
-				gc.team_sea_units[sea][mm.team[player]] -= 1
+		for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
+			if gc.idle_ships[sea][enemy][ship] > 0 {
+				gc.idle_ships[sea][enemy][ship] -= 1
+				gc.team_sea_units[sea][mm.team[enemy]] -= 1
 				if ship == .DESTROYER {
 					gc.enemy_destroyer_total[sea] -= 1
 					gc.enemy_blockade_total[sea] -= 1
@@ -1082,14 +1151,13 @@ hit_enemy_sea_fighter :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
        
     2. Combat Totals:
        - enemy_fighters_total (affects threat detection)
-       - enemy_blockade_total (fighters can blockade)
+       - enemy_blockade_total (fighters can't blockade)
     */
 	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
 		if gc.idle_sea_planes[sea][enemy][.FIGHTER] > 0 {
 			gc.idle_sea_planes[sea][enemy][.FIGHTER] -= 1
 			gc.team_sea_units[sea][mm.team[enemy]] -= 1
 			gc.enemy_fighters_total[sea] -= 1
-			gc.enemy_blockade_total[sea] -= 1
 			return true
 		}
 	}

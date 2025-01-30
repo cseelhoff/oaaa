@@ -7,11 +7,11 @@ ACTUALLY_PRINT := false
 when ODIN_DEBUG {
 	debug_checks :: proc(gc: ^Game_Cache) {
 		GLOBAL_TICK += 1
-		// if GLOBAL_TICK >= 58968320 {
-		// 	fmt.println("Enable Print")
-		// 	//print_game_state(gc)
-		// 	gc.actually_print = true
-		// } else do return
+		if GLOBAL_TICK >= 24495625300 {
+			fmt.println("Enable Print")
+			print_game_state(gc)
+			ACTUALLY_PRINT = true
+		} else do return
 		for sea in Sea_ID {
 			team_idles: [Team_ID]u8 = {
 				.Allies = 0,
@@ -19,7 +19,7 @@ when ODIN_DEBUG {
 			}
 			for active_ship in Active_Ship {
 				ship := gc.active_ships[sea][active_ship]
-				if ship < 0 {
+				if ship < 0 || ship > 200 {
 					fmt.eprintln("Negative active ships")
 				}
 			}
@@ -27,14 +27,14 @@ when ODIN_DEBUG {
 			for player in Player_ID {
 				for idle_ship in Idle_Ship {
 					ship := gc.idle_ships[sea][player][idle_ship]
-					if ship < 0 {
+					if ship < 0 || ship > 200{
 						fmt.eprintln("Negative idle ships")
 					}
 					team_idles[mm.team[player]] += ship
 				}
 				for idle_plane in Idle_Plane {
 					planes := gc.idle_sea_planes[sea][player][idle_plane]
-					if planes < 0 {
+					if planes < 0 || planes > 200 {
 						fmt.eprintln("Negative idle planes")
 					} else if planes > 0 &&
 					   idle_plane == .BOMBER &&
@@ -64,14 +64,14 @@ when ODIN_DEBUG {
 			}
 			for active_army in Active_Army {
 				army := gc.active_armies[land][active_army]
-				if army < 0 {
+				if army < 0 || army > 200 {
 					fmt.eprintln("Negative active armies")
 				}
 			}
 			for player in Player_ID {
 				for idle_army in Idle_Army {
 					army := gc.idle_armies[land][player][idle_army]
-					if army < 0 {
+					if army < 0 || army > 200 {
 						fmt.eprintln("Negative idle armies")
 					}
 					team_idles[mm.team[player]] += army
@@ -79,7 +79,7 @@ when ODIN_DEBUG {
 
 				for idle_plane in Idle_Plane {
 					plane := gc.idle_land_planes[land][player][idle_plane]
-					if plane < 0 {
+					if plane < 0 || plane > 200 {
 						fmt.eprintln("Negative idle planes")
 					}
 					team_idles[mm.team[player]] += plane
@@ -382,7 +382,7 @@ get_possible_actions :: proc(gs: ^Game_State) -> Action_Bitset {
 	// Return the list of possible actions from the given state
 	gc: Game_Cache
 	// set unlucky teams
-	initialize_map_constants(&gc)
+	//initialize_map_constants(&gc)
 	load_cache_from_state(&gc, gs)
 	gc.unlucky_teams = {mm.team[gc.cur_player]}
 	gc.answers_remaining = 0
@@ -397,7 +397,7 @@ get_possible_actions :: proc(gs: ^Game_State) -> Action_Bitset {
 apply_action :: proc(gs: ^Game_State, action: Action_ID) {
 	// Apply the action to the game state
 	gc: Game_Cache
-	initialize_map_constants(&gc)
+	//initialize_map_constants(&gc)
 	load_cache_from_state(&gc, gs)
 	gc.answers_remaining = 1
 	gc.seed = 0

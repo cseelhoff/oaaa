@@ -238,35 +238,20 @@ skip_empty_transports :: proc(gc: ^Game_Cache) {
 move_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	skip_empty_transports(gc)
 	for ship in Transports_With_Moves {
-		move_trans_seas(gc, ship) or_return
+		gc.clear_history_needed = false
+		for src_sea in Sea_ID {
+			if gc.active_ships[src_sea][ship] == 0 do continue
+			gc.valid_actions = {to_action(src_sea)}
+			add_valid_transport_moves(gc, src_sea, Ships_Moves[ship])
+			for gc.active_ships[src_sea][ship] > 0 {
+				dst_air := get_move_input(gc, fmt.tprint(ship), to_air(src_sea)) or_return
+				dst_sea := to_sea(dst_air)
+				if skip_ship(gc, src_sea, dst_sea, ship) do break
+				move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
+			}
+		}
+		if gc.clear_history_needed do clear_move_history(gc)
 	}
-	return true
-}
-
-move_trans_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
-	gc.clear_history_needed = false
-	for src_sea in Sea_ID {
-		move_trans_sea(gc, src_sea, ship) or_return
-	}
-	if gc.clear_history_needed do clear_move_history(gc)
-	return true
-}
-
-move_trans_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
-	if gc.active_ships[src_sea][ship] == 0 do return true
-	gc.valid_actions = {to_action(src_sea)}
-	add_valid_transport_moves(gc, src_sea, Ships_Moves[ship])
-	for gc.active_ships[src_sea][ship] > 0 {
-		move_next_trans_in_sea(gc, src_sea, ship) or_return
-	}
-	return true
-}
-
-move_next_trans_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
-	dst_air_idx := get_move_input(gc, fmt.tprint(ship), to_air(src_sea)) or_return
-	dst_sea := to_sea(dst_air_idx)
-	if skip_ship(gc, src_sea, dst_sea, ship) do return true
-	move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
 	return true
 }
 

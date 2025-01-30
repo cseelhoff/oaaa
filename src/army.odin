@@ -201,10 +201,10 @@ move_next_army_in_land :: proc(
 	dst_air := get_move_input(gc, fmt.tprint(army), to_air(src_land)) or_return
     
     // Handle sea movement (transport loading) first
-    if ~is_land(dst_air) {
+    if !is_land(dst_air) {
         dst_sea := to_sea(dst_air)
 		load_available_transport(gc, army, src_land, dst_sea, gc.cur_player)
-		if ~is_boat_available(gc, src_land, dst_sea, army) {
+		if !is_boat_available(gc, src_land, dst_sea, army) {
 			gc.valid_actions -= {to_action(dst_sea)}
 		}
         return true

@@ -42,9 +42,9 @@ initialize_player_data :: proc() {
 		mm.color[player] = mm.color[player]
 		for other_player in Player_ID {
 			if mm.team[other_player] == mm.team[player] {
-				sa.push(&mm.allies[player], player)
+				sa.push(&mm.allies[player], other_player)
 			} else {
-				sa.push(&mm.enemies[player], player)
+				sa.push(&mm.enemies[player], other_player)
 			}
 		}
 	}
