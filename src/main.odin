@@ -53,7 +53,7 @@ start :: proc() {
 
 	game_state = game_cache.state
 
-	root :^MCTSNode= mcts_search(&game_cache, &game_state, iterations)
+	root :^MCTSNode= mcts_search(&game_state, iterations)
 	best_action := select_best_action(root)
 	print_mcts(root)
 	fmt.println("Best action: ", best_action)

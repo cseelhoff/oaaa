@@ -72,7 +72,7 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 }
 
 PRINT_INTERVAL :: 1000
-mcts_search :: proc(gc: ^Game_Cache, initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
+mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 	/*
     AI NOTE: Main MCTS Loop
     
@@ -105,7 +105,7 @@ mcts_search :: proc(gc: ^Game_Cache, initial_state: ^Game_State, iterations: int
 			node = node.children[int(RANDOM_NUMBERS[GLOBAL_RANDOM_SEED]) % children_len]
 			GLOBAL_RANDOM_SEED = (GLOBAL_RANDOM_SEED + 1) % RANDOM_MAX
 		}
-		result: f64 = random_play_until_terminal(gc, &node.state)
+		result: f64 = random_play_until_terminal(&node.state)
 		for node != nil {
 			node.visits += 1
 			if node.parent != nil && mm.team[node.parent.state.cur_player] == .Allies { 	//test is Allies turn?
@@ -276,14 +276,7 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
 	if node.parent != nil {
 		fmt.print(mm.color[node.parent.state.cur_player])
-		fmt.print("Action:")
-		if is_land(node.action) {
-			fmt.print(mm.land_name[to_land(node.action)])
-		} else if int(node.action) < len(Air_ID) {
-			fmt.print(mm.sea_name[to_sea(node.action)])
-		} else {
-			fmt.print(Buy_Names[to_buy_action(node.action)])
-		}
+		fmt.print("Action:", node.action)
 		fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
 		fmt.print(", Visits:", node.visits)
 		fmt.print(", Value:", node.value)

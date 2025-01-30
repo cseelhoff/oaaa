@@ -343,18 +343,25 @@ evaluate_cache :: #force_inline proc(gc: ^Game_Cache) -> f64 {
 	return evaluate_state(&gc.state)
 }
 
+gs_copy: Game_State
+
+dump_gs :: proc() {
+	save_json(gs_copy)
+}
+
 import "core:math/rand"
-random_play_until_terminal :: proc(gc: ^Game_Cache, gs: ^Game_State) -> f64 {
-	// gc: Game_Cache
+random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
+	gs_copy := gs^
+	gc: Game_Cache
 	// ok := initialize_map_constants(gc)
-	load_cache_from_state(gc, gs)
+	load_cache_from_state(&gc, gs)
 	gc.answers_remaining = 65000
 	gc.seed = u16(rand.int_max(RANDOM_MAX))
 	//use_selected_action = false;
-	score := evaluate_cache(gc)
+	score := evaluate_cache(&gc)
 	max_loops := 1000
 	// clear_move_history();
-	debug_checks(gc)
+	debug_checks(&gc)
 	for (score > 0.01 && score < 0.99 && max_loops > 0) {
 		max_loops -= 1
 		// printf("max_loops: %d\n", max_loops);
@@ -366,12 +373,12 @@ random_play_until_terminal :: proc(gc: ^Game_Cache, gs: ^Game_State) -> f64 {
 		// if (max_loops % 100 == 0) {
 		//   printf("max_loops: %d\n", max_loops);
 		// }
-		debug_checks(gc)
-		play_full_turn(gc) or_break
-		debug_checks(gc)
-		score = evaluate_cache(gc)
+		debug_checks(&gc)
+		play_full_turn(&gc) or_break
+		debug_checks(&gc)
+		score = evaluate_cache(&gc)
 	}
-	score = evaluate_cache(gc)
+	score = evaluate_cache(&gc)
 	if mm.team[gc.cur_player] == .Axis {
 		score = 1 - score
 	}
