@@ -56,7 +56,6 @@ Game_State :: struct {
     rejected_moves_from:     [Air_ID]Air_Bitset,
     skipped_buys:            [Air_ID]Purchase_Bitset,
     owner:                   [Land_ID]Player_ID,
-    income:                  [Player_ID]u8,
     money:                   [Player_ID]u8,
     max_bombards:            [Land_ID]u8,
     factory_dmg:             [Land_ID]u8,

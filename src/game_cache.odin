@@ -13,7 +13,7 @@ Action_Bitset :: bit_set[Action_ID;u32]
 Air_Bitset :: bit_set[Air_ID;u16]
 
 Game_Cache :: struct {
-    /*
+	/*
     AI NOTE: Combat Total Caching
     
     Pre-calculated unit totals serve multiple purposes:
@@ -57,6 +57,7 @@ Game_Cache :: struct {
 	allied_destroyers_total:        [Sea_ID]u8,
 	allied_antifighter_ships_total: [Sea_ID]u8,
 	allied_sea_combatants_total:    [Sea_ID]u8,
+	income:                         [Player_ID]u8,
 	answers_remaining:              u16,
 	max_loops:                      u16,
 	valid_actions:                  Action_Bitset,
@@ -87,6 +88,7 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	gc.team_land_units = {}
 	gc.friendly_owner = {}
 	for land in Land_ID {
+		gc.income[gc.owner[land]] += mm.value[land]
 		if gc.factory_prod[land] > 0 {
 			sa.push(&gc.factory_locations[gc.owner[land]], land)
 		}

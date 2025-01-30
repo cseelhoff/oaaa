@@ -19,7 +19,12 @@ print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 
 get_retreat_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (dst_air: Air_ID, ok: bool) {
 	debug_checks(gc)
+	// assert(card(gc.valid_actions) > 0)
 	dst_air = src_air
+	for valid_action in gc.valid_actions {
+		dst_air = to_air(valid_action)
+		break
+	}
 	if card(gc.valid_actions) > 1 {
 		if gc.answers_remaining == 0 do return dst_air, false
 		if gc.cur_player in mm.is_human {
@@ -55,7 +60,12 @@ get_move_input :: proc(
 	ok: bool,
 ) {
 	debug_checks(gc)
-	dst_air = src_air
+	assert(card(gc.valid_actions) > 0)
+	for valid_action in gc.valid_actions {
+		dst_air = to_air(valid_action)
+		break
+	}
+	// dst_air = src_air
 	if card(gc.valid_actions) > 1 {
 		if gc.answers_remaining == 0 do return dst_air, false
 		if is_human[gc.cur_player] {
@@ -128,6 +138,11 @@ print_buy_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 get_buy_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (action: Buy_Action, ok: bool) {
 	debug_checks(gc)
 	// action = action_idx_to_buy(gc.valid_actions)
+	assert(card(gc.valid_actions) > 0)
+	for valid_action in gc.valid_actions {
+		action = to_buy_action(valid_action)
+		break
+	}
 	if card(gc.valid_actions) > 1 {
 		if gc.answers_remaining == 0 do return .SKIP_BUY, false
 		if is_human[gc.cur_player] {

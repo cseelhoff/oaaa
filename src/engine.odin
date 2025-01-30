@@ -11,7 +11,7 @@ when ODIN_DEBUG {
 			fmt.println("Enable Print")
 			print_game_state(gc)
 			ACTUALLY_PRINT = true
-		} else do return
+		} //else do return
 		for sea in Sea_ID {
 			team_idles: [Team_ID]u8 = {
 				.Allies = 0,
@@ -27,7 +27,7 @@ when ODIN_DEBUG {
 			for player in Player_ID {
 				for idle_ship in Idle_Ship {
 					ship := gc.idle_ships[sea][player][idle_ship]
-					if ship < 0 || ship > 200{
+					if ship < 0 || ship > 200 {
 						fmt.eprintln("Negative idle ships")
 					}
 					team_idles[mm.team[player]] += ship
@@ -83,6 +83,14 @@ when ODIN_DEBUG {
 						fmt.eprintln("Negative idle planes")
 					}
 					team_idles[mm.team[player]] += plane
+
+					if player != gc.cur_player &&
+					   plane > 0 &&
+					   idle_plane == .BOMBER &&
+					   mm.team[gc.owner[land]] != mm.team[player] {
+						print_game_state(gc)
+						fmt.eprintln("Enemy bombers at enemy land")
+					}
 
 					if team_idles[mm.team[player]] > 0 &&
 					   mm.team[gc.owner[land]] == mm.team[gc.cur_player] &&

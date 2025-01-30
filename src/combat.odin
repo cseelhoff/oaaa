@@ -657,6 +657,7 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
         }
         combat_rounds_counter := 0
         for {
+            debug_checks(gc)
             combat_rounds_counter += 1
             if combat_rounds_counter > MAX_COMBAT_ROUNDS {
                 fmt.eprintln("resolve_land_battles: MAX_COMBAT_ROUNDS reached", combat_rounds_counter)

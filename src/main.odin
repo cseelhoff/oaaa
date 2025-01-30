@@ -57,4 +57,5 @@ start :: proc() {
 	best_action := select_best_action(root)
 	print_mcts(root)
 	fmt.println("Best action: ", best_action)
+	// save_mcts(root)
 }
