@@ -4,7 +4,7 @@ import "core:fmt"
 
 GLOBAL_TICK := 0
 ACTUALLY_PRINT := false
-when ODIN_DEBUG {
+when ODIN_DEBUG && false {
 	debug_checks :: proc(gc: ^Game_Cache) {
 		GLOBAL_TICK += 1
 		if GLOBAL_TICK >= 24495625300000 {
