@@ -7,7 +7,7 @@ ACTUALLY_PRINT := false
 when ODIN_DEBUG {
 	debug_checks :: proc(gc: ^Game_Cache) {
 		GLOBAL_TICK += 1
-		if GLOBAL_TICK >= 24495625300 {
+		if GLOBAL_TICK >= 24495625300000 {
 			fmt.println("Enable Print")
 			print_game_state(gc)
 			ACTUALLY_PRINT = true
