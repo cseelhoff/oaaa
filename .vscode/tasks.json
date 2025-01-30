@@ -39,8 +39,6 @@
         "-no-bounds-check",
         "-disable-assert",
         "-no-type-assert",
-        "-no-thread-local",
-        "-no-thread-checker"
       ],
       "problemMatcher": []
     },

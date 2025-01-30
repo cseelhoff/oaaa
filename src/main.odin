@@ -18,7 +18,7 @@ main :: proc() {
 
 start :: proc() {
 	fmt.println("Starting CAAA")
-	iterations := 100_000_000
+	iterations := 200_000_000
 	if len(os.args) >= 2 {
 		iterations, _ = strconv.parse_int(os.args[1])
 	}
