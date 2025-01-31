@@ -73,6 +73,12 @@ load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
 	for &money in gs.money {
 		money = 20
 	}
+  gs.money[Player_ID.Rus] = 10
+  gs.money[Player_ID.Ger] = 20
+  gs.money[Player_ID.Eng] = 2
+  gs.money[Player_ID.Jap] = 20
+  gs.money[Player_ID.USA] = 2
+
 	factory_locations :: [?]Land_ID{.Washington, .London, .Berlin, .Moscow, .Tokyo}
 	for land in factory_locations {
 		gs.factory_prod[land] = mm.value[land]
