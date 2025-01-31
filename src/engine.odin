@@ -420,6 +420,7 @@ apply_action :: proc(gs: ^Game_State, action: Action_ID) {
 	gc: Game_Cache
 	//initialize_map_constants(&gc)
 	load_cache_from_state(&gc, gs)
+	gc.unlucky_teams = {mm.team[gc.cur_player]}
 	gc.answers_remaining = 1
 	gc.seed = 0
 	gc.selected_action = action
