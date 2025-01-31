@@ -151,7 +151,7 @@ land_bomber_from_land :: proc(
     ok: bool,
 ) {
     if gc.active_land_planes[src_land][plane] == 0 do return true
-    if ~gc.is_bomber_cache_current do refresh_can_bomber_land_here_directly(gc)
+    if !gc.is_bomber_cache_current do refresh_can_bomber_land_here_directly(gc)
     gc.valid_actions = {}
     add_valid_landing_bomber_moves(gc, to_air(src_land), plane)
     for gc.active_land_planes[src_land][plane] > 0 {
