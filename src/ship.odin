@@ -237,52 +237,34 @@ Ships_After_Retreat := [?]Active_Ship {
 
 move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for ship in Unmoved_Blockade_Ships {
-		move_ship_seas(gc, ship) or_return
-	}
-	return true
-}
-
-move_ship_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
-	gc.clear_history_needed = false
-	for src_sea in Sea_ID {
-		move_ship_sea(gc, src_sea, ship) or_return
-	}
-	if gc.clear_history_needed do clear_move_history(gc)
-	return true
-}
-
-move_ship_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
-	if gc.active_ships[src_sea][ship] == 0 do return true
-	gc.valid_actions = {to_action(src_sea)}
-	add_valid_ship_moves(gc, src_sea, ship)
-	for gc.active_ships[src_sea][ship] > 0 {
-		move_next_ship_in_sea(gc, src_sea, ship) or_return
-	}
-	return true
-}
-
-move_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
-	dst_air_idx := get_move_input(gc, fmt.tprint(ship), to_air(src_sea)) or_return
-	dst_sea := to_sea(dst_air_idx)
-	mark_sea_for_combat_resolution(gc, dst_sea)
-	if skip_ship(gc, src_sea, dst_sea, ship) do return true
-	move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
-	if ship == .CARRIER_2_MOVES {
-		gc.allied_carriers_total[dst_sea] += 1
-		gc.allied_carriers_total[src_sea] -= 1
-		carry_allied_fighters(gc, src_sea, dst_sea)
-		// todo - not sure if next few lines are needed. But maybe since carriers are moved
-		if gc.allied_carriers_total[dst_sea] * 2 <= gc.allied_fighters_total[dst_sea] {
-			gc.has_carrier_space += {dst_sea}
-		} else {
-			gc.has_carrier_space -= {dst_sea}
+		gc.clear_history_needed = false
+		for src_sea in Sea_ID {
+			if gc.active_ships[src_sea][ship] == 0 do continue
+			gc.valid_actions = {to_action(src_sea)}
+			add_valid_ship_moves(gc, src_sea, ship)
+			for gc.active_ships[src_sea][ship] > 0 {
+				dst_air := get_move_ship_input(gc, ship, to_air(src_sea)) or_return
+				dst_sea := to_sea(dst_air)
+				mark_sea_for_combat_resolution(gc, dst_sea)
+				if skip_ship(gc, src_sea, dst_sea, ship) do continue
+				move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
+				if ship == .CARRIER_2_MOVES {
+					gc.allied_carriers_total[dst_sea] += 1
+					gc.allied_carriers_total[src_sea] -= 1
+					carry_allied_fighters(gc, src_sea, dst_sea)
+					// todo - not sure if next few lines are needed. But maybe since carriers are moved
+					if gc.allied_carriers_total[dst_sea] * 2 > gc.allied_fighters_total[dst_sea] {
+						gc.has_carrier_space += {dst_sea}
+						gc.is_fighter_cache_current = false
+					}
+					if gc.allied_carriers_total[src_sea] * 2 <= gc.allied_fighters_total[src_sea] {
+						gc.has_carrier_space -= {src_sea}
+						gc.is_fighter_cache_current = false
+					}
+				}
+			}
 		}
-		if gc.allied_carriers_total[src_sea] * 2 > gc.allied_fighters_total[src_sea] {
-			gc.has_carrier_space += {src_sea}
-		} else {
-			gc.has_carrier_space -= {src_sea}
-		}
-		gc.is_fighter_cache_current = false
+		if gc.clear_history_needed do clear_move_history(gc)
 	}
 	return true
 }
@@ -307,7 +289,9 @@ add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship
 		if to_air(dst_sea_2_away) in gc.rejected_moves_from[to_air(src_sea)] {
 			continue
 		}
-		for mid_sea in sa.slice(&mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][dst_sea_2_away]) {
+		for mid_sea in sa.slice(
+			&mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][dst_sea_2_away],
+		) {
 			if gc.enemy_destroyer_total[mid_sea] > 0 do continue
 			if ship != .SUB_2_MOVES && gc.enemy_blockade_total[mid_sea] > 0 do continue
 			gc.valid_actions += {to_action(dst_sea_2_away)}

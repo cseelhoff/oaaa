@@ -198,7 +198,7 @@ move_next_army_in_land :: proc(
        - Must have available transport capacity
        - Transport must be able to move after loading
     */
-	dst_air := get_move_input(gc, fmt.tprint(army), to_air(src_land)) or_return
+	dst_air := get_move_army_input(gc, army, to_air(src_land)) or_return
     
     // Handle sea movement (transport loading) first
     if !is_land(dst_air) {

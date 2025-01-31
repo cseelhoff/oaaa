@@ -43,9 +43,9 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			~to_land_bitset(gc.rejected_moves_from[to_air(src_land)]), // Remove rejected moves
 		)
 		for gc.active_armies[src_land][.AAGUN_1_MOVES] > 0 {
-			dst_air := get_move_input(
+			dst_air := get_move_army_input(
 				gc,
-				fmt.tprint(Active_Army.AAGUN_1_MOVES),
+				.AAGUN_1_MOVES,
 				to_air(src_land),
 			) or_return
 			dst_land := to_land(dst_air)

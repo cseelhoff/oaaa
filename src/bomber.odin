@@ -40,7 +40,7 @@ move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
         gc.valid_actions = {to_action(src_land)}
         add_valid_unmoved_bomber_moves(gc, src_land)
         for gc.active_land_planes[src_land][.BOMBER_UNMOVED] > 0 {
-            dst_air := get_move_input(gc, "BOMBER_UNMOVED", to_air(src_land)) or_return
+            dst_air := get_move_plane_input(gc, .BOMBER_UNMOVED, to_air(src_land)) or_return
             if is_land(dst_air) {
                 move_unmoved_bomber_to_land(gc, src_land, to_land(dst_air))
             } else {
@@ -155,7 +155,7 @@ land_bomber_from_land :: proc(
     gc.valid_actions = {}
     add_valid_landing_bomber_moves(gc, to_air(src_land), plane)
     for gc.active_land_planes[src_land][plane] > 0 {
-        dst_air := get_move_input(gc, Active_Plane_Names[plane], to_air(src_land)) or_return
+        dst_air := get_move_plane_input(gc, plane, to_air(src_land)) or_return
         move_bomber_from_land_to_land(gc, to_land(dst_air), plane, src_land)
     }
     return true
@@ -182,7 +182,7 @@ land_bomber_from_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, plane: Active_Pla
     gc.valid_actions = {}
     add_valid_landing_bomber_moves(gc, to_air(src_sea), plane)
     for gc.active_sea_planes[src_sea][plane] > 0 {
-        dst_air := get_move_input(gc, Active_Plane_Names[plane], to_air(src_sea)) or_return
+        dst_air := get_move_plane_input(gc, plane, to_air(src_sea)) or_return
         move_bomber_from_sea_to_land(gc, to_land(dst_air), plane, src_sea)
     }
     return true

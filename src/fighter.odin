@@ -26,7 +26,7 @@ move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		gc.valid_actions = {to_action(src_land)}
 		add_valid_unmoved_fighter_moves(gc, to_air(src_land))
 		for gc.active_land_planes[src_land][.FIGHTER_UNMOVED] > 0 {
-			dst_air := get_move_input(gc, "FIGHTER_UNMOVED", to_air(src_land)) or_return
+			dst_air := get_move_plane_input(gc, .FIGHTER_UNMOVED, to_air(src_land)) or_return
 			if is_land(dst_air) {
 				move_unmoved_fighter_from_land_to_land(gc, src_land, to_land(dst_air))
 			} else {
@@ -40,7 +40,7 @@ move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		gc.valid_actions = {to_action(src_sea)}
 		add_valid_unmoved_fighter_moves(gc, to_air(src_sea))
 		for gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] > 0 {
-			dst_air := get_move_input(gc, "FIGHTER_UNMOVED", to_air(src_sea)) or_return
+			dst_air := get_move_plane_input(gc, .FIGHTER_UNMOVED, to_air(src_sea)) or_return
 			if is_land(dst_air) {
 				move_unmoved_fighter_from_sea_to_land(gc, src_sea, to_land(dst_air))
 			} else {
@@ -237,7 +237,7 @@ land_fighter_from_land :: proc(
 			debug_checks(gc)
 			return true
 		}
-		dst_air := get_move_input(gc, Active_Plane_Names[plane], to_air(src_land)) or_return
+		dst_air := get_move_plane_input(gc, plane, to_air(src_land)) or_return
 		if is_land(dst_air) {
 			move_fighter_from_land_to_land(gc, src_land, to_land(dst_air), plane)
 		} else {
@@ -302,7 +302,7 @@ land_fighter_from_sea :: proc(
 			gc.active_sea_planes[src_sea][plane] = 0
 			return true
 		}
-		dst_air := get_move_input(gc, Active_Plane_Names[plane], to_air(src_sea)) or_return
+		dst_air := get_move_plane_input(gc, plane, to_air(src_sea)) or_return
 		if is_land(dst_air) {
 			move_fighter_from_sea_to_land(gc, src_sea, to_land(dst_air), plane)
 		} else {

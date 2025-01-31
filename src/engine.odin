@@ -1,6 +1,7 @@
 package oaaa
 import sa "core:container/small_array"
 import "core:fmt"
+import "core:time"
 
 GLOBAL_TICK := 0
 ACTUALLY_PRINT := false
@@ -117,6 +118,7 @@ when ODIN_DEBUG && false {
 	debug_checks :: proc(gc: ^Game_Cache) {}
 }
 play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
+	// start := time.now()
 	debug_checks(gc)
 	move_unmoved_fighters(gc) or_return // move before carriers for more options
 	debug_checks(gc)
@@ -153,6 +155,9 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	debug_checks(gc)
 	rotate_turns(gc)
 	debug_checks(gc)
+	// end := time.now()
+	// duration := time.duration_nanoseconds(time.diff(start, end))
+	// fmt.println("Turn took ", duration, " nanoseconds")
 	return true
 }
 
