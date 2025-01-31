@@ -512,3 +512,19 @@ free_node_recursive :: proc(node: ^MCTSNode) {
 	free(node)
 	GLOBAL_NODE_COUNT -= 1
 }
+
+delete_mcts :: proc(root: ^MCTSNode) {
+	/*
+    AI NOTE: MCTS Memory Cleanup
+    
+    Gracefully releases all memory allocated by the MCTS tree:
+    1. Recursively frees all child nodes
+    2. Frees dynamic arrays
+    3. Updates global node count
+    4. Sets root to nil to prevent use-after-free
+    
+    Usage: Call this when done with MCTS search to prevent memory leaks
+    */
+    if root == nil do return
+    free_node_recursive(root)
+}
