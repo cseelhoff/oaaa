@@ -31,20 +31,22 @@ Children :: [dynamic]^MCTSNode
 
 MCTSNode :: struct {
 	// state:    Game_State,
-	cur_player:  Player_ID,
 	children:    Children,
 	parent:      ^MCTSNode,
 	value:       f64,
 	visits:      int,
 	action:      Action_ID,
+	cur_player:  Player_ID,
 	is_terminal: bool,
 }
 
 check5 := false
-
+GLOBAL_NODE_COUNT := 0
 create_node :: proc(state: ^Game_State, action: Action_ID, parent: ^MCTSNode) -> ^MCTSNode {
 	node := new(MCTSNode)
+	GLOBAL_NODE_COUNT += 1
 	// node.state = state^ //memcopy
+	// node.state.seed = 0
 	node.cur_player = state.cur_player
 	node.is_terminal = is_terminal_state(state)
 	node.action = action
@@ -100,9 +102,9 @@ mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 	root := create_node(initial_state, .Skip_Action, nil)
 	for MCTS_ITERATIONS in 0 ..< iterations {
 		if MCTS_ITERATIONS % PRINT_INTERVAL == 0 {
-			fmt.println("Iteration ", MCTS_ITERATIONS)
+			fmt.println("Iteration ", MCTS_ITERATIONS, " Node count:", GLOBAL_NODE_COUNT)
 			print_mcts(root)
-			if MCTS_ITERATIONS > 0 {
+			if MCTS_ITERATIONS > 1_000_000 {
 				prune_tree(root)
 			}
 		}
@@ -139,6 +141,18 @@ get_action_sequence_from_node :: proc(node: ^MCTSNode) -> [dynamic]Action_ID {
 	return action_sequence
 }
 action_sequence: [dynamic]Action_ID
+twenty_moves :[20]Action_ID
+
+get_20_moves :: proc() {
+	twenty_moves = {}
+	// Reverse the action sequence and append to twenty_moves
+	for i := len(action_sequence) - 1; i >= 0; i -= 1 {
+		twenty_moves[i] = action_sequence[i]
+	}
+	if GLOBAL_TICK > 100_000_000_000_000 {
+	fmt.println(twenty_moves)
+	}
+}
 
 get_state_from_node :: proc(node: ^MCTSNode, new_gs: ^Game_State) {
 	// prepare a sequence of actions by examining the parent node of each node and replaying the action
@@ -154,12 +168,20 @@ get_state_from_node :: proc(node: ^MCTSNode, new_gs: ^Game_State) {
 		append(&action_sequence, current.action)
 		current = current.parent
 	}
+	// append(&action_sequence, current.action)
+	// get_20_moves()
 
 	// Replay actions in reverse order to reconstruct the state
 	for i := len(action_sequence) - 1; i >= 0; i -= 1 {
 		action := action_sequence[i]
 		apply_action(new_gs, action)
 	}
+	// new_gs.seed = 0
+	// if node.state != new_gs^ {
+	// 	save_json(node.state, "node_state.json")
+	// 	save_json(new_gs^, "new_gs.json")
+	// 	fmt.eprintln("Error: State mismatch")
+	// }
 }
 
 random_play_until_terminal_by_action_replay :: proc(node: ^MCTSNode) -> f64 {
@@ -193,9 +215,9 @@ expand_node :: proc(node: ^MCTSNode) {
 	get_state_from_node(node, &new_gs)
 	actions := get_possible_actions(&new_gs)
 	for next_action in actions {
-		new_node := create_node(&new_gs, next_action, node)
 		game_state_copy := new_gs
 		apply_action(&game_state_copy, next_action)
+		new_node := create_node(&game_state_copy, next_action, node)
 		append(&node.children, new_node)
 	}
 }
@@ -488,4 +510,5 @@ free_node_recursive :: proc(node: ^MCTSNode) {
 
 	// Free the node itself
 	free(node)
+	GLOBAL_NODE_COUNT -= 1
 }

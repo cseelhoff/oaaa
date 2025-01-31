@@ -396,6 +396,7 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 get_possible_actions :: proc(gs: ^Game_State) -> Action_Bitset {
 	// Return the list of possible actions from the given state
 	gc: Game_Cache
+	// print_game_state(&gc)
 	// set unlucky teams
 	//initialize_map_constants(&gc)
 	load_cache_from_state(&gc, gs)
