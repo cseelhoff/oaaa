@@ -2,6 +2,7 @@ package oaaa
 import "core:fmt"
 import "core:os"
 import "core:strconv"
+import "core:strings"
 
 print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	print_game_state(gc)
@@ -336,4 +337,91 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		fmt.println()
 	}
 	fmt.println(DEF_COLOR)
+}
+
+game_state_to_string :: proc(gc: ^Game_Cache) -> string {
+	sb: strings.Builder
+	strings.init_builder(&sb)
+	defer strings.destroy_builder(&sb)
+
+	color := mm.color[gc.cur_player]
+	strings.write_string(&sb, color)
+	strings.write_string(&sb, "--------------------\n")
+	fmt.sbprintf(&sb, "Current Player: %v\n", gc.cur_player)
+	fmt.sbprintf(&sb, "Money: %v%v\n\n", gc.money[gc.cur_player], DEF_COLOR)
+
+	for land in Land_ID {
+		strings.write_string(&sb, mm.color[gc.owner[land]])
+		strings.write_string(&sb, fmt.tprint(land))
+		if land in gc.more_land_combat_needed do strings.write_string(&sb, " more-combat")
+		if land in gc.land_combat_started do strings.write_string(&sb, " combat-started")
+		if gc.builds_left[land] > 0 do fmt.sbprintf(&sb, " builds:%v", gc.builds_left[land])
+		if gc.factory_dmg[land] > 0 do fmt.sbprintf(&sb, " factory-dmg:%v", gc.factory_dmg[land])
+		if gc.factory_prod[land] > 0 do fmt.sbprintf(&sb, " factory-prod:%v", gc.factory_prod[land])
+		if gc.max_bombards[land] > 0 do fmt.sbprintf(&sb, " bombards:%v", gc.max_bombards[land])
+		strings.write_string(&sb, "\n")
+
+		strings.write_string(&sb, mm.color[gc.cur_player])
+		for army in Active_Army {
+			if gc.active_armies[land][army] > 0 {
+				fmt.sbprintf(&sb, "%v: %v\n", fmt.tprint(army), gc.active_armies[land][army])
+			}
+		}
+		for plane in Active_Plane {
+			if gc.active_land_planes[land][plane] > 0 {
+				fmt.sbprintf(&sb, "%v: %v\n", fmt.tprint(plane), gc.active_land_planes[land][plane])
+			}
+		}
+		for player in Player_ID {
+			if player == gc.cur_player do continue
+			strings.write_string(&sb, mm.color[player])
+			for army in Idle_Army {
+				if gc.idle_armies[land][player][army] > 0 {
+					fmt.sbprintf(&sb, "%v: %v\n", Idle_Army_Names[army], gc.idle_armies[land][player][army])
+				}
+			}
+			for plane in Idle_Plane {
+				if gc.idle_land_planes[land][player][plane] > 0 {
+					fmt.sbprintf(&sb, "%v: %v\n", Idle_Plane_Names[plane], gc.idle_land_planes[land][player][plane])
+				}
+			}
+		}
+		strings.write_string(&sb, "\n")
+	}
+
+	for sea in Sea_ID {
+		strings.write_string(&sb, DEF_COLOR)
+		strings.write_string(&sb, fmt.tprint(sea))
+		if sea in gc.more_sea_combat_needed do strings.write_string(&sb, " more-combat")
+		if sea in gc.sea_combat_started do strings.write_string(&sb, " combat-started")
+		strings.write_string(&sb, "\n")
+
+		strings.write_string(&sb, mm.color[gc.cur_player])
+		for ship in Active_Ship {
+			if gc.active_ships[sea][ship] > 0 {
+				fmt.sbprintf(&sb, "%v: %v\n", fmt.tprint(ship), gc.active_ships[sea][ship])
+			}
+		}
+		for plane in Active_Plane {
+			if gc.active_sea_planes[sea][plane] > 0 {
+				fmt.sbprintf(&sb, "%v: %v\n", fmt.tprint(plane), gc.active_sea_planes[sea][plane])
+			}
+		}
+		for player in Player_ID {
+			if player == gc.cur_player do continue
+			strings.write_string(&sb, mm.color[player])
+			for ship in Idle_Ship {
+				if gc.idle_ships[sea][player][ship] > 0 {
+					fmt.sbprintf(&sb, "%v: %v\n", ship, gc.idle_ships[sea][player][ship])
+				}
+			}
+			if gc.idle_sea_planes[sea][player][.FIGHTER] > 0 {
+				fmt.sbprintf(&sb, "%v: %v\n", Idle_Plane_Names[.FIGHTER], gc.idle_sea_planes[sea][player][.FIGHTER])
+			}
+		}
+		strings.write_string(&sb, "\n")
+	}
+	strings.write_string(&sb, DEF_COLOR)
+
+	return strings.to_string(sb)
 }
