@@ -78,7 +78,7 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 	return node
 }
 
-PRINT_INTERVAL :: 10
+PRINT_INTERVAL :: 1000
 mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 	/*
     AI NOTE: Main MCTS Loop
@@ -104,9 +104,9 @@ mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 		if MCTS_ITERATIONS % PRINT_INTERVAL == 0 {
 			fmt.println("Iteration ", MCTS_ITERATIONS, " Node count:", GLOBAL_NODE_COUNT)
 			print_mcts(root)
-			if MCTS_ITERATIONS > 1_000_000 {
-				prune_tree(root)
-			}
+			// if MCTS_ITERATIONS > 1_000_000 {
+			// 	prune_tree(root)
+			// }
 		}
 		node := select_best_leaf(root)
 		// if !is_terminal_state(&node.state) {

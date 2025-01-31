@@ -367,7 +367,7 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 	gc.seed = u16(rand.int_max(RANDOM_MAX))
 	//use_selected_action = false;
 	score := evaluate_cache(&gc)
-	max_loops := 1000
+	max_loops := 400
 	// clear_move_history();
 	debug_checks(&gc)
 	for (score > 0.01 && score < 0.99 && max_loops > 0) {
