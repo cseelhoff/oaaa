@@ -295,9 +295,10 @@ calculate_attacker_hits_low_luck :: proc(
 	if gc.answers_remaining <= 1 {
 		if mm.enemy_team[gc.cur_player] in gc.unlucky_teams &&
 		   mm.team[gc.cur_player] not_in gc.unlucky_teams {
-			attacker_hits += LOW_LUCK_THRESHOLD < total_attack_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
+			attacker_hits += (LOW_LUCK_THRESHOLD - (combat_rounds_counter / 10)) < total_attack_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
 			return
 		}
+        attacker_hits += (11 - (combat_rounds_counter / 10)) < total_attack_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
 		return
 	}
 
@@ -335,9 +336,10 @@ calculate_defender_hits_low_luck :: proc(
 	if gc.answers_remaining <= 1 {
 		if mm.team[gc.cur_player] in gc.unlucky_teams &&
 		   mm.enemy_team[gc.cur_player] not_in gc.unlucky_teams {
-			defender_hits += LOW_LUCK_THRESHOLD < total_defense_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
+			defender_hits += (LOW_LUCK_THRESHOLD - (combat_rounds_counter / 10)) < total_defense_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
 			return
 		}
+        defender_hits += (11 - (combat_rounds_counter / 10)) < total_defense_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
 		return
 	}
 
@@ -356,6 +358,7 @@ no_allied_units_remain :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 
 SUB_ATTACK :: 2
 SUB_DEFENSE :: 1
+combat_rounds_counter := 0
 resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	/*
     AI NOTE: Sea Combat Resolution Order
@@ -376,7 +379,9 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		mark_ships_ineligible_for_bombardment(gc, sea)
 		enemy_subs_detected := true
 		// check_positive_active_ships(gc, sea)
-		for {
+        combat_rounds_counter = 0
+		for {            
+			combat_rounds_counter += 1
 			if sea in gc.sea_combat_started {
 				build_sea_retreat_options(gc, sea)
 				dst_air := get_retreat_input(gc, to_air(sea)) or_return
@@ -646,7 +651,7 @@ destroy_undefended_aaguns :: proc(gc: ^Game_Cache, land: Land_ID) {
 	}
 }
 
-MAX_COMBAT_ROUNDS :: 100
+MAX_COMBAT_ROUNDS :: 120
 resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	/*
     AI NOTE: Land Combat Types
@@ -684,7 +689,7 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			if no_attackers_remain(gc, land) do continue
 			if check_and_conquer_land(gc, land) do continue
 		}
-		combat_rounds_counter := 0
+		combat_rounds_counter = 0
 		for {
 			debug_checks(gc)
 			combat_rounds_counter += 1
