@@ -3,7 +3,7 @@ package oaaa
 import "core:fmt"
 import "core:math"
 import "core:os"
-
+import sa "core:container/small_array"
 /*
 AI NOTE: Monte Carlo Tree Search Implementation
 
@@ -78,7 +78,7 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 	return node
 }
 
-PRINT_INTERVAL :: 1000
+PRINT_INTERVAL :: 10
 mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 	/*
     AI NOTE: Main MCTS Loop
@@ -140,19 +140,19 @@ get_action_sequence_from_node :: proc(node: ^MCTSNode) -> [dynamic]Action_ID {
 	}
 	return action_sequence
 }
-action_sequence: [dynamic]Action_ID
-twenty_moves :[20]Action_ID
+// twenty_moves :[20]Action_ID
 
-get_20_moves :: proc() {
-	twenty_moves = {}
-	// Reverse the action sequence and append to twenty_moves
-	for i := len(action_sequence) - 1; i >= 0; i -= 1 {
-		twenty_moves[i] = action_sequence[i]
-	}
-	if GLOBAL_TICK > 100_000_000_000_000 {
-	fmt.println(twenty_moves)
-	}
-}
+// get_20_moves :: proc() {
+// 	twenty_moves = {}
+// 	// Reverse the action sequence and append to twenty_moves
+// 	for i := len(action_sequence) - 1; i >= 0; i -= 1 {
+// 		twenty_moves[i] = action_sequence[i]
+// 	}
+// 	if GLOBAL_TICK > 100_000_000_000_000 {
+// 	fmt.println(twenty_moves)
+// 	}
+// }
+action_sequence: sa.Small_Array(1000, Action_ID)
 
 get_state_from_node :: proc(node: ^MCTSNode, new_gs: ^Game_State) {
 	// prepare a sequence of actions by examining the parent node of each node and replaying the action
@@ -161,19 +161,19 @@ get_state_from_node :: proc(node: ^MCTSNode, new_gs: ^Game_State) {
 
 	// Create dynamic array to store actions in reverse order
 	// defer delete(action_sequence)
-	action_sequence = {}
 	// Walk up the tree from current node to root, collecting actions
 	current := node
+	sa.clear(&action_sequence)
 	for current.parent != nil {
-		append(&action_sequence, current.action)
+		sa.push(&action_sequence, current.action)
 		current = current.parent
 	}
 	// append(&action_sequence, current.action)
 	// get_20_moves()
 
 	// Replay actions in reverse order to reconstruct the state
-	for i := len(action_sequence) - 1; i >= 0; i -= 1 {
-		action := action_sequence[i]
+	for i := sa.len(action_sequence) - 1; i >= 0; i -= 1 {
+		action := action_sequence.data[i]
 		apply_action(new_gs, action)
 	}
 	// new_gs.seed = 0

@@ -18,7 +18,7 @@ main :: proc() {
 
 start :: proc() {
 	fmt.println("Starting CAAA")
-	iterations := 20000
+	iterations := 200
 	if len(os.args) >= 2 {
 		iterations, _ = strconv.parse_int(os.args[1])
 	}
@@ -55,7 +55,7 @@ start :: proc() {
 
 	root :^MCTSNode= mcts_search(&game_state, iterations)
 	best_action := select_best_action(root)
-	print_mcts_tree(root, 0, nil, 0)
+	// print_mcts_tree(root, 0, nil, 0)
 	fmt.println("Best action: ", best_action)
 	delete_mcts(root)
 	// save_mcts(root)
