@@ -38,7 +38,36 @@
         // "-debug",
         "-no-bounds-check",
         "-disable-assert",
-        "-no-type-assert",
+        "-no-type-assert"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "build-shared-debug",
+      "type": "process",
+      "command": "odin",
+      "args": [
+        "build",
+        "src",
+        "-out:bin/liboaaa.so",
+        "-debug",
+        "-build-mode:shared"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "build-shared-release",
+      "type": "process",
+      "command": "odin",
+      "args": [
+        "build",
+        "src",
+        "-out:bin/liboaaa.so",
+        "-o:aggressive",
+        "-build-mode:shared",
+        "-no-bounds-check",
+        "-disable-assert",
+        "-no-type-assert"
       ],
       "problemMatcher": []
     },

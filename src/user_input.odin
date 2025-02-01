@@ -341,8 +341,8 @@ print_game_state :: proc(gc: ^Game_Cache) {
 
 game_state_to_string :: proc(gc: ^Game_Cache) -> string {
 	sb: strings.Builder
-	strings.init_builder(&sb)
-	defer strings.destroy_builder(&sb)
+	strings.builder_init(&sb)
+	defer strings.builder_destroy(&sb)
 
 	color := mm.color[gc.cur_player]
 	strings.write_string(&sb, color)

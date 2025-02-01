@@ -91,7 +91,7 @@ get_init_board :: proc "c" () -> rawptr {
 get_board_size :: proc "c" () -> (x: i32, y: i32) {
 	// Return the dimensions of the board representation
 	// This could be based on number of territories + state variables
-	return i32(2), i32(2)
+	return i32(size_of(Game_State)), i32(1)
 }
 
 @(export)
@@ -149,9 +149,149 @@ get_canonical_form :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 	context = runtime.default_context()
 	// Return canonical form of board state as float array
 	gs := (^Game_State)(board)
-	canon_board := new([4]f32)
-	canon_board^ = [4]f32{0.1, 0.2, 0.3, 0.4}
-	// TODO: Transform state to canonical form
+	canon_board := new([776]f32) // Explicitly size the array
+	
+	// Convert game state to float array representation
+	idx := 0
+	
+	// Convert active armies to floats
+	for location in Land_ID {
+		for army in Active_Army {
+			canon_board[idx] = f32(gs.active_armies[location][army])
+			idx += 1
+		}
+	}
+	
+	// Convert active ships to floats
+	for location in Sea_ID {
+		for ship in Active_Ship {
+			canon_board[idx] = f32(gs.active_ships[location][ship])
+			idx += 1
+		}
+	}
+	
+	// Convert active land planes to floats
+	for location in Land_ID {
+		for plane in Active_Plane {
+			canon_board[idx] = f32(gs.active_land_planes[location][plane])
+			idx += 1
+		}
+	}
+	
+	// Convert active sea planes to floats
+	for location in Sea_ID {
+		for plane in Active_Plane {
+			canon_board[idx] = f32(gs.active_sea_planes[location][plane])
+			idx += 1
+		}
+	}
+
+	// Convert idle armies to floats
+	for location in Land_ID {
+		for player in Player_ID {
+			for army in Idle_Army {
+				canon_board[idx] = f32(gs.idle_armies[location][player][army])
+				idx += 1
+			}
+		}
+	}
+
+	// Convert idle land planes to floats
+	for location in Land_ID {
+		for player in Player_ID {
+			for plane in Idle_Plane {
+				canon_board[idx] = f32(gs.idle_land_planes[location][player][plane])
+				idx += 1
+			}
+		}
+	}
+
+	// Convert idle sea planes to floats
+	for location in Sea_ID {
+		for player in Player_ID {
+			for plane in Idle_Plane {
+				canon_board[idx] = f32(gs.idle_sea_planes[location][player][plane])
+				idx += 1
+			}
+		}
+	}
+
+	// Convert idle ships to floats
+	for location in Sea_ID {
+		for player in Player_ID {
+			for ship in Idle_Ship {
+				canon_board[idx] = f32(gs.idle_ships[location][player][ship])
+				idx += 1
+			}
+		}
+	}
+
+	// Convert rejected_moves_from bitsets
+	for location in Air_ID {
+		canon_board[idx] = f32(gs.rejected_moves_from[location])
+		idx += 1
+	}
+
+	// Convert skipped_buys bitsets
+	for location in Air_ID {
+		canon_board[idx] = f32(gs.skipped_buys[location])
+		idx += 1
+	}
+
+	// Convert territory ownership
+	for location in Land_ID {
+		canon_board[idx] = f32(gs.owner[location])
+		idx += 1
+	}
+
+	// Convert player money
+	for player in Player_ID {
+		canon_board[idx] = f32(gs.money[player])
+		idx += 1
+	}
+
+	// Convert max_bombards
+	for location in Land_ID {
+		canon_board[idx] = f32(gs.max_bombards[location])
+		idx += 1
+	}
+
+	// Convert factory damage
+	for location in Land_ID {
+		canon_board[idx] = f32(gs.factory_dmg[location])
+		idx += 1
+	}
+
+	// Convert factory production
+	for location in Land_ID {
+		canon_board[idx] = f32(gs.factory_prod[location])
+		idx += 1
+	}
+
+	// Convert builds left
+	for location in Land_ID {
+		canon_board[idx] = f32(gs.builds_left[location])
+		idx += 1
+	}
+
+	// Convert random seed
+	canon_board[idx] = f32(gs.seed)
+	idx += 1
+
+	// Convert combat state bitsets
+	canon_board[idx] = f32(gs.more_land_combat_needed)
+	idx += 1
+	canon_board[idx] = f32(gs.more_sea_combat_needed)
+	idx += 1
+	canon_board[idx] = f32(gs.land_combat_started)
+	idx += 1
+	canon_board[idx] = f32(gs.sea_combat_started)
+	idx += 1
+
+	// Convert current player
+	canon_board[idx] = f32(gs.cur_player)
+	idx += 1
+	
 	return raw_data(canon_board)
 }
 
