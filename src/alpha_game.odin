@@ -77,11 +77,13 @@ class OAAAGame(Game):
 package oaaa
 
 import "base:runtime"
+import "core:fmt"
 
 // Export these functions with C calling convention for Python interop
 @(export)
 get_init_board :: proc "c" () -> rawptr {
 	context = runtime.default_context()
+	// fmt.println("get_init_board")
 	gs := new(Game_State)
 	load_default_game_state(gs)
 	return gs
@@ -89,21 +91,26 @@ get_init_board :: proc "c" () -> rawptr {
 
 @(export)
 get_board_size :: proc "c" () -> (x: i32, y: i32) {
+	context = runtime.default_context()
+	// fmt.println("get_board_size")
 	// Return the dimensions of the board representation
 	// This could be based on number of territories + state variables
-	return i32(size_of(Game_State)), i32(1)
+	return i32(878), i32(1)
 }
 
 @(export)
 get_action_size :: proc "c" () -> i32 {
+	context = runtime.default_context()
+	// fmt.println("get_action_size")
 	// Return total number of possible actions
 	// This includes all possible moves for all unit types
-	return i32(MAX_ACTIONS) // You'll need to define this constant based on your game rules
+	return i32(len(Action_ID)) // You'll need to define this constant based on your game rules
 }
 
 @(export)
 get_next_state :: proc "c" (board: rawptr, player: i32, action: i32) -> (rawptr, i32) {
 	context = runtime.default_context()
+	// fmt.println("get_next_state")
 	// Apply action and return new state
 	gs := (^Game_State)(board)
 	new_gs := new(Game_State) // todo maybe not needed?
@@ -117,6 +124,7 @@ get_next_state :: proc "c" (board: rawptr, player: i32, action: i32) -> (rawptr,
 @(export)
 get_valid_moves :: proc "c" (board: rawptr, player: i32) -> [^]bool {
 	context = runtime.default_context()
+	// fmt.println("get_valid_moves")
 	// Return binary vector of valid moves
 	gs := (^Game_State)(board)
 	new_gs := new(Game_State) // todo maybe not needed?
@@ -134,22 +142,44 @@ get_valid_moves :: proc "c" (board: rawptr, player: i32) -> [^]bool {
 @(export)
 get_game_ended :: proc "c" (board: rawptr, player: i32) -> f32 {
 	context = runtime.default_context()
+	// fmt.println("get_game_ended")
 	// Check win/loss/draw state
 	// Return 0 for ongoing, 1 for win, -1 for loss, small value for draw
 	gs := (^Game_State)(board)
     score := evaluate_state(gs)
     if player == 1 {
-        return f32((score * 2) - 1)
+		if score > 0.99 {
+			return 1
+		} else if score < 0.01 {
+			return -1
+		}
+		return 0
+        // return f32((score * 2) - 1)
     }
-	return f32(1 - (score * 2))
+	if score > 0.99 {
+		return -1
+	} else if score < 0.01 {
+		return 1
+	}
+	return 0
+	// return f32(1 - (score * 2))
 }
 
 @(export)
-get_canonical_form :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
+
+get_canonical_form :: proc "c" (board: rawptr, player: i32) -> rawptr {
 	context = runtime.default_context()
+	// fmt.println("get_canonical_form")
+	return board
+}
+
+@(export)
+board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
+	context = runtime.default_context()
+	// fmt.println("board_ptr_to_f32_array")
 	// Return canonical form of board state as float array
 	gs := (^Game_State)(board)
-	canon_board := new([776]f32) // Explicitly size the array
+	canon_board := new([878]f32) // Explicitly size the array
 	
 	// Convert game state to float array representation
 	idx := 0
@@ -228,14 +258,18 @@ get_canonical_form :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 
 	// Convert rejected_moves_from bitsets
 	for location in Air_ID {
-		canon_board[idx] = f32(gs.rejected_moves_from[location])
-		idx += 1
+		for move in Air_ID {
+			canon_board[idx] = move in gs.rejected_moves_from[location] ? 1.0 : 0.0
+			idx += 1
+		}
 	}
 
 	// Convert skipped_buys bitsets
 	for location in Air_ID {
-		canon_board[idx] = f32(gs.skipped_buys[location])
-		idx += 1
+		for buy in Buy_Action {
+			canon_board[idx] = buy in gs.skipped_buys[location] ? 1.0 : 0.0
+			idx += 1
+		}
 	}
 
 	// Convert territory ownership
@@ -279,14 +313,22 @@ get_canonical_form :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 	idx += 1
 
 	// Convert combat state bitsets
-	canon_board[idx] = f32(gs.more_land_combat_needed)
-	idx += 1
-	canon_board[idx] = f32(gs.more_sea_combat_needed)
-	idx += 1
-	canon_board[idx] = f32(gs.land_combat_started)
-	idx += 1
-	canon_board[idx] = f32(gs.sea_combat_started)
-	idx += 1
+	for land in Land_ID {
+		canon_board[idx] = land in gs.more_land_combat_needed ? 1.0 : 0.0
+		idx += 1
+	}
+	for sea in Sea_ID {
+		canon_board[idx] = sea in gs.more_sea_combat_needed ? 1.0 : 0.0
+		idx += 1
+	}
+	for land in Land_ID {
+		canon_board[idx] = land in gs.land_combat_started ? 1.0 : 0.0
+		idx += 1
+	}
+	for sea in Sea_ID {
+		canon_board[idx] = sea in gs.sea_combat_started ? 1.0 : 0.0
+		idx += 1
+	}
 
 	// Convert current player
 	canon_board[idx] = f32(gs.cur_player)
@@ -297,6 +339,8 @@ get_canonical_form :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 
 @(export)
 get_symmetries :: proc "c" (board: rawptr, pi: rawptr) -> rawptr {
+	context = runtime.default_context()
+	// fmt.println("get_symmetries")
 	// Return list of symmetric positions and corresponding policies
 	// For OAAA, this might just return the original position if no meaningful symmetries exist
 	gs := (^Game_State)(board)
@@ -306,6 +350,7 @@ get_symmetries :: proc "c" (board: rawptr, pi: rawptr) -> rawptr {
 @(export)
 get_string_representation :: proc "c" (board: rawptr) -> cstring {
 	context = runtime.default_context()
+	// fmt.println("get_string_representation")
 	// Convert game state to string for MCTS hashing
 	gs := (^Game_State)(board)
 	gc : Game_Cache = {}

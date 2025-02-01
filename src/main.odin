@@ -18,7 +18,7 @@ main :: proc() {
 
 start :: proc() {
 	fmt.println("Starting CAAA")
-	iterations := 200_000_000_000
+	iterations := 100
 	if len(os.args) >= 2 {
 		iterations, _ = strconv.parse_int(os.args[1])
 	}
@@ -32,6 +32,7 @@ start :: proc() {
 	}
 	game_state: Game_State
 	load_default_game_state(&game_state)
+	// get_canonical_form(&game_state, 0)
 	//save_json(game_state, "game_state.json")
 	//load_game_data(&game_state, "game_state.json")
 
