@@ -206,13 +206,17 @@ get_ai_input :: proc(gc: ^Game_Cache) -> Action_ID {
 		}
 		//return gc.valid_actions.data[RANDOM_NUMBERS[gc.seed] % gc.valid_actions.len]
 	}
+	// assert(gc.selected_action in gc.valid_actions)
+	if gc.selected_action not_in gc.valid_actions {
+		print_game_state(gc)
+		for action_idx in gc.valid_actions {
+			fmt.print(action_idx, ", ")
+		}
+		fmt.println()
+		fmt.eprintln("Invalid input ", gc.selected_action)
+	}
 	assert(gc.selected_action in gc.valid_actions)
-	// _, found := slice.linear_search(sa.slice(&gc.valid_actions), gc.selected_action)
-	// if !found {
-	// 	fmt.eprintln("Invalid input ", gc.selected_action)
-	// 	gc.seed = (gc.seed + 1) % RANDOM_MAX
-	// 	return gc.valid_actions.data[RANDOM_NUMBERS[gc.seed] % gc.valid_actions.len]
-	// }
+
 	return gc.selected_action
 }
 

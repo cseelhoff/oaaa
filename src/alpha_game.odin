@@ -147,22 +147,23 @@ get_game_ended :: proc "c" (board: rawptr, player: i32) -> f32 {
 	// Return 0 for ongoing, 1 for win, -1 for loss, small value for draw
 	gs := (^Game_State)(board)
     score := evaluate_state(gs)
+
     if player == 1 {
-		if score > 0.99 {
-			return 1
-		} else if score < 0.01 {
-			return -1
-		}
-		return 0
-        // return f32((score * 2) - 1)
+		// if score > 0.99 {
+		// 	return 1
+		// } else if score < 0.01 {
+		// 	return -1
+		// }
+		// return 0
+        return f32((score * 2) - 1)
     }
-	if score > 0.99 {
-		return -1
-	} else if score < 0.01 {
-		return 1
-	}
-	return 0
-	// return f32(1 - (score * 2))
+	// if score > 0.99 {
+	// 	return -1
+	// } else if score < 0.01 {
+	// 	return 1
+	// }
+	// return 0
+	return f32(1 - (score * 2))
 }
 
 @(export)
