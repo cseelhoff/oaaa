@@ -349,7 +349,7 @@ print_top_action_sequences :: proc() {
 		}
 	}
 }
-MAX_PRINT_DEPTH :: 40
+MAX_PRINT_DEPTH :: 100
 
 print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if node == nil do return
