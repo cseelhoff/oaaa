@@ -19,26 +19,48 @@ main :: proc() {
 start :: proc() {
 	fmt.println("Starting CAAA")
 	iterations := 100
-	if len(os.args) >= 2 {
-		iterations, _ = strconv.parse_int(os.args[1])
-	}
+	// if len(os.args) >= 2 {
+	// 	iterations, _ = strconv.parse_int(os.args[1])
+	// }
+
 	fmt.println("Running ", iterations, " iterations")
 	initialize_random_numbers()
+	game_state: Game_State
 	game_cache: Game_Cache
+	game_cache.answers_remaining = 65000
+	game_cache.seed = 2	
+	
 	ok := initialize_map_constants(&game_cache)
 	if !ok {
 		fmt.eprintln("Error initializing map constants")
 		return
 	}
-	game_state: Game_State
+	
+	load_path:string
+	if len(os.args) >= 2 {
+		load_path = os.args[1]
+		is_human = {
+			.Rus = true,
+			.Ger = true,
+			.Eng = true,
+			.Jap = true,
+			.USA = true,
+		}		
+		load_game_data(&game_state, load_path)
+		load_cache_from_state(&game_cache, &game_state)
+		for {
+			play_full_turn(&game_cache)
+		}
+		return
+	} else {
+		return
+	}
 	load_default_game_state(&game_state)
 	// get_canonical_form(&game_state, 0)
 	//save_json(game_state, "game_state.json")
 	//load_game_data(&game_state, "game_state.json")
 
 	load_cache_from_state(&game_cache, &game_state)
-	game_cache.answers_remaining = 65000
-	game_cache.seed = 2	
 
 	// for (game_cache.answers_remaining > 0) {
 	// 	ok = play_full_turn(&game_cache)

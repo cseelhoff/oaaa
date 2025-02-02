@@ -214,6 +214,7 @@ get_ai_input :: proc(gc: ^Game_Cache) -> Action_ID {
 		}
 		fmt.println()
 		fmt.eprintln("Invalid input ", gc.selected_action)
+		save_json(gc)
 	}
 	assert(gc.selected_action in gc.valid_actions)
 
@@ -223,13 +224,9 @@ get_ai_input :: proc(gc: ^Game_Cache) -> Action_ID {
 print_buy_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	print_game_state(gc)
 	fmt.print(mm.color[gc.cur_player])
-	if is_land(src_air) {
-		fmt.println("Buy At", mm.land_name[to_land(src_air)])
-	} else {
-		fmt.println("Buy At", mm.sea_name[to_sea(src_air)])
-	}
+	fmt.println("Buy At", src_air)
 	for buy_action_idx in gc.valid_actions {
-		fmt.print(buy_action_idx, Buy_Names[to_buy_action(buy_action_idx)], ", ")
+		fmt.print(int(buy_action_idx), buy_action_idx, ", ")
 	}
 	fmt.println(DEF_COLOR)
 }

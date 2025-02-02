@@ -21,7 +21,7 @@ FIGHTER_MAX_MOVES :: 4
 move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	gc.clear_history_needed = false
 	for src_land in Land_ID {
-		if gc.active_land_planes[src_land][.FIGHTER_UNMOVED] == 0 do return true
+		if gc.active_land_planes[src_land][.FIGHTER_UNMOVED] == 0 do continue
 		if !gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 		gc.valid_actions = {to_action(src_land)}
 		add_valid_unmoved_fighter_moves(gc, to_air(src_land))

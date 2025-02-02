@@ -412,6 +412,12 @@ get_possible_actions :: proc(gs: ^Game_State) -> Action_Bitset {
 	for {
 		play_full_turn(&gc) or_break
 	}
+	if gc.cur_player == .USA && gc.active_land_planes[.London][.BOMBER_UNMOVED] == 2 {
+		print_game_state(&gc)
+		for action in gc.valid_actions {
+			fmt.print(action, " ")
+		}		
+	}
 	return gc.valid_actions
 }
 

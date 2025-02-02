@@ -6,7 +6,7 @@
           "type": "lldb",
           "request": "launch",
           "program": "${workspaceFolder}/bin/main",
-          "args": [],
+          "args": ["../alpha-zero-general/game_state.json"],
           "cwd": "${workspaceFolder}",
           "preLaunchTask": "build-debug"
       },
