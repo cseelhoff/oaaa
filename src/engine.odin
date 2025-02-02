@@ -359,7 +359,7 @@ evaluate_cache :: #force_inline proc(gc: ^Game_Cache) -> f64 {
 gs_copy: Game_State
 
 dump_gs :: proc() {
-	save_json(gs_copy)
+	save_json(&gs_copy)
 }
 
 import "core:math/rand"
@@ -404,20 +404,23 @@ get_possible_actions :: proc(gs: ^Game_State) -> Action_Bitset {
 	// print_game_state(&gc)
 	// set unlucky teams
 	//initialize_map_constants(&gc)
+	// gs_backup := gs^	
 	load_cache_from_state(&gc, gs)
 	gc.unlucky_teams = {mm.team[gc.cur_player]}
 	gc.answers_remaining = 0
 	gc.seed = 0
+	gc.valid_actions = {}
 	debug_checks(&gc)
 	for {
 		play_full_turn(&gc) or_break
 	}
-	if gc.cur_player == .USA && gc.active_land_planes[.London][.BOMBER_UNMOVED] == 2 {
-		print_game_state(&gc)
-		for action in gc.valid_actions {
-			fmt.print(action, " ")
-		}		
-	}
+	// if gc.cur_player == .USA && gc.money[gc.cur_player] == 11 && gc.active_land_planes[.Berlin][.FIGHTER_2_MOVES] == 1 {
+	// 	print_game_state(&gc)
+	// 	for action in gc.valid_actions {
+	// 		fmt.print(action, ", ")
+	// 	}
+	// 	// save_json(&gs_backup, "pre_save.json")
+	// }
 	return gc.valid_actions
 }
 

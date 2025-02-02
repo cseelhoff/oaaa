@@ -4,9 +4,9 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:os"
 
-save_json :: proc(game_state: Game_State, path: string = "game_state.json") {
+save_json :: proc(game_state: ^Game_State, path: string = "game_state.json") {
 	//fmt.printfln("%#v", game_state)
-	json_data, err := json.marshal(game_state, {pretty = true, use_enum_names = false})
+	json_data, err := json.marshal(game_state^, {pretty = true, use_enum_names = false})
 	if err != nil {
 		fmt.eprintfln("Unable to marshal JSON: %v", err)
 		os.exit(1)

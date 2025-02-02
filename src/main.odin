@@ -29,7 +29,7 @@ start :: proc() {
 	game_cache: Game_Cache
 	game_cache.answers_remaining = 65000
 	game_cache.seed = 2	
-	
+
 	ok := initialize_map_constants(&game_cache)
 	if !ok {
 		fmt.eprintln("Error initializing map constants")
@@ -48,6 +48,7 @@ start :: proc() {
 		}		
 		load_game_data(&game_state, load_path)
 		load_cache_from_state(&game_cache, &game_state)
+		get_possible_actions(&game_cache)
 		for {
 			play_full_turn(&game_cache)
 		}

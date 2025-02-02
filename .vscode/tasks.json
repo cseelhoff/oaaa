@@ -67,7 +67,7 @@
         "-build-mode:shared",
         "-no-bounds-check",
         "-disable-assert",
-        "-no-type-assert"
+        "-no-type-assert",
       ],
       "problemMatcher": []
     },

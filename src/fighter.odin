@@ -204,10 +204,10 @@ land_remaining_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for plane in Unlanded_Fighters {
 		gc.clear_history_needed = false
 		for src_land in Land_ID {
-			land_fighter_from_land(gc, src_land, plane) or_continue
+			land_fighter_from_land(gc, src_land, plane) or_return
 		}
 		for src_sea in Sea_ID {
-			land_fighter_from_sea(gc, src_sea, plane) or_continue
+			land_fighter_from_sea(gc, src_sea, plane) or_return
 		}
 		if gc.clear_history_needed do clear_move_history(gc)
 	}
