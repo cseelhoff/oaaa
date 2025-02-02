@@ -147,8 +147,8 @@ get_game_ended :: proc "c" (board: rawptr, player: i32) -> f32 {
 	// Return 0 for ongoing, 1 for win, -1 for loss, small value for draw
 	gs := (^Game_State)(board)
     score := evaluate_state(gs)
-
-    if player == 1 {
+	team := (player + 1) / 2
+    if mm.team[gs.cur_player] == Team_ID(player) {
 		// if score > 0.99 {
 		// 	return 1
 		// } else if score < 0.01 {
