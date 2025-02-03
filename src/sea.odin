@@ -39,20 +39,6 @@ Sea_2_Moves_Away :: struct {
 	mid_seas: sa.Small_Array(MAX_PATHS_TO_SEA, Sea_ID),
 }
 
-Sea_ID :: enum {
-	Pacific,
-	Atlantic,
-	Baltic,
-}
-
-Canal_ID :: enum {
-	Pacific_Baltic,
-}
-
-// SEAS_DATA := [?]string{"Pacific", "Atlantic", "Baltic"}
-SEA_CONNECTIONS :: [?][2]Sea_ID{{.Pacific, .Atlantic}, {.Atlantic, .Baltic}}
-CANALS := [?]Canal{{lands = {.Berlin, .Moscow}, seas = {.Pacific, .Baltic}}}
-
 initialize_sea_connections :: proc() {
 	INFINITY :: 127
 	for canal_state in 0 ..< Canal_States {

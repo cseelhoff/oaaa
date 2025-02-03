@@ -70,33 +70,27 @@ Game_State :: struct {
 }
 
 load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
-	// for &money in gs.money {
-	// 	money = 20
-	// }
-  gs.money[.Rus] = 10
-  gs.money[.Ger] = 20
-  gs.money[.Eng] = 6
-  gs.money[.Jap] = 20
-  gs.money[.USA] = 6
-
-	factory_locations :: [?]Land_ID{.Washington, .London, .Berlin, .Moscow, .Tokyo}
+	for &money, idx in gs.money {
+		money = starting_money[idx]
+	}
 	for land in factory_locations {
 		gs.factory_prod[land] = mm.value[land]
 	}
 	for land in Land_ID {
 		gs.owner[land] = mm.orig_owner[land]
-		gs.idle_armies[land][gs.owner[land]][.INF] = 0
+    for player in Player_ID {
+      for army in Idle_Army {
+        gs.idle_armies[land][player][army] = 0
+      }
+      for plane in Idle_Plane {
+        gs.idle_land_planes[land][player][plane] = 0
+        gs.idle_sea_planes[land][player][plane] = 0
+      }
+    }
 		if gs.owner[land] == gs.cur_player {
 			gs.builds_left[land] = gs.factory_prod[land]
-			gs.active_armies[land][.INF_1_MOVES] = 0
+			// gs.active_armies[land][.INF_1_MOVES] = 0
 		}
 	}
-	// gs.land_states[Land_ID.Moscow].active_armies[Active_Army.TANK_2_MOVES] = 2
-	// gs.land_states[Land_ID.Moscow].idle_armies[Player_ID.Rus][Idle_Army.TANK] = 2
-	// gs.land_states[Land_ID.Moscow].active_planes[Active_Plane.FIGHTER_UNMOVED] = 1
-	// gs.land_states[Land_ID.Moscow].idle_planes[Player_ID.Rus][Idle_Plane.FIGHTER] = 1
-	// gs.land_states[Land_ID.Moscow].active_planes[Active_Plane.BOMBER_UNMOVED] = 1
-	// gs.land_states[Land_ID.Moscow].idle_planes[Player_ID.Rus][Idle_Plane.BOMBER] = 1
-	// gs.sea_states[Sea_ID.Pacific].idle_ships[Player_ID.Eng][Idle_Ship.TRANS_1I_1T] = 3
 	return true
 }

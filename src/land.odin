@@ -45,16 +45,6 @@ L2S_2_Moves_Away :: struct {
 	mid_lands: Mid_Lands,
 }
 
-Land_ID :: distinct enum u8 {
-	Washington,
-	London,
-	Berlin,
-	Moscow,
-	Tokyo,
-}
-
-LAND_CONNECTIONS := [?][2]Land_ID{{.Berlin, .Moscow}}
-
 initialize_land_connections :: proc() {
 	// Floyd-Warshall algorithm
 	// Initialize distances array to Infinity
