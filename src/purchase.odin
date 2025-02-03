@@ -31,25 +31,34 @@ Valid_Air_Buys := [?]Buy_Action{.BUY_FIGHTER, .BUY_BOMBER}
 
 Valid_Land_Buys := [?]Buy_Action{.BUY_INF, .BUY_ARTY, .BUY_TANK, .BUY_AAGUN}
 
-Buy_Active_Ship := [?]Active_Ship {
-	Buy_Action.BUY_TRANS      = .TRANS_EMPTY_0_MOVES,
-	Buy_Action.BUY_SUB        = .SUB_0_MOVES,
-	Buy_Action.BUY_DESTROYER  = .DESTROYER_0_MOVES,
-	Buy_Action.BUY_CARRIER    = .CARRIER_0_MOVES,
-	Buy_Action.BUY_CRUISER    = .CRUISER_0_MOVES,
-	Buy_Action.BUY_BATTLESHIP = .BATTLESHIP_0_MOVES,
+Buy_Active_Ship : [Buy_Action]Active_Ship
+
+@(init)
+init_buy_active_ship :: proc() {
+	Active_Ship[.BUY_TRANS]      = .TRANS_EMPTY_0_MOVES
+	Active_Ship[.BUY_SUB]        = .SUB_0_MOVES
+	Active_Ship[.BUY_DESTROYER]  = .DESTROYER_0_MOVES
+	Active_Ship[.BUY_CARRIER]    = .CARRIER_0_MOVES
+	Active_Ship[.BUY_CRUISER]    = .CRUISER_0_MOVES
+	Active_Ship[.BUY_BATTLESHIP] = .BATTLESHIP_0_MOVES
 }
 
-Buy_Active_Plane := [?]Active_Plane {
-	Buy_Action.BUY_FIGHTER = .FIGHTER_0_MOVES,
-	Buy_Action.BUY_BOMBER  = .BOMBER_0_MOVES,
+Buy_Active_Plane : [Buy_Action]Active_Plane
+
+@(init)
+init_buy_active_plane :: proc() {
+	Buy_Active_Plane[.BUY_FIGHTER] = .FIGHTER_0_MOVES
+	Buy_Active_Plane[.BUY_BOMBER]  = .BOMBER_0_MOVES
 }
 
-Buy_Active_Army := [?]Active_Army {
-	Buy_Action.BUY_INF   = .INF_0_MOVES,
-	Buy_Action.BUY_ARTY  = .ARTY_0_MOVES,
-	Buy_Action.BUY_TANK  = .TANK_0_MOVES,
-	Buy_Action.BUY_AAGUN = .AAGUN_0_MOVES,
+Buy_Active_Army : [Buy_Action]Active_Army
+
+@(init)
+init_buy_active_army :: proc() {
+	Buy_Active_Army[.BUY_INF]   = .INF_0_MOVES
+	Buy_Active_Army[.BUY_ARTY]  = .ARTY_0_MOVES
+	Buy_Active_Army[.BUY_TANK]  = .TANK_0_MOVES
+	Buy_Active_Army[.BUY_AAGUN] = .AAGUN_0_MOVES
 }
 
 Cost_Buy := [Buy_Action]u8 {

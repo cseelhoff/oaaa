@@ -68,7 +68,7 @@ move_unmoved_fighter_from_land_to_land :: proc(
 	dst_land: Land_ID,
 ) {
 	if skip_land_fighter(gc, src_land, dst_land) do return
-	if to_air(dst_land) in gc.air_has_enemies {
+	if gc.air_has_enemies[to_air(dst_land)] {
 		gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += 1
 	} else {
 		gc.more_land_combat_needed += {dst_land}

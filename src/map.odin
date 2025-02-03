@@ -64,26 +64,6 @@ MapData :: struct {
 	is_human:                     bit_set[Player_ID;u8],
 }
 
-mm: MapData = {
-	capital = {.Rus = .Moscow, .Ger = .Berlin, .Eng = .London, .Jap = .Tokyo, .USA = .Washington},
-	team = {.Rus = .Allies, .Ger = .Axis, .Eng = .Allies, .Jap = .Axis, .USA = .Allies},
-	value = {.Moscow = 8, .Berlin = 10, .London = 8, .Washington = 10, .Tokyo = 8},
-	orig_owner = {
-		.Moscow = .Rus,
-		.Berlin = .Ger,
-		.London = .Eng,
-		.Tokyo = .Jap,
-		.Washington = .USA,
-	},
-	color = {
-		.Rus = "\033[1;31m",
-		.Ger = "\033[1;34m",
-		.Eng = "\033[1;95m",
-		.Jap = "\033[1;33m",
-		.USA = "\033[1;32m",
-	},
-}
-
 initialize_map_constants :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	initialize_player_data()
 	initialize_land_connections()

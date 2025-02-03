@@ -2,22 +2,6 @@ package oaaa
 import sa "core:container/small_array"
 import "core:slice"
 
-Coastal_Connection :: struct {
-	land: Land_ID,
-	sea:  Sea_ID,
-}
-
-Air_ID :: distinct enum u8 {
-	Washington_Air,
-	London_Air,
-	Berlin_Air,
-	Moscow_Air,
-	Tokyo_Air,
-	Pacific_Air,
-	Atlantic_Air,
-	Baltic_Air,
-}
-
 to_air :: proc {
 	sea_to_air,
 	land_to_air,
@@ -50,30 +34,19 @@ action_to_air :: #force_inline proc(act: Action_ID) -> Air_ID {
 }
 
 land_to_air_bitset :: #force_inline proc(land: Land_Bitset) -> Air_Bitset {
-	return transmute(Air_Bitset)u16(transmute(u8)land)
+	return transmute(Air_Bitset)u128(transmute(u128)land)
 }
 
 sea_to_air_bitset :: #force_inline proc(sea: Sea_Bitset) -> Air_Bitset {
-	return transmute(Air_Bitset)(u16(transmute(u8)sea) << len(Land_ID))
+	return transmute(Air_Bitset)(u128(transmute(u128)sea) << len(Land_ID))
 }
 
 air_to_land_bitset :: #force_inline proc(air: Air_Bitset) -> Land_Bitset {
-	return transmute(Land_Bitset)u8(transmute(u16)air)
+	return transmute(Land_Bitset)u128(transmute(u128)air)
 }
 
 air_to_sea_bitset :: #force_inline proc(air: Air_Bitset) -> Sea_Bitset {
-	return transmute(Sea_Bitset)(u8(transmute(u16)air >> len(Land_ID)))
-}
-
-COASTAL_CONNECTIONS := [?]Coastal_Connection {
-	{land = .Washington, sea = .Pacific},
-	{land = .Washington, sea = .Atlantic},
-	{land = .London, sea = .Atlantic},
-	{land = .London, sea = .Baltic},
-	{land = .Berlin, sea = .Atlantic},
-	{land = .Berlin, sea = .Baltic},
-	{land = .Moscow, sea = .Baltic},
-	{land = .Tokyo, sea = .Pacific},
+	return transmute(Sea_Bitset)(u128(transmute(u128)air) >> len(Land_ID))
 }
 
 initialize_coastal_connections :: proc() {

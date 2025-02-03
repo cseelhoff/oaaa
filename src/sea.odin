@@ -39,6 +39,11 @@ Sea_2_Moves_Away :: struct {
 	mid_seas: sa.Small_Array(MAX_PATHS_TO_SEA, Sea_ID),
 }
 
+Coastal_Connection :: struct {
+	land: Land_ID,
+	sea:  Sea_ID,
+}
+
 initialize_sea_connections :: proc() {
 	INFINITY :: 127
 	for canal_state in 0 ..< Canal_States {

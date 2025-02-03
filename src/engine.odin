@@ -161,17 +161,17 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, dst_air: Air_ID) {
+update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, action: Air_ID) {
 	// get a list of newly skipped valid_actions
 	for valid_action in gc.valid_actions {
 		// assert(card(gc.valid_actions) > 0)
 		// valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
-		if valid_action == to_action(src_air) do continue
-		if valid_action == to_action(dst_air) do break
+		if valid_action == .Skip_Action do continue
+		if valid_action == action do break
 		gc.rejected_moves_from[src_air] += {to_air(valid_action)}
 		gc.clear_history_needed = true
 	}
-	gc.valid_actions -= transmute(Action_Bitset)u32(transmute(u16)gc.rejected_moves_from[src_air])
+	gc.valid_actions -= transmute(Action_Bitset)u128(transmute(u128)gc.rejected_moves_from[src_air])
 }
 
 clear_move_history :: proc(gc: ^Game_Cache) {

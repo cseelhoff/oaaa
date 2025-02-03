@@ -6,11 +6,9 @@ BUY_ACTIONS_COUNT :: len(Buy_Action)
 SA_Land :: sa.Small_Array(len(Land_ID), Land_ID)
 Canals_Open :: bit_set[Canal_ID;u8]
 Unlucky_Teams :: bit_set[Team_ID;u8]
-Land_Bitset :: bit_set[Land_ID;u8]
-Sea_Bitset :: bit_set[Sea_ID;u8]
+Land_Bitset :: bit_set[Land_ID;u128]
+Sea_Bitset :: bit_set[Sea_ID;u128]
 Purchase_Bitset :: bit_set[Buy_Action;u16]
-Action_Bitset :: bit_set[Action_ID;u32]
-Air_Bitset :: bit_set[Air_ID;u16]
 
 Game_Cache :: struct {
 	/*

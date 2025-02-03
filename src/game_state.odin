@@ -84,13 +84,21 @@ load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
       }
       for plane in Idle_Plane {
         gs.idle_land_planes[land][player][plane] = 0
-        gs.idle_sea_planes[land][player][plane] = 0
       }
     }
 		if gs.owner[land] == gs.cur_player {
 			gs.builds_left[land] = gs.factory_prod[land]
-			// gs.active_armies[land][.INF_1_MOVES] = 0
 		}
 	}
+  for sea in Sea_ID {
+    for player in Player_ID {
+      for plane in Idle_Plane {
+        gs.idle_sea_planes[sea][player][plane] = 0
+      }
+      for ship in Idle_Ship {
+        gs.idle_ships[sea][player][ship] = 0
+      }
+    }
+  }
 	return true
 }
