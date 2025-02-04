@@ -241,7 +241,7 @@ move_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		gc.clear_history_needed = false
 		for src_sea in Sea_ID {
 			if gc.active_ships[src_sea][ship] == 0 do continue
-			gc.valid_actions = {to_action(src_sea)}
+			reset_valid_actions(gc)
 			add_valid_transport_moves(gc, src_sea, Ships_Moves[ship])
 			for gc.active_ships[src_sea][ship] > 0 {
 				dst_air := get_move_ship_input(gc, ship, to_air(src_sea)) or_return
@@ -284,25 +284,25 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance
     This ensures transports don't move through hostile waters without escort.
     */
 	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if to_air(dst_sea) in gc.rejected_moves_from[to_air(src_sea)] ||
+		if to_action(dst_sea) < gc.smallest_allowable_action[to_air(src_sea)] ||
 		   gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] > 0 &&
 			   gc.allied_sea_combatants_total[dst_sea] == 0 { 	// Transport needs combat ship escort
 			continue
 		}
-		gc.valid_actions += {to_action(dst_sea)}
+		add_valid_action(gc, to_action(dst_sea))
 	}
 	if max_distance == 1 do return
 
 	mid_seas := &mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea]
 	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if to_air(dst_sea_2_away) in gc.rejected_moves_from[to_air(src_sea)] ||
+		if to_action(dst_sea_2_away) < gc.smallest_allowable_action[to_air(src_sea)] ||
 		   gc.team_sea_units[dst_sea_2_away][mm.enemy_team[gc.cur_player]] > 0 &&
 			   gc.allied_sea_combatants_total[dst_sea_2_away] == 0 { 	// Transport needs combat ship escort
 			continue
 		}
 		for mid_sea in sa.slice(&mid_seas[dst_sea_2_away]) {
 			if (gc.enemy_blockade_total[mid_sea] == 0) { 	// Path must be free of enemy blockades
-				gc.valid_actions += {to_action(dst_sea_2_away)}
+				add_valid_action(gc, to_action(dst_sea_2_away))
 				break
 			}
 		}
@@ -311,7 +311,7 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance
 
 add_valid_unload_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
 	for dst_land in sa.slice(&mm.s2l_1away_via_sea[src_sea]) {
-		gc.valid_actions += {to_action(dst_land)}
+		add_valid_action(gc, to_action(dst_land))
 	}
 }
 
@@ -366,7 +366,7 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for ship in Transports_With_Cargo {
 		for src_sea in Sea_ID {
 			if gc.active_ships[src_sea][ship] == 0 do continue
-			gc.valid_actions = {to_action(src_sea)}
+			reset_valid_actions(gc)
 			add_valid_unload_moves(gc, src_sea)
 			for gc.active_ships[src_sea][ship] > 0 {
 				dst_air := get_move_ship_input(gc, ship, to_air(src_sea)) or_return

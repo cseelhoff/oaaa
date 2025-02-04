@@ -4,179 +4,37 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 
-print_retreat_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
+get_move_input:: proc(gc: ^Game_Cache) -> (action: Action_ID, ok: bool) {
+	debug_checks(gc)
+	load_dyn_arr_actions(gc)
+	assert(len(gc.dyn_arr_valid_actions) > 0)
+	action = gc.dyn_arr_valid_actions[0]
+	if len(gc.dyn_arr_valid_actions) > 1 {
+		if gc.answers_remaining == 0 do return action, false
+		if is_human[gc.cur_player] {
+			print_move_prompt_2(gc)
+			action = get_user_input(gc)
+		} else {
+			if ACTUALLY_PRINT do print_move_prompt_2(gc)
+			action = get_ai_input(gc)
+			if ACTUALLY_PRINT {
+				fmt.println("--->AI Action:", action)
+			}
+		}
+	}
+	update_move_history_2(gc, action)
+	return action, true
+}
+
+print_move_prompt_2 :: proc(gc: ^Game_Cache) {
 	print_game_state(gc)
 	fmt.print(mm.color[gc.cur_player])
-	if is_land(src_air) {
-		fmt.println("Retreat From Land ", mm.land_name[to_land(src_air)], " Valid Moves: ")
-	} else {
-		fmt.println("Retreat From Sea ", mm.sea_name[to_sea(src_air)], " Valid Moves: ")
-	}
+	fmt.println("Moving ", gc.current_Active_Unit, " From ", gc.current_territory, " Valid Moves: ")
 	for valid_move in gc.valid_actions {
 		fmt.print(int(valid_move), valid_move, ", ")
 	}
 	fmt.println(DEF_COLOR)
 }
-
-get_retreat_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (dst_air: Air_ID, ok: bool) {
-	debug_checks(gc)
-	// assert(card(gc.valid_actions) > 0)
-	dst_air = src_air
-	for valid_action in gc.valid_actions {
-		dst_air = to_air(valid_action)
-		break
-	}
-	if card(gc.valid_actions) > 1 {
-		if gc.answers_remaining == 0 do return dst_air, false
-		if gc.cur_player in mm.is_human {
-			print_retreat_prompt(gc, src_air)
-			dst_air = to_air(get_user_input(gc))
-		} else {
-			if ACTUALLY_PRINT do print_retreat_prompt(gc, src_air)
-			dst_air = to_air(get_ai_input(gc))
-			if ACTUALLY_PRINT {
-				fmt.println("-->AI Action:", dst_air)
-			}
-		}
-	}
-	return dst_air, true
-}
-
-print_move_prompt :: proc(gc: ^Game_Cache, unit_name: string, src_air: Air_ID) {
-	print_game_state(gc)
-	fmt.print(mm.color[gc.cur_player])
-	fmt.println("Moving ", unit_name, " From ", src_air, " Valid Moves: ")
-	for valid_move in gc.valid_actions {
-		fmt.print(int(valid_move), valid_move, ", ")
-	}
-	fmt.println(DEF_COLOR)
-}
-
-get_move_ship_input :: proc(
-	gc: ^Game_Cache,
-	ship: Active_Ship,
-	src_air: Air_ID,
-) -> (
-	dst_air: Air_ID,
-	ok: bool,
-) {
-	debug_checks(gc)
-	assert(card(gc.valid_actions) > 0)
-	for valid_action in gc.valid_actions {
-		dst_air = to_air(valid_action)
-		break
-	}
-	// dst_air = src_air
-	if card(gc.valid_actions) > 1 {
-		if gc.answers_remaining == 0 do return dst_air, false
-		if is_human[gc.cur_player] {
-			print_move_prompt(gc, fmt.tprint(ship), src_air)
-			dst_air = to_air(get_user_input(gc))
-		} else {
-			if ACTUALLY_PRINT do print_move_prompt(gc, fmt.tprint(ship), src_air)
-			dst_air = to_air(get_ai_input(gc))
-			if ACTUALLY_PRINT {
-				fmt.println("--->AI Action:", dst_air)
-			}
-		}
-	}
-	update_move_history(gc, src_air, dst_air)
-	return dst_air, true
-}
-get_move_army_input :: proc(
-	gc: ^Game_Cache,
-	army: Active_Army,
-	src_air: Air_ID,
-) -> (
-	dst_air: Air_ID,
-	ok: bool,
-) {
-	debug_checks(gc)
-	assert(card(gc.valid_actions) > 0)
-	for valid_action in gc.valid_actions {
-		dst_air = to_air(valid_action)
-		break
-	}
-	// dst_air = src_air
-	if card(gc.valid_actions) > 1 {
-		if gc.answers_remaining == 0 do return dst_air, false
-		if is_human[gc.cur_player] {
-			print_move_prompt(gc, fmt.tprint(army), src_air)
-			dst_air = to_air(get_user_input(gc))
-		} else {
-			if ACTUALLY_PRINT do print_move_prompt(gc, fmt.tprint(army), src_air)
-			dst_air = to_air(get_ai_input(gc))
-			if ACTUALLY_PRINT {
-				fmt.println("--->AI Action:", dst_air)
-			}
-		}
-	}
-	update_move_history(gc, src_air, dst_air)
-	return dst_air, true
-}
-get_move_plane_input :: proc(
-	gc: ^Game_Cache,
-	plane: Active_Plane,
-	src_air: Air_ID,
-) -> (
-	dst_air: Air_ID,
-	ok: bool,
-) {
-	debug_checks(gc)
-	assert(card(gc.valid_actions) > 0)
-	for valid_action in gc.valid_actions {
-		dst_air = to_air(valid_action)
-		break
-	}
-	// dst_air = src_air
-	if card(gc.valid_actions) > 1 {
-		if gc.answers_remaining == 0 do return dst_air, false
-		if is_human[gc.cur_player] {
-			print_move_prompt(gc, fmt.tprint(plane), src_air)
-			dst_air = to_air(get_user_input(gc))
-		} else {
-			if ACTUALLY_PRINT do print_move_prompt(gc, fmt.tprint(plane), src_air)
-			dst_air = to_air(get_ai_input(gc))
-			if ACTUALLY_PRINT {
-				fmt.println("--->AI Action:", dst_air)
-			}
-		}
-	}
-	update_move_history(gc, src_air, dst_air)
-	return dst_air, true
-}
-
-// get_move_input :: proc(
-// 	gc: ^Game_Cache,
-// 	unit_name: string,
-// 	src_air: Air_ID,
-// ) -> (
-// 	dst_air: Air_ID,
-// 	ok: bool,
-// ) {
-// 	debug_checks(gc)
-// 	assert(card(gc.valid_actions) > 0)
-// 	for valid_action in gc.valid_actions {
-// 		dst_air = to_air(valid_action)
-// 		break
-// 	}
-// 	// dst_air = src_air
-// 	if card(gc.valid_actions) > 1 {
-// 		if gc.answers_remaining == 0 do return dst_air, false
-// 		if is_human[gc.cur_player] {
-// 			print_move_prompt(gc, unit_name, src_air)
-// 			dst_air = to_air(get_user_input(gc))
-// 		} else {
-// 			if ACTUALLY_PRINT do print_move_prompt(gc, unit_name, src_air)
-// 			dst_air = to_air(get_ai_input(gc))
-// 			if ACTUALLY_PRINT {
-// 				fmt.println("--->AI Action:", dst_air)
-// 			}
-// 		}
-// 	}
-// 	update_move_history(gc, src_air, dst_air)
-// 	return dst_air, true
-// }
 
 get_user_input :: proc(gc: ^Game_Cache) -> (action: Action_ID) {
 	buffer: [10]byte
@@ -197,14 +55,14 @@ get_ai_input :: proc(gc: ^Game_Cache) -> Action_ID {
 	if !gc.use_selected_action {
 		//fmt.eprintln("Invalid input ", gc.selected_action)
 		gc.seed = (gc.seed + 1) % RANDOM_MAX
-		rand_idx := RANDOM_NUMBERS[gc.seed] % u8(card(gc.valid_actions))
-		for action_idx in gc.valid_actions {
-			if rand_idx == 0 {
-				return action_idx
-			}
-			rand_idx -= 1
-		}
-		//return gc.valid_actions.data[RANDOM_NUMBERS[gc.seed] % gc.valid_actions.len]
+		// rand_idx := RANDOM_NUMBERS[gc.seed] % len(gc.dyn_arr_valid_actions)
+		// for action_idx in gc.dyn_arr_valid_actions {
+		// 	if rand_idx == 0 {
+		// 		return action_idx
+		// 	}
+		// 	rand_idx -= 1
+		// }
+		return gc.dyn_arr_valid_actions[RANDOM_NUMBERS[gc.seed] % gc.dyn_arr_valid_actions.len]
 	}
 	// assert(gc.selected_action in gc.valid_actions)
 	if gc.selected_action not_in gc.valid_actions {

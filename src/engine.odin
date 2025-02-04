@@ -161,23 +161,20 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, action: Air_ID) {
-	// get a list of newly skipped valid_actions
-	for valid_action in gc.valid_actions {
-		// assert(card(gc.valid_actions) > 0)
-		// valid_action := gc.valid_actions.data[gc.valid_actions.len - 1]
-		if valid_action == .Skip_Action do continue
-		if valid_action == action do break
-		gc.rejected_moves_from[src_air] += {to_air(valid_action)}
-		gc.clear_history_needed = true
-	}
-	gc.valid_actions -= transmute(Action_Bitset)u128(transmute(u128)gc.rejected_moves_from[src_air])
+// update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, action: Action_ID) {
+// 	gc.smallest_allowable_action[src_air] = action
+// 	gc.clear_history_needed = true
+// 	remove_actions_above(gc, action)
+// }
+
+update_move_history_2 :: proc(gc: ^Game_Cache, action: Action_ID) {
+	gc.smallest_allowable_action[gc.current_territory] = action
+	gc.clear_history_needed = true
+	remove_actions_above(gc, action)
 }
 
 clear_move_history :: proc(gc: ^Game_Cache) {
-	for air in Air_ID {
-		gc.rejected_moves_from[air] = {}
-	}
+	gc.smallest_allowable_action = {}
 	gc.clear_history_needed = false
 }
 
@@ -199,15 +196,15 @@ Returns true when:
 */
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	if gc.money[gc.cur_player] < FACTORY_COST do return true
-	gc.valid_actions = {.Skip_Action}
+	reset_valid_actions(gc)
 	for land in Land_ID {
 		if gc.owner[land] != gc.cur_player ||
 		   gc.factory_prod[land] > 0 ||
 		   land in (gc.more_land_combat_needed | gc.land_combat_started) ||
-		   to_air(land) in gc.rejected_moves_from[to_air(land)] {
+		   to_air(land) > gc.smallest_allowable_action[to_air(land)] {
 			continue
 		}
-		gc.valid_actions += {to_action(land)}
+		add_valid_action(gc, to_action(land))
 	}
 	for gc.money[gc.cur_player] < FACTORY_COST {
 		factory_land_action := get_factory_buy(gc) or_return
@@ -246,6 +243,13 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 	gc.more_sea_combat_needed = {}
 	gc.sea_combat_started = {}
 	gc.friendly_owner = {}
+	gc.max_bombards = {}
+	gc.active_armies = {}
+	gc.active_land_planes = {}
+	gc.smallest_allowable_action= {}
+	gc.active_ships = {}
+	gc.active_sea_planes = {}
+
 	for land in Land_ID {
 		if gc.owner[land] == gc.cur_player {
 			gc.builds_left[land] = gc.factory_prod[land]
@@ -253,16 +257,12 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		if mm.team[gc.owner[land]] == mm.team[gc.cur_player] {
 			gc.friendly_owner += {land}
 		}
-		gc.max_bombards[land] = 0
-		gc.rejected_moves_from[to_air(land)] = {}
-		gc.skipped_buys[to_air(land)] = {}
-		gc.active_armies[land] = {}
+		// gc.skipped_buys[to_air(land)] = {}
 		idle_armies := &gc.idle_armies[land][gc.cur_player]
 		gc.active_armies[land][.INF_1_MOVES] = idle_armies[.INF]
 		gc.active_armies[land][.ARTY_1_MOVES] = idle_armies[.ARTY]
 		gc.active_armies[land][.TANK_2_MOVES] = idle_armies[.TANK]
 		gc.active_armies[land][.AAGUN_1_MOVES] = idle_armies[.AAGUN]
-		gc.active_land_planes[land] = {}
 		idle_planes := &gc.idle_land_planes[land][gc.cur_player]
 		gc.active_land_planes[land][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
 		gc.active_land_planes[land][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
@@ -274,9 +274,6 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 	}
 
 	for sea in Sea_ID {
-		gc.rejected_moves_from[to_air(sea)] = {}
-		gc.skipped_buys[to_air(sea)] = {}
-		gc.active_ships[sea] = {}
 		idle_ships := &gc.idle_ships[sea][gc.cur_player]
 		gc.active_ships[sea][.TRANS_EMPTY_UNMOVED] = idle_ships[.TRANS_EMPTY]
 		gc.active_ships[sea][.TRANS_1I_UNMOVED] = idle_ships[.TRANS_1I]
@@ -291,7 +288,6 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		gc.active_ships[sea][.CRUISER_2_MOVES] = idle_ships[.CRUISER]
 		gc.active_ships[sea][.BATTLESHIP_2_MOVES] = idle_ships[.BATTLESHIP]
 		gc.active_ships[sea][.BS_DAMAGED_2_MOVES] = idle_ships[.BS_DAMAGED]
-		gc.active_sea_planes[sea] = {}
 		idle_planes := &gc.idle_sea_planes[sea][gc.cur_player]
 		gc.active_sea_planes[sea][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
 		gc.active_sea_planes[sea][.BOMBER_UNMOVED] = idle_planes[.BOMBER]

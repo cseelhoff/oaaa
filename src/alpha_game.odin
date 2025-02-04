@@ -258,19 +258,9 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 	}
 
 	// Convert rejected_moves_from bitsets
-	for location in Air_ID {
-		for move in Air_ID {
-			canon_board[idx] = move in gs.rejected_moves_from[location] ? 1.0 : 0.0
-			idx += 1
-		}
-	}
-
-	// Convert skipped_buys bitsets
-	for location in Air_ID {
-		for buy in Buy_Action {
-			canon_board[idx] = buy in gs.skipped_buys[location] ? 1.0 : 0.0
-			idx += 1
-		}
+	for location in Air_ID {	
+		canon_board[idx] = f32(gs.smallest_allowable_action[location])
+		idx += 1
 	}
 
 	// Convert territory ownership

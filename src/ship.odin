@@ -40,16 +40,22 @@ CARRIER_ATTACK :: 1
 CRUISER_ATTACK :: 3
 BATTLESHIP_ATTACK :: 4
 
-Active_Ship_Attack := [?]int {
-	Active_Ship.BATTLESHIP_0_MOVES = BATTLESHIP_ATTACK,
-	Active_Ship.BS_DAMAGED_0_MOVES = BATTLESHIP_ATTACK,
-	Active_Ship.CRUISER_0_MOVES    = CRUISER_ATTACK,
+Active_Ship_Attack: [Active_Ship]int
+
+@(init)
+init_Active_Ship_Attack :: proc() {
+	Active_Ship_Attack[.BATTLESHIP_0_MOVES] = BATTLESHIP_ATTACK
+	Active_Ship_Attack[.BS_DAMAGED_0_MOVES] = BATTLESHIP_ATTACK
+	Active_Ship_Attack[.CRUISER_0_MOVES] = CRUISER_ATTACK
 }
 
-Ship_After_Bombard := [?]Active_Ship {
-	Active_Ship.BATTLESHIP_0_MOVES = .BATTLESHIP_BOMBARDED,
-	Active_Ship.BS_DAMAGED_0_MOVES = .BS_DAMAGED_BOMBARDED,
-	Active_Ship.CRUISER_0_MOVES    = .CRUISER_BOMBARDED,
+Ship_After_Bombard: [Active_Ship]Active_Ship
+
+@(init)
+init_Ship_After_Bombard :: proc() {
+	Ship_After_Bombard[.BATTLESHIP_0_MOVES] = .BATTLESHIP_BOMBARDED
+	Ship_After_Bombard[.BS_DAMAGED_0_MOVES] = .BS_DAMAGED_BOMBARDED
+	Ship_After_Bombard[.CRUISER_0_MOVES] = .CRUISER_BOMBARDED
 }
 
 DESTROYER_DEFENSE :: 2
@@ -165,44 +171,50 @@ Unmoved_Blockade_Ships := [?]Active_Ship {
 	.BS_DAMAGED_2_MOVES,
 }
 
-Ships_Moved := [?]Active_Ship {
-	Active_Ship.TRANS_EMPTY_UNMOVED = .TRANS_EMPTY_2_MOVES,
-	Active_Ship.TRANS_1I_UNMOVED    = .TRANS_1I_2_MOVES,
-	Active_Ship.TRANS_1I_2_MOVES    = .TRANS_1I_0_MOVES,
-	Active_Ship.TRANS_1I_1_MOVES    = .TRANS_1I_0_MOVES,
-	Active_Ship.TRANS_1A_UNMOVED    = .TRANS_1A_2_MOVES,
-	Active_Ship.TRANS_1A_2_MOVES    = .TRANS_1A_0_MOVES,
-	Active_Ship.TRANS_1A_1_MOVES    = .TRANS_1A_0_MOVES,
-	Active_Ship.TRANS_1T_UNMOVED    = .TRANS_1T_2_MOVES,
-	Active_Ship.TRANS_1T_2_MOVES    = .TRANS_1T_0_MOVES,
-	Active_Ship.TRANS_1T_1_MOVES    = .TRANS_1T_0_MOVES,
-	Active_Ship.TRANS_2I_2_MOVES    = .TRANS_2I_0_MOVES,
-	Active_Ship.TRANS_2I_1_MOVES    = .TRANS_2I_0_MOVES,
-	Active_Ship.TRANS_1I_1A_2_MOVES = .TRANS_1I_1A_0_MOVES,
-	Active_Ship.TRANS_1I_1A_1_MOVES = .TRANS_1I_1A_0_MOVES,
-	Active_Ship.TRANS_1I_1T_2_MOVES = .TRANS_1I_1T_0_MOVES,
-	Active_Ship.TRANS_1I_1T_1_MOVES = .TRANS_1I_1T_0_MOVES,
-	Active_Ship.SUB_2_MOVES         = .SUB_0_MOVES,
-	Active_Ship.DESTROYER_2_MOVES   = .DESTROYER_0_MOVES,
-	Active_Ship.CARRIER_2_MOVES     = .CARRIER_0_MOVES,
-	Active_Ship.CRUISER_2_MOVES     = .CRUISER_0_MOVES,
-	Active_Ship.BATTLESHIP_2_MOVES  = .BATTLESHIP_0_MOVES,
-	Active_Ship.BS_DAMAGED_2_MOVES  = .BS_DAMAGED_0_MOVES,
+Ships_Moved: [Active_Ship]Active_Ship
+
+@(init)
+init_Ships_Moved :: proc() {
+	Ships_Moved[.TRANS_EMPTY_UNMOVED] = .TRANS_EMPTY_2_MOVES
+	Ships_Moved[.TRANS_1I_UNMOVED] = .TRANS_1I_2_MOVES
+	Ships_Moved[.TRANS_1I_2_MOVES] = .TRANS_1I_0_MOVES
+	Ships_Moved[.TRANS_1I_1_MOVES] = .TRANS_1I_0_MOVES
+	Ships_Moved[.TRANS_1A_UNMOVED] = .TRANS_1A_2_MOVES
+	Ships_Moved[.TRANS_1A_2_MOVES] = .TRANS_1A_0_MOVES
+	Ships_Moved[.TRANS_1A_1_MOVES] = .TRANS_1A_0_MOVES
+	Ships_Moved[.TRANS_1T_UNMOVED] = .TRANS_1T_2_MOVES
+	Ships_Moved[.TRANS_1T_2_MOVES] = .TRANS_1T_0_MOVES
+	Ships_Moved[.TRANS_1T_1_MOVES] = .TRANS_1T_0_MOVES
+	Ships_Moved[.TRANS_2I_2_MOVES] = .TRANS_2I_0_MOVES
+	Ships_Moved[.TRANS_2I_1_MOVES] = .TRANS_2I_0_MOVES
+	Ships_Moved[.TRANS_1I_1A_2_MOVES] = .TRANS_1I_1A_0_MOVES
+	Ships_Moved[.TRANS_1I_1A_1_MOVES] = .TRANS_1I_1A_0_MOVES
+	Ships_Moved[.TRANS_1I_1T_2_MOVES] = .TRANS_1I_1T_0_MOVES
+	Ships_Moved[.TRANS_1I_1T_1_MOVES] = .TRANS_1I_1T_0_MOVES
+	Ships_Moved[.SUB_2_MOVES] = .SUB_0_MOVES
+	Ships_Moved[.DESTROYER_2_MOVES] = .DESTROYER_0_MOVES
+	Ships_Moved[.CARRIER_2_MOVES] = .CARRIER_0_MOVES
+	Ships_Moved[.CRUISER_2_MOVES] = .CRUISER_0_MOVES
+	Ships_Moved[.BATTLESHIP_2_MOVES] = .BATTLESHIP_0_MOVES
+	Ships_Moved[.BS_DAMAGED_2_MOVES] = .BS_DAMAGED_0_MOVES
 }
 
-Ships_Moves := [?]int {
-	Active_Ship.TRANS_1I_1_MOVES    = 1,
-	Active_Ship.TRANS_1A_1_MOVES    = 1,
-	Active_Ship.TRANS_1T_1_MOVES    = 1,
-	Active_Ship.TRANS_2I_1_MOVES    = 1,
-	Active_Ship.TRANS_1I_1A_1_MOVES = 1,
-	Active_Ship.TRANS_1I_1T_1_MOVES = 1,
-	Active_Ship.TRANS_1I_2_MOVES    = 2,
-	Active_Ship.TRANS_1A_2_MOVES    = 2,
-	Active_Ship.TRANS_1T_2_MOVES    = 2,
-	Active_Ship.TRANS_2I_2_MOVES    = 2,
-	Active_Ship.TRANS_1I_1A_2_MOVES = 2,
-	Active_Ship.TRANS_1I_1T_2_MOVES = 2,
+Ships_Moves: [Active_Ship]int
+
+@(init)
+init_Ships_Moves :: proc() {
+	Ships_Moves[.TRANS_1I_1_MOVES] = 1
+	Ships_Moves[.TRANS_1A_1_MOVES] = 1
+	Ships_Moves[.TRANS_1T_1_MOVES] = 1
+	Ships_Moves[.TRANS_2I_1_MOVES] = 1
+	Ships_Moves[.TRANS_1I_1A_1_MOVES] = 1
+	Ships_Moves[.TRANS_1I_1T_1_MOVES] = 1
+	Ships_Moves[.TRANS_1I_2_MOVES] = 2
+	Ships_Moves[.TRANS_1A_2_MOVES] = 2
+	Ships_Moves[.TRANS_1T_2_MOVES] = 2
+	Ships_Moves[.TRANS_2I_2_MOVES] = 2
+	Ships_Moves[.TRANS_1I_1A_2_MOVES] = 2
+	Ships_Moves[.TRANS_1I_1T_2_MOVES] = 2
 }
 
 Retreatable_Ships := [?]Active_Ship {
@@ -220,19 +232,22 @@ Retreatable_Ships := [?]Active_Ship {
 	.BS_DAMAGED_BOMBARDED,
 }
 
-Ships_After_Retreat := [?]Active_Ship {
-	Active_Ship.TRANS_EMPTY_0_MOVES  = .TRANS_EMPTY_0_MOVES,
-	Active_Ship.TRANS_1I_0_MOVES     = .TRANS_1I_UNLOADED,
-	Active_Ship.TRANS_1A_0_MOVES     = .TRANS_1A_UNLOADED,
-	Active_Ship.TRANS_1T_0_MOVES     = .TRANS_1T_UNLOADED,
-	Active_Ship.TRANS_1I_1A_0_MOVES  = .TRANS_1I_1A_UNLOADED,
-	Active_Ship.TRANS_1I_1T_0_MOVES  = .TRANS_1I_1T_UNLOADED,
-	Active_Ship.SUB_0_MOVES          = .SUB_0_MOVES,
-	Active_Ship.DESTROYER_0_MOVES    = .DESTROYER_0_MOVES,
-	Active_Ship.CARRIER_0_MOVES      = .CARRIER_0_MOVES,
-	Active_Ship.CRUISER_BOMBARDED    = .CRUISER_BOMBARDED,
-	Active_Ship.BATTLESHIP_BOMBARDED = .BATTLESHIP_BOMBARDED,
-	Active_Ship.BS_DAMAGED_BOMBARDED = .BS_DAMAGED_BOMBARDED,
+Ships_After_Retreat: [Active_Ship]Active_Ship
+
+@(init)
+init_Ships_After_Retreat :: proc() {
+	Ships_After_Retreat[.TRANS_EMPTY_0_MOVES] = .TRANS_EMPTY_0_MOVES
+	Ships_After_Retreat[.TRANS_1I_0_MOVES] = .TRANS_1I_UNLOADED
+	Ships_After_Retreat[.TRANS_1A_0_MOVES] = .TRANS_1A_UNLOADED
+	Ships_After_Retreat[.TRANS_1T_0_MOVES] = .TRANS_1T_UNLOADED
+	Ships_After_Retreat[.TRANS_1I_1A_0_MOVES] = .TRANS_1I_1A_UNLOADED
+	Ships_After_Retreat[.TRANS_1I_1T_0_MOVES] = .TRANS_1I_1T_UNLOADED
+	Ships_After_Retreat[.SUB_0_MOVES] = .SUB_0_MOVES
+	Ships_After_Retreat[.DESTROYER_0_MOVES] = .DESTROYER_0_MOVES
+	Ships_After_Retreat[.CARRIER_0_MOVES] = .CARRIER_0_MOVES
+	Ships_After_Retreat[.CRUISER_BOMBARDED] = .CRUISER_BOMBARDED
+	Ships_After_Retreat[.BATTLESHIP_BOMBARDED] = .BATTLESHIP_BOMBARDED
+	Ships_After_Retreat[.BS_DAMAGED_BOMBARDED] = .BS_DAMAGED_BOMBARDED
 }
 
 move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -240,7 +255,7 @@ move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		gc.clear_history_needed = false
 		for src_sea in Sea_ID {
 			if gc.active_ships[src_sea][ship] == 0 do continue
-			gc.valid_actions = {to_action(src_sea)}
+			reset_valid_actions(gc)
 			add_valid_ship_moves(gc, src_sea, ship)
 			for gc.active_ships[src_sea][ship] > 0 {
 				dst_air := get_move_ship_input(gc, ship, to_air(src_sea)) or_return
@@ -282,7 +297,7 @@ add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship
 		if to_air(dst_sea) in gc.rejected_moves_from[to_air(src_sea)] {
 			continue
 		}
-		gc.valid_actions += {to_action(dst_sea)}
+		add_valid_action(gc, to_action(dst_sea))
 	}
 	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
 	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
@@ -294,7 +309,7 @@ add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship
 		) {
 			if gc.enemy_destroyer_total[mid_sea] > 0 do continue
 			if ship != .SUB_2_MOVES && gc.enemy_blockade_total[mid_sea] > 0 do continue
-			gc.valid_actions += {to_action(dst_sea_2_away)}
+			add_valid_action(gc, to_action(dst_sea_2_away))
 			break
 		}
 	}

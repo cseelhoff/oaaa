@@ -20,8 +20,8 @@ is_land :: proc {
 	is_action_land,
 }
 
-action_to_land :: #force_inline proc(act: Action_ID) -> Land_ID {
-	return Land_ID(act)
+action_to_land :: #force_inline proc(action: Action_ID) -> Land_ID {
+	return Land_ID(int(action) % len(Air_ID))
 }
 
 air_to_land :: #force_inline proc(air: Air_ID) -> Land_ID {
@@ -34,7 +34,7 @@ is_air_land :: #force_inline proc(air: Air_ID) -> bool {
 }
 
 is_action_land :: #force_inline proc(action: Action_ID) -> bool {
-	return int(action) < len(Land_ID)
+	return (int(action) % len(Air_ID)) < len(Land_ID)
 }
 
 Active_Armies :: [Active_Army]u8

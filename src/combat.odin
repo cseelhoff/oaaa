@@ -163,11 +163,11 @@ build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
 	gc.valid_actions = {}
 	if (gc.enemy_blockade_total[src_sea] == 0 && gc.enemy_fighters_total[src_sea] == 0) ||
 	   do_sea_targets_exist(gc, src_sea) {
-		gc.valid_actions += {to_action(src_sea)}
+		add_valid_action(gc, to_action(src_sea))
 	}
 	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] & ~gc.sea_combat_started {
 		if gc.enemy_blockade_total[dst_sea] == 0 && dst_sea not_in gc.more_sea_combat_needed {
-			gc.valid_actions += {to_action(dst_sea)}
+			add_valid_action(gc, to_action(dst_sea))
 		}
 	}
 }
@@ -606,7 +606,7 @@ check_and_conquer_land :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 	return true
 }
 
-add_valid_land_retreat_destinations :: proc(gc: ^Game_Cache, land: Land_ID) {
+add_valid_land_retreat_destinations :: proc(gc: ^Game_Cache) {
 	/*
     AI NOTE: Land Combat Retreat Mechanics
     
@@ -632,11 +632,12 @@ add_valid_land_retreat_destinations :: proc(gc: ^Game_Cache, land: Land_ID) {
     This gives players a chance to preserve units if combat is going poorly,
     but requires careful territory control to ensure retreat paths exist.
     */
-	gc.valid_actions = {to_action(land)}
+	land := gc.current_territory
+	reset_valid_actions(gc)
 	for &dst_land in sa.slice(&mm.l2l_1away_via_land[land]) {
 		if dst_land in
 		   (gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started) {
-			gc.valid_actions += {to_action(dst_land)}
+			add_valid_action(gc, to_action(dst_land))
 		}
 	}
 }
@@ -701,9 +702,10 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				print_game_state(gc)
 			}
 			if land in gc.land_combat_started {
-				add_valid_land_retreat_destinations(gc, land)
-				dst_air := get_retreat_input(gc, to_air(land)) or_return
-				if retreat_land_units(gc, land, to_land(dst_air)) do break
+				gc.current_territory = to_air(land)
+				add_valid_land_retreat_destinations(gc)
+				dst_action := get_move_input(gc) or_return
+				if retreat_land_units(gc, land, dst_action) do break
 			}
 			gc.land_combat_started += {land}
 			attacker_hits := calculate_attacker_hits_low_luck(

@@ -166,7 +166,7 @@ to_buy_action :: proc(action: Action_ID) -> Buy_Action {
 
 add_buy_if_not_skipped :: proc(gc: ^Game_Cache, src_air: Air_ID, action: Buy_Action) {
 	if action not_in gc.skipped_buys[src_air] {
-		gc.valid_actions += {buy_to_action_idx(action)}
+		add_valid_action(gc, buy_to_action_idx(action))
 	}
 }
 

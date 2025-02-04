@@ -3,7 +3,7 @@ import sa "core:container/small_array"
 import "core:fmt"
 
 move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
-    /*
+	/*
     AI NOTE: AA Gun Movement Timing
     AA guns move AFTER all combat is resolved:
     1. Sea battles finish
@@ -33,30 +33,25 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
     This significantly speeds up Monte Carlo tree convergence by pruning
     redundant decision paths early.
     */
-    gc.clear_history_needed = false
+	gc.clear_history_needed = false
+    gc.current_Active_Unit = .AAGUN_1_MOVES
 	for src_land in Land_ID {
 		if gc.active_armies[src_land][.AAGUN_1_MOVES] == 0 do continue
-		gc.valid_actions = {to_action(src_land)}
-		gc.valid_actions += to_action_bitset(
-			mm.l2l_1away_via_land_bitset[src_land] &  // All adjacent lands
-			gc.friendly_owner &                        // Only friendly territory
-			~to_land_bitset(gc.rejected_moves_from[to_air(src_land)]), // Remove rejected moves
+		reset_valid_actions(gc)
+		valid_army_destinations := mm.l2l_1away_via_land_bitset[src_land] & gc.friendly_owner// All adjacent lands
+		add_lands_to_valid_actions(
+			gc,
+			valid_army_destinations,
+			gc.active_armies[src_land][.AAGUN_1_MOVES],
 		)
+        remove_skipped_actions(gc, to_air(src_land))
+        gc.current_territory = to_air(src_land)
 		for gc.active_armies[src_land][.AAGUN_1_MOVES] > 0 {
-			dst_air := get_move_army_input(
-				gc,
-				.AAGUN_1_MOVES,
-				to_air(src_land),
-			) or_return
-			dst_land := to_land(dst_air)
-			if skip_army(gc, src_land, dst_land, .AAGUN_1_MOVES) do continue
-			move_single_army_land(
-				gc,
-				src_land,
-				dst_land,
-				.AAGUN_1_MOVES,
-				.AAGUN_0_MOVES,
-			)
+            
+			dst_action := get_move_input(gc) or_return
+			if skip_army(gc, dst_action) do continue
+			dst_land := to_land(dst_action)
+			move_single_army_land(gc, src_land, dst_land, .AAGUN_1_MOVES, .AAGUN_0_MOVES)
 		}
 	}
 	if gc.clear_history_needed do clear_move_history(gc)

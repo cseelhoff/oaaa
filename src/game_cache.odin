@@ -59,6 +59,7 @@ Game_Cache :: struct {
 	answers_remaining:              u16,
 	max_loops:                      u16,
 	valid_actions:                  Action_Bitset,
+	dyn_arr_valid_actions:          [dynamic]Action_ID,
 	can_bomber_land_here:           Land_Bitset,
 	can_bomber_land_in_1_moves:     Air_Bitset,
 	can_bomber_land_in_2_moves:     Air_Bitset,

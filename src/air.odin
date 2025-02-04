@@ -8,18 +8,18 @@ to_air :: proc {
 	action_to_air,
 }
 
-to_air_bitset :: proc {
-	sea_to_air_bitset,
-	land_to_air_bitset,
-}
+// to_air_bitset :: proc {
+// 	sea_to_air_bitset,
+// 	land_to_air_bitset,
+// }
 
-to_land_bitset :: proc {
-	air_to_land_bitset,
-}
+// to_land_bitset :: proc {
+// 	air_to_land_bitset,
+// }
 
-to_sea_bitset :: proc {
-	air_to_sea_bitset,
-}
+// to_sea_bitset :: proc {
+// 	air_to_sea_bitset,
+// }
 
 sea_to_air :: #force_inline proc(sea: Sea_ID) -> Air_ID {
 	return Air_ID(u8(sea) + u8(len(Land_ID)))
@@ -33,21 +33,22 @@ action_to_air :: #force_inline proc(act: Action_ID) -> Air_ID {
 	return Air_ID(act)
 }
 
-land_to_air_bitset :: #force_inline proc(land: Land_Bitset) -> Air_Bitset {
-	return transmute(Air_Bitset)u128(transmute(u128)land)
-}
+// land_to_air_bitset :: #force_inline proc(land: Land_Bitset) -> Air_Bitset {
+// 	// 
+// 	return transmute(Air_Bitset)u128(transmute(u128)land)
+// }
 
-sea_to_air_bitset :: #force_inline proc(sea: Sea_Bitset) -> Air_Bitset {
-	return transmute(Air_Bitset)(u128(transmute(u128)sea) << len(Land_ID))
-}
+// sea_to_air_bitset :: #force_inline proc(sea: Sea_Bitset) -> Air_Bitset {
+// 	return transmute(Air_Bitset)(u128(transmute(u128)sea) << len(Land_ID))
+// }
 
-air_to_land_bitset :: #force_inline proc(air: Air_Bitset) -> Land_Bitset {
-	return transmute(Land_Bitset)u128(transmute(u128)air)
-}
+// air_to_land_bitset :: #force_inline proc(air: Air_Bitset) -> Land_Bitset {
+// 	return transmute(Land_Bitset)u128(transmute(u128)air)
+// }
 
-air_to_sea_bitset :: #force_inline proc(air: Air_Bitset) -> Sea_Bitset {
-	return transmute(Sea_Bitset)(u128(transmute(u128)air) >> len(Land_ID))
-}
+// air_to_sea_bitset :: #force_inline proc(air: Air_Bitset) -> Sea_Bitset {
+// 	return transmute(Sea_Bitset)(u128(transmute(u128)air) >> len(Land_ID))
+// }
 
 initialize_coastal_connections :: proc() {
 	for connection in COASTAL_CONNECTIONS {
@@ -88,17 +89,17 @@ initialize_air_connections :: proc() {
 	for land in Land_ID {
 		for adjacent_land in sa.slice(&mm.l2l_1away_via_land[land]) {
 			mm.air_distances[to_air(land)][to_air(adjacent_land)] = 1
-			mm.a2a_within_1_moves[to_air(land)] += {to_air(adjacent_land)}
+			add_air(&mm.a2a_within_1_moves[to_air(land)], to_air(adjacent_land))
 		}
 		for adjacent_sea in sa.slice(&mm.l2s_1away_via_land[land]) {
 			mm.air_distances[to_air(land)][to_air(adjacent_sea)] = 1
-			mm.a2a_within_1_moves[to_air(land)] += {to_air(adjacent_sea)}
+			add_air(&mm.a2a_within_1_moves[to_air(land)], to_air(adjacent_sea))
 		}
 	}
 	for sea in Sea_ID {
 		for adjacent_land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
 			mm.air_distances[to_air(sea)][to_air(adjacent_land)] = 1
-			mm.a2a_within_1_moves[to_air(sea)] += {to_air(adjacent_land)}
+			add_air(&mm.a2a_within_1_moves[to_air(sea)], to_air(adjacent_land))
 		}
 		for adjacent_sea in mm.s2s_1away_via_sea[Canal_States - 1][sea] {
 			/*
@@ -109,7 +110,7 @@ initialize_air_connections :: proc() {
 			- If seas are ever connected (any canal state), air can fly between them
 			*/
 			mm.air_distances[to_air(sea)][to_air(adjacent_sea)] = 1
-			mm.a2a_within_1_moves[to_air(sea)] += {to_air(adjacent_sea)}
+			add_air(&mm.a2a_within_1_moves[to_air(sea)], to_air(adjacent_sea))
 		}
 	}
 	for mid_idx in Air_ID {
@@ -129,20 +130,20 @@ initialize_air_connections :: proc() {
 		for distance, dst_air in mm.air_distances[air] {
 			switch distance {
 			case 2:
-				mm.a2a_2away_via_air[air] += {dst_air}
-				mm.a2a_within_2_moves[air] += {dst_air}
+				add_air(&mm.a2a_2away_via_air[air], dst_air)
+				add_air(&mm.a2a_within_2_moves[air], dst_air)
 				fallthrough
 			case 3:
-				mm.a2a_within_3_moves[air] += {dst_air}
+				add_air(&mm.a2a_within_3_moves[air], dst_air)
 				fallthrough
 			case 4:
-				mm.a2a_within_4_moves[air] += {dst_air}
+				add_air(&mm.a2a_within_4_moves[air], dst_air)
 				fallthrough
 			case 5:
-				mm.a2a_within_5_moves[air] += {dst_air}
+				add_air(&mm.a2a_within_5_moves[air], dst_air)
 				fallthrough
 			case 6:
-				mm.a2a_within_6_moves[air] += {dst_air}
+				add_air(&mm.a2a_within_6_moves[air], dst_air)
 			}
 		}
 	}
