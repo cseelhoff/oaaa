@@ -167,6 +167,9 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 	gc.can_fighter_land_here =
 		to_air_bitset(gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started) |
 		to_air_bitset(gc.has_carrier_space | gc.possible_factory_carriers)
+	when ODIN_DEBUG {
+		get_airs(gc.can_fighter_land_here, &air_positions)
+	}
 	for sea in Sea_ID {
 		// if player owns a carrier, then landing area is 2 spaces away
 		if gc.active_ships[sea][.CARRIER_2_MOVES] == 0 do continue

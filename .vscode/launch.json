@@ -20,24 +20,6 @@
           "preLaunchTask": "build-release"
       },
       {
-          "name": "Shared Library Debug",
-          "type": "lldb",
-          "request": "launch",
-          "program": "${workspaceFolder}/build/liboaaa.so",
-          "args": [],
-          "cwd": "${workspaceFolder}",
-          "preLaunchTask": "build-shared-debug"
-      },
-      {
-          "name": "Shared Library Release",
-          "type": "lldb",
-          "request": "launch",
-          "program": "${workspaceFolder}/build/liboaaa.so",
-          "args": [],
-          "cwd": "${workspaceFolder}",
-          "preLaunchTask": "build-shared-release"
-      },
-      {
           "name": "Debug Tests",
           "type": "lldb",
           "request": "launch",

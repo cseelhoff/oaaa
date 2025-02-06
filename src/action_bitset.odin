@@ -98,7 +98,6 @@ add_lands_to_valid_actions :: proc(gc: ^Game_Cache, dst_lands: Land_Bitset, unit
 		add_valid_action(gc, Action_ID(uint(land) + len(Action_ID) * 5))
 	}
 }
-air_positions: [dynamic]Air_ID
 
 add_airs_to_valid_actions :: proc(gc: ^Game_Cache, dst_airs: Air_Bitset, unit_count: u8) {
 	get_airs(dst_airs, &air_positions)
