@@ -223,7 +223,7 @@ stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Sh
 		sea_distance = 2
 	}
 	Transport_State_After_Movement_Used := Trans_After_Move_Used[ship][sea_distance]
-	move_single_ship(gc, dst_sea, Transport_State_After_Movement_Used, ship, src_sea)
+	move_single_ship(gc, Transport_State_After_Movement_Used, dst_action)
 	return true
 }
 
@@ -251,7 +251,7 @@ move_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				dst_action := get_action_input(gc) or_return
 				if skip_ship(gc, dst_action) do break
 				dst_sea := to_sea(dst_action)
-				move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
+				move_single_ship(gc, Ships_Moved[ship], dst_action)
 			}
 		}
 		if gc.clear_history_needed do clear_move_history(gc)

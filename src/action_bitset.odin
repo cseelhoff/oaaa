@@ -69,32 +69,22 @@ remove_actions_above :: proc(gc: ^Game_Cache, action: Action_ID) {
 
 add_lands_to_valid_actions :: proc(gc: ^Game_Cache, dst_lands: Land_Bitset, unit_count: u8) {
 	//todo optimize with SIMD
-	if unit_count >= 32 {
-		for land in dst_lands {
+	for land in dst_lands {
+		if unit_count >= 32 {
 			add_valid_action(gc, Action_ID(uint(land)))
 		}
-	}
-	if unit_count >= 16 {
-		for land in dst_lands {
+		if unit_count >= 16 {
 			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID)))
 		}
-	}
-	if unit_count >= 8 {
-		for land in dst_lands {
+		if unit_count >= 8 {
 			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 2))
 		}
-	}
-	if unit_count >= 4 {
-		for land in dst_lands {
+		if unit_count >= 4 {
 			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 3))
 		}
-	}
-	if unit_count >= 2 {
-		for land in dst_lands {
+		if unit_count >= 2 {
 			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 4))
 		}
-	}
-	for land in dst_lands {
 		add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 5))
 	}
 }
@@ -119,6 +109,48 @@ add_airs_to_valid_actions :: proc(gc: ^Game_Cache, dst_airs: Air_Bitset, unit_co
 		}
 		add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 5))
 	}
+}
+
+add_seas_to_valid_actions :: proc(gc: ^Game_Cache, dst_seas: Sea_Bitset, unit_count: u8) {
+	//todo optimize with SIMD
+	for sea in dst_seas {
+		if unit_count >= 32 {
+			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID)))
+		}
+		if unit_count >= 16 {
+			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID)))
+		}
+		if unit_count >= 8 {
+			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID) * 2))
+		}
+		if unit_count >= 4 {
+			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID) * 3))
+		}
+		if unit_count >= 2 {
+			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID) * 4))
+		}
+		add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID) * 5))
+	}
+}
+
+add_sea_to_valid_actions :: proc(gc: ^Game_Cache, dst_sea: Sea_ID, unit_count: u8) {
+	//todo optimize with SIMD
+	if unit_count >= 32 {
+		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID)))
+	}
+	if unit_count >= 16 {
+		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID)))
+	}
+	if unit_count >= 8 {
+		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID) * 2))
+	}
+	if unit_count >= 4 {
+		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID) * 3))
+	}
+	if unit_count >= 2 {
+		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID) * 4))
+	}
+	add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID) * 5))
 }
 
 remove_skipped_actions :: proc(gc: ^Game_Cache, src_air: Air_ID) {

@@ -258,13 +258,13 @@ move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			if gc.active_ships[src_sea][ship] == 0 do continue
 			gc.current_territory = to_air(src_sea)
 			reset_valid_actions(gc)
-			add_valid_ship_moves(gc, src_sea, ship)
+			add_valid_ship_moves(gc)
 			for gc.active_ships[src_sea][ship] > 0 {
 				dst_action := get_action_input(gc) or_return
+				if skip_ship(gc, dst_action) do continue
 				dst_sea := to_sea(dst_action)
 				mark_sea_for_combat_resolution(gc, dst_sea)
-				if skip_ship(gc, dst_action) do continue
-				move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
+				move_single_ship(gc, Ships_Moved[ship], dst_action)
 				if ship == .CARRIER_2_MOVES {
 					gc.allied_carriers_total[dst_sea] += 1
 					gc.allied_carriers_total[src_sea] -= 1
@@ -288,18 +288,18 @@ move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 skip_ship :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> bool {
 	if dst_action != .Skip_Action do return false
-	src_sea := to_sea(dst_action)
+	src_sea := to_sea(gc.current_territory)
 	ship := to_ship(gc.current_active_unit)
 	gc.active_ships[src_sea][Ships_Moved[ship]] += gc.active_ships[src_sea][ship]
 	gc.active_ships[src_sea][ship] = 0
 	return true
 }
 
-add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) {
+add_valid_ship_moves :: proc(gc: ^Game_Cache) {
 	// for dst_sea in sa.slice(&src_sea.canal_paths[gc.canal_state].adjacent_seas) {
-	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		add_valid_action(gc, to_action(dst_sea))
-	}
+	src_sea := to_sea(gc.current_territory)
+	ship := to_ship(gc.current_active_unit)
+	add_seas_to_valid_actions(gc, mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea], gc.active_ships[src_sea][ship])
 	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
 	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
 		for mid_sea in sa.slice(
@@ -307,7 +307,7 @@ add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship
 		) {
 			if gc.enemy_destroyer_total[mid_sea] > 0 do continue
 			if ship != .SUB_2_MOVES && gc.enemy_blockade_total[mid_sea] > 0 do continue
-			add_valid_action(gc, to_action(dst_sea_2_away))
+			add_sea_to_valid_actions(gc, dst_sea_2_away, gc.active_ships[src_sea][ship])
 			break
 		}
 	}
@@ -315,15 +315,16 @@ add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship
 
 move_single_ship :: proc(
 	gc: ^Game_Cache,
-	dst_sea: Sea_ID,
 	dst_unit: Active_Ship,
-	src_unit: Active_Ship,
-	src_sea: Sea_ID,
+	dst_action: Action_ID,
 ) {
-	gc.active_ships[dst_sea][dst_unit] += 1
-	gc.idle_ships[dst_sea][gc.cur_player][Active_Ship_To_Idle[dst_unit]] += 1
-	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += 1
-	gc.active_ships[src_sea][src_unit] -= 1
-	gc.idle_ships[src_sea][gc.cur_player][Active_Ship_To_Idle[dst_unit]] -= 1
-	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= 1
+	dst_sea, unit_count := to_sea_count(dst_action)
+	src_sea := to_sea(gc.current_territory)
+	src_unit := to_ship(gc.current_active_unit)
+	gc.active_ships[dst_sea][dst_unit] += unit_count
+	gc.idle_ships[dst_sea][gc.cur_player][Active_Ship_To_Idle[dst_unit]] += unit_count
+	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += unit_count
+	gc.active_ships[src_sea][src_unit] -= unit_count
+	gc.idle_ships[src_sea][gc.cur_player][Active_Ship_To_Idle[src_unit]] -= unit_count
+	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= unit_count
 }

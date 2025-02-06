@@ -19,8 +19,9 @@ air_to_sea :: #force_inline proc(air: Air_ID) -> Sea_ID {
 }
 
 action_to_sea :: #force_inline proc(action: Action_ID) -> Sea_ID {
-	assert(int(action) >= len(Land_ID) && int(action) < len(Air_ID))
-	return Sea_ID(int(action) - len(Land_ID))
+	mod_sea := int(action) % len(Air_ID)
+	assert(int(mod_sea) >= len(Land_ID))
+	return Sea_ID(int(mod_sea) - len(Land_ID))
 }
 
 to_sea_count :: #force_inline proc(action: Action_ID) -> (Sea_ID, u8) {

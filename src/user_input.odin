@@ -163,6 +163,9 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		fmt.println()
 	}
 	for sea in Sea_ID {
+		if gc.team_sea_units[sea][.Allies] == 0 && gc.team_sea_units[sea][.Axis] == 0 {
+			continue
+		}
 		fmt.print(DEF_COLOR)
 		fmt.print(sea)
 		if sea in gc.more_sea_combat_needed do fmt.print(" more-combat")
