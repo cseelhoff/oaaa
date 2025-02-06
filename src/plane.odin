@@ -13,8 +13,8 @@ Idle_Plane_Names := [Idle_Plane]string {
 }
 
 COST_IDLE_PLANE := [Idle_Plane]u8 {
-	Idle_Plane.FIGHTER = Cost_Buy[.BUY_FIGHTER],
-	Idle_Plane.BOMBER  = Cost_Buy[.BUY_BOMBER],
+	Idle_Plane.FIGHTER = Cost_Buy[.BUY_FIGHTER_ACTION],
+	Idle_Plane.BOMBER  = Cost_Buy[.BUY_BOMBER_ACTION],
 }
 
 FIGHTER_ATTACK :: 3

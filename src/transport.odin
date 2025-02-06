@@ -195,7 +195,7 @@ stage_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 stage_trans_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
 	gc.clear_history_needed = false
 	for src_sea in Sea_ID {
-		gc.current_territory = src_sea
+		gc.current_territory = to_air(src_sea)
 		stage_trans_sea(gc, src_sea, ship) or_return
 	}
 	if gc.clear_history_needed do clear_move_history(gc)
@@ -213,11 +213,11 @@ stage_trans_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> 
 }
 
 stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
-	dst_air := get_action_input(gc) or_return
-	dst_sea := to_sea(dst_air)
+	dst_action := get_action_input(gc) or_return
+	dst_sea := to_sea(dst_action)
 	// sea_distance := src_sea.canal_paths[gc.canal_state].sea_distance[dst_sea_idx]
 	sea_distance := mm.sea_distances[transmute(u8)gc.canals_open][src_sea][dst_sea]
-	if skip_ship(gc, src_sea, dst_sea, ship) do return true
+	if skip_ship(gc, dst_action) do return true
 	if dst_sea in gc.more_sea_combat_needed {
 		// only allow staging to sea with enemy blockade if other unit started combat
 		sea_distance = 2
@@ -371,14 +371,14 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			reset_valid_actions(gc)
 			add_valid_unload_moves(gc, src_sea)
 			for gc.active_ships[src_sea][ship] > 0 {
-				dst_air := get_move_ship_input(gc, ship, to_air(src_sea)) or_return
-				if dst_air == to_air(src_sea) {
+				dst_action := get_action_input(gc) or_return
+				if dst_action == .Skip_Action {
 					gc.active_ships[src_sea][Trans_After_Rejecting_Unload[ship]] +=
 						gc.active_ships[src_sea][ship]
 					gc.active_ships[src_sea][ship] = 0
 					continue
 				}
-				unload_unit(gc, to_land(dst_air), ship)
+				unload_unit(gc, to_land(dst_action), ship)
 				replace_ship(gc, src_sea, ship, Trans_After_Unload[ship])
 			}
 		}

@@ -11,10 +11,10 @@ Idle_Army :: enum {
 }
 
 COST_IDLE_ARMY := [Idle_Army]u8 {
-	.INF   = Cost_Buy[.BUY_INF],
-	.ARTY  = Cost_Buy[.BUY_ARTY],
-	.TANK  = Cost_Buy[.BUY_TANK],
-	.AAGUN = Cost_Buy[.BUY_AAGUN],
+	.INF   = Cost_Buy[.BUY_INF_ACTION],
+	.ARTY  = Cost_Buy[.BUY_ARTY_ACTION],
+	.TANK  = Cost_Buy[.BUY_TANK_ACTION],
+	.AAGUN = Cost_Buy[.BUY_AAGUN_ACTION],
 }
 
 Idle_Army_Names := [Idle_Army]string {

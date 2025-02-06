@@ -3,6 +3,7 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "core:slice"
 
 get_action_input:: proc(gc: ^Game_Cache) -> (action: Action_ID, ok: bool) {
 	debug_checks(gc)
@@ -38,7 +39,7 @@ print_move_prompt_2 :: proc(gc: ^Game_Cache) {
 
 get_user_input :: proc(gc: ^Game_Cache) -> (action: Action_ID) {
 	buffer: [10]byte
-	fmt.print("Enter a number between 0 and 255: ")
+	fmt.print("Enter a number between 0 and 1024: ")
 	n, err := os.read(os.stdin, buffer[:])
 	fmt.println()
 	if err != os.General_Error.None {
@@ -46,7 +47,7 @@ get_user_input :: proc(gc: ^Game_Cache) -> (action: Action_ID) {
 	}
 	input_str := string(buffer[:n])
 	int_input := to_action(strconv.atoi(input_str))
-	assert(int_input in gc.valid_actions)
+	// assert in input in valid_actions
 	return int_input
 }
 
@@ -62,10 +63,11 @@ get_ai_input :: proc(gc: ^Game_Cache) -> Action_ID {
 		// 	}
 		// 	rand_idx -= 1
 		// }
-		return gc.dyn_arr_valid_actions[RANDOM_NUMBERS[gc.seed] % gc.dyn_arr_valid_actions.len]
+		return gc.dyn_arr_valid_actions[RANDOM_NUMBERS[gc.seed] % u16(len(gc.dyn_arr_valid_actions))] // gc.dyn_arr_valid_actions[rand_idx] // gc.dyn_arr_valid_actions[RANDOM_NUMBERS[gc.seed] % gc.dyn_arr_valid_actions.len]
 	}
 	// assert(gc.selected_action in gc.valid_actions)
-	if gc.selected_action not_in gc.valid_actions {
+	_, found := slice.linear_search(gc.dyn_arr_valid_actions[:], gc.selected_action)
+	if !found {
 		print_game_state(gc)
 		for action_idx in gc.valid_actions {
 			fmt.print(action_idx, ", ")
@@ -74,7 +76,7 @@ get_ai_input :: proc(gc: ^Game_Cache) -> Action_ID {
 		fmt.eprintln("Invalid input ", gc.selected_action)
 		save_json(gc)
 	}
-	assert(gc.selected_action in gc.valid_actions)
+	// assert(gc.selected_action in gc.valid_actions)
 
 	return gc.selected_action
 }
@@ -89,30 +91,30 @@ print_buy_prompt :: proc(gc: ^Game_Cache, src_air: Air_ID) {
 	fmt.println(DEF_COLOR)
 }
 
-get_buy_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (action: Buy_Action, ok: bool) {
-	debug_checks(gc)
-	// action = action_idx_to_buy(gc.valid_actions)
-	assert(card(gc.valid_actions) > 0)
-	for valid_action in gc.valid_actions {
-		action = to_buy_action(valid_action)
-		break
-	}
-	if card(gc.valid_actions) > 1 {
-		if gc.answers_remaining == 0 do return .SKIP_BUY, false
-		if is_human[gc.cur_player] {
-			print_buy_prompt(gc, src_air)
-			action = to_buy_action(get_user_input(gc))
-		} else {
-			if ACTUALLY_PRINT do print_buy_prompt(gc, src_air)
-			action = to_buy_action(get_ai_input(gc))
-			if ACTUALLY_PRINT {
-				fmt.println("--->AI Action:", action)
-			}
-		}
-	}
-	update_buy_history(gc, src_air, action)
-	return action, true
-}
+// get_buy_input :: proc(gc: ^Game_Cache, src_air: Air_ID) -> (action: Buy_Action, ok: bool) {
+// 	debug_checks(gc)
+// 	// action = action_idx_to_buy(gc.valid_actions)
+// 	// assert(card(gc.valid_actions) > 0)
+// 	for valid_action in gc.valid_actions {
+// 		action = to_buy_action(valid_action)
+// 		break
+// 	}
+// 	if card(gc.valid_actions) > 1 {
+// 		if gc.answers_remaining == 0 do return .SKIP_BUY, false
+// 		if is_human[gc.cur_player] {
+// 			print_buy_prompt(gc, src_air)
+// 			action = to_buy_action(get_user_input(gc))
+// 		} else {
+// 			if ACTUALLY_PRINT do print_buy_prompt(gc, src_air)
+// 			action = to_buy_action(get_ai_input(gc))
+// 			if ACTUALLY_PRINT {
+// 				fmt.println("--->AI Action:", action)
+// 			}
+// 		}
+// 	}
+// 	update_buy_history(gc, src_air, action)
+// 	return action, true
+// }
 
 print_game_state :: proc(gc: ^Game_Cache) {
 	color := mm.color[gc.cur_player]

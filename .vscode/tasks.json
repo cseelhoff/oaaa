@@ -21,7 +21,7 @@
       "args": [
         "build",
         "src",
-        "-out:bin/main",
+        "-out:build/main",
         "-debug"
       ],
       "problemMatcher": []
@@ -33,7 +33,7 @@
       "args": [
         "build",
         "src",
-        "-out:bin/main",
+        "-out:build/main",
         "-o:aggressive",
         // "-debug",
         "-no-bounds-check",
@@ -49,7 +49,7 @@
       "args": [
         "build",
         "src",
-        "-out:bin/liboaaa.so",
+        "-out:build/liboaaa.so",
         "-debug",
         "-build-mode:shared"
       ],
@@ -62,7 +62,7 @@
       "args": [
         "build",
         "src",
-        "-out:bin/liboaaa.so",
+        "-out:build/liboaaa.so",
         "-o:aggressive",
         "-build-mode:shared",
         "-no-bounds-check",
@@ -78,7 +78,7 @@
       "args": [
         "build",
         "tests",
-        "-out:bin/tests",
+        "-out:build/tests",
         "-debug",
         "-collection:src=src"
       ],

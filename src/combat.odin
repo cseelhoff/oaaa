@@ -305,7 +305,7 @@ calculate_attacker_hits_low_luck :: proc(
 
 	// For deep search, use random roll for fractional part
 	attacker_hits +=
-		RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(total_attack_value) % DICE_SIDES ? 1 : 0
+		RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u16(total_attack_value) % DICE_SIDES ? 1 : 0
 	gc.seed = (gc.seed + 1) % RANDOM_MAX
 	return
 }
@@ -346,7 +346,7 @@ calculate_defender_hits_low_luck :: proc(
 
 	// For deep search, use random roll for fractional part
 	defender_hits +=
-		RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u8(total_defense_value) % DICE_SIDES ? 1 : 0
+		RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u16(total_defense_value) % DICE_SIDES ? 1 : 0
 	gc.seed = (gc.seed + 1) % RANDOM_MAX
 	return
 }

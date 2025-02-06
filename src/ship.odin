@@ -20,19 +20,19 @@ Idle_Ship :: enum {
 }
 
 COST_IDLE_SHIP := [Idle_Ship]u8 {
-	.TRANS_EMPTY = Cost_Buy[.BUY_TRANS],
-	.TRANS_1I    = Cost_Buy[.BUY_TRANS],
-	.TRANS_1A    = Cost_Buy[.BUY_TRANS],
-	.TRANS_1T    = Cost_Buy[.BUY_TRANS],
-	.TRANS_2I    = Cost_Buy[.BUY_TRANS],
-	.TRANS_1I_1A = Cost_Buy[.BUY_TRANS],
-	.TRANS_1I_1T = Cost_Buy[.BUY_TRANS],
-	.SUB         = Cost_Buy[.BUY_SUB],
-	.DESTROYER   = Cost_Buy[.BUY_DESTROYER],
-	.CARRIER     = Cost_Buy[.BUY_CARRIER],
-	.CRUISER     = Cost_Buy[.BUY_CRUISER],
-	.BATTLESHIP  = Cost_Buy[.BUY_BATTLESHIP],
-	.BS_DAMAGED  = Cost_Buy[.BUY_BATTLESHIP],
+	.TRANS_EMPTY = Cost_Buy[.BUY_TRANS_ACTION],
+	.TRANS_1I    = Cost_Buy[.BUY_TRANS_ACTION],
+	.TRANS_1A    = Cost_Buy[.BUY_TRANS_ACTION],
+	.TRANS_1T    = Cost_Buy[.BUY_TRANS_ACTION],
+	.TRANS_2I    = Cost_Buy[.BUY_TRANS_ACTION],
+	.TRANS_1I_1A = Cost_Buy[.BUY_TRANS_ACTION],
+	.TRANS_1I_1T = Cost_Buy[.BUY_TRANS_ACTION],
+	.SUB         = Cost_Buy[.BUY_SUB_ACTION],
+	.DESTROYER   = Cost_Buy[.BUY_DESTROYER_ACTION],
+	.CARRIER     = Cost_Buy[.BUY_CARRIER_ACTION],
+	.CRUISER     = Cost_Buy[.BUY_CRUISER_ACTION],
+	.BATTLESHIP  = Cost_Buy[.BUY_BATTLESHIP_ACTION],
+	.BS_DAMAGED  = Cost_Buy[.BUY_BATTLESHIP_ACTION],
 }
 
 DESTROYER_ATTACK :: 2
@@ -260,10 +260,10 @@ move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			reset_valid_actions(gc)
 			add_valid_ship_moves(gc, src_sea, ship)
 			for gc.active_ships[src_sea][ship] > 0 {
-				dst_air := get_action_input(gc, ship, to_air(src_sea)) or_return
-				dst_sea := to_sea(dst_air)
+				dst_action := get_action_input(gc) or_return
+				dst_sea := to_sea(dst_action)
 				mark_sea_for_combat_resolution(gc, dst_sea)
-				if skip_ship(gc, src_sea, dst_sea, ship) do continue
+				if skip_ship(gc, dst_action) do continue
 				move_single_ship(gc, dst_sea, Ships_Moved[ship], ship, src_sea)
 				if ship == .CARRIER_2_MOVES {
 					gc.allied_carriers_total[dst_sea] += 1

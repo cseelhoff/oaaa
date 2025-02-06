@@ -1,6 +1,7 @@
 package oaaa
 import sa "core:container/small_array"
 import "core:fmt"
+import "core:slice"
 
 Buy_Action :: enum {
 	SKIP_BUY,
@@ -18,63 +19,66 @@ Buy_Action :: enum {
 	BUY_BATTLESHIP,
 }
 
-Valid_Sea_Buys := [?]Buy_Action {
-	.BUY_TRANS,
-	.BUY_SUB,
-	.BUY_DESTROYER,
-	.BUY_CARRIER,
-	.BUY_CRUISER,
-	.BUY_BATTLESHIP,
+Valid_Sea_Buys := [?]Action_ID {
+	.BUY_TRANS_ACTION,
+	.BUY_SUB_ACTION,
+	.BUY_DESTROYER_ACTION,
+	.BUY_CARRIER_ACTION,
+	.BUY_CRUISER_ACTION,
+	.BUY_BATTLESHIP_ACTION,
 }
 
-Valid_Air_Buys := [?]Buy_Action{.BUY_FIGHTER, .BUY_BOMBER}
+Valid_Air_Buys := [?]Action_ID{.BUY_FIGHTER_ACTION, .BUY_BOMBER_ACTION}
 
-Valid_Land_Buys := [?]Buy_Action{.BUY_INF, .BUY_ARTY, .BUY_TANK, .BUY_AAGUN}
+Valid_Land_Buys := [?]Action_ID{.BUY_INF_ACTION, .BUY_ARTY_ACTION, .BUY_TANK_ACTION, .BUY_AAGUN_ACTION}
 
-Buy_Active_Ship : [Buy_Action]Active_Ship
+Buy_Active_Ship: [Action_ID]Active_Ship
 
 @(init)
 init_buy_active_ship :: proc() {
-	Buy_Active_Ship[.BUY_TRANS]      = .TRANS_EMPTY_0_MOVES
-	Buy_Active_Ship[.BUY_SUB]        = .SUB_0_MOVES
-	Buy_Active_Ship[.BUY_DESTROYER]  = .DESTROYER_0_MOVES
-	Buy_Active_Ship[.BUY_CARRIER]    = .CARRIER_0_MOVES
-	Buy_Active_Ship[.BUY_CRUISER]    = .CRUISER_0_MOVES
-	Buy_Active_Ship[.BUY_BATTLESHIP] = .BATTLESHIP_0_MOVES
+	Buy_Active_Ship[.BUY_TRANS_ACTION] = .TRANS_EMPTY_0_MOVES
+	Buy_Active_Ship[.BUY_SUB_ACTION] = .SUB_0_MOVES
+	Buy_Active_Ship[.BUY_DESTROYER_ACTION] = .DESTROYER_0_MOVES
+	Buy_Active_Ship[.BUY_CARRIER_ACTION] = .CARRIER_0_MOVES
+	Buy_Active_Ship[.BUY_CRUISER_ACTION] = .CRUISER_0_MOVES
+	Buy_Active_Ship[.BUY_BATTLESHIP_ACTION] = .BATTLESHIP_0_MOVES
 }
 
-Buy_Active_Plane : [Buy_Action]Active_Plane
+Buy_Active_Plane: [Action_ID]Active_Plane
 
 @(init)
 init_buy_active_plane :: proc() {
-	Buy_Active_Plane[.BUY_FIGHTER] = .FIGHTER_0_MOVES
-	Buy_Active_Plane[.BUY_BOMBER]  = .BOMBER_0_MOVES
+	Buy_Active_Plane[.BUY_FIGHTER_ACTION] = .FIGHTER_0_MOVES
+	Buy_Active_Plane[.BUY_BOMBER_ACTION] = .BOMBER_0_MOVES
 }
 
-Buy_Active_Army : [Buy_Action]Active_Army
+Buy_Active_Army: [Action_ID]Active_Army
 
 @(init)
 init_buy_active_army :: proc() {
-	Buy_Active_Army[.BUY_INF]   = .INF_0_MOVES
-	Buy_Active_Army[.BUY_ARTY]  = .ARTY_0_MOVES
-	Buy_Active_Army[.BUY_TANK]  = .TANK_0_MOVES
-	Buy_Active_Army[.BUY_AAGUN] = .AAGUN_0_MOVES
+	Buy_Active_Army[.BUY_INF_ACTION] = .INF_0_MOVES
+	Buy_Active_Army[.BUY_ARTY_ACTION] = .ARTY_0_MOVES
+	Buy_Active_Army[.BUY_TANK_ACTION] = .TANK_0_MOVES
+	Buy_Active_Army[.BUY_AAGUN_ACTION] = .AAGUN_0_MOVES
 }
 
-Cost_Buy := [Buy_Action]u8 {
-	.SKIP_BUY       = 0,
-	.BUY_INF        = 3,
-	.BUY_ARTY       = 4,
-	.BUY_TANK       = 6,
-	.BUY_AAGUN      = 5,
-	.BUY_FIGHTER    = 10,
-	.BUY_BOMBER     = 12,
-	.BUY_TRANS      = 7,
-	.BUY_SUB        = 6,
-	.BUY_DESTROYER  = 8,
-	.BUY_CARRIER    = 14,
-	.BUY_CRUISER    = 12,
-	.BUY_BATTLESHIP = 20,
+Cost_Buy : [Action_ID]u8
+
+@(init)
+init_cost_buy :: proc() {
+	Cost_Buy[.Skip_Action] = 0
+	Cost_Buy[.BUY_INF_ACTION] = 3
+	Cost_Buy[.BUY_ARTY_ACTION] = 4
+	Cost_Buy[.BUY_TANK_ACTION] = 6
+	Cost_Buy[.BUY_AAGUN_ACTION] = 5
+	Cost_Buy[.BUY_FIGHTER_ACTION] = 10
+	Cost_Buy[.BUY_BOMBER_ACTION] = 12
+	Cost_Buy[.BUY_TRANS_ACTION] = 7
+	Cost_Buy[.BUY_SUB_ACTION] = 6
+	Cost_Buy[.BUY_DESTROYER_ACTION] = 8
+	Cost_Buy[.BUY_CARRIER_ACTION] = 14
+	Cost_Buy[.BUY_CRUISER_ACTION] = 12
+	Cost_Buy[.BUY_BATTLESHIP_ACTION] = 20
 }
 
 FACTORY_COST :: 15
@@ -144,16 +148,20 @@ FACTORY_COST :: 15
 
 buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 	for dst_sea in sa.slice(&mm.l2s_1away_via_land[land]) {
-		for (gc.builds_left[land] > 0 && gc.smallest_allowable_action[to_air(dst_sea)] != .Skip_Action) {
+		for (gc.builds_left[land] > 0 &&
+			    gc.smallest_allowable_action[to_air(dst_sea)] != .Skip_Action) {
 			repair_cost := u8(max(0, 1 + int(gc.factory_dmg[land]) - int(gc.builds_left[land])))
 			reset_valid_actions(gc)
-			if gc.money[gc.cur_player] >= Cost_Buy[.BUY_FIGHTER] + repair_cost &&
-			   to_air(dst_sea) in gc.can_fighter_land_here {
-				add_valid_action(gc, .BUY_FIGHTER_ACTION)
+			if gc.money[gc.cur_player] >= Cost_Buy[.BUY_FIGHTER_ACTION] + repair_cost {
+				get_airs(gc.can_fighter_land_here, &air_positions)
+				_, found := slice.linear_search(air_positions[:], to_air(dst_sea))
+				if found {
+					add_valid_action(gc, .BUY_FIGHTER_ACTION)
+				}
 			}
 			for buy_ship in Valid_Sea_Buys {
 				if gc.money[gc.cur_player] < Cost_Buy[buy_ship] + repair_cost do continue
-				add_valid_action(gc, to_action(buy_ship))
+				add_valid_action(gc, buy_ship)
 			}
 			gc.current_territory = to_air(dst_sea)
 			action := get_action_input(gc) or_return
@@ -173,7 +181,7 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 			// )
 			gc.money[gc.cur_player] -= (Cost_Buy[action] + repair_cost)
 			// fmt.println(gc.cur_player.money)
-			if action == .BUY_FIGHTER {
+			if action == .BUY_FIGHTER_ACTION {
 				gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
 				add_ally_fighters_to_sea(gc, dst_sea, gc.cur_player, 1)
 			} else {
@@ -194,35 +202,37 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 	return true
 }
 
-clear_buy_history :: proc(gc: ^Game_Cache, land: Land_ID) {
-	for sea in sa.slice(&mm.l2s_1away_via_land[land]) {
-		gc.skipped_buys[to_air(sea)] = {}
-		// mem.zero_slice(sea.skipped_buys[:])
-	}
-	gc.clear_history_needed = false
-}
+// clear_buy_history :: proc(gc: ^Game_Cache, land: Land_ID) {
+// 	for sea in sa.slice(&mm.l2s_1away_via_land[land]) {
+// 		gc.skipped_buys[to_air(sea)] = {}
+// 		// mem.zero_slice(sea.skipped_buys[:])
+// 	}
+// 	gc.clear_history_needed = false
+// }
 
 buy_land_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 	for (gc.builds_left[land] > 0) {
 		repair_cost := u8(max(0, 1 + int(gc.factory_dmg[land]) - int(gc.builds_left[land])))
-		gc.valid_actions = {.Skip_Action}
+		reset_valid_actions(gc)
 		for buy_plane in Valid_Air_Buys {
 			if gc.money[gc.cur_player] < Cost_Buy[buy_plane] + repair_cost do continue
-			add_buy_if_not_skipped(gc, to_air(land), buy_plane)
+			add_valid_action(gc, buy_plane)
 		}
 		for buy_army in Valid_Land_Buys {
 			if gc.money[gc.cur_player] < Cost_Buy[buy_army] + repair_cost do continue
-			add_buy_if_not_skipped(gc, to_air(land), buy_army)
+			add_valid_action(gc, buy_army)
 		}
-		action := get_buy_input(gc, to_air(land)) or_return
-		if action == .SKIP_BUY {
+		gc.current_territory = to_air(land)
+		gc.current_active_unit = .FACTORY
+		action := get_action_input(gc) or_return
+		if action == .Skip_Action {
 			gc.builds_left[land] = 0
 			break
 		}
 		gc.builds_left[land] -= 1
 		gc.factory_dmg[land] -= repair_cost
 		gc.money[gc.cur_player] -= Cost_Buy[action] + repair_cost
-		if action == .BUY_FIGHTER || action == .BUY_BOMBER {
+		if action == .BUY_FIGHTER_ACTION || action == .BUY_BOMBER_ACTION {
 			plane := Buy_Active_Plane[action]
 			gc.active_land_planes[land][plane] += 1
 			gc.idle_land_planes[land][gc.cur_player][Active_Plane_To_Idle[plane]] += 1
@@ -240,7 +250,7 @@ buy_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	reset_valid_actions(gc)
 	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
 		if gc.builds_left[land] == 0 do continue
-		if gc.clear_history_needed do clear_buy_history(gc, land)
+		if gc.clear_history_needed do clear_move_history(gc)
 		buy_sea_units(gc, land) or_return
 		buy_land_units(gc, land) or_return
 	}

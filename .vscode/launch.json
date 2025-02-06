@@ -5,7 +5,7 @@
           "name": "Debug",
           "type": "lldb",
           "request": "launch",
-          "program": "${workspaceFolder}/bin/main",
+          "program": "${workspaceFolder}/build/main",
           "args": ["../alpha-zero-general/game_state.json"],
           "cwd": "${workspaceFolder}",
           "preLaunchTask": "build-debug"
@@ -14,7 +14,7 @@
           "name": "Release",
           "type": "lldb",
           "request": "launch",
-          "program": "${workspaceFolder}/bin/main",
+          "program": "${workspaceFolder}/build/main",
           "args": [],
           "cwd": "${workspaceFolder}",
           "preLaunchTask": "build-release"
@@ -23,7 +23,7 @@
           "name": "Shared Library Debug",
           "type": "lldb",
           "request": "launch",
-          "program": "${workspaceFolder}/bin/liboaaa.so",
+          "program": "${workspaceFolder}/build/liboaaa.so",
           "args": [],
           "cwd": "${workspaceFolder}",
           "preLaunchTask": "build-shared-debug"
@@ -32,7 +32,7 @@
           "name": "Shared Library Release",
           "type": "lldb",
           "request": "launch",
-          "program": "${workspaceFolder}/bin/liboaaa.so",
+          "program": "${workspaceFolder}/build/liboaaa.so",
           "args": [],
           "cwd": "${workspaceFolder}",
           "preLaunchTask": "build-shared-release"
@@ -41,7 +41,7 @@
           "name": "Debug Tests",
           "type": "lldb",
           "request": "launch",
-          "program": "${workspaceFolder}/bin/tests",
+          "program": "${workspaceFolder}/build/tests",
           "args": [],
           "cwd": "${workspaceFolder}",
           "preLaunchTask": "build-test-debug"
