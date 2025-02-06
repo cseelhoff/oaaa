@@ -82,10 +82,10 @@ load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
 		gs.owner[land] = mm.orig_owner[land]
 		for player in Player_ID {
 			for army in Idle_Army {
-				gs.idle_armies[land][player][army] = 0
+				gs.idle_armies[land][player][army] = starting_armies[land][player][army]
 			}
 			for plane in Idle_Plane {
-				gs.idle_land_planes[land][player][plane] = 0
+				gs.idle_land_planes[land][player][plane] = starting_land_planes[land][player][plane]
 			}
 		}
 		if gs.owner[land] == gs.cur_player {
@@ -95,10 +95,10 @@ load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
 	for sea in Sea_ID {
 		for player in Player_ID {
 			for plane in Idle_Plane {
-				gs.idle_sea_planes[sea][player][plane] = 0
+				gs.idle_sea_planes[sea][player][plane] = starting_sea_planes[sea][player][plane]
 			}
 			for ship in Idle_Ship {
-				gs.idle_ships[sea][player][ship] = 0
+				gs.idle_ships[sea][player][ship] = starting_ships[sea][player][ship]
 			}
 		}
 	}
