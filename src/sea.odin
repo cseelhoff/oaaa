@@ -25,8 +25,9 @@ action_to_sea :: #force_inline proc(action: Action_ID) -> Sea_ID {
 }
 
 to_sea_count :: #force_inline proc(action: Action_ID) -> (Sea_ID, u8) {
-	assert(int(action) >= len(Land_ID) && int(action) < len(Air_ID))
-	return Sea_ID(int(action) - len(Land_ID)), 64 >> (uint(action) / len(Air_ID))
+	mod_sea := int(action) % len(Air_ID)
+	assert(int(mod_sea) >= len(Land_ID))
+	return Sea_ID(int(mod_sea) - len(Land_ID)), 32 >> (uint(action) / len(Air_ID))
 }
 
 Canal :: struct {

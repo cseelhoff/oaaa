@@ -167,10 +167,12 @@ move_armies :: proc(gc: ^Game_Cache) -> (ok: bool) {
         for src_land in Land_ID {
             if gc.active_armies[src_land][army] == 0 do continue
             gc.current_territory = to_air(src_land)
-            reset_valid_actions(gc)
-            add_valid_army_moves_1(gc)
+            // reset_valid_actions(gc)
+            // add_valid_army_moves_1(gc)
             if army == .TANK_2_MOVES do add_valid_army_moves_2(gc)
             for gc.active_armies[src_land][army] > 0 {
+                reset_valid_actions(gc)
+                add_valid_army_moves_1(gc)
                 dst_action := get_action_input(gc) or_return
                 // Handle sea movement (transport loading) first
                 if !is_land(dst_action) {

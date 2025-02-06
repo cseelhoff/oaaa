@@ -204,8 +204,6 @@ stage_trans_seas :: proc(gc: ^Game_Cache, ship: Active_Ship) -> (ok: bool) {
 
 stage_trans_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
 	if gc.active_ships[src_sea][ship] == 0 do return true
-	reset_valid_actions(gc)
-	add_valid_transport_moves(gc, src_sea, 2)
 	for gc.active_ships[src_sea][ship] > 0 {
 		stage_next_ship_in_sea(gc, src_sea, ship) or_return
 	}
@@ -213,6 +211,8 @@ stage_trans_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> 
 }
 
 stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
+	reset_valid_actions(gc)
+	add_valid_transport_moves(gc, src_sea, 2)
 	dst_action := get_action_input(gc) or_return
 	dst_sea := to_sea(dst_action)
 	// sea_distance := src_sea.canal_paths[gc.canal_state].sea_distance[dst_sea_idx]
@@ -245,9 +245,9 @@ move_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		for src_sea in Sea_ID {
 			if gc.active_ships[src_sea][ship] == 0 do continue
 			gc.current_territory = to_air(src_sea)
-			reset_valid_actions(gc)
-			add_valid_transport_moves(gc, src_sea, Ships_Moves[ship])
 			for gc.active_ships[src_sea][ship] > 0 {
+				reset_valid_actions(gc)
+				add_valid_transport_moves(gc, src_sea, Ships_Moves[ship])
 				dst_action := get_action_input(gc) or_return
 				if skip_ship(gc, dst_action) do break
 				dst_sea := to_sea(dst_action)
@@ -366,11 +366,12 @@ unload_transports :: proc(gc: ^Game_Cache) -> (ok: bool) {
        - Helps Monte Carlo search efficiency
     */
 	for ship in Transports_With_Cargo {
+		//todo bug feature: allow to specify specific cargo to unload
 		for src_sea in Sea_ID {
 			if gc.active_ships[src_sea][ship] == 0 do continue
-			reset_valid_actions(gc)
-			add_valid_unload_moves(gc, src_sea)
 			for gc.active_ships[src_sea][ship] > 0 {
+				reset_valid_actions(gc)
+				add_valid_unload_moves(gc, src_sea)
 				dst_action := get_action_input(gc) or_return
 				if dst_action == .Skip_Action {
 					gc.active_ships[src_sea][Trans_After_Rejecting_Unload[ship]] +=

@@ -37,17 +37,15 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
     gc.current_active_unit = .AAGUN_1_MOVES
 	for src_land in Land_ID {
 		if gc.active_armies[src_land][.AAGUN_1_MOVES] == 0 do continue
-		reset_valid_actions(gc)
 		valid_army_destinations := mm.l2l_1away_via_land_bitset[src_land] & gc.friendly_owner// All adjacent lands
-		add_lands_to_valid_actions(
-			gc,
-			valid_army_destinations,
-			gc.active_armies[src_land][.AAGUN_1_MOVES],
-		)
-        remove_skipped_actions(gc, to_air(src_land))
         gc.current_territory = to_air(src_land)
 		for gc.active_armies[src_land][.AAGUN_1_MOVES] > 0 {
-            
+            reset_valid_actions(gc)
+            add_lands_to_valid_actions(
+                gc,
+                valid_army_destinations,
+                gc.active_armies[src_land][.AAGUN_1_MOVES],
+            )                
 			dst_action := get_action_input(gc) or_return
 			if skip_army(gc, dst_action) do continue
 			move_single_army_land(gc, dst_action, .AAGUN_0_MOVES)

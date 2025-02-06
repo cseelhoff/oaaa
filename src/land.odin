@@ -25,7 +25,7 @@ action_to_land :: #force_inline proc(action: Action_ID) -> Land_ID {
 }
 
 to_land_count :: #force_inline proc(action: Action_ID) -> (Land_ID, u8) {
-	return Land_ID(int(action) % len(Air_ID)), (64 >> u8(int(action) / len(Air_ID)))
+	return Land_ID(int(action) % len(Air_ID)), 32 >> (uint(action) / len(Air_ID))
 }
 
 air_to_land :: #force_inline proc(air: Air_ID) -> Land_ID {

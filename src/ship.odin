@@ -257,10 +257,10 @@ move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		for src_sea in Sea_ID {
 			if gc.active_ships[src_sea][ship] == 0 do continue
 			gc.current_territory = to_air(src_sea)
-			reset_valid_actions(gc)
-			add_valid_ship_moves(gc)
 			for gc.active_ships[src_sea][ship] > 0 {
-				dst_action := get_action_input(gc) or_return
+				reset_valid_actions(gc)
+				add_valid_ship_moves(gc)
+					dst_action := get_action_input(gc) or_return
 				if skip_ship(gc, dst_action) do continue
 				dst_sea := to_sea(dst_action)
 				mark_sea_for_combat_resolution(gc, dst_sea)
