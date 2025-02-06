@@ -34,7 +34,7 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
     redundant decision paths early.
     */
 	gc.clear_history_needed = false
-    gc.current_Active_Unit = .AAGUN_1_MOVES
+    gc.current_active_unit = .AAGUN_1_MOVES
 	for src_land in Land_ID {
 		if gc.active_armies[src_land][.AAGUN_1_MOVES] == 0 do continue
 		reset_valid_actions(gc)
@@ -48,10 +48,9 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
         gc.current_territory = to_air(src_land)
 		for gc.active_armies[src_land][.AAGUN_1_MOVES] > 0 {
             
-			dst_action := get_move_input(gc) or_return
+			dst_action := get_action_input(gc) or_return
 			if skip_army(gc, dst_action) do continue
-			dst_land := to_land(dst_action)
-			move_single_army_land(gc, src_land, dst_land, .AAGUN_1_MOVES, .AAGUN_0_MOVES)
+			move_single_army_land(gc, dst_action, .AAGUN_0_MOVES)
 		}
 	}
 	if gc.clear_history_needed do clear_move_history(gc)

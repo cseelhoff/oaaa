@@ -8,11 +8,6 @@ to_air :: proc {
 	action_to_air,
 }
 
-// to_air_bitset :: proc {
-// 	sea_to_air_bitset,
-// 	land_to_air_bitset,
-// }
-
 // to_land_bitset :: proc {
 // 	air_to_land_bitset,
 // }
@@ -32,11 +27,6 @@ land_to_air :: #force_inline proc(land: Land_ID) -> Air_ID {
 action_to_air :: #force_inline proc(act: Action_ID) -> Air_ID {
 	return Air_ID(act)
 }
-
-// land_to_air_bitset :: #force_inline proc(land: Land_Bitset) -> Air_Bitset {
-// 	// 
-// 	return transmute(Air_Bitset)u128(transmute(u128)land)
-// }
 
 // sea_to_air_bitset :: #force_inline proc(sea: Sea_Bitset) -> Air_Bitset {
 // 	return transmute(Air_Bitset)(u128(transmute(u128)sea) << len(Land_ID))

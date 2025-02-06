@@ -163,15 +163,43 @@ move_armies :: proc(gc: ^Game_Cache) -> (ok: bool) {
     */
     for army in Unmoved_Armies {
         gc.clear_history_needed = false
-        gc.current_Active_Unit = to_active_unit(army)
+        gc.current_active_unit = to_unit(army)
         for src_land in Land_ID {
             if gc.active_armies[src_land][army] == 0 do continue
-            gc.current_territory = src_land
+            gc.current_territory = to_air(src_land)
             reset_valid_actions(gc)
-            add_valid_army_moves_1(gc, src_land, army)
-            if army == .TANK_2_MOVES do add_valid_army_moves_2(gc, src_land, army)
+            add_valid_army_moves_1(gc)
+            if army == .TANK_2_MOVES do add_valid_army_moves_2(gc)
             for gc.active_armies[src_land][army] > 0 {
-                move_next_army_in_land(gc, army, src_land) or_return
+                dst_action := get_action_input(gc) or_return
+                // Handle sea movement (transport loading) first
+                if !is_land(dst_action) {
+                    dst_sea := to_sea(dst_action)
+                    for transport in Active_Trans_By_Army_Size[Army_Size[army]] {
+                        if gc.active_ships[dst_sea][transport] > 0 {
+                            idle_army := Active_Army_To_Idle[army]
+                            new_ship := Trans_After_Loading[idle_army][transport]
+                            gc.active_ships[dst_sea][new_ship] += 1
+                            gc.idle_ships[dst_sea][gc.cur_player][Active_Ship_To_Idle[new_ship]] += 1
+                            gc.active_armies[src_land][army] -= 1
+                            gc.idle_armies[src_land][gc.cur_player][idle_army] -= 1
+                            gc.team_land_units[src_land][mm.team[gc.cur_player]] -= 1
+                            gc.active_ships[dst_sea][transport] -= 1
+                            gc.idle_ships[dst_sea][gc.cur_player][Active_Ship_To_Idle[transport]] -= 1
+                            break
+                        }
+                    }
+                    if !is_boat_available(gc, dst_action) {
+                        remove_valid_action(gc, dst_action)
+                    }
+                    return true
+                }
+                
+                // Handle land movement
+                if skip_army(gc, dst_action) do break
+                
+                next_state := blitz_checks(gc, dst_action)
+                move_single_army_land(gc, dst_action, next_state)
             }
         }
         if gc.clear_history_needed do clear_move_history(gc)
@@ -179,53 +207,9 @@ move_armies :: proc(gc: ^Game_Cache) -> (ok: bool) {
     return true
 }
 
-move_next_army_in_land :: proc(
-	gc: ^Game_Cache,
-	army: Active_Army,
-	src_land: Land_ID,
-) -> (
-	ok: bool,
-) {
-    /*
-    AI NOTE: Army Movement Logic
-    
-    Armies can move in two ways:
-    1. Land Movement:
-       - Must follow connected territories
-       - Blocked by enemy units and factories
-       - Tanks can move through friendly territory (blitz)
-    
-    2. Sea Transport:
-       - Can load onto transport ships in adjacent sea zones
-       - Must have available transport capacity
-       - Transport must be able to move after loading
-    */
-	dst_action := get_move_input(gc) or_return
-    
-    // Handle sea movement (transport loading) first
-    if !is_land(dst_action) {
-        dst_sea := to_sea(dst_action)
-		load_available_transport(gc, army, dst_sea, gc.cur_player)
-		if !is_boat_available(gc, dst_sea, army) {
-			remove_valid_action(gc, dst_action)
-		}
-        return true
-    }
-    
-    // Handle land movement
-    dst_land := to_land(dst_air)
-    if skip_army(gc, src_land, dst_land, army) do return true
-    
-    next_state := get_next_army_state(gc, src_land, dst_land, army)
-    move_single_army_land(gc, src_land, dst_land, army, next_state)
-    return true
-}
-
 blitz_checks :: proc(
 	gc: ^Game_Cache,
-	src_land: Land_ID,
-	dst_land: Land_ID,
-	army: Active_Army,
+    dst_action: Action_ID,
 ) -> Active_Army {
     /*
     AI NOTE: Tank Blitz Path Selection
@@ -248,6 +232,9 @@ blitz_checks :: proc(
     - Gives player strategic control over which territories to capture
     - Handles cases where different paths have different strategic value
     */
+    src_land := to_land(gc.current_territory)
+    army := to_army(gc.current_active_unit)
+    dst_land := to_land(dst_action)
 	if !mark_land_for_combat_resolution(gc, dst_land) &&
 	   check_and_process_land_conquest(gc, dst_land) &&
 	   army == .TANK_2_MOVES &&
@@ -260,10 +247,8 @@ blitz_checks :: proc(
 
 move_single_army_land :: proc(
 	gc: ^Game_Cache,
-	src_land: Land_ID,
-	dst_land: Land_ID,
-	src_unit: Active_Army,
-	dst_unit: Active_Army,
+	dst_action: Action_ID,
+    dst_unit: Active_Army,
 ) {
     /*
     AI NOTE: Unit Counter Caching
@@ -287,21 +272,23 @@ move_single_army_land :: proc(
     - Converting between unit states when checking strength
     - Looping through owners when checking team control
     */
-	gc.active_armies[dst_land][dst_unit] += 1
-	gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[dst_unit]] += 1
-	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
-	gc.active_armies[src_land][src_unit] -= 1
-	gc.idle_armies[src_land][gc.cur_player][Active_Army_To_Idle[src_unit]] -= 1
-	gc.team_land_units[src_land][mm.team[gc.cur_player]] -= 1
+    dst_land, unit_count := to_land_count(dst_action)
+    src_land := to_land(gc.current_territory)
+    src_unit := to_army(gc.current_active_unit)
+	gc.active_armies[dst_land][dst_unit] += unit_count
+	gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[dst_unit]] += unit_count
+	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += unit_count
+	gc.active_armies[src_land][src_unit] -= unit_count
+	gc.idle_armies[src_land][gc.cur_player][Active_Army_To_Idle[src_unit]] -= unit_count
+	gc.team_land_units[src_land][mm.team[gc.cur_player]] -= unit_count
 }
 
 is_boat_available :: proc(
 	gc: ^Game_Cache,
-	src_land: Land_ID,
-	dst_sea: Sea_ID,
-	army: Active_Army,
+	dst_action: Action_ID,
 ) -> bool {
-	idle_ships := &gc.idle_ships[dst_sea][gc.cur_player]
+    army := to_army(gc.current_active_unit)
+	idle_ships := &gc.idle_ships[to_sea(dst_action)][gc.cur_player]
 	for transport in Trans_Allowed_By_Army_Size[Army_Size[army]] {
 		if idle_ships[transport] > 0 {
 			return true
@@ -312,15 +299,11 @@ is_boat_available :: proc(
 
 add_if_boat_available :: proc(
 	gc: ^Game_Cache,
-	src_land: Land_ID,
-	dst_sea: Sea_ID,
-	army: Active_Army,
+    dst_action: Action_ID,
 ) {
-	if to_air(dst_sea) not_in gc.rejected_moves_from[to_air(src_land)] {
-		if is_boat_available(gc, src_land, dst_sea, army) {
-			add_valid_action(gc, to_action(dst_sea))
+		if is_boat_available(gc, dst_action) {
+			add_valid_action(gc, dst_action)
 		}
-	}
 }
 
 are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands) -> bool {
@@ -330,17 +313,17 @@ are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands) -> bool {
 	return true
 }
 
-add_valid_army_moves_1 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
-	add_valid_action(gc, 
-		mm.l2l_1away_via_land_bitset[src_land] & ~to_land_bitset(gc.rejected_moves_from[to_air(src_land)]),
-	)
+add_valid_army_moves_1 :: proc(gc: ^Game_Cache) {
+    src_land := to_land(gc.current_territory)
+    army := to_army(gc.current_active_unit)
+    add_lands_to_valid_actions(gc, mm.l2l_1away_via_land_bitset[src_land], gc.active_armies[src_land][army])
 	//todo game_cache bitset for is_boat_available large, small
 	for dst_sea in sa.slice(&mm.l2s_1away_via_land[src_land]) {
-		add_if_boat_available(gc, src_land, dst_sea, army)
+		add_if_boat_available(gc, to_action(dst_sea))
 	}
 }
 
-add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_Army) {
+add_valid_army_moves_2 :: proc(gc: ^Game_Cache) {
     /*
     AI NOTE: Territory Control Validation
     
@@ -360,18 +343,20 @@ add_valid_army_moves_2 :: proc(gc: ^Game_Cache, src_land: Land_ID, army: Active_
     - Territory can have enemy factory without units (newly built)
     - Movement blocked if either condition is true
     */
-	for dst_land in (mm.l2l_2away_via_land_bitset[src_land] & to_land_bitset(~gc.rejected_moves_from[to_air(src_land)])) {
+    src_land := to_land(gc.current_territory)
+    army := to_army(gc.current_active_unit)
+	for dst_land in (mm.l2l_2away_via_land_bitset[src_land]) {
 		if (mm.l2l_2away_via_midland_bitset[src_land][dst_land] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
 			continue
 		}
 		add_valid_action(gc, to_action(dst_land))
 	}
 	// check for moving from land to sea (two moves away)
-	for dst_sea in (mm.l2s_2away_via_land_bitset[src_land] & to_sea_bitset(~gc.rejected_moves_from[to_air(src_land)])) {
+	for dst_sea in (mm.l2s_2away_via_land_bitset[src_land]) {
 		if (mm.l2s_2away_via_midland_bitset[src_land][dst_sea] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
 			continue
 		}
-		add_if_boat_available(gc, src_land, dst_sea, army)
+		add_if_boat_available(gc, to_action(dst_sea))
 	}
 }
 
@@ -383,88 +368,19 @@ skip_army :: proc(
 ) {
 	if dst_action != .Skip_Action do return false
     src_land := to_land(gc.current_territory)
-    army := to_army(gc.current_Active_Unit)
+    army := to_army(gc.current_active_unit)
 	gc.active_armies[src_land][Armies_Moved[army]] += gc.active_armies[src_land][army]
 	gc.active_armies[src_land][army] = 0
 	return true
 }
 
-is_sea_destination :: proc(dst_air: Air_ID) -> bool {
-    return int(dst_air) >= len(Land_ID)
-}
-
-attempt_transport_loading :: proc(
-    gc: ^Game_Cache,
-    army: Active_Army,
-    src_land: Land_ID,
-    dst_sea: Sea_ID,
-) {
-}
-
-get_next_army_state :: proc(
-    gc: ^Game_Cache,
-    src_land: Land_ID,
-    dst_land: Land_ID,
-    army: Active_Army,
-) -> Active_Army {
-    return blitz_checks(gc, src_land, dst_land, army)
-}
-
 load_available_transport :: proc(
 	gc: ^Game_Cache,
-	army: Active_Army,
-	src_land: Land_ID,
-	dst_sea: Sea_ID,
-	player: Player_ID,
+	dst_action: Action_ID,
 ) {
-	for transport in Active_Trans_By_Army_Size[Army_Size[army]] {
-		if gc.active_ships[dst_sea][transport] > 0 {
-			load_specific_transport(gc, src_land, dst_sea, transport, army, player)
-			return
-		}
-	}
+    src_land := to_land(gc.current_territory)
+    army := to_army(gc.current_active_unit)
+    dst_sea := to_sea(dst_action)
+	
 	fmt.eprintln("Error: No large transport available to load")
-}
-
-load_specific_transport :: proc(
-	gc: ^Game_Cache,
-	src_land: Land_ID,
-	dst_sea: Sea_ID,
-	ship: Active_Ship,
-	army: Active_Army,
-	player: Player_ID,
-) {
-    /*
-    AI NOTE: Transport Loading System
-    
-    This procedure handles the state transitions when loading an army onto a transport:
-    
-    1. Transport State Transition:
-       - Use Transport_Load_Unit[army_type][current_state] to get new transport state
-       - Example: [.INF][.TRANS_EMPTY] -> .TRANS_1I
-       - Handles all valid combinations within 5-space capacity
-    
-    2. Game State Updates:
-       a) Create new transport in loaded state:
-          - Increment active_ships[new_state]
-          - Increment idle_ships[new_state]
-       
-       b) Remove army from source land:
-          - Decrement active_armies
-          - Decrement idle_armies
-          - Decrement team_land_units
-       
-       c) Remove old empty transport:
-          - Decrement active_ships[old_state]
-          - Decrement idle_ships[old_state]
-    */
-	idle_army := Active_Army_To_Idle[army]
-	new_ship := Trans_After_Loading[idle_army][ship]
-	gc.active_ships[dst_sea][new_ship] += 1
-	gc.idle_ships[dst_sea][player][Active_Ship_To_Idle[new_ship]] += 1
-	gc.active_armies[src_land][army] -= 1
-	gc.idle_armies[src_land][player][idle_army] -= 1
-	gc.team_land_units[src_land][mm.team[player]] -= 1
-	gc.active_ships[dst_sea][ship] -= 1
-	gc.idle_ships[dst_sea][player][Active_Ship_To_Idle[ship]] -= 1
 }

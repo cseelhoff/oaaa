@@ -72,6 +72,34 @@ Active_Unit :: enum {
     FACTORY,
 }
 
+to_unit :: proc {
+	army_to_unit,
+	ship_to_unit,
+	plane_to_unit,
+}
+
 to_army:: proc(au: Active_Unit) -> Active_Army {
     return Active_Army(au)
 }
+
+to_ship:: proc(au: Active_Unit) -> Active_Ship {
+    return Active_Ship(int(au) - len(Active_Army))
+}
+
+to_plane:: proc(au: Active_Unit) -> Active_Plane {
+	return Active_Plane(int(au) - len(Active_Army) - len(Active_Ship))
+}
+
+army_to_unit:: proc(army: Active_Army) -> Active_Unit {
+	return Active_Unit(int(army))
+}
+
+ship_to_unit:: proc(ship: Active_Ship) -> Active_Unit {
+	return Active_Unit(int(ship) + len(Active_Army))
+}
+
+
+plane_to_unit:: proc(plane: Active_Plane) -> Active_Unit {
+	return Active_Unit(int(plane) + len(Active_Army) + len(Active_Ship))
+}
+

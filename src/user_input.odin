@@ -4,7 +4,7 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 
-get_move_input:: proc(gc: ^Game_Cache) -> (action: Action_ID, ok: bool) {
+get_action_input:: proc(gc: ^Game_Cache) -> (action: Action_ID, ok: bool) {
 	debug_checks(gc)
 	load_dyn_arr_actions(gc)
 	assert(len(gc.dyn_arr_valid_actions) > 0)
@@ -29,7 +29,7 @@ get_move_input:: proc(gc: ^Game_Cache) -> (action: Action_ID, ok: bool) {
 print_move_prompt_2 :: proc(gc: ^Game_Cache) {
 	print_game_state(gc)
 	fmt.print(mm.color[gc.cur_player])
-	fmt.println("Moving ", gc.current_Active_Unit, " From ", gc.current_territory, " Valid Moves: ")
+	fmt.println("Moving ", gc.current_active_unit, " From ", gc.current_territory, " Valid Moves: ")
 	for valid_move in gc.valid_actions {
 		fmt.print(int(valid_move), valid_move, ", ")
 	}

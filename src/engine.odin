@@ -170,7 +170,7 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 update_move_history_2 :: proc(gc: ^Game_Cache, action: Action_ID) {
 	gc.smallest_allowable_action[gc.current_territory] = action
 	gc.clear_history_needed = true
-	remove_actions_above(gc, action)
+	// remove_actions_above(gc, action)
 }
 
 clear_move_history :: proc(gc: ^Game_Cache) {
@@ -197,17 +197,18 @@ Returns true when:
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	if gc.money[gc.cur_player] < FACTORY_COST do return true
 	reset_valid_actions(gc)
+	gc.current_territory = to_air(mm.capital[gc.cur_player])
+	gc.current_active_unit = .FACTORY
 	for land in Land_ID {
 		if gc.owner[land] != gc.cur_player ||
 		   gc.factory_prod[land] > 0 ||
-		   land in (gc.more_land_combat_needed | gc.land_combat_started) ||
-		   to_air(land) > gc.smallest_allowable_action[to_air(land)] {
+		   land in (gc.more_land_combat_needed | gc.land_combat_started) {
 			continue
 		}
 		add_valid_action(gc, to_action(land))
 	}
-	for gc.money[gc.cur_player] < FACTORY_COST {
-		factory_land_action := get_factory_buy(gc) or_return
+	for gc.money[gc.cur_player] >= FACTORY_COST {
+		factory_land_action := get_action_input(gc) or_return
 		if factory_land_action == .Skip_Action do return true
 		gc.money[gc.cur_player] -= FACTORY_COST
 		factory_land := to_land(factory_land_action)
@@ -394,7 +395,7 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 	return score
 }
 
-get_possible_actions :: proc(gs: ^Game_State) -> Action_Bitset {
+get_possible_actions :: proc(gs: ^Game_State) -> ^[dynamic]Action_ID {
 	// Return the list of possible actions from the given state
 	gc: Game_Cache
 	// print_game_state(&gc)
@@ -417,7 +418,8 @@ get_possible_actions :: proc(gs: ^Game_State) -> Action_Bitset {
 	// 	}
 	// 	// save_json(&gs_backup, "pre_save.json")
 	// }
-	return gc.valid_actions
+	load_dyn_arr_actions(&gc)
+	return &gc.dyn_arr_valid_actions
 }
 
 apply_action :: proc(gs: ^Game_State, action: Action_ID) {

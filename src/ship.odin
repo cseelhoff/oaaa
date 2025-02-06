@@ -252,13 +252,15 @@ init_Ships_After_Retreat :: proc() {
 
 move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for ship in Unmoved_Blockade_Ships {
+		gc.current_active_unit = to_unit(ship)
 		gc.clear_history_needed = false
 		for src_sea in Sea_ID {
 			if gc.active_ships[src_sea][ship] == 0 do continue
+			gc.current_territory = to_air(src_sea)
 			reset_valid_actions(gc)
 			add_valid_ship_moves(gc, src_sea, ship)
 			for gc.active_ships[src_sea][ship] > 0 {
-				dst_air := get_move_ship_input(gc, ship, to_air(src_sea)) or_return
+				dst_air := get_action_input(gc, ship, to_air(src_sea)) or_return
 				dst_sea := to_sea(dst_air)
 				mark_sea_for_combat_resolution(gc, dst_sea)
 				if skip_ship(gc, src_sea, dst_sea, ship) do continue
@@ -284,8 +286,10 @@ move_combat_ships :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-skip_ship :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID, ship: Active_Ship) -> bool {
-	if src_sea != dst_sea do return false
+skip_ship :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> bool {
+	if dst_action != .Skip_Action do return false
+	src_sea := to_sea(dst_action)
+	ship := to_ship(gc.current_active_unit)
 	gc.active_ships[src_sea][Ships_Moved[ship]] += gc.active_ships[src_sea][ship]
 	gc.active_ships[src_sea][ship] = 0
 	return true
@@ -294,16 +298,10 @@ skip_ship :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID, ship: Activ
 add_valid_ship_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) {
 	// for dst_sea in sa.slice(&src_sea.canal_paths[gc.canal_state].adjacent_seas) {
 	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if to_air(dst_sea) in gc.rejected_moves_from[to_air(src_sea)] {
-			continue
-		}
 		add_valid_action(gc, to_action(dst_sea))
 	}
 	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
 	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		if to_air(dst_sea_2_away) in gc.rejected_moves_from[to_air(src_sea)] {
-			continue
-		}
 		for mid_sea in sa.slice(
 			&mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][dst_sea_2_away],
 		) {

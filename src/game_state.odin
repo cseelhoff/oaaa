@@ -63,7 +63,7 @@ Game_State :: struct {
 	builds_left:             [Land_ID]u8,
 	seed:                    u16,
   current_territory:       Air_ID,
-  current_Active_Unit:     Active_Unit,
+  current_active_unit:     Active_Unit,
 	more_land_combat_needed: Land_Bitset,
 	more_sea_combat_needed:  Sea_Bitset,
 	land_combat_started:     Land_Bitset,

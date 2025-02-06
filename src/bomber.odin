@@ -34,7 +34,7 @@ BOMBER_MAX_MOVES :: 6
 
 move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	gc.clear_history_needed = false
-    gc.current_Active_Unit = .BOMBER_UNMOVED
+    gc.current_active_unit = .BOMBER_UNMOVED
 	for src_land in Land_ID {
 		if gc.active_land_planes[src_land][.BOMBER_UNMOVED] == 0 do continue
 		if !gc.is_bomber_cache_current do refresh_can_bomber_land_here(gc)
@@ -42,7 +42,7 @@ move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		reset_valid_actions(gc)
 		add_valid_unmoved_bomber_moves(gc)
 		for gc.active_land_planes[src_land][.BOMBER_UNMOVED] > 0 {
-			dst_action := get_move_input(gc) or_return
+			dst_action := get_action_input(gc) or_return
 			if is_land(dst_action) {
 				move_unmoved_bomber_to_land(gc, dst_action)
 			} else {
@@ -71,7 +71,7 @@ add_valid_unmoved_bomber_moves :: #force_inline proc(gc: ^Game_Cache) {
     */
     src_land := to_land(gc.current_territory)
 	valid_bomber_destinations :=
-		mm.a2a_within_6_moves[to_air(src_land)] & to_air_bitset(gc.can_bomber_land_here) |
+		(mm.a2a_within_6_moves[to_air(src_land)] & to_air_bitset(gc.can_bomber_land_here)) |
 		((gc.air_has_enemies | to_air_bitset(gc.has_bombable_factory)) &
 				(mm.a2a_within_3_moves[to_air(src_land)] |
 						(mm.a2a_within_4_moves[to_air(src_land)] & gc.can_bomber_land_in_2_moves) |
@@ -138,13 +138,13 @@ refresh_can_bomber_land_here_directly :: proc(gc: ^Game_Cache) {
 land_remaining_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for plane in Unlanded_Bombers {
 		gc.clear_history_needed = false
-        gc.current_Active_Unit = plane
+        gc.current_active_unit = to_unit(plane)
 		for src_land in Land_ID {
-            gc.current_territory = src_land
+            gc.current_territory = to_air(src_land)
 			land_bomber_from_land(gc, src_land, plane) or_return
 		}
 		for src_sea in Sea_ID {
-            gc.current_territory = src_sea
+            gc.current_territory = to_air(src_sea)
 			land_bomber_from_sea(gc, src_sea, plane) or_return
 		}
 		if gc.clear_history_needed do clear_move_history(gc)
@@ -164,24 +164,25 @@ land_bomber_from_land :: proc(
 	gc.valid_actions = {}
 	add_valid_landing_bomber_moves(gc, to_air(src_land), plane)
 	for gc.active_land_planes[src_land][plane] > 0 {
-		dst_air := get_move_plane_input(gc, plane, to_air(src_land)) or_return
-		move_bomber_from_land_to_land(gc, to_land(dst_air), plane, src_land)
+		dst_action := get_action_input(gc) or_return
+		move_bomber_from_land_to_land(gc, dst_action)
 	}
 	return true
 }
 
 move_bomber_from_land_to_land :: proc(
 	gc: ^Game_Cache,
-	dst_land: Land_ID,
-	plane: Active_Plane,
-	src_land: Land_ID,
+	dst_action: Action_ID,
 ) {
-	gc.active_land_planes[dst_land][.BOMBER_0_MOVES] += 1
-	gc.idle_land_planes[dst_land][gc.cur_player][.BOMBER] += 1
-	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
-	gc.active_land_planes[src_land][plane] -= 1
-	gc.idle_land_planes[src_land][gc.cur_player][.BOMBER] -= 1
-	gc.team_land_units[src_land][mm.team[gc.cur_player]] -= 1
+	src_land := to_land(gc.current_territory)
+	dst_land, unit_count := to_land_count(dst_action)
+	plane := to_plane(gc.current_active_unit)
+	gc.active_land_planes[dst_land][.BOMBER_0_MOVES] += unit_count
+	gc.idle_land_planes[dst_land][gc.cur_player][.BOMBER] += unit_count
+	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += unit_count
+	gc.active_land_planes[src_land][plane] -= unit_count
+	gc.idle_land_planes[src_land][gc.cur_player][.BOMBER] -= unit_count
+	gc.team_land_units[src_land][mm.team[gc.cur_player]] -= unit_count
 	return
 }
 
@@ -191,23 +192,27 @@ land_bomber_from_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, plane: Active_Pla
 	gc.valid_actions = {}
 	add_valid_landing_bomber_moves(gc, to_air(src_sea), plane)
 	for gc.active_sea_planes[src_sea][plane] > 0 {
-		dst_air := get_move_plane_input(gc, plane, to_air(src_sea)) or_return
-		move_bomber_from_sea_to_land(gc, to_land(dst_air), plane, src_sea)
+		dst_action := get_action_input(gc) or_return
+		move_bomber_from_sea_to_land(gc, dst_action)
 	}
 	return true
 }
 
 move_bomber_from_sea_to_land :: proc(
 	gc: ^Game_Cache,
-	dst_land: Land_ID,
-	plane: Active_Plane,
-	src_sea: Sea_ID,
+	dst_action: Action_ID,
 ) {
-	gc.active_land_planes[dst_land][.BOMBER_0_MOVES] += 1
-	gc.idle_land_planes[dst_land][gc.cur_player][.BOMBER] += 1
-	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
-	gc.active_sea_planes[src_sea][plane] -= 1
-	remove_my_bomber_from_sea(gc, src_sea)
+	src_sea := to_sea(gc.current_territory)
+	dst_land, unit_count := to_land_count(dst_action)
+	plane := to_plane(gc.current_active_unit)
+	gc.active_land_planes[dst_land][.BOMBER_0_MOVES] += unit_count
+	gc.idle_land_planes[dst_land][gc.cur_player][.BOMBER] += unit_count
+	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += unit_count
+	gc.active_sea_planes[src_sea][plane] -= unit_count
+	gc.idle_sea_planes[src_sea][gc.cur_player][.BOMBER] -= unit_count
+	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= unit_count
+	gc.allied_antifighter_ships_total[src_sea] -= unit_count
+	gc.allied_sea_combatants_total[src_sea] -= unit_count
 	return
 }
 
@@ -239,35 +244,30 @@ add_valid_landing_bomber_moves :: proc(
 	case .BOMBER_1_MOVES:
 		set_valid_actions(
 			gc,
-			~gc.rejected_moves_from[src_air] &
 			to_air_bitset(gc.can_bomber_land_here) &
 			mm.a2a_within_1_moves[src_air],
 		)
 	case .BOMBER_2_MOVES:
 		set_valid_actions(
 			gc,
-			~gc.rejected_moves_from[src_air] &
 			to_air_bitset(gc.can_bomber_land_here) &
 			mm.a2a_within_2_moves[src_air],
 		)
 	case .BOMBER_3_MOVES:
 		set_valid_actions(
 			gc,
-			~gc.rejected_moves_from[src_air] &
 			to_air_bitset(gc.can_bomber_land_here) &
 			mm.a2a_within_3_moves[src_air],
 		)
 	case .BOMBER_4_MOVES:
 		set_valid_actions(
 			gc,
-			~gc.rejected_moves_from[src_air] &
 			to_air_bitset(gc.can_bomber_land_here) &
 			mm.a2a_within_4_moves[src_air],
 		)
 	case .BOMBER_5_MOVES:
 		set_valid_actions(
 			gc,
-			~gc.rejected_moves_from[src_air] &
 			to_air_bitset(gc.can_bomber_land_here) &
 			mm.a2a_within_5_moves[src_air],
 		)
@@ -282,9 +282,7 @@ add_my_bomber_to_sea :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) {
 	gc.allied_sea_combatants_total[sea] += 1
 }
 
-remove_my_bomber_from_sea :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) {
-	gc.idle_sea_planes[sea][gc.cur_player][.BOMBER] -= 1
-	gc.team_sea_units[sea][mm.team[gc.cur_player]] -= 1
-	gc.allied_antifighter_ships_total[sea] -= 1
-	gc.allied_sea_combatants_total[sea] -= 1
+remove_my_bomber_from_sea :: #force_inline proc(gc: ^Game_Cache) {
+	sea := to_sea(gc.current_territory)
+
 }

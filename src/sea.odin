@@ -23,6 +23,11 @@ action_to_sea :: #force_inline proc(action: Action_ID) -> Sea_ID {
 	return Sea_ID(int(action) - len(Land_ID))
 }
 
+to_sea_count :: #force_inline proc(action: Action_ID) -> (Sea_ID, u8) {
+	assert(int(action) >= len(Land_ID) && int(action) < len(Air_ID))
+	return Sea_ID(int(action) - len(Land_ID)), 64 >> (uint(action) / len(Air_ID))
+}
+
 Canal :: struct {
 	lands: [2]Land_ID,
 	seas:  [2]Sea_ID,

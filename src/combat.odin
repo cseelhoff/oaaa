@@ -134,7 +134,7 @@ mark_ships_ineligible_for_bombardment :: proc(gc: ^Game_Cache, sea: Sea_ID) {
 	gc.active_ships[sea][.BS_DAMAGED_0_MOVES] = 0
 }
 
-build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
+build_sea_retreat_options :: proc(gc: ^Game_Cache) {
 	/*
     AI NOTE: Sea Combat Retreat Logic
     
@@ -161,6 +161,7 @@ build_sea_retreat_options :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
     - Must not already have combat (sea_combat_started)
     */
 	gc.valid_actions = {}
+	src_sea := to_sea(gc.current_territory)
 	if (gc.enemy_blockade_total[src_sea] == 0 && gc.enemy_fighters_total[src_sea] == 0) ||
 	   do_sea_targets_exist(gc, src_sea) {
 		add_valid_action(gc, to_action(src_sea))
@@ -383,10 +384,11 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		for {            
 			combat_rounds_counter += 1
 			if sea in gc.sea_combat_started {
-				build_sea_retreat_options(gc, sea)
-				dst_air := get_retreat_input(gc, to_air(sea)) or_return
-				dst_sea := to_sea(dst_air)
-				if dst_sea != sea && sea_retreat(gc, sea, dst_sea) do break
+				gc.current_territory = to_air(sea)
+				build_sea_retreat_options(gc)
+				dst_action := get_action_input(gc) or_return
+				dst_sea := to_sea(dst_action)
+				if dst_action != .Skip_Action && sea_retreat(gc, sea, dst_sea) do break
 			}
 			//if destroy_vulnerable_transports(gc, &sea) do break
 			gc.sea_combat_started += {sea}
@@ -632,9 +634,9 @@ add_valid_land_retreat_destinations :: proc(gc: ^Game_Cache) {
     This gives players a chance to preserve units if combat is going poorly,
     but requires careful territory control to ensure retreat paths exist.
     */
-	land := gc.current_territory
+	src_land := to_land(gc.current_territory)
 	reset_valid_actions(gc)
-	for &dst_land in sa.slice(&mm.l2l_1away_via_land[land]) {
+	for &dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
 		if dst_land in
 		   (gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started) {
 			add_valid_action(gc, to_action(dst_land))
@@ -704,8 +706,8 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			if land in gc.land_combat_started {
 				gc.current_territory = to_air(land)
 				add_valid_land_retreat_destinations(gc)
-				dst_action := get_move_input(gc) or_return
-				if retreat_land_units(gc, land, dst_action) do break
+				dst_action := get_action_input(gc) or_return
+				if retreat_land_units(gc, dst_action) do break
 			}
 			gc.land_combat_started += {land}
 			attacker_hits := calculate_attacker_hits_low_luck(
@@ -734,8 +736,10 @@ no_attackers_remain :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 	return false
 }
 
-retreat_land_units :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_land: Land_ID) -> bool {
-	if dst_land == src_land do return false
+retreat_land_units :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> bool {
+	if dst_action == .Skip_Action do return false
+	src_land := to_land(gc.current_territory)
+	dst_land := to_land(dst_action)
 	for army in Active_Army {
 		number_of_armies := gc.active_armies[src_land][army]
 		gc.active_armies[dst_land][army] += number_of_armies
