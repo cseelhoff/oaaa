@@ -77,6 +77,11 @@ start :: proc() {
 
 	game_state = game_cache.state
 
+	print_game_state(&game_cache)
+	for {
+		play_full_turn(&game_cache)
+	}
+
 	root :^MCTSNode= mcts_search(&game_state, iterations)
 	best_action := select_best_action(root)
 	// print_mcts_tree(root, 0, nil, 0)
