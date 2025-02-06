@@ -214,10 +214,10 @@ stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Sh
 	reset_valid_actions(gc)
 	add_valid_transport_moves(gc, src_sea, 2)
 	dst_action := get_action_input(gc) or_return
+	if skip_ship(gc, dst_action) do return true
 	dst_sea := to_sea(dst_action)
 	// sea_distance := src_sea.canal_paths[gc.canal_state].sea_distance[dst_sea_idx]
 	sea_distance := mm.sea_distances[transmute(u8)gc.canals_open][src_sea][dst_sea]
-	if skip_ship(gc, dst_action) do return true
 	if dst_sea in gc.more_sea_combat_needed {
 		// only allow staging to sea with enemy blockade if other unit started combat
 		sea_distance = 2

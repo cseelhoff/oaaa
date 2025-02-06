@@ -5,7 +5,7 @@ import "core:os"
 import "core:strconv"
 
 is_human := [Player_ID]bool {
-	.Rus = true,
+	.Rus = false,
 	.Ger = false,
 	.Eng = false,
 	.Jap = false,

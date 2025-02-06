@@ -5,13 +5,13 @@ import "core:time"
 
 GLOBAL_TICK := 0
 ACTUALLY_PRINT := false
-when ODIN_DEBUG && true {
+when ODIN_DEBUG && false {
 	debug_checks :: proc(gc: ^Game_Cache) {
 		GLOBAL_TICK += 1
 		if GLOBAL_TICK >= 0 {
 			fmt.println("Enable Print")
 			print_game_state(gc)
-			ACTUALLY_PRINT = true
+			ACTUALLY_PRINT = false
 		} //else do return
 		for sea in Sea_ID {
 			team_idles: [Team_ID]u8 = {
