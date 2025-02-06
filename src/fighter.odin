@@ -28,7 +28,7 @@ move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		for gc.active_land_planes[src_land][.FIGHTER_UNMOVED] > 0 {
 			reset_valid_actions(gc)
 			add_valid_unmoved_fighter_moves(gc, gc.active_land_planes[src_land][.FIGHTER_UNMOVED])
-				dst_action := get_action_input(gc) or_return
+			dst_action := get_action_input(gc) or_return
 			if is_land(dst_action) {
 				move_unmoved_fighter_from_land_to_land(gc, dst_action)
 			} else {
@@ -363,6 +363,10 @@ move_fighter_from_sea_to_sea :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 }
 
 add_valid_landing_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) {
+	when ODIN_DEBUG {
+		get_airs(gc.can_fighter_land_here, &air_positions)
+		get_airs(mm.a2a_within_2_moves[src_air], &air_positions)
+	}
 	#partial switch plane {
 	case .FIGHTER_1_MOVES:
 		set_valid_actions(gc, gc.can_fighter_land_here & mm.a2a_within_1_moves[src_air])

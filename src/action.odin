@@ -5,15 +5,15 @@ to_action :: proc{air_to_action, land_to_action, sea_to_action, int_to_action, b
 // to_action_bitset :: proc{land_to_action_bitset, sea_to_action_bitset, air_to_action_bitset}
 
 air_to_action :: #force_inline proc(air: Air_ID) -> Action_ID {
-	return Action_ID(air)
+	return Action_ID(int(air) + len(Air_ID) * 5)
 }
 
 land_to_action :: #force_inline proc(land: Land_ID) -> Action_ID {
-	return Action_ID(land)
+	return Action_ID(int(land)+ len(Air_ID) * 5)
 }
 
 sea_to_action :: #force_inline proc(sea: Sea_ID) -> Action_ID {
-	return Action_ID(to_air(sea))
+	return Action_ID(int(to_air(sea))+ len(Air_ID) * 5)
 }
 
 int_to_action :: #force_inline proc(i: int) -> Action_ID {

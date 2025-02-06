@@ -45,7 +45,8 @@ remove_valid_action :: proc(gc: ^Game_Cache, action: Action_ID) {
 
 set_valid_actions :: proc(gc: ^Game_Cache, air_bitset: Air_Bitset) {
 	gc.valid_actions = {}
-	for air in air_bitset {
+	get_airs(air_bitset, &air_positions)
+	for air in air_positions {
 		add_valid_action(gc, Action_ID(air))
 	}
 	//todo: use a bit shift instead for better performance

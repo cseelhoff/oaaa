@@ -211,6 +211,7 @@ stage_trans_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> 
 }
 
 stage_next_ship_in_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship) -> (ok: bool) {
+	debug_checks(gc)
 	reset_valid_actions(gc)
 	add_valid_transport_moves(gc, src_sea, 2)
 	dst_action := get_action_input(gc) or_return

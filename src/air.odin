@@ -1,5 +1,6 @@
 package oaaa
 import sa "core:container/small_array"
+import "core:fmt"
 import "core:slice"
 
 to_air :: proc {
@@ -118,7 +119,12 @@ initialize_air_connections :: proc() {
 	// Initialize the airs_2_moves_away array
 	for air in Air_ID {
 		for distance, dst_air in mm.air_distances[air] {
+			// if air == .Karelia_SSR_Air && dst_air == .Russia_Air {
+			// 	fmt.println("air", air, "dst_air", dst_air, "distance", distance)
+			// }
 			switch distance {
+			case 1:
+				fallthrough
 			case 2:
 				add_air(&mm.a2a_2away_via_air[air], dst_air)
 				add_air(&mm.a2a_within_2_moves[air], dst_air)

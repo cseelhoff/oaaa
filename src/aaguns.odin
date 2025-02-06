@@ -40,6 +40,7 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		valid_army_destinations := mm.l2l_1away_via_land_bitset[src_land] & gc.friendly_owner// All adjacent lands
         gc.current_territory = to_air(src_land)
 		for gc.active_armies[src_land][.AAGUN_1_MOVES] > 0 {
+            //todo: optimize. instead of resetting, check unit count and update smallest_allowable_action
             reset_valid_actions(gc)
             add_lands_to_valid_actions(
                 gc,
