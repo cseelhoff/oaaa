@@ -31,7 +31,7 @@ print_move_prompt_2 :: proc(gc: ^Game_Cache) {
 	print_game_state(gc)
 	fmt.print(mm.color[gc.cur_player])
 	fmt.println("Moving ", gc.current_active_unit, " From ", gc.current_territory, " Valid Moves: ")
-	for valid_move in gc.valid_actions {
+	for valid_move in gc.dyn_arr_valid_actions {
 		fmt.print(int(valid_move), valid_move, ", ")
 	}
 	fmt.println(DEF_COLOR)

@@ -250,6 +250,7 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 	gc.smallest_allowable_action= {}
 	gc.active_ships = {}
 	gc.active_sea_planes = {}
+	gc.air_has_enemies = {}
 
 	for land in Land_ID {
 		if gc.owner[land] == gc.cur_player {
@@ -267,10 +268,9 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 		idle_planes := &gc.idle_land_planes[land][gc.cur_player]
 		gc.active_land_planes[land][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
 		gc.active_land_planes[land][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
-		if gc.team_land_units[land][mm.team[gc.cur_player]] > 0 {
+		if gc.team_land_units[land][mm.enemy_team[gc.cur_player]] > 0 {
 			gc.has_enemy_units += {land}
-		} else {
-			gc.has_enemy_units -= {land}
+			add_air(&gc.air_has_enemies, to_air(land))
 		}
 	}
 

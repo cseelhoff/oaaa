@@ -86,6 +86,7 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	gc.factory_locations = {}
 	gc.team_land_units = {}
 	gc.friendly_owner = {}
+	gc.air_has_enemies = {}
 	for land in Land_ID {
 		gc.income[gc.owner[land]] += mm.value[land]
 		if gc.factory_prod[land] > 0 {
@@ -102,10 +103,9 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 				gc.team_land_units[land][mm.team[player]] += plane
 			}
 		}
-		if gc.team_land_units[land][mm.team[gc.cur_player]] > 0 {
+		if gc.team_land_units[land][mm.enemy_team[gc.cur_player]] > 0 {
 			gc.has_enemy_units += {land}
-		} else {
-			gc.has_enemy_units -= {land}
+			add_air(&gc.air_has_enemies, to_air(land))
 		}
 	}
 	gc.team_sea_units = {}
@@ -172,6 +172,9 @@ count_sea_unit_totals :: proc(gc: ^Game_Cache) {
 				gc.idle_ships[sea][enemy][.CRUISER] +
 				gc.idle_ships[sea][enemy][.BATTLESHIP] +
 				gc.idle_ships[sea][enemy][.BS_DAMAGED]
+		}
+		if gc.enemy_subvuln_ships_total[sea] + gc.enemy_fighters_total[sea] > 0{
+			add_air(&gc.air_has_enemies, to_air(sea))
 		}
 		gc.allied_fighters_total[sea] = 0
 		gc.allied_carriers_total[sea] = 0

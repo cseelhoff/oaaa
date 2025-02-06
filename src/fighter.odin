@@ -56,12 +56,22 @@ move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 add_valid_unmoved_fighter_moves :: #force_inline proc(gc: ^Game_Cache, unit_count: u8) {
 	src_air := gc.current_territory
+	when ODIN_DEBUG {
+		get_airs(mm.a2a_within_4_moves[src_air], &air_positions)
+		get_airs(gc.can_fighter_land_here, &air_positions)
+		get_airs(gc.air_has_enemies, &air_positions)
+		get_airs(mm.a2a_within_2_moves[src_air], &air_positions)
+		get_airs(mm.a2a_within_3_moves[src_air], &air_positions)
+		get_airs(gc.can_fighter_land_in_1_move, &air_positions)
+	}
+
 	add_airs_to_valid_actions(
 		gc,
 		((mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here) |
 			(gc.air_has_enemies &
 					(mm.a2a_within_2_moves[src_air] |
-							(mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move)))), unit_count
+							(mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move)))),
+		unit_count,
 	)
 }
 
@@ -69,7 +79,7 @@ move_unmoved_fighter_from_land_to_land :: proc(gc: ^Game_Cache, dst_action: Acti
 	if skip_land_fighter(gc, dst_action) do return
 	src_land := to_land(gc.current_territory)
 	dst_land := to_land(dst_action)
-	if air_has_enemies(gc, dst_action) {
+	if gc.team_land_units[dst_land][mm.enemy_team[gc.cur_player]] == 0 {
 		gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += 1
 	} else {
 		gc.more_land_combat_needed += {dst_land}
@@ -87,7 +97,7 @@ move_unmoved_fighter_from_land_to_land :: proc(gc: ^Game_Cache, dst_action: Acti
 move_unmoved_fighter_from_land_to_sea :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	dst_sea := to_sea(dst_action)
 	src_land := to_land(gc.current_territory)
-	if air_has_enemies(gc, dst_action) {
+	if gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] == 0 {
 		gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
 	} else {
 		gc.more_sea_combat_needed += {dst_sea}
@@ -104,12 +114,12 @@ move_unmoved_fighter_from_land_to_sea :: proc(gc: ^Game_Cache, dst_action: Actio
 move_unmoved_fighter_from_sea_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	dst_land, unit_count := to_land_count(dst_action)
 	src_sea := to_sea(gc.current_territory)
-	if air_has_enemies(gc, dst_action) {
+	if gc.team_land_units[dst_land][mm.enemy_team[gc.cur_player]] == 0 {
 		gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += unit_count
 	} else {
 		gc.more_land_combat_needed += {dst_land}
 		gc.active_land_planes[dst_land][Fighter_After_Moves[mm.air_distances[gc.current_territory][to_air(dst_land)]]] +=
-		unit_count
+			unit_count
 	}
 	gc.idle_land_planes[dst_land][gc.cur_player][.FIGHTER] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += unit_count
@@ -122,7 +132,7 @@ move_unmoved_fighter_from_sea_to_sea :: proc(gc: ^Game_Cache, dst_action: Action
 	if skip_sea_fighter(gc, dst_action) do return
 	src_sea := to_sea(gc.current_territory)
 	dst_sea := to_sea(dst_action)
-	if air_has_enemies(gc, dst_action) {
+	if gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] == 0 {
 		gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
 	} else {
 		gc.more_sea_combat_needed += {dst_sea}
@@ -147,7 +157,8 @@ skip_land_fighter :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> (ok: bool) 
 skip_sea_fighter :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> (ok: bool) {
 	if dst_action != .Skip_Action do return false
 	src_sea := to_sea(gc.current_territory)
-	if air_has_enemies(gc, dst_action) do return false
+	dst_sea := to_sea(dst_action)
+	if gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] > 0 do return false
 	gc.active_sea_planes[src_sea][.FIGHTER_0_MOVES] +=
 		gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED]
 	gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] = 0
@@ -199,10 +210,10 @@ add_valid_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID) {
     after completing their move, even if they engage in combat.
     */
 	set_valid_actions(
-		gc,		
+		gc,
 		((mm.a2a_within_2_moves[src_air] & (gc.can_fighter_land_here | gc.air_has_enemies)) |
-				(mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move) |
-				(mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here)),
+			(mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move) |
+			(mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here)),
 	)
 }
 
@@ -253,10 +264,7 @@ land_fighter_from_land :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-move_fighter_from_land_to_land :: proc(
-	gc: ^Game_Cache,
-	dst_action: Action_ID,
-) {
+move_fighter_from_land_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	src_land := to_land(gc.current_territory)
 	dst_land, unit_count := to_land_count(dst_action)
 	plane := to_plane(gc.current_active_unit)
@@ -269,10 +277,7 @@ move_fighter_from_land_to_land :: proc(
 	return
 }
 
-move_fighter_from_land_to_sea :: proc(
-	gc: ^Game_Cache,
-	dst_action: Action_ID,
-) {
+move_fighter_from_land_to_sea :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	//todo: can we move more than 1 fighter at once?
 	src_land := to_land(gc.current_territory)
 	dst_sea, unit_count := to_sea_count(dst_action)
@@ -331,10 +336,7 @@ move_fighter_from_sea_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	return
 }
 
-move_fighter_from_sea_to_sea :: proc(
-	gc: ^Game_Cache,
-	dst_action: Action_ID,
-) {
+move_fighter_from_sea_to_sea :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	src_sea := to_sea(gc.current_territory)
 	dst_sea, unit_count := to_sea_count(dst_action)
 	plane := to_plane(gc.current_active_unit)
@@ -361,29 +363,13 @@ move_fighter_from_sea_to_sea :: proc(
 add_valid_landing_fighter_moves :: proc(gc: ^Game_Cache, src_air: Air_ID, plane: Active_Plane) {
 	#partial switch plane {
 	case .FIGHTER_1_MOVES:
-		set_valid_actions(
-			gc,
-			gc.can_fighter_land_here &
-			mm.a2a_within_1_moves[src_air],
-		)
+		set_valid_actions(gc, gc.can_fighter_land_here & mm.a2a_within_1_moves[src_air])
 	case .FIGHTER_2_MOVES:
-		set_valid_actions(
-			gc,
-			gc.can_fighter_land_here &
-			mm.a2a_within_2_moves[src_air],
-		)
+		set_valid_actions(gc, gc.can_fighter_land_here & mm.a2a_within_2_moves[src_air])
 	case .FIGHTER_3_MOVES:
-		set_valid_actions(
-			gc,
-			gc.can_fighter_land_here &
-			mm.a2a_within_3_moves[src_air],
-		)
+		set_valid_actions(gc, gc.can_fighter_land_here & mm.a2a_within_3_moves[src_air])
 	case .FIGHTER_4_MOVES:
-		set_valid_actions(
-			gc,
-			gc.can_fighter_land_here &
-			mm.a2a_within_4_moves[src_air],
-		)
+		set_valid_actions(gc, gc.can_fighter_land_here & mm.a2a_within_4_moves[src_air])
 	}
 }
 

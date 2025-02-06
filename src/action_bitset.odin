@@ -76,26 +76,26 @@ add_lands_to_valid_actions :: proc(gc: ^Game_Cache, dst_lands: Land_Bitset, unit
 	}
 	if unit_count >= 16 {
 		for land in dst_lands {
-			add_valid_action(gc, Action_ID(uint(land) + len(Action_ID)))
+			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID)))
 		}
 	}
 	if unit_count >= 8 {
 		for land in dst_lands {
-			add_valid_action(gc, Action_ID(uint(land) + len(Action_ID) * 2))
+			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 2))
 		}
 	}
 	if unit_count >= 4 {
 		for land in dst_lands {
-			add_valid_action(gc, Action_ID(uint(land) + len(Action_ID) * 3))
+			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 3))
 		}
 	}
 	if unit_count >= 2 {
 		for land in dst_lands {
-			add_valid_action(gc, Action_ID(uint(land) + len(Action_ID) * 4))
+			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 4))
 		}
 	}
 	for land in dst_lands {
-		add_valid_action(gc, Action_ID(uint(land) + len(Action_ID) * 5))
+		add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 5))
 	}
 }
 
@@ -106,18 +106,18 @@ add_airs_to_valid_actions :: proc(gc: ^Game_Cache, dst_airs: Air_Bitset, unit_co
 			add_valid_action(gc, Action_ID(uint(air)))
 		}
 		if unit_count >= 16 {
-			add_valid_action(gc, Action_ID(uint(air) + len(Action_ID)))
+			add_valid_action(gc, Action_ID(uint(air) + len(Air_ID)))
 		}
 		if unit_count >= 8 {
-			add_valid_action(gc, Action_ID(uint(air) + len(Action_ID) * 2))
+			add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 2))
 		}
 		if unit_count >= 4 {
-			add_valid_action(gc, Action_ID(uint(air) + len(Action_ID) * 3))
+			add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 3))
 		}
 		if unit_count >= 2 {
-			add_valid_action(gc, Action_ID(uint(air) + len(Action_ID) * 4))
+			add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 4))
 		}
-		add_valid_action(gc, Action_ID(uint(air) + len(Action_ID) * 5))
+		add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 5))
 	}
 }
 

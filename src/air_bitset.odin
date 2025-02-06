@@ -22,7 +22,7 @@ get_airs :: proc(air_bitset: Air_Bitset, positions: ^[dynamic]Air_ID) {
 }
 
 add_air :: #force_inline proc(air_bitset: ^Air_Bitset, air: Air_ID) {
-	arr_pos := uint(air) / 64
+	arr_pos := len(Air_Bitset) - (uint(air) / 64) - 1
 	remainder := uint(air) % 64
 	air_bitset[arr_pos] |= 1 << remainder
 }
@@ -49,9 +49,9 @@ sea_bitset_to_air_bitset :: proc(sea_bitset: Sea_Bitset) -> (result: Air_Bitset)
 	return result
 }
 
-air_has_enemies :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> bool {
-	chunk := gc.air_has_enemies[uint(dst_action) / 64]
-	bool_index_in_chunk := uint(dst_action) % 64
-	if (chunk & (1 << bool_index_in_chunk)) != 0 do return true
-	return false
-}
+// does_air_has_enemies :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> bool {
+// 	chunk :=  gc.air_has_enemies[len(Air_Bitset) - 1 - (uint(dst_action) / 64)]
+// 	bool_index_in_chunk := uint(dst_action) % 64
+// 	if (chunk & (1 << bool_index_in_chunk)) != 0 do return true
+// 	return false
+// }
