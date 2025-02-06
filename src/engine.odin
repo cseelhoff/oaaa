@@ -396,7 +396,8 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 }
 
 get_possible_actions :: proc(gs: ^Game_State) -> ^[dynamic]Action_ID {
-	// Return the list of possible actions from the given state
+	// get_possible_actions :: proc(gs: ^Game_State, possible_actions:^[dynamic]Action_ID) {
+		// Return the list of possible actions from the given state
 	gc: Game_Cache
 	// print_game_state(&gc)
 	// set unlucky teams
@@ -419,6 +420,7 @@ get_possible_actions :: proc(gs: ^Game_State) -> ^[dynamic]Action_ID {
 	// 	// save_json(&gs_backup, "pre_save.json")
 	// }
 	load_dyn_arr_actions(&gc)
+	// possible_actions^ = gc.dyn_arr_valid_actions
 	return &gc.dyn_arr_valid_actions
 }
 

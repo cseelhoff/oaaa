@@ -79,7 +79,7 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 }
 
 when ODIN_DEBUG {
-	PRINT_INTERVAL :: 1000
+	PRINT_INTERVAL :: 1
 } else {
 	PRINT_INTERVAL :: 100000
 }
@@ -217,7 +217,7 @@ expand_node :: proc(node: ^MCTSNode) {
     */
 	new_gs: Game_State
 	get_state_from_node(node, &new_gs)
-	actions := get_possible_actions(&new_gs)
+	actions := get_possible_actions(&new_gs)^
 	for next_action in actions {
 		game_state_copy := new_gs
 		apply_action(&game_state_copy, next_action)

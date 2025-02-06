@@ -40,9 +40,9 @@ move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		if gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] == 0 do return true
 		gc.current_territory = to_air(src_sea)
 		if !gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
-		reset_valid_actions(gc)
-		add_valid_unmoved_fighter_moves(gc, gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED])
 		for gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] > 0 {
+			reset_valid_actions(gc)
+			add_valid_unmoved_fighter_moves(gc, gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED])
 			dst_action := get_action_input(gc) or_return
 			if is_land(dst_action) {
 				move_unmoved_fighter_from_sea_to_land(gc, dst_action)
@@ -240,8 +240,9 @@ land_fighter_from_land :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	if gc.active_land_planes[src_land][plane] == 0 do return true
 	if !gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 	gc.valid_actions = {}
-	add_valid_landing_fighter_moves(gc, to_air(src_land), plane)
 	for gc.active_land_planes[src_land][plane] > 0 {
+		reset_valid_actions(gc)
+		add_valid_landing_fighter_moves(gc, to_air(src_land), plane)
 		debug_checks(gc)
 		if is_valid_actions_empty(gc) {
 			// no where for the fighter to land, so remove fighters
@@ -303,8 +304,9 @@ land_fighter_from_sea :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	if gc.active_sea_planes[src_sea][plane] == 0 do return true
 	if !gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 	gc.valid_actions = {}
-	add_valid_landing_fighter_moves(gc, to_air(src_sea), plane)
 	for gc.active_sea_planes[src_sea][plane] > 0 {
+		reset_valid_actions(gc)
+		add_valid_landing_fighter_moves(gc, to_air(src_sea), plane)
 		if is_valid_actions_empty(gc) {
 			gc.idle_sea_planes[src_sea][gc.cur_player][.FIGHTER] -=
 				gc.active_sea_planes[src_sea][plane]
