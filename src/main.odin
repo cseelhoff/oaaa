@@ -54,7 +54,7 @@ start :: proc() {
 		}
 		return
 	} else {
-		return
+		// return
 	}
 	load_default_game_state(&game_state)
 	// get_canonical_form(&game_state, 0)

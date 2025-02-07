@@ -20,19 +20,19 @@ Idle_Ship :: enum {
 }
 
 COST_IDLE_SHIP := [Idle_Ship]u8 {
-	.TRANS_EMPTY = Cost_Buy[.BUY_TRANS_ACTION],
-	.TRANS_1I    = Cost_Buy[.BUY_TRANS_ACTION],
-	.TRANS_1A    = Cost_Buy[.BUY_TRANS_ACTION],
-	.TRANS_1T    = Cost_Buy[.BUY_TRANS_ACTION],
-	.TRANS_2I    = Cost_Buy[.BUY_TRANS_ACTION],
-	.TRANS_1I_1A = Cost_Buy[.BUY_TRANS_ACTION],
-	.TRANS_1I_1T = Cost_Buy[.BUY_TRANS_ACTION],
-	.SUB         = Cost_Buy[.BUY_SUB_ACTION],
-	.DESTROYER   = Cost_Buy[.BUY_DESTROYER_ACTION],
-	.CARRIER     = Cost_Buy[.BUY_CARRIER_ACTION],
-	.CRUISER     = Cost_Buy[.BUY_CRUISER_ACTION],
-	.BATTLESHIP  = Cost_Buy[.BUY_BATTLESHIP_ACTION],
-	.BS_DAMAGED  = Cost_Buy[.BUY_BATTLESHIP_ACTION],
+	.TRANS_EMPTY = 7,
+	.TRANS_1I    = 7 + 3,
+	.TRANS_1A    = 7 + 4,
+	.TRANS_1T    = 7 + 6,
+	.TRANS_2I    = 7 + 3 + 3,
+	.TRANS_1I_1A = 7 + 3 + 4,
+	.TRANS_1I_1T = 7 + 3 + 6,
+	.SUB         = 6,
+	.DESTROYER   = 8,
+	.CARRIER     = 14,
+	.CRUISER     = 12,
+	.BATTLESHIP  = 20,
+	.BS_DAMAGED  = 20,
 }
 
 DESTROYER_ATTACK :: 2

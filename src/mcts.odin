@@ -1,9 +1,9 @@
 package oaaa
 
+import sa "core:container/small_array"
 import "core:fmt"
 import "core:math"
 import "core:os"
-import sa "core:container/small_array"
 /*
 AI NOTE: Monte Carlo Tree Search Implementation
 
@@ -36,7 +36,7 @@ MCTSNode :: struct {
 	value:       f64,
 	visits:      int,
 	action:      Action_ID,
-	src_air:      Air_ID,
+	src_air:     Air_ID,
 	unit:        Active_Unit,
 	cur_player:  Player_ID,
 	is_terminal: bool,
@@ -125,12 +125,15 @@ mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 			GLOBAL_RANDOM_SEED = (GLOBAL_RANDOM_SEED + 1) % RANDOM_MAX
 		}
 		result: f64 = random_play_until_terminal_by_action_replay(node)
+		// fmt.println(result)
 		for node != nil {
 			node.visits += 1
-			if node.parent != nil && mm.team[node.parent.cur_player] == .Allies { 	//test is Allies turn?
-				node.value += result
-			} else {
-				node.value += 1 - result
+			if node.parent != nil {
+				if mm.team[node.parent.cur_player] == .Allies { 	//test is Allies turn?
+					node.value += result
+				} else {
+					node.value -= result
+				}
 			}
 			node = node.parent
 		}
@@ -367,14 +370,14 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if node == nil do return
 	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
 	// if node.parent != nil {
-		fmt.printf("%-6s %-32s  ", "Last:", truncate(node.action, 32))
-        // fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
-        fmt.printf("%-8s %10d  ", "Visits:", node.visits)
-        // fmt.printf("%-7s %-8.2f  ", "Value:", node.value)
-        fmt.printf("%-5s %-12.10f  ", "Avg:", node.value / f64(node.visits))
-        fmt.print(mm.color[node.cur_player])
-        fmt.printf("%-6s %-10s  ", "Next:", truncate(node.src_air, 10))
-        fmt.printf("%s\n", truncate(node.unit, 16))
+	fmt.printf("%-6s %-32s  ", "Last:", truncate(node.action, 32))
+	// fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
+	fmt.printf("%-8s %10d  ", "Visits:", node.visits)
+	// fmt.printf("%-7s %-8.2f  ", "Value:", node.value)
+	fmt.printf("%-5s %-12.10f  ", "Avg:", node.value / f64(node.visits))
+	fmt.print(mm.color[node.cur_player])
+	fmt.printf("%-6s %-10s  ", "Next:", truncate(node.src_air, 10))
+	fmt.printf("%s\n", truncate(node.unit, 16))
 	// }
 	best_index := 0
 	best_value: f64 = 0.0
@@ -543,6 +546,6 @@ delete_mcts :: proc(root: ^MCTSNode) {
     
     Usage: Call this when done with MCTS search to prevent memory leaks
     */
-    if root == nil do return
-    free_node_recursive(root)
+	if root == nil do return
+	free_node_recursive(root)
 }

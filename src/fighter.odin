@@ -162,8 +162,7 @@ skip_land_fighter :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> (ok: bool) 
 skip_sea_fighter :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> (ok: bool) {
 	if dst_action != .Skip_Action do return false
 	src_sea := to_sea(gc.current_territory)
-	dst_sea := to_sea(dst_action)
-	if gc.team_sea_units[dst_sea][mm.enemy_team[gc.cur_player]] > 0  {//do return false
+	if gc.team_sea_units[src_sea][mm.enemy_team[gc.cur_player]] > 0  {//do return false
 		gc.active_sea_planes[src_sea][.FIGHTER_4_MOVES] +=
 		gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED]
 		gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] = 0

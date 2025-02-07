@@ -329,6 +329,12 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 		for land in Land_ID {
 			for army in Idle_Army {
 				mil_cost += int(gs.idle_armies[land][player][army]) * int(COST_IDLE_ARMY[army])
+				// if land ==.France || mil_cost > 0 {
+				// 	fmt.println(mil_cost)
+				// }
+				// if land == Land_ID.West_Russia {
+				// 	mil_cost += int(gs.idle_armies[land][player][army]) * int(COST_IDLE_ARMY[army]) * 1000
+				// }
 			}
 			for plane in Idle_Plane {
 				mil_cost +=
@@ -350,7 +356,7 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 			enemy_score += mil_cost
 		}
 	}
-	score: f64 = f64(allied_score) / f64(enemy_score + allied_score)
+	score: f64 = (f64(allied_score) / f64(enemy_score + allied_score)) * 2 - 1
 	return score
 }
 
@@ -374,10 +380,10 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 	gc.seed = u16(rand.int_max(RANDOM_MAX))
 	//use_selected_action = false;
 	score := evaluate_cache(&gc)
-	max_loops := 50
+	max_loops := 200
 	// clear_move_history();
 	debug_checks(&gc)
-	for (score > 0.01 && score < 0.99 && max_loops > 0) {
+	for (score > -0.99 && score < 0.99 && max_loops > 0) {
 		max_loops -= 1
 		// printf("max_loops: %d\n", max_loops);
 		//  if(max_loops == 2) {
@@ -395,7 +401,7 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 	}
 	score = evaluate_cache(&gc)
 	if mm.team[gc.cur_player] == .Axis {
-		score = 1 - score
+		score = -score
 	}
 	return score
 }

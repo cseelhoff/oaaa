@@ -36,9 +36,9 @@
         "-out:build/main",
         "-o:aggressive",
         "-debug",
-        "-no-bounds-check",
-        "-disable-assert",
-        "-no-type-assert"
+        // "-no-bounds-check",
+        // "-disable-assert",
+        // "-no-type-assert"
       ],
       "problemMatcher": []
     },
@@ -63,11 +63,12 @@
         "build",
         "src",
         "-out:build/liboaaa.so",
+        "-debug",
         "-o:aggressive",
         "-build-mode:shared",
-        "-no-bounds-check",
-        "-disable-assert",
-        "-no-type-assert",
+        // "-no-bounds-check",
+        // "-disable-assert",
+        // "-no-type-assert",
       ],
       "problemMatcher": []
     },
