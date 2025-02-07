@@ -89,13 +89,15 @@ get_init_board :: proc "c" () -> rawptr {
 	return gs
 }
 
+GAME_STATE_SIZE :: 13712
+
 @(export)
 get_board_size :: proc "c" () -> (x: i32, y: i32) {
 	context = runtime.default_context()
 	// fmt.println("get_board_size")
 	// Return the dimensions of the board representation
 	// This could be based on number of territories + state variables
-	return i32(878), i32(1)
+	return i32(GAME_STATE_SIZE), i32(1)
 }
 
 @(export)
@@ -129,7 +131,7 @@ get_valid_moves :: proc "c" (board: rawptr, player: i32) -> [^]bool {
 	gs := (^Game_State)(board)
 	new_gs := new(Game_State) // todo maybe not needed?
 	new_gs^ = gs^
-    actions := get_possible_actions(new_gs)
+    actions := get_possible_actions(new_gs)^
 
     //convert bitset of bool to new([dynamic]bool)
     moves := new([MAX_ACTIONS]bool)
@@ -180,7 +182,7 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 	// fmt.println("board_ptr_to_f32_array")
 	// Return canonical form of board state as float array
 	gs := (^Game_State)(board)
-	canon_board := new([878]f32) // Explicitly size the array
+	canon_board := new([GAME_STATE_SIZE]f32) // Explicitly size the array
 	
 	// Convert game state to float array representation
 	idx := 0
@@ -324,6 +326,8 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 	// Convert current player
 	canon_board[idx] = f32(gs.cur_player)
 	idx += 1
+
+	// fmt.println(idx)
 	
 	return raw_data(canon_board)
 }

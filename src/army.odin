@@ -274,9 +274,10 @@ move_single_army_land :: proc(
     - Converting between unit states when checking strength
     - Looping through owners when checking team control
     */
-    dst_land, unit_count := to_land_count(dst_action)
     src_land := to_land(gc.current_territory)
     src_unit := to_army(gc.current_active_unit)
+    dst_land, unit_count := to_land_count(dst_action)
+    unit_count = min(unit_count, gc.active_armies[src_land][src_unit])
 	gc.active_armies[dst_land][dst_unit] += unit_count
 	gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[dst_unit]] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += unit_count

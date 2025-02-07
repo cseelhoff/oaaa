@@ -169,7 +169,11 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 // }
 
 update_move_history_2 :: proc(gc: ^Game_Cache, action: Action_ID) {
-	gc.smallest_allowable_action[gc.current_territory] = action
+	if action == .Skip_Action {
+		gc.smallest_allowable_action[gc.current_territory] = action
+	} else {
+		gc.smallest_allowable_action[gc.current_territory] = Action_ID(int(action) + 1)
+	}
 	gc.clear_history_needed = true
 	// remove_actions_above(gc, action)
 }
@@ -248,7 +252,7 @@ rotate_turns :: proc(gc: ^Game_Cache) {
 	gc.max_bombards = {}
 	gc.active_armies = {}
 	gc.active_land_planes = {}
-	gc.smallest_allowable_action= {}
+	gc.smallest_allowable_action = {}
 	gc.active_ships = {}
 	gc.active_sea_planes = {}
 	gc.air_has_enemies = {}
@@ -398,7 +402,7 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 
 get_possible_actions :: proc(gs: ^Game_State) -> ^[dynamic]Action_ID {
 	// get_possible_actions :: proc(gs: ^Game_State, possible_actions:^[dynamic]Action_ID) {
-		// Return the list of possible actions from the given state
+	// Return the list of possible actions from the given state
 	gc: Game_Cache
 	// print_game_state(&gc)
 	// set unlucky teams
