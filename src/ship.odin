@@ -318,9 +318,10 @@ move_single_ship :: proc(
 	dst_unit: Active_Ship,
 	dst_action: Action_ID,
 ) {
-	dst_sea, unit_count := to_sea_count(dst_action)
 	src_sea := to_sea(gc.current_territory)
 	src_unit := to_ship(gc.current_active_unit)
+	dst_sea, unit_count := to_sea_count(dst_action)
+	unit_count = min(unit_count, gc.active_ships[src_sea][src_unit])
 	gc.active_ships[dst_sea][dst_unit] += unit_count
 	gc.idle_ships[dst_sea][gc.cur_player][Active_Ship_To_Idle[dst_unit]] += unit_count
 	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += unit_count

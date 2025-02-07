@@ -32,15 +32,6 @@ reset_valid_actions :: proc(gc: ^Game_Cache) {
 }
 
 add_valid_action :: #force_inline proc(gc: ^Game_Cache, action: Action_ID) {
-	when ODIN_DEBUG {
-		if int(action) < len(Air_ID) {
-			a := 1
-			if a > 100{
-				return
-			}
-		}
-	}
-
 	arr_pos := uint(action) / 64
 	remainder := uint(action) % 64
 	gc.valid_actions[arr_pos] |= 1 << remainder
@@ -80,16 +71,16 @@ remove_actions_above :: proc(gc: ^Game_Cache, action: Action_ID) {
 add_lands_to_valid_actions :: proc(gc: ^Game_Cache, dst_lands: Land_Bitset, unit_count: u8) {
 	//todo optimize with SIMD
 	for land in dst_lands {
-		if unit_count >= 32 {
+		if unit_count >= 17 {
 			add_valid_action(gc, Action_ID(uint(land)))
 		}
-		if unit_count >= 16 {
+		if unit_count >= 9 {
 			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID)))
 		}
-		if unit_count >= 8 {
+		if unit_count >= 5 {
 			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 2))
 		}
-		if unit_count >= 4 {
+		if unit_count >= 3 {
 			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 3))
 		}
 		if unit_count >= 2 {
@@ -102,16 +93,16 @@ add_lands_to_valid_actions :: proc(gc: ^Game_Cache, dst_lands: Land_Bitset, unit
 add_airs_to_valid_actions :: proc(gc: ^Game_Cache, dst_airs: Air_Bitset, unit_count: u8) {
 	get_airs(dst_airs, &air_positions)
 	for air in air_positions {
-		if unit_count >= 32 {
+		if unit_count >= 17 {
 			add_valid_action(gc, Action_ID(uint(air)))
 		}
-		if unit_count >= 16 {
+		if unit_count >= 9 {
 			add_valid_action(gc, Action_ID(uint(air) + len(Air_ID)))
 		}
-		if unit_count >= 8 {
+		if unit_count >= 5 {
 			add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 2))
 		}
-		if unit_count >= 4 {
+		if unit_count >= 3 {
 			add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 3))
 		}
 		if unit_count >= 2 {
@@ -122,16 +113,16 @@ add_airs_to_valid_actions :: proc(gc: ^Game_Cache, dst_airs: Air_Bitset, unit_co
 }
 
 add_air_to_valid_actions :: proc(gc: ^Game_Cache, dst_air: Air_ID, unit_count: u8) {
-	if unit_count >= 32 {
+	if unit_count >= 17 {
 		add_valid_action(gc, Action_ID(uint(dst_air)))
 	}
-	if unit_count >= 16 {
+	if unit_count >= 9 {
 		add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID)))
 	}
-	if unit_count >= 8 {
+	if unit_count >= 5 {
 		add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID) * 2))
 	}
-	if unit_count >= 4 {
+	if unit_count >= 3 {
 		add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID) * 3))
 	}
 	if unit_count >= 2 {
@@ -143,16 +134,16 @@ add_air_to_valid_actions :: proc(gc: ^Game_Cache, dst_air: Air_ID, unit_count: u
 add_seas_to_valid_actions :: proc(gc: ^Game_Cache, dst_seas: Sea_Bitset, unit_count: u8) {
 	//todo optimize with SIMD
 	for sea in dst_seas {
-		if unit_count >= 32 {
+		if unit_count >= 17 {
 			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID)))
 		}
-		if unit_count >= 16 {
+		if unit_count >= 9 {
 			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID)))
 		}
-		if unit_count >= 8 {
+		if unit_count >= 5 {
 			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID) * 2))
 		}
-		if unit_count >= 4 {
+		if unit_count >= 3 {
 			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID) * 3))
 		}
 		if unit_count >= 2 {
@@ -164,16 +155,16 @@ add_seas_to_valid_actions :: proc(gc: ^Game_Cache, dst_seas: Sea_Bitset, unit_co
 
 add_sea_to_valid_actions :: proc(gc: ^Game_Cache, dst_sea: Sea_ID, unit_count: u8) {
 	//todo optimize with SIMD
-	if unit_count >= 32 {
+	if unit_count >= 17 {
 		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID)))
 	}
-	if unit_count >= 16 {
+	if unit_count >= 9 {
 		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID)))
 	}
-	if unit_count >= 8 {
+	if unit_count >= 5 {
 		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID) * 2))
 	}
-	if unit_count >= 4 {
+	if unit_count >= 3 {
 		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID) * 3))
 	}
 	if unit_count >= 2 {

@@ -262,7 +262,7 @@ DICE_SIDES :: 6
 //    - Forced worst case when evaluating single move (answers_remaining <= 1)
 // This reduces variance while maintaining same average as regular dice
 
-LOW_LUCK_THRESHOLD :: 2 // 0 is always win, 1 is win 5/6... 5 is win 1/6
+LOW_LUCK_THRESHOLD :: 3 // 0 is always win, 1 is win 5/6... 5 is win 1/6
 
 calculate_attacker_hits_low_luck :: proc(
 	gc: ^Game_Cache,

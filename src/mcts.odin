@@ -367,11 +367,11 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if node == nil do return
 	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
 	// if node.parent != nil {
-		fmt.printf("%-6s %-12s  ", "Last:", truncate(node.action, 12))
+		fmt.printf("%-6s %-32s  ", "Last:", truncate(node.action, 32))
         // fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
         fmt.printf("%-8s %10d  ", "Visits:", node.visits)
         // fmt.printf("%-7s %-8.2f  ", "Value:", node.value)
-        fmt.printf("%-5s %-9.3f  ", "Avg:", node.value / f64(node.visits))
+        fmt.printf("%-5s %-12.10f  ", "Avg:", node.value / f64(node.visits))
         fmt.print(mm.color[node.cur_player])
         fmt.printf("%-6s %-10s  ", "Next:", truncate(node.src_air, 10))
         fmt.printf("%s\n", truncate(node.unit, 16))

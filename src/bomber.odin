@@ -175,9 +175,10 @@ move_bomber_from_land_to_land :: proc(
 	gc: ^Game_Cache,
 	dst_action: Action_ID,
 ) {
+	plane := to_plane(gc.current_active_unit)
 	src_land := to_land(gc.current_territory)
 	dst_land, unit_count := to_land_count(dst_action)
-	plane := to_plane(gc.current_active_unit)
+	unit_count = min(unit_count, gc.active_land_planes[src_land][plane])
 	gc.active_land_planes[dst_land][.BOMBER_0_MOVES] += unit_count
 	gc.idle_land_planes[dst_land][gc.cur_player][.BOMBER] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += unit_count
@@ -205,8 +206,9 @@ move_bomber_from_sea_to_land :: proc(
 	dst_action: Action_ID,
 ) {
 	src_sea := to_sea(gc.current_territory)
-	dst_land, unit_count := to_land_count(dst_action)
 	plane := to_plane(gc.current_active_unit)
+	dst_land, unit_count := to_land_count(dst_action)
+	unit_count = min(unit_count, gc.active_sea_planes[src_sea][plane])
 	gc.active_land_planes[dst_land][.BOMBER_0_MOVES] += unit_count
 	gc.idle_land_planes[dst_land][gc.cur_player][.BOMBER] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += unit_count

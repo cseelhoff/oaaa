@@ -107,8 +107,9 @@ move_unmoved_fighter_from_land_to_sea :: proc(gc: ^Game_Cache, dst_action: Actio
 }
 
 move_unmoved_fighter_from_sea_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
-	dst_land, unit_count := to_land_count(dst_action)
 	src_sea := to_sea(gc.current_territory)
+	dst_land, unit_count := to_land_count(dst_action)
+	unit_count = min(unit_count, gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED])
 	if gc.team_land_units[dst_land][mm.enemy_team[gc.cur_player]] == 0 {
 		gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += unit_count
 	} else {
@@ -193,13 +194,6 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 	for sea in Sea_ID {
 		// if player owns a carrier, then landing area is 2 spaces away
 		if gc.active_ships[sea][.CARRIER_2_MOVES] == 0 do continue
-		when ODIN_DEBUG {
-			if GLOBAL_TICK == 79876 {
-				fmt.println(mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea])
-				fmt.println(mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][sea])
-				get_airs(gc.can_fighter_land_here, &air_positions)
-			}
-		}
 		new_fighter_land_here := to_air_bitset(
 			mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea] |
 			mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][sea],
@@ -300,8 +294,9 @@ land_fighter_from_land :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 move_fighter_from_land_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	src_land := to_land(gc.current_territory)
-	dst_land, unit_count := to_land_count(dst_action)
 	plane := to_plane(gc.current_active_unit)
+	dst_land, unit_count := to_land_count(dst_action)
+	unit_count = min(unit_count, gc.active_land_planes[src_land][plane])
 	gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += unit_count
 	gc.idle_land_planes[dst_land][gc.cur_player][.FIGHTER] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += unit_count
@@ -314,8 +309,9 @@ move_fighter_from_land_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 move_fighter_from_land_to_sea :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	//todo: can we move more than 1 fighter at once?
 	src_land := to_land(gc.current_territory)
-	dst_sea, unit_count := to_sea_count(dst_action)
 	plane := to_plane(gc.current_active_unit)
+	dst_sea, unit_count := to_sea_count(dst_action)
+	unit_count = min(unit_count, gc.active_land_planes[src_land][plane])
 	gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += unit_count
 	add_ally_fighters_to_sea(gc, dst_sea, gc.cur_player, unit_count)
 	gc.active_land_planes[src_land][plane] -= unit_count
@@ -373,8 +369,9 @@ move_fighter_from_sea_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 
 move_fighter_from_sea_to_sea :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	src_sea := to_sea(gc.current_territory)
-	dst_sea, unit_count := to_sea_count(dst_action)
 	plane := to_plane(gc.current_active_unit)
+	dst_sea, unit_count := to_sea_count(dst_action)
+	unit_count = min(unit_count, gc.active_sea_planes[src_sea][plane])
 	gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += unit_count
 	add_ally_fighters_to_sea(gc, dst_sea, gc.cur_player, unit_count)
 	gc.active_sea_planes[src_sea][plane] -= unit_count
