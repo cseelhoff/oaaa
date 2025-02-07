@@ -83,7 +83,7 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 }
 
 when ODIN_DEBUG {
-	PRINT_INTERVAL :: 1000
+	PRINT_INTERVAL :: 100
 } else {
 	PRINT_INTERVAL :: 1000
 }
@@ -368,7 +368,6 @@ truncate :: proc(v: any, max_len: int) -> string {
 
 print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if node == nil do return
-	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
 	// if node.parent != nil {
 	fmt.printf("%-6s %-32s  ", "Last:", truncate(node.action, 32))
 	// fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
@@ -378,17 +377,19 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	fmt.print(mm.color[node.cur_player])
 	fmt.printf("%-6s %-10s  ", "Next:", truncate(node.src_air, 10))
 	fmt.printf("%s\n", truncate(node.unit, 16))
+	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
+
 	// }
-	best_index := 0
-	best_value: f64 = 0.0
+	most_visited_index := 0
+	most_visited: int = 0
 	for child, i in node.children {
-		new_value := child.value / f64(child.visits)
-		if new_value > best_value {
-			best_value = new_value
-			best_index = i
+		// new_value := child.value / f64(child.visits)
+		if child.visits > most_visited {
+			most_visited = child.visits
+			most_visited_index = i
 		}
 	}
-	print_mcts_tree3(node.children[best_index], depth + 1)
+	print_mcts_tree3(node.children[most_visited_index], depth + 1)
 }
 
 print_mcts_tree2 :: proc(node: ^MCTSNode, depth: uint) {

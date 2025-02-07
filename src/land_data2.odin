@@ -204,7 +204,7 @@ starting_land_planes : [Land_ID][Player_ID][Idle_Plane]u8
 
 @(init)
 init_starting_armies :: proc() {
-    starting_armies[.France][.Rus][.TANK] = 2
+    starting_armies[.Russia][.Rus][.TANK] = 2
     starting_armies[.Germany][.Ger][.INF] = 1
 }
 

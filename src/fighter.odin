@@ -259,7 +259,8 @@ land_fighter_from_land :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		reset_valid_actions(gc)
 		add_valid_landing_fighter_moves(gc, to_air(src_land), plane, 1) //gc.active_land_planes[src_land][plane])
 		debug_checks(gc)
-		if is_valid_actions_empty(gc) {
+		load_dyn_arr_actions(gc)
+		if len(gc.dyn_arr_valid_actions) == 0 {
 			// no where for the fighter to land, so remove fighters
 			gc.team_land_units[src_land][mm.team[gc.cur_player]] -=
 				gc.active_land_planes[src_land][plane]
@@ -335,7 +336,9 @@ land_fighter_from_sea :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	for gc.active_sea_planes[src_sea][plane] > 0 {
 		reset_valid_actions(gc)
 		add_valid_landing_fighter_moves(gc, to_air(src_sea), plane, 1)
-		if is_valid_actions_empty(gc) {
+		load_dyn_arr_actions(gc)
+		if len(gc.dyn_arr_valid_actions) == 0 {
+			// no where for the fighter to land, so remove fighters
 			gc.idle_sea_planes[src_sea][gc.cur_player][.FIGHTER] -=
 				gc.active_sea_planes[src_sea][plane]
 			gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -=
