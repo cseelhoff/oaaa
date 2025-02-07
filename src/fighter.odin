@@ -113,17 +113,17 @@ move_unmoved_fighter_from_sea_to_land :: proc(gc: ^Game_Cache, dst_action: Actio
 		gc.active_land_planes[dst_land][.FIGHTER_0_MOVES] += unit_count
 	} else {
 		gc.more_land_combat_needed += {dst_land}
-		dst_air := to_air(dst_land)
-		mmdist := mm.air_distances[gc.current_territory][dst_air]
-		fighter_after_moves := Fighter_After_Moves[mmdist]
-		GLOBAL_TICK += 1
-		if GLOBAL_TICK >= 10 {
-			fmt.println(dst_action)
-			fmt.println(mmdist)
-		}
-		gc.active_land_planes[dst_land][fighter_after_moves] += unit_count
-		// gc.active_land_planes[dst_land][Fighter_After_Moves[mm.air_distances[gc.current_territory][to_air(dst_land)]]] +=
-		// 	unit_count
+		// dst_air := to_air(dst_land)
+		// mmdist := mm.air_distances[gc.current_territory][dst_air]
+		// fighter_after_moves := Fighter_After_Moves[mmdist]
+		// // GLOBAL_TICK += 1
+		// // if GLOBAL_TICK >= 10 {
+		// // 	fmt.println(dst_action)
+		// // 	fmt.println(mmdist)
+		// // }
+		// gc.active_land_planes[dst_land][fighter_after_moves] += unit_count
+		gc.active_land_planes[dst_land][Fighter_After_Moves[mm.air_distances[gc.current_territory][to_air(dst_land)]]] +=
+			unit_count
 	}
 	gc.idle_land_planes[dst_land][gc.cur_player][.FIGHTER] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += unit_count

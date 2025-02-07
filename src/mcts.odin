@@ -36,6 +36,8 @@ MCTSNode :: struct {
 	value:       f64,
 	visits:      int,
 	action:      Action_ID,
+	src_air:      Air_ID,
+	unit:        Active_Unit,
 	cur_player:  Player_ID,
 	is_terminal: bool,
 }
@@ -48,6 +50,8 @@ create_node :: proc(state: ^Game_State, action: Action_ID, parent: ^MCTSNode) ->
 	// node.state = state^ //memcopy
 	// node.state.seed = 0
 	node.cur_player = state.cur_player
+	node.src_air = state.current_territory
+	node.unit = state.current_active_unit
 	node.is_terminal = is_terminal_state(state)
 	node.action = action
 	node.parent = parent
@@ -351,18 +355,27 @@ print_top_action_sequences :: proc() {
 }
 MAX_PRINT_DEPTH :: 100
 
+truncate :: proc(v: any, max_len: int) -> string {
+	str := fmt.tprintf("%v", v)
+	if len(str) <= max_len {
+		return str
+	}
+	return str[:max_len]
+}
+
 print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if node == nil do return
 	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
-	if node.parent != nil {
-		fmt.print(mm.color[node.parent.cur_player])
-		fmt.print("Action:", node.action)
-		// fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
-		fmt.print(", Visits:", node.visits)
-		fmt.print(", Value:", node.value)
-		fmt.print(", Avg:", node.value / f64(node.visits))
-		fmt.println(DEF_COLOR)
-	}
+	// if node.parent != nil {
+		fmt.printf("%-6s %-12s  ", "Last:", truncate(node.action, 12))
+        // fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
+        fmt.printf("%-8s %10d  ", "Visits:", node.visits)
+        // fmt.printf("%-7s %-8.2f  ", "Value:", node.value)
+        fmt.printf("%-5s %-9.3f  ", "Avg:", node.value / f64(node.visits))
+        fmt.print(mm.color[node.cur_player])
+        fmt.printf("%-6s %-10s  ", "Next:", truncate(node.src_air, 10))
+        fmt.printf("%s\n", truncate(node.unit, 16))
+	// }
 	best_index := 0
 	best_value: f64 = 0.0
 	for child, i in node.children {
@@ -397,6 +410,7 @@ print_mcts_tree2 :: proc(node: ^MCTSNode, depth: uint) {
 // Public function to print the MCTS tree starting from the root
 print_mcts :: proc(root: ^MCTSNode) {
 	print_mcts_tree3(root, 0)
+	fmt.println(DEF_COLOR)
 }
 
 select_best_action :: proc(root: ^MCTSNode) -> Action_ID {
