@@ -164,7 +164,8 @@ build_sea_retreat_options :: proc(gc: ^Game_Cache) {
 	src_sea := to_sea(gc.current_territory)
 	if (gc.enemy_blockade_total[src_sea] == 0 && gc.enemy_fighters_total[src_sea] == 0) ||
 	   do_sea_targets_exist(gc, src_sea) {
-		add_valid_action(gc, to_action(src_sea))
+		// add_valid_action(gc, to_action(src_sea))
+		add_valid_action(gc, .Skip_Action)
 	}
 	for dst_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] & ~gc.sea_combat_started {
 		if gc.enemy_blockade_total[dst_sea] == 0 && dst_sea not_in gc.more_sea_combat_needed {
@@ -206,7 +207,13 @@ do_sea_targets_exist :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) -> bool
 	)
 }
 
-sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) -> bool {
+sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_action: Action_ID) -> bool {
+	// if src_sea == dst_sea do return false
+	debug_checks(gc)
+	// if(GLOBAL_TICK == 18758) {
+	// 	fmt.println(GLOBAL_TICK)		
+	// }
+	dst_sea := to_sea(dst_action)
 	team := mm.team[gc.cur_player]
 	for active_ship in Retreatable_Ships {
 		number_of_ships := gc.active_ships[src_sea][active_ship]
@@ -296,10 +303,12 @@ calculate_attacker_hits_low_luck :: proc(
 	if gc.answers_remaining <= 1 {
 		if mm.enemy_team[gc.cur_player] in gc.unlucky_teams &&
 		   mm.team[gc.cur_player] not_in gc.unlucky_teams {
-			attacker_hits += (LOW_LUCK_THRESHOLD - (combat_rounds_counter / 10)) < total_attack_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
+			attacker_hits +=
+				(LOW_LUCK_THRESHOLD - (combat_rounds_counter / 10)) < total_attack_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
 			return
 		}
-        attacker_hits += (11 - (combat_rounds_counter / 10)) < total_attack_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
+		attacker_hits +=
+			(11 - (combat_rounds_counter / 10)) < total_attack_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
 		return
 	}
 
@@ -337,10 +346,12 @@ calculate_defender_hits_low_luck :: proc(
 	if gc.answers_remaining <= 1 {
 		if mm.team[gc.cur_player] in gc.unlucky_teams &&
 		   mm.enemy_team[gc.cur_player] not_in gc.unlucky_teams {
-			defender_hits += (LOW_LUCK_THRESHOLD - (combat_rounds_counter / 10)) < total_defense_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
+			defender_hits +=
+				(LOW_LUCK_THRESHOLD - (combat_rounds_counter / 10)) < total_defense_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
 			return
 		}
-        defender_hits += (11 - (combat_rounds_counter / 10)) < total_defense_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
+		defender_hits +=
+			(11 - (combat_rounds_counter / 10)) < total_defense_value % DICE_SIDES ? 1 : 0 // Round up fractional hits
 		return
 	}
 
@@ -380,15 +391,20 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		mark_ships_ineligible_for_bombardment(gc, sea)
 		enemy_subs_detected := true
 		// check_positive_active_ships(gc, sea)
-        combat_rounds_counter = 0
-		for {            
+		combat_rounds_counter = 0
+		for {
 			combat_rounds_counter += 1
 			if sea in gc.sea_combat_started {
 				gc.current_territory = to_air(sea)
 				build_sea_retreat_options(gc)
-				dst_action := get_action_input(gc) or_return
-				dst_sea := to_sea(dst_action)
-				if dst_action != .Skip_Action && sea_retreat(gc, sea, dst_sea) do break
+				load_dyn_arr_actions(gc)
+				if len(gc.dyn_arr_valid_actions) > 0 {
+					dst_action := get_action_input(gc) or_return
+					if dst_action != .Skip_Action && sea_retreat(gc, sea, dst_action) {
+						debug_checks(gc)
+						break
+					}
+				}
 			}
 			//if destroy_vulnerable_transports(gc, &sea) do break
 			gc.sea_combat_started += {sea}
@@ -409,9 +425,16 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				remove_sea_defenders(gc, sea, &sub_attacker_hits, enemy_subs_detected, false)
 			}
 			remove_sea_defenders(gc, sea, &attacker_hits, enemy_subs_detected, true)
-			if no_allied_units_remain(gc, sea) do break
-			if destroy_defender_transports(gc, sea) do break
+			if no_allied_units_remain(gc, sea) {
+				debug_checks(gc)
+				break
+			}
+			if destroy_defender_transports(gc, sea) {
+				debug_checks(gc)
+				break
+			}
 		}
+		debug_checks(gc)
 	}
 	return true
 }

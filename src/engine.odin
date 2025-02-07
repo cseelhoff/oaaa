@@ -5,10 +5,10 @@ import "core:time"
 
 GLOBAL_TICK := 0
 ACTUALLY_PRINT := false
-when ODIN_DEBUG && true {
+when ODIN_DEBUG && false {
 	debug_checks :: proc(gc: ^Game_Cache) {
 		GLOBAL_TICK += 1
-		if GLOBAL_TICK >= 0 {
+		if GLOBAL_TICK >= 100000000000 {
 			fmt.println("Enable Print")
 			print_game_state(gc)
 			ACTUALLY_PRINT = true
@@ -50,6 +50,7 @@ when ODIN_DEBUG && true {
 			}
 			if gc.team_sea_units[sea][.Axis] != team_idles[.Axis] {
 				fmt.eprintln("Unequal team 1 units")
+				print_game_state(gc)
 			}
 			if gc.team_sea_units[sea][.Allies] < 0 {
 				fmt.eprintln("Negative team units")
@@ -369,7 +370,7 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 	gc.seed = u16(rand.int_max(RANDOM_MAX))
 	//use_selected_action = false;
 	score := evaluate_cache(&gc)
-	max_loops := 400
+	max_loops := 50
 	// clear_move_history();
 	debug_checks(&gc)
 	for (score > 0.01 && score < 0.99 && max_loops > 0) {

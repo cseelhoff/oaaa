@@ -164,7 +164,7 @@ land_bomber_from_land :: proc(
 	gc.valid_actions = {}
 	for gc.active_land_planes[src_land][plane] > 0 {
 		reset_valid_actions(gc)
-		add_valid_landing_bomber_moves(gc, to_air(src_land), plane)
+		add_valid_landing_bomber_moves(gc, to_air(src_land), plane, gc.active_land_planes[src_land][plane])
 		dst_action := get_action_input(gc) or_return
 		move_bomber_from_land_to_land(gc, dst_action)
 	}
@@ -193,7 +193,7 @@ land_bomber_from_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, plane: Active_Pla
 	gc.valid_actions = {}
 	for gc.active_sea_planes[src_sea][plane] > 0 {
 		reset_valid_actions(gc)
-		add_valid_landing_bomber_moves(gc, to_air(src_sea), plane)
+		add_valid_landing_bomber_moves(gc, to_air(src_sea), plane, gc.active_sea_planes[src_sea][plane])
 		dst_action := get_action_input(gc) or_return
 		move_bomber_from_sea_to_land(gc, dst_action)
 	}
@@ -222,6 +222,7 @@ add_valid_landing_bomber_moves :: proc(
 	gc: ^Game_Cache,
 	src_air: Air_ID,
 	plane: Active_Plane,
+	qty: u8,
 ) -> (
 	valid_air_moves_bitset: Air_Bitset,
 ) {
@@ -247,31 +248,31 @@ add_valid_landing_bomber_moves :: proc(
 		set_valid_actions(
 			gc,
 			to_air_bitset(gc.can_bomber_land_here) &
-			mm.a2a_within_1_moves[src_air],
+			mm.a2a_within_1_moves[src_air], qty
 		)
 	case .BOMBER_2_MOVES:
 		set_valid_actions(
 			gc,
 			to_air_bitset(gc.can_bomber_land_here) &
-			mm.a2a_within_2_moves[src_air],
+			mm.a2a_within_2_moves[src_air], qty
 		)
 	case .BOMBER_3_MOVES:
 		set_valid_actions(
 			gc,
 			to_air_bitset(gc.can_bomber_land_here) &
-			mm.a2a_within_3_moves[src_air],
+			mm.a2a_within_3_moves[src_air], qty
 		)
 	case .BOMBER_4_MOVES:
 		set_valid_actions(
 			gc,
 			to_air_bitset(gc.can_bomber_land_here) &
-			mm.a2a_within_4_moves[src_air],
+			mm.a2a_within_4_moves[src_air], qty
 		)
 	case .BOMBER_5_MOVES:
 		set_valid_actions(
 			gc,
 			to_air_bitset(gc.can_bomber_land_here) &
-			mm.a2a_within_5_moves[src_air],
+			mm.a2a_within_5_moves[src_air], qty
 		)
 	}
 	return valid_air_moves_bitset

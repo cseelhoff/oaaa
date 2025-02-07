@@ -35,7 +35,7 @@
         "src",
         "-out:build/main",
         "-o:aggressive",
-        // "-debug",
+        "-debug",
         "-no-bounds-check",
         "-disable-assert",
         "-no-type-assert"

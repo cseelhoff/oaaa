@@ -32,6 +32,15 @@ reset_valid_actions :: proc(gc: ^Game_Cache) {
 }
 
 add_valid_action :: #force_inline proc(gc: ^Game_Cache, action: Action_ID) {
+	when ODIN_DEBUG {
+		if int(action) < len(Air_ID) {
+			a := 1
+			if a > 100{
+				return
+			}
+		}
+	}
+
 	arr_pos := uint(action) / 64
 	remainder := uint(action) % 64
 	gc.valid_actions[arr_pos] |= 1 << remainder
@@ -43,11 +52,11 @@ remove_valid_action :: proc(gc: ^Game_Cache, action: Action_ID) {
 	gc.valid_actions[arr_pos] &= ~(1 << remainder)
 }
 
-set_valid_actions :: proc(gc: ^Game_Cache, air_bitset: Air_Bitset) {
+set_valid_actions :: proc(gc: ^Game_Cache, air_bitset: Air_Bitset, qty: u8) {
 	gc.valid_actions = {}
 	get_airs(air_bitset, &air_positions)
 	for air in air_positions {
-		add_valid_action(gc, Action_ID(air))
+		add_air_to_valid_actions(gc, air, qty)
 	}
 	//todo: use a bit shift instead for better performance
 }
@@ -110,6 +119,25 @@ add_airs_to_valid_actions :: proc(gc: ^Game_Cache, dst_airs: Air_Bitset, unit_co
 		}
 		add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 5))
 	}
+}
+
+add_air_to_valid_actions :: proc(gc: ^Game_Cache, dst_air: Air_ID, unit_count: u8) {
+	if unit_count >= 32 {
+		add_valid_action(gc, Action_ID(uint(dst_air)))
+	}
+	if unit_count >= 16 {
+		add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID)))
+	}
+	if unit_count >= 8 {
+		add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID) * 2))
+	}
+	if unit_count >= 4 {
+		add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID) * 3))
+	}
+	if unit_count >= 2 {
+		add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID) * 4))
+	}
+	add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID) * 5))
 }
 
 add_seas_to_valid_actions :: proc(gc: ^Game_Cache, dst_seas: Sea_Bitset, unit_count: u8) {
