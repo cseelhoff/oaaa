@@ -373,7 +373,7 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	// fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
 	fmt.printf("%-8s %10d  ", "Visits:", node.visits)
 	// fmt.printf("%-7s %-8.2f  ", "Value:", node.value)
-	fmt.printf("%-5s %-12.10f  ", "Avg:", node.value / f64(node.visits))
+	fmt.printf("%-5s %-12.8f  ", "Avg:", node.value / f64(node.visits))
 	fmt.print(mm.color[node.cur_player])
 	fmt.printf("%-6s %-10s  ", "Next:", truncate(node.src_air, 10))
 	fmt.printf("%s\n", truncate(node.unit, 16))

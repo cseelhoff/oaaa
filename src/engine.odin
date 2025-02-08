@@ -308,7 +308,7 @@ is_terminal_state :: proc(game_state: ^Game_State) -> bool {
 	// Return true if the game is over
 	score := evaluate_state(game_state)
 	// return score > 0.99 || score < 0.01
-	if score > 0.99 || score < 0.01 {
+	if score > 0.99 || score < -0.99 {
 		return true
 	}
 	return false
