@@ -168,7 +168,6 @@ LAND_CONNECTIONS := [?][2]Land_ID{
     {.Kiangsu, .Manchuria},
     {.Kwangtung, .Szechwan},
     {.Kwangtung, .Yunnan},
-    {.Libya, .Morocco},
     {.Mexico, .Western_United_States},
     {.Novosibirsk, .Russia},
     {.Novosibirsk, .Sinkiang},

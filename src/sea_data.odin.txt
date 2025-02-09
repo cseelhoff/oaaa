@@ -285,6 +285,7 @@ COASTAL_CONNECTIONS := [?]Coastal_Connection {
 	{land = .India, sea = .Sea_35},
 	{land = .Burma, sea = .Sea_36},
 	{land = .French_Indo_China_Thailand, sea = .Sea_36},
+	{land = .Malaya, sea = .Sea_36},
 	{land = .East_Indies, sea = .Sea_37},
 	{land = .Western_Australia, sea = .Sea_38},
 	{land = .Eastern_Australia, sea = .Sea_39},

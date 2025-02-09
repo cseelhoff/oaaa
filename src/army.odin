@@ -169,9 +169,9 @@ move_armies :: proc(gc: ^Game_Cache) -> (ok: bool) {
             gc.current_territory = to_air(src_land)
             // reset_valid_actions(gc)
             // add_valid_army_moves_1(gc)
-            if army == .TANK_2_MOVES do add_valid_army_moves_2(gc)
             for gc.active_armies[src_land][army] > 0 {
                 reset_valid_actions(gc)
+                if army == .TANK_2_MOVES do add_valid_army_moves_2(gc)
                 add_valid_army_moves_1(gc)
                 dst_action := get_action_input(gc) or_return
                 // Handle sea movement (transport loading) first
@@ -191,7 +191,7 @@ move_armies :: proc(gc: ^Game_Cache) -> (ok: bool) {
                             break
                         }
                     }
-                    if !is_boat_available(gc, dst_action) {
+                    if !is_boat_available(gc, to_sea(dst_action)) {
                         remove_valid_action(gc, dst_action)
                     }
                     return true
@@ -288,10 +288,10 @@ move_single_army_land :: proc(
 
 is_boat_available :: proc(
 	gc: ^Game_Cache,
-	dst_action: Action_ID,
+	dst_sea: Sea_ID,
 ) -> bool {
     army := to_army(gc.current_active_unit)
-	idle_ships := &gc.idle_ships[to_sea(dst_action)][gc.cur_player]
+	idle_ships := &gc.idle_ships[dst_sea][gc.cur_player]
 	for transport in Trans_Allowed_By_Army_Size[Army_Size[army]] {
 		if idle_ships[transport] > 0 {
 			return true
@@ -302,10 +302,10 @@ is_boat_available :: proc(
 
 add_if_boat_available :: proc(
 	gc: ^Game_Cache,
-    dst_action: Action_ID,
+    dst_sea: Sea_ID,
 ) {
-		if is_boat_available(gc, dst_action) {
-			add_valid_action(gc, dst_action)
+		if is_boat_available(gc, dst_sea) {
+			add_sea_to_valid_actions(gc, dst_sea, 1)
 		}
 }
 
@@ -322,7 +322,7 @@ add_valid_army_moves_1 :: proc(gc: ^Game_Cache) {
     add_lands_to_valid_actions(gc, mm.l2l_1away_via_land_bitset[src_land], gc.active_armies[src_land][army])
 	//todo game_cache bitset for is_boat_available large, small
 	for dst_sea in sa.slice(&mm.l2s_1away_via_land[src_land]) {
-		add_if_boat_available(gc, to_action(dst_sea))
+		add_if_boat_available(gc, dst_sea)
 	}
 }
 
@@ -352,15 +352,17 @@ add_valid_army_moves_2 :: proc(gc: ^Game_Cache) {
 		if (mm.l2l_2away_via_midland_bitset[src_land][dst_land] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
 			continue
 		}
-		add_valid_action(gc, to_action(dst_land))
+		add_land_to_valid_actions(gc, dst_land, gc.active_armies[src_land][army])
+        // load_dyn_arr_actions(gc)
+        // fmt.println(gc.dyn_arr_valid_actions)
 	}
 	// check for moving from land to sea (two moves away)
-	for dst_sea in (mm.l2s_2away_via_land_bitset[src_land]) {
-		if (mm.l2s_2away_via_midland_bitset[src_land][dst_sea] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
-			continue
-		}
-		add_if_boat_available(gc, to_action(dst_sea))
-	}
+	// for dst_sea in (mm.l2s_2away_via_land_bitset[src_land]) {
+	// 	if (mm.l2s_2away_via_midland_bitset[src_land][dst_sea] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
+	// 		continue
+	// 	}
+	// 	add_if_boat_available(gc, dst_sea)
+	// }
 }
 
 skip_army :: proc(

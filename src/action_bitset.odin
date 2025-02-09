@@ -89,6 +89,25 @@ add_lands_to_valid_actions :: proc(gc: ^Game_Cache, dst_lands: Land_Bitset, unit
 		add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 5))
 	}
 }
+add_land_to_valid_actions :: proc(gc: ^Game_Cache, dst_land: Land_ID, unit_count: u8) {
+	//todo optimize with SIMD
+	if unit_count >= 17 {
+		add_valid_action(gc, Action_ID(uint(dst_land)))
+	}
+	if unit_count >= 9 {
+		add_valid_action(gc, Action_ID(uint(dst_land) + len(Air_ID)))
+	}
+	if unit_count >= 5 {
+		add_valid_action(gc, Action_ID(uint(dst_land) + len(Air_ID) * 2))
+	}
+	if unit_count >= 3 {
+		add_valid_action(gc, Action_ID(uint(dst_land) + len(Air_ID) * 3))
+	}
+	if unit_count >= 2 {
+		add_valid_action(gc, Action_ID(uint(dst_land) + len(Air_ID) * 4))
+	}
+	add_valid_action(gc, Action_ID(uint(dst_land) + len(Air_ID) * 5))
+}
 
 add_airs_to_valid_actions :: proc(gc: ^Game_Cache, dst_airs: Air_Bitset, unit_count: u8) {
 	get_airs(dst_airs, &air_positions)

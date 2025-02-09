@@ -130,6 +130,7 @@ get_valid_moves :: proc "c" (board: rawptr, player: i32) -> [^]bool {
 	// Return binary vector of valid moves
 	gs := (^Game_State)(board)
 	new_gs := new(Game_State) // todo maybe not needed?
+	defer free(new_gs)
 	new_gs^ = gs^
     actions := get_possible_actions(new_gs)^
 
