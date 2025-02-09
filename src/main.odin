@@ -52,7 +52,7 @@ start :: proc() {
 		for {
 			play_full_turn(&game_cache)
 		}
-		return
+		// return
 	} else {
 		// return
 	}

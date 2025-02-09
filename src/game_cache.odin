@@ -56,7 +56,7 @@ Game_Cache :: struct {
 	allied_antifighter_ships_total: [Sea_ID]u8,
 	allied_sea_combatants_total:    [Sea_ID]u8,
 	income:                         [Player_ID]u8,
-	answers_remaining:              u16,
+	answers_remaining:              u32,
 	max_loops:                      u16,
 	valid_actions:                  Action_Bitset,
 	dyn_arr_valid_actions:          [dynamic]Action_ID,

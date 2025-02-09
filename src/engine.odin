@@ -376,11 +376,12 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 	gc: Game_Cache
 	// ok := initialize_map_constants(gc)
 	load_cache_from_state(&gc, gs)
-	gc.answers_remaining = 65000
+	// gc.answers_remaining = 65000
+	gc.answers_remaining = 6500000
 	gc.seed = u16(rand.int_max(RANDOM_MAX))
 	//use_selected_action = false;
 	score := evaluate_cache(&gc)
-	max_loops := 200
+	max_loops := 100
 	// clear_move_history();
 	debug_checks(&gc)
 	for (score > -0.99 && score < 0.99 && max_loops > 0) {

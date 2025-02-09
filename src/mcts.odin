@@ -83,7 +83,7 @@ select_best_leaf :: proc(root_node: ^MCTSNode) -> (node: ^MCTSNode) {
 }
 
 when ODIN_DEBUG {
-	PRINT_INTERVAL :: 100
+	PRINT_INTERVAL :: 1000
 } else {
 	PRINT_INTERVAL :: 1000
 }
