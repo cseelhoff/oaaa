@@ -81,6 +81,9 @@ start :: proc() {
 	// for {
 	// 	play_full_turn(&game_cache)
 	// }
+	// str_rep := get_string_representation(&game_state)
+	// fmt.println("String representation: ", str_rep)
+	// fmt.println("Current territory: ", get_cur_terr(&game_state))
 
 	root :^MCTSNode= mcts_search(&game_state, iterations)
 	best_action := select_best_action(root)

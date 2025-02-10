@@ -122,6 +122,9 @@ print_game_state :: proc(gc: ^Game_Cache) {
 	fmt.println("Current Player: ", gc.cur_player)
 	fmt.println("Money: ", gc.money[gc.cur_player], DEF_COLOR, "\n")
 	for land in Land_ID {
+		if gc.team_land_units[land][.Allies] == 0 && gc.team_land_units[land][.Axis] == 0 {
+			continue
+		}
 		fmt.print(mm.color[gc.owner[land]])
 		fmt.print(land)
 		if land in gc.more_land_combat_needed do fmt.print(" more-combat")
@@ -203,19 +206,19 @@ print_game_state :: proc(gc: ^Game_Cache) {
 	fmt.println(DEF_COLOR)
 }
 
-game_state_to_string :: proc(gc: ^Game_Cache) -> string {
+game_state_to_string :: proc(gc: ^Game_Cache) -> cstring {
 	sb: strings.Builder
 	strings.builder_init(&sb)
 	defer strings.builder_destroy(&sb)
 
-	color := mm.color[gc.cur_player]
-	strings.write_string(&sb, color)
-	strings.write_string(&sb, "--------------------\n")
+	// color := mm.color[gc.cur_player]
+	// strings.write_string(&sb, color)
+	// strings.write_string(&sb, "--------------------\n")
 	fmt.sbprintf(&sb, "Current Player: %v\n", gc.cur_player)
 	fmt.sbprintf(&sb, "Money: %v%v\n\n", gc.money[gc.cur_player], DEF_COLOR)
 
 	for land in Land_ID {
-		strings.write_string(&sb, mm.color[gc.owner[land]])
+		// strings.write_string(&sb, mm.color[gc.owner[land]])
 		strings.write_string(&sb, fmt.tprint(land))
 		if land in gc.more_land_combat_needed do strings.write_string(&sb, " more-combat")
 		if land in gc.land_combat_started do strings.write_string(&sb, " combat-started")
@@ -225,7 +228,7 @@ game_state_to_string :: proc(gc: ^Game_Cache) -> string {
 		if gc.max_bombards[land] > 0 do fmt.sbprintf(&sb, " bombards:%v", gc.max_bombards[land])
 		strings.write_string(&sb, "\n")
 
-		strings.write_string(&sb, mm.color[gc.cur_player])
+		// strings.write_string(&sb, mm.color[gc.cur_player])
 		for army in Active_Army {
 			if gc.active_armies[land][army] > 0 {
 				fmt.sbprintf(&sb, "%v: %v\n", fmt.tprint(army), gc.active_armies[land][army])
@@ -238,7 +241,7 @@ game_state_to_string :: proc(gc: ^Game_Cache) -> string {
 		}
 		for player in Player_ID {
 			if player == gc.cur_player do continue
-			strings.write_string(&sb, mm.color[player])
+			// strings.write_string(&sb, mm.color[player])
 			for army in Idle_Army {
 				if gc.idle_armies[land][player][army] > 0 {
 					fmt.sbprintf(&sb, "%v: %v\n", Idle_Army_Names[army], gc.idle_armies[land][player][army])
@@ -254,13 +257,13 @@ game_state_to_string :: proc(gc: ^Game_Cache) -> string {
 	}
 
 	for sea in Sea_ID {
-		strings.write_string(&sb, DEF_COLOR)
+		// strings.write_string(&sb, DEF_COLOR)
 		strings.write_string(&sb, fmt.tprint(sea))
 		if sea in gc.more_sea_combat_needed do strings.write_string(&sb, " more-combat")
 		if sea in gc.sea_combat_started do strings.write_string(&sb, " combat-started")
 		strings.write_string(&sb, "\n")
 
-		strings.write_string(&sb, mm.color[gc.cur_player])
+		// strings.write_string(&sb, mm.color[gc.cur_player])
 		for ship in Active_Ship {
 			if gc.active_ships[sea][ship] > 0 {
 				fmt.sbprintf(&sb, "%v: %v\n", fmt.tprint(ship), gc.active_ships[sea][ship])
@@ -273,7 +276,7 @@ game_state_to_string :: proc(gc: ^Game_Cache) -> string {
 		}
 		for player in Player_ID {
 			if player == gc.cur_player do continue
-			strings.write_string(&sb, mm.color[player])
+			// strings.write_string(&sb, mm.color[player])
 			for ship in Idle_Ship {
 				if gc.idle_ships[sea][player][ship] > 0 {
 					fmt.sbprintf(&sb, "%v: %v\n", ship, gc.idle_ships[sea][player][ship])
@@ -285,7 +288,8 @@ game_state_to_string :: proc(gc: ^Game_Cache) -> string {
 		}
 		strings.write_string(&sb, "\n")
 	}
-	strings.write_string(&sb, DEF_COLOR)
-
-	return strings.to_string(sb)
+	// strings.write_string(&sb, DEF_COLOR)
+	output_str := strings.to_cstring(&sb)
+	// cstring2 := strings.clone_to_cstring(output_str)
+	return output_str
 }

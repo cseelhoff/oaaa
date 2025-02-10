@@ -78,6 +78,7 @@ package oaaa
 
 import "base:runtime"
 import "core:fmt"
+import "core:strings"
 
 // Export these functions with C calling convention for Python interop
 @(export)
@@ -351,6 +352,37 @@ get_string_representation :: proc "c" (board: rawptr) -> cstring {
 	gs := (^Game_State)(board)
 	gc : Game_Cache = {}
     load_cache_from_state(&gc, gs)
-	str := game_state_to_string(&gc)
-	return cstring(raw_data(transmute([]u8)str))
+	cstr := game_state_to_string(&gc)
+	// cstr := strings.clone_to_cstring(str)
+	return cstr
+}
+
+@(export)
+print_string_representation :: proc "c" (board: rawptr) {
+	context = runtime.default_context()
+	// fmt.println("get_string_representation")
+	// Convert game state to string for MCTS hashing
+	gs := (^Game_State)(board)
+	gc : Game_Cache = {}
+	load_cache_from_state(&gc, gs)
+    print_game_state(&gc)
+	// free(&gc)
+	// str := game_state_to_string(&gc)
+	// cstr := strings.clone_to_cstring(str)
+	return
+}
+
+@(export)
+get_action_str :: proc "c" (action: Action_ID) -> cstring {
+	context = runtime.default_context()
+	str := fmt.tprintf("%v", action)
+	return strings.clone_to_cstring(str)
+}
+
+@(export)
+get_cur_terr :: proc "c" (board: rawptr) -> cstring {
+	context = runtime.default_context()
+	gs := (^Game_State)(board)
+	str := fmt.tprintf("%v", gs.current_territory)
+	return strings.clone_to_cstring(str)
 }
