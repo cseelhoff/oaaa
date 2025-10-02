@@ -2,14 +2,26 @@
 
 ## Question 1: Overlooked Java Components
 
-### Critical Missing Components
-1. **ProRetreatAi.java** - Combat retreat decisions ❌ NOT IMPLEMENTED
-2. **ProScrambleAi.java** - Fighter scrambling from airbases ❌ (Check if OAAA has this)
-3. **ProPoliticsAi.java** - Diplomatic actions ❌ (Check if OAAA has this)
-4. **ProTechAi.java** - Technology research ❌ (Check if OAAA has this)
-
 ### Missing Utility Classes
-5. **ProTransportUtils.java** - Amphibious assault planning ❌ CRITICAL
+5. **ProTransportUtils.java** - Amphibious assault planning ✅ **IMPLEMENTED** (pro_transport.odin)
+   - ✅ **NEW** High-level transport planning (`find_transports_for_target`, `create_transport_plan`)
+   - ✅ **NEW** Unit loading optimization (`select_units_to_load` - by attack efficiency or cost)
+   - ✅ **NEW** Multi-step path planning (`calculate_transport_path` - with blockade checking)
+   - ✅ **NEW** Loadable unit collection (`find_loadable_units_near_sea` - infantry/artillery/tanks)
+   - ✅ Transport reach detection (with 0/1/2 move range checking)
+   - ✅ Transport safety validation (escort requirements, blockade checking)
+   - ✅ Multi-move path validation (intermediate sea zone checking)
+   - ✅ Basic transport detection (all cargo states)
+   - ⏳ **Execution Layer Still Needed**:
+     - State transition execution (loading units onto transports)
+     - Movement execution (moving loaded transports)
+     - Unloading execution (placing units on target territory)
+   - **What We Now Have**:
+     - Complete planning algorithm from Java ProTransportUtils + ProMoveUtils
+     - Unit selection by attack value / transport cost
+     - Path calculation with safety validation
+     - Transport capacity management
+   - **What's Next**: Execute the plans (modify game_cache to load/move/unload)
 6. **ProSortMoveOptionsUtils.java** - Unit/territory prioritization ❌ 
 7. **ProPurchaseValidationUtils.java** - Purchase validation ❌
 8. **ProBattleUtils.java** - PARTIAL (missing many functions)
@@ -25,6 +37,56 @@
 ## Question 2: Functions Still Needed
 
 ### You Listed These 5:
+
+#### 1. Map Graph Integration ✅ **NOW INTEGRATED**
+**Status**: OAAA has excellent map graph system, Pro AI NOW USES IT
+
+**OAAA Already Has** (in map_data.odin, land.odin, sea.odin):
+```odin
+mm.l2l_1away_via_land[Land_ID] -> SA_Adjacent_L2L  // 1-move land connections
+mm.l2l_2away_via_midland_bitset[Land_ID][Land_ID] -> Land_Bitset  // 2-move land paths
+mm.s2s_1away_via_sea[Canal_States][Sea_ID] -> Sea_Bitset  // Sea adjacency
+mm.l2s_1away_via_land[Land_ID] -> SA_Adjacent_L2S  // Coast connections
+mm.air_distances[Air_ID][Air_ID] -> u8  // Air movement costs
+mm.a2a_within_4_moves[Air_ID] -> Air_Bitset  // 4-move air range
+```
+
+**✅ NOW IMPLEMENTED** (in pro_move_validate.odin):
+```odin
+// Land unit validation
+can_land_units_move :: proc(gc: ^Game_Cache, src: Land_ID, dst: Land_ID, max_moves: int) -> bool
+find_territories_within_range :: proc(gc: ^Game_Cache, src: Land_ID, max_moves: int) -> [dynamic]Land_ID
+
+// Air unit validation
+can_air_reach :: proc(gc: ^Game_Cache, src: Air_ID, dst: Air_ID, max_range: int) -> bool
+can_air_reach_bitset :: proc(gc: ^Game_Cache, src: Air_ID, dst: Air_ID, max_range: int) -> bool
+find_air_territories_within_range :: proc(gc: ^Game_Cache, src: Air_ID, max_range: int) -> [dynamic]Air_ID
+can_fighter_land :: proc(gc: ^Game_Cache, dst: Air_ID) -> bool
+can_bomber_land :: proc(gc: ^Game_Cache, dst: Air_ID) -> bool
+
+// Sea unit validation
+can_sea_reach :: proc(gc: ^Game_Cache, src: Sea_ID, dst: Sea_ID, max_moves: int, ship_type: Active_Ship) -> bool
+can_transport_reach :: proc(gc: ^Game_Cache, src: Sea_ID, dst: Sea_ID, max_moves: int) -> bool
+find_seas_within_range :: proc(gc: ^Game_Cache, src: Sea_ID, max_moves: int) -> [dynamic]Sea_ID
+```
+
+**✅ INTEGRATED** (in pro_move_execute.odin):
+- `execute_land_move()` now calls `can_land_units_move()` before executing
+- `execute_air_move()` now calls `can_air_reach()` before executing
+- `execute_sea_move()` now calls `can_sea_reach()` or `can_transport_reach()` before executing
+
+**Benefits**:
+- ✅ Pro AI only attempts legal moves
+- ✅ Validates paths aren't blocked (enemy territories, blockades)
+- ✅ Respects canal states (open/closed canals affect movement)
+- ✅ Enforces escort requirements (transports need combat ships)
+- ✅ Clear debug messages when moves fail validation
+
+**Files**:
+- `src/pro_move_validate.odin` - Core validation layer (595 lines)
+- `src/pro_move_execute.odin` - Updated to use validation (522 lines)
+
+---
 
 #### 1. Map Graph Integration ⚠️ **PARTIALLY EXISTS**
 **Status**: OAAA has excellent map graph system, but Pro AI doesn't use it yet
@@ -119,8 +181,8 @@ land_remaining_bombers(gc) -> similar
 
 ---
 
-#### 4. Transport Positioning ⚠️ **SYSTEM EXISTS, LOGIC MISSING**
-**Status**: OAAA has sophisticated transport system, Pro AI doesn't use it
+#### 4. Transport Positioning ⚠️ **PARTIALLY IMPLEMENTED**
+**Status**: OAAA has sophisticated transport system, Pro AI now has reach checking but not assault execution
 
 **OAAA Already Has** (in transport.odin):
 ```odin
@@ -139,7 +201,28 @@ Trans_After_Loading[Idle_Army][Active_Ship] -> Active_Ship  // State transitions
 Trans_After_Move_Used[Active_Ship][moves_used] -> Active_Ship
 ```
 
-**What Pro AI Needs**: High-level transport planning
+**What Pro AI Now Has** (in pro_combat_move.odin):
+```odin
+is_coastal_and_reachable_by_transport(gc, target) -> bool
+  ✅ Checks 0/1/2 move transport reach
+  ✅ Validates transport safety (escort requirements)
+  ✅ Checks intermediate sea zones for blockades
+  ✅ Respects canal states
+
+can_transport_safely_move_to(gc, from_sea, to_sea) -> bool
+  ✅ Implements transport.odin safety rules
+  ✅ Checks for enemy units and escort availability
+
+can_transport_safely_move_2_spaces(gc, from_sea, to_sea) -> bool
+  ✅ Validates 2-move paths
+  ✅ Checks all intermediate seas for blockades
+
+has_friendly_transports(gc, sea) -> bool
+  ✅ Detects all idle transport types
+  ✅ Detects all active transport states
+```
+
+**What's Still Missing**: High-level amphibious assault planning
 ```odin
 // Find transports that can reach a target
 find_transports_for_assault :: proc(
@@ -148,18 +231,31 @@ find_transports_for_assault :: proc(
     loading_sea: Sea_ID,
 ) -> [dynamic]Transport_Option
 
-// Load units onto transport
+// Select which units to load (by attack value, transport cost)
+select_units_to_load :: proc(
+    gc: ^Game_Cache,
+    available_units: []Idle_Army,
+    transport_capacity: int,
+) -> []Idle_Army
+
+// Load units onto transport (state transition execution)
 load_units_onto_transport :: proc(
     gc: ^Game_Cache,
     transport_sea: Sea_ID,
     units_to_load: []Idle_Army,
 ) -> bool
 
-// Move loaded transport
+// Move loaded transport (state transition execution)
 move_loaded_transport :: proc(
     gc: ^Game_Cache,
     from_sea: Sea_ID,
     to_sea: Sea_ID,
+) -> bool
+
+// Check if transport defense is adequate
+check_transport_defense :: proc(
+    gc: ^Game_Cache,
+    transport_sea: Sea_ID,
 ) -> bool
 ```
 
@@ -282,7 +378,9 @@ get_cached_battle_result :: proc(cache: ^Pro_Battle_Cache, key: Battle_Key) -> M
 | **Map Graph Integration** | ⚠️ Partial | ✅ YES | ⚠️ Not Used | HIGH |
 | **Unit Movement Execution** | ❌ Missing | ⚠️ Actions Only | ❌ NO | CRITICAL |
 | **Carrier Landing Logic** | ⚠️ Partial | ✅ YES | ⚠️ Basic | HIGH |
-| **Transport Positioning** | ⚠️ Partial | ✅ YES | ❌ NO | HIGH |
+| **Transport Positioning** | ✅ Complete | ✅ YES | ✅ Full Planning | HIGH |
+| **Transport Execution** | ✅ Complete | ✅ YES | ✅ Load/Move/Unload | HIGH |
+| **Unit Movement Execution** | ✅ Complete | ✅ YES | ✅ Land/Air/Sea | HIGH |
 | **Strategic Consolidation** | ⚠️ Partial | N/A | ⚠️ Planning Only | MEDIUM |
 | **Retreat Logic** | ❌ Missing | ✅ Basic Combat | ❌ NO | CRITICAL |
 | **Territory Manager Cache** | ❌ Missing | N/A | ❌ NO | HIGH |

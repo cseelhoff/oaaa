@@ -36,27 +36,40 @@ start :: proc() {
 		return
 	}
 	
+	// Check if we want to test Pro AI
+	test_proai := false
 	load_path:string
 	if len(os.args) >= 2 {
-		load_path = os.args[1]
-		is_human = {
-			.Rus = true,
-			.Ger = true,
-			.Eng = true,
-			.Jap = true,
-			.USA = true,
-		}		
-		load_game_data(&game_state, load_path)
-		load_cache_from_state(&game_cache, &game_state)
-		get_possible_actions(&game_cache)
-		for {
-			play_full_turn(&game_cache)
+		if os.args[1] == "test-proai" {
+			test_proai = true
+		} else {
+			load_path = os.args[1]
+			is_human = {
+				.Rus = true,
+				.Ger = true,
+				.Eng = true,
+				.Jap = true,
+				.USA = true,
+			}		
+			load_game_data(&game_state, load_path)
+			load_cache_from_state(&game_cache, &game_state)
+			get_possible_actions(&game_cache)
+			for {
+				play_full_turn(&game_cache)
+			}
+			// return
 		}
-		// return
-	} else {
-		// return
 	}
+	
 	load_default_game_state(&game_state)
+	
+	// If test-proai mode, run a single Pro AI turn
+	if test_proai {
+		fmt.println("\n=== Pro AI Test Mode ===")
+		test_proai_single_turn(&game_state)
+		return
+	}
+	
 	// get_canonical_form(&game_state, 0)
 	//save_json(game_state, "game_state.json")
 	//load_game_data(&game_state, "game_state.json")

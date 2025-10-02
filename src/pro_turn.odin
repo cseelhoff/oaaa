@@ -1,5 +1,8 @@
 package oaaa
 
+import "core:fmt"
+import "core:math/rand"
+
 /*
 Pro AI Turn Implementation
 
@@ -19,8 +22,6 @@ Key Differences from play_full_turn:
 - Focuses on quick evaluation and good-enough moves
 - Designed for rollout speed, not exhaustive search
 */
-
-import "core:fmt"
 
 // Main Pro AI turn function - called during MCTS rollouts when use_pro_ai_rollout flag is set
 play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -59,6 +60,36 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
+// Test Pro AI for a single turn with debug output
+test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
+	fmt.println("\n=== Testing Pro AI Single Turn ===")
+	fmt.println("Current Player:", gs.cur_player)
+	fmt.println("Player Money:", gs.money[gs.cur_player])
+	
+	gc: Game_Cache
+	load_cache_from_state(&gc, gs)
+	gc.answers_remaining = 65000
+	gc.seed = u16(rand.int_max(RANDOM_MAX))
+	
+	fmt.println("\n--- Starting Pro AI Turn ---")
+	debug_checks(&gc)
+	
+	// Run a single Pro AI turn
+	if !play_full_proai_turn(&gc) {
+		fmt.eprintln("Pro AI turn failed!")
+		return false
+	}
+	
+	fmt.println("\n--- Pro AI Turn Complete ---")
+	fmt.println("New Current Player:", gc.cur_player)
+	fmt.println("Score:", evaluate_cache(&gc))
+	
+	// Save the state back
+	gs^ = gc.state
+	
+	return true
+}
+
 /*
 Phase 1: Purchase Phase
 
@@ -92,9 +123,28 @@ Resolve all battles:
 - Sea battles (can affect amphibious assaults)
 - Land battles (territorial control)
 - Pro AI makes tactical combat decisions (retreat vs fight)
+
+NOTE: Tactical combat resolution (retreat vs fight decisions) will NOT be implemented
+for quite some time. This phase uses standard OAAA combat resolution.
+
+Reasoning: Tactical combat decisions during battle are complex and require:
+1. Monte Carlo simulation of battle outcomes with retreat at various points
+2. Analysis of unit preservation vs territory capture trade-offs
+3. Prediction of enemy counter-attacks after retreat
+4. Integration with overall strategy (when to trade units, when to preserve)
+
+For MCTS rollouts, standard combat resolution (fight to the end) is sufficient
+and much faster. The strategic value comes from good attack/defense positioning,
+not from retreat micro-decisions.
+
+Future Enhancement: Could add simple retreat logic like:
+- Retreat if battle odds drop below 30%
+- Retreat if losing expensive units (tanks, bombers) with poor odds
+- Never retreat from capital or critical territories
 */
 proai_combat_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	// TODO: Implement Pro AI combat resolution
+	// Use standard OAAA combat resolution
+	// No special Pro AI tactical decisions (stubbed for future)
 	
 	// Resolve sea battles first (affects transports)
 	resolve_sea_battles(gc) or_return
@@ -159,11 +209,77 @@ proai_move_air_to_combat :: proc(gc: ^Game_Cache) -> (ok: bool) {
 }
 
 proai_move_ships_to_combat :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	// TODO: Implement smart naval combat positioning
-	// Strategy: Attack weak enemy naval forces, protect transports
+	/*
+	Naval Combat Movement Strategy (based on ship.odin move_combat_ships):
 	
-	// Stub: For now, skip naval combat moves for rapid rollout
+	1. Attack weak enemy naval forces (no destroyers, just transports)
+	2. Clear sea zones blocking amphibious assaults
+	3. Position destroyers to detect enemy subs
+	4. Protect our transports with combat ships
+	5. Control strategic sea zones (near enemy coasts)
+	
+	Ship Movement Rules (from ship.odin):
+	- All combat ships have 2 moves (Unmoved_Blockade_Ships)
+	- Ships automatically mark seas for combat when entering enemy zones
+	- Submarines can move through enemy blockades unless destroyers present
+	- Other ships blocked by enemy blockade (destroyer/carrier/cruiser/battleship)
+	
+	For MCTS rollouts, we use simplified heuristics:
+	- Attack if we outnumber enemy (quick power comparison)
+	- Don't expose transports unnecessarily
+	- Maintain sea control near our territories
+	*/
+	
+	when ODIN_DEBUG {
+		fmt.println("[PRO-AI] Naval combat movement phase (simplified)")
+	}
+	
+	// Find target enemy sea zones to attack
+	for sea in Sea_ID {
+		// Skip if no enemy units
+		if gc.team_sea_units[sea][mm.enemy_team[gc.cur_player]] == 0 {
+			continue
+		}
+		
+		// Skip if we don't have ships nearby
+		if !has_friendly_ships_adjacent(gc, sea) {
+			continue
+		}
+		
+		// Simple heuristic: Only attack if enemy has no blockade ships
+		// (just transports or subs without destroyer protection)
+		if gc.enemy_blockade_total[sea] == 0 ||
+		   (gc.enemy_subs_total[sea] > 0 && gc.enemy_destroyer_total[sea] == 0) {
+			// Worthwhile target - clear it out
+			when ODIN_DEBUG {
+				fmt.printf("[PRO-AI] Would attack weak enemy fleet at sea %v\n", sea)
+			}
+			// Actual movement would use pro_move_execute.odin execute_sea_move
+			// For now, just note the opportunity
+		}
+	}
+	
+	// For rapid MCTS rollouts, we skip detailed naval combat for now
+	// Naval battles are secondary to land control in most scenarios
+	// Future: Implement targeted naval attacks using execute_sea_move
+	
 	return true
+}
+
+// Check if we have friendly combat ships adjacent to a sea zone
+has_friendly_ships_adjacent :: proc(gc: ^Game_Cache, target_sea: Sea_ID) -> bool {
+	canal_state := transmute(u8)gc.canals_open
+	
+	for adjacent_sea in mm.s2s_1away_via_sea[canal_state][target_sea] {
+		// Check for combat ships (not transports)
+		if gc.idle_ships[adjacent_sea][gc.cur_player][.SUB] > 0 do return true
+		if gc.idle_ships[adjacent_sea][gc.cur_player][.DESTROYER] > 0 do return true
+		if gc.idle_ships[adjacent_sea][gc.cur_player][.CRUISER] > 0 do return true
+		if gc.idle_ships[adjacent_sea][gc.cur_player][.BATTLESHIP] > 0 do return true
+		if gc.idle_ships[adjacent_sea][gc.cur_player][.BS_DAMAGED] > 0 do return true
+	}
+	
+	return false
 }
 
 proai_load_transports_for_combat :: proc(gc: ^Game_Cache) -> (ok: bool) {

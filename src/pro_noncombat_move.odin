@@ -29,6 +29,7 @@ Algorithm Overview (from ProNonCombatMoveAi.java):
 import "core:fmt"
 import "core:math"
 import "core:slice"
+import sa "core:container/small_array"
 
 // Main non-combat move phase entry point
 proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -276,6 +277,18 @@ prioritize_defense_targets :: proc(targets: ^[dynamic]Defense_Target, gc: ^Game_
 
 // Move units to defend priority territories
 move_units_to_defense :: proc(targets: ^[dynamic]Defense_Target, gc: ^Game_Cache, pro_data: ^Pro_Data) {
+	/*
+	Move units to defensive positions:
+	1. Initialize moved units tracker
+	2. For each high-priority target needing defense
+	3. Find nearby units that can reach
+	4. Move units until defense requirement met
+	*/
+	
+	// Initialize movement tracker
+	moved := init_moved_units()
+	defer cleanup_moved_units(&moved)
+	
 	// For each high priority target, find nearby units that can move there
 	for &target in targets {
 		if target.defense_needed <= 0 {
@@ -283,8 +296,7 @@ move_units_to_defense :: proc(targets: ^[dynamic]Defense_Target, gc: ^Game_Cache
 		}
 		
 		// Find units that can reach this territory
-		// Simplified - would use proper movement calculation
-		units_moved := move_nearby_units_to_defense(gc, target.territory, target.defense_needed)
+		units_moved := move_nearby_units_to_defense(gc, target.territory, target.defense_needed, &moved)
 		
 		when ODIN_DEBUG {
 			if units_moved > 0 {
@@ -296,15 +308,106 @@ move_units_to_defense :: proc(targets: ^[dynamic]Defense_Target, gc: ^Game_Cache
 }
 
 // Move nearby units to defend a territory
-move_nearby_units_to_defense :: proc(gc: ^Game_Cache, territory: Land_ID, defense_needed: f64) -> int {
-	// Placeholder - would implement actual unit movement
-	// This would:
-	// 1. Find adjacent territories with friendly units
-	// 2. Select units that can reach the target
-	// 3. Move enough units to meet defense_needed
-	// 4. Update game state accordingly
+move_nearby_units_to_defense :: proc(
+	gc: ^Game_Cache,
+	territory: Land_ID,
+	defense_needed: f64,
+	moved: ^Moved_Units,
+) -> int {
+	/*
+	Find and move units to defend a territory:
+	1. Check adjacent territories for friendly units
+	2. Prioritize: Infantry < Artillery < Tanks
+	3. Move units until defense requirement met
+	4. Use map graph for adjacency checking
+	*/
 	
-	return 0 // Return number of units moved
+	units_moved := 0
+	defense_provided := f64(0)
+	
+	// Check all adjacent land territories
+	for adjacent in sa.slice(&mm.l2l_1away_via_land[territory]) {
+		if gc.owner[adjacent] != gc.cur_player do continue
+		if adjacent == territory do continue
+		
+		// Try to move infantry first (most expendable)
+		inf_available := get_available_unit_count(gc, adjacent, .INF, moved)
+		if inf_available > 0 && defense_provided < defense_needed {
+			inf_to_move := min(inf_available, u8((defense_needed - defense_provided) / 2) + 1)
+			
+			success := execute_land_move(gc, adjacent, territory, .INF, inf_to_move, moved)
+			if success {
+				units_moved += int(inf_to_move)
+				defense_provided += f64(inf_to_move) * 2.0  // Infantry has 2 defense
+			}
+		}
+		
+		// Try artillery if still need defense
+		if defense_provided < defense_needed {
+			arty_available := get_available_unit_count(gc, adjacent, .ARTY, moved)
+			if arty_available > 0 {
+				arty_to_move := min(arty_available, u8((defense_needed - defense_provided) / 2) + 1)
+				
+				success := execute_land_move(gc, adjacent, territory, .ARTY, arty_to_move, moved)
+				if success {
+					units_moved += int(arty_to_move)
+					defense_provided += f64(arty_to_move) * 2.0  // Artillery has 2 defense
+				}
+			}
+		}
+		
+		// Try tanks if still need defense
+		if defense_provided < defense_needed {
+			tank_available := get_available_unit_count(gc, adjacent, .TANK, moved)
+			if tank_available > 0 {
+				tank_to_move := min(tank_available, u8((defense_needed - defense_provided) / 3) + 1)
+				
+				success := execute_land_move(gc, adjacent, territory, .TANK, tank_to_move, moved)
+				if success {
+					units_moved += int(tank_to_move)
+					defense_provided += f64(tank_to_move) * 3.0  // Tanks have 3 defense
+				}
+			}
+		}
+		
+		// Stop if we've met defense requirement
+		if defense_provided >= defense_needed {
+			break
+		}
+	}
+	
+	// Check territories 2 moves away (tanks only - they have 2 movement)
+	if defense_provided < defense_needed {
+		for land_2_away in Land_ID {
+			if gc.owner[land_2_away] != gc.cur_player do continue
+			if land_2_away == territory do continue
+			
+			// Check if territory is 2 moves away
+			// TODO: Fix 2-move bitset check
+			continue
+// 			// Only tanks can move 2 spaces
+// 			tank_available := get_available_unit_count(gc, land_2_away, .TANK, moved)
+// 			if tank_available > 0 {
+// 				tank_to_move := min(tank_available, u8((defense_needed - defense_provided) / 3) + 1)
+// 				
+// 				// Note: Direct 2-move not supported by execute_land_move yet
+// 				// Would need intermediate territory calculation
+// 				// For now, skip 2-move tank movements
+// 				
+// 				// success := execute_land_move(gc, land_2_away, territory, .TANK, tank_to_move, moved)
+// 				// if success {
+// 				// 	units_moved += int(tank_to_move)
+// 				// 	defense_provided += f64(tank_to_move) * 3.0
+// 				// }
+// 			}
+// 			
+// 			if defense_provided >= defense_needed {
+// 				break
+// 			}
+		}
+	}
+	
+	return units_moved
 }
 
 // Land fighters in safe territories
@@ -469,3 +572,5 @@ find_best_noncombat_move :: proc(gc: ^Game_Cache, from: Land_ID, unit_strength: 
 pro_noncombat_move_cleanup :: proc(targets: ^[dynamic]Defense_Target) {
 	delete(targets^)
 }
+
+
