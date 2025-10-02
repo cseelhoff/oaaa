@@ -37,7 +37,7 @@ import sa "core:container/small_array"
 // Main combat move phase entry point
 proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	when ODIN_DEBUG {
-		fmt.println("[PRO-AI] Starting combat move phase")
+		fmt.printf("[PRO-AI] Starting combat move phase (money remaining: %d)\n", gc.money[gc.cur_player])
 	}
 	
 	pro_data := pro_data_init(gc)
@@ -816,6 +816,47 @@ ensure_capital_defense :: proc(options: ^[dynamic]Attack_Option, gc: ^Game_Cache
 			fmt.println("[PRO-AI] WARNING: Capital still threatened even after canceling all attacks")
 		}
 	}
+}
+
+// Calculate maximum defenders that could be purchased with remaining money
+// Following TripleA's ProPurchaseUtils.findMaxPurchaseDefenders
+// This assumes we'll spend all remaining money on infantry (most cost-efficient defender)
+calculate_max_purchasable_defenders :: proc(gc: ^Game_Cache, capital: Land_ID) -> f64 {
+	// Check if capital has a factory where we can place units
+	has_factory := false
+	for factory in gc.factory_locations[gc.cur_player].data {
+		if factory == capital {
+			has_factory = true
+			break
+		}
+	}
+	
+	when ODIN_DEBUG {
+		fmt.printf("[PRO-AI DEBUG] Capital %v has factory: %v (checking %d factories for player %v)\n",
+			capital, has_factory, len(gc.factory_locations[gc.cur_player].data), gc.cur_player)
+	}
+	
+	if !has_factory {
+		return 0.0  // Can't place units without a factory
+	}
+	
+	// Calculate how many infantry we could buy with remaining money
+	// Infantry costs 3 PUs and has defense power of 2
+	remaining_money := int(gc.money[gc.cur_player])
+	infantry_cost := 3
+	infantry_defense := 2.0
+	
+	max_infantry := remaining_money / infantry_cost
+	max_defense := f64(max_infantry) * infantry_defense
+	
+	when ODIN_DEBUG {
+		if max_infantry > 0 {
+			fmt.printf("[PRO-AI DEBUG] Could purchase %d INF (%.1f defense) with %d remaining money\n",
+				max_infantry, max_defense, remaining_money)
+		}
+	}
+	
+	return max_defense
 }
 
 // Calculate current defense power at capital
