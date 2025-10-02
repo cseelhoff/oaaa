@@ -613,6 +613,10 @@ Java Original (lines 590-713):
 prioritize_territories_to_defend_triplea :: proc(gc: ^Game_Cache, is_land: bool) -> [dynamic]Place_Territory_Defense {
 	need_to_defend := make([dynamic]Place_Territory_Defense, context.temp_allocator)
 	
+	when ODIN_DEBUG {
+		fmt.printf("  [RATIONALE] Evaluating %s territories for defensive needs...\\n", is_land ? "land" : "sea")
+	}
+	
 	// Check all territories we own
 	for territory in Land_ID {
 		if gc.owner[territory] != gc.cur_player do continue
@@ -648,6 +652,13 @@ prioritize_territories_to_defend_triplea :: proc(gc: ^Game_Cache, is_land: bool)
 		defense_value := (2.0 * production + 4.0 * is_factory_mult + 0.5 * defender_value) *
 		                 (1.0 + is_factory_mult) * (1.0 + 10.0 * is_capital_mult)
 		
+		when ODIN_DEBUG {
+			fmt.printf("    %v: units=%d, value=%.1f", territory, total_units, defense_value)
+			if is_capital do fmt.printf(" [CAPITAL]")
+			if has_factory do fmt.printf(" [FACTORY]")
+			fmt.println()
+		}
+		
 		if defense_value > 0 {
 			place_terr := Place_Territory_Defense{
 				territory = territory,
@@ -673,6 +684,11 @@ prioritize_territories_to_defend_triplea :: proc(gc: ^Game_Cache, is_land: bool)
 	for terr in need_to_defend {
 		append(&result, terr)
 	}
+	
+	when ODIN_DEBUG {
+		fmt.printf("  [RATIONALE] Found %d threatened territories (sorted by priority)\\n", len(result))
+	}
+	
 	return result
 }
 
@@ -783,7 +799,25 @@ purchase_defenders_triplea :: proc(gc: ^Game_Cache, territories: [dynamic]Place_
 	if gc.money[gc.cur_player] == 0 do return
 	if len(territories) == 0 do return
 	
+	when ODIN_DEBUG {
+		factory_count := 0
+		for _ in sa.slice(&gc.factory_locations[gc.cur_player]) {
+			factory_count += 1
+		}
+		fmt.printf("  [DEBUG] Player %v has %d factories: ", gc.cur_player, factory_count)
+		for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+			fmt.printf("%v ", factory_loc)
+		}
+		fmt.println()
+	}
+	
 	// Purchase defenders for each threatened territory (in priority order)
+	when ODIN_DEBUG {
+		if len(territories) > 0 {
+			fmt.println("  [RATIONALE] Analyzing territories needing defense:")
+		}
+	}
+	
 	for place_terr in territories {
 		// Find nearest factory that can produce for this territory
 		factory := find_nearest_factory_triplea(gc, place_terr.territory)
@@ -797,7 +831,20 @@ purchase_defenders_triplea :: proc(gc: ^Game_Cache, territories: [dynamic]Place_
 		// Estimate enemy threat (simplified - assume moderate threat)
 		enemy_threat := f64(15.0)  // Simplified
 		
-		if current_defense >= enemy_threat do continue
+		when ODIN_DEBUG {
+			fmt.printf("    Territory: %v\n", place_terr.territory)
+			fmt.printf("      Current defense power: %.1f\n", current_defense)
+			fmt.printf("      Enemy threat estimate: %.1f\n", enemy_threat)
+			fmt.printf("      Defense gap: %.1f\n", enemy_threat - current_defense)
+			fmt.printf("      Nearest factory: %v\n", factory_loc)
+		}
+		
+		if current_defense >= enemy_threat {
+			when ODIN_DEBUG {
+				fmt.println("      Decision: Already adequately defended - skipping")
+			}
+			continue
+		}
 		
 		defense_gap := enemy_threat - current_defense
 		
@@ -808,15 +855,31 @@ purchase_defenders_triplea :: proc(gc: ^Game_Cache, territories: [dynamic]Place_
 		// Tank: defense 3, cost 6 -> efficiency 0.5
 		// Fighter: defense 4, cost 10 -> efficiency 0.4
 		
+		when ODIN_DEBUG {
+			fmt.printf("      Decision: Purchasing infantry (best defensive efficiency: 2 def / 3 cost)\n")
+			fmt.printf("      Available money: %d IPCs\n", gc.money[gc.cur_player])
+		}
+		
+		inf_count := u8(0)
 		// Prefer infantry for defense (best efficiency)
 		for defense_gap > 0 && gc.money[gc.cur_player] >= 3 {
 			if gc.money[gc.cur_player] >= 3 {
 				// Buy infantry
 				gc.money[gc.cur_player] -= 3
 				gc.idle_armies[factory_loc][gc.cur_player][.INF] += 1
+				inf_count += 1
 				defense_gap -= 2.0  // Infantry has defense 2
 			} else {
 				break
+			}
+		}
+		
+		when ODIN_DEBUG {
+			if inf_count > 0 {
+				fmt.printf("      Purchased: %d infantry (defense power +%.1f)\n", inf_count, f64(inf_count) * 2.0)
+				fmt.printf("      Money remaining: %d IPCs\n", gc.money[gc.cur_player])
+			} else {
+				fmt.println("      Purchased: 0 (insufficient funds)")
 			}
 		}
 	}
@@ -833,9 +896,11 @@ find_nearest_factory_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> May
 	This finds factories that can reach the territory (considering movement)
 	*/
 	
-	// Simplified: return first factory we own
-	if len(gc.factory_locations[gc.cur_player].data) > 0 {
-		return gc.factory_locations[gc.cur_player].data[0]
+	// For now: return first factory owned by current player
+	// TODO: Find closest factory that can actually reach the territory
+	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+		// Return first factory we find
+		return factory_loc
 	}
 	return nil
 }

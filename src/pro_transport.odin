@@ -455,3 +455,50 @@ transport_plan_destroy :: proc(plan: ^Transport_Plan) {
 	delete(plan.units_to_load)
 	delete(plan.move_path)
 }
+
+// ===== Transport Safety Validation Functions =====
+
+// Helper: Check if transport can safely move to target sea (1 move)
+can_transport_safely_move_to :: proc(gc: ^Game_Cache, from_sea: Sea_ID, to_sea: Sea_ID) -> bool {
+// Check if path is blocked by enemy destroyers or blockade
+canal_state := transmute(u8)gc.canals_open
+
+// Check if seas are actually adjacent
+if !(to_sea in mm.s2s_1away_via_sea[canal_state][from_sea]) {
+return false
+}
+
+// Check if destination has enemy blockade (would sink transport)
+if gc.enemy_blockade_total[to_sea] > 0 {
+return false // Too dangerous
+}
+
+return true
+}
+
+// Helper: Check if transport can safely move 2 spaces
+can_transport_safely_move_2_spaces :: proc(gc: ^Game_Cache, from_sea: Sea_ID, to_sea: Sea_ID) -> bool {
+canal_state := transmute(u8)gc.canals_open
+
+// Check if seas are in 2-move range
+if !(to_sea in mm.s2s_2away_via_sea[canal_state][from_sea]) {
+return false
+}
+
+// Check all intermediate seas for enemy blockades/destroyers
+for mid_sea in sa.slice(&mm.s2s_2away_via_midseas[canal_state][from_sea][to_sea]) {
+if gc.enemy_destroyer_total[mid_sea] > 0 {
+return false // Blocked by enemy destroyer
+}
+if gc.enemy_blockade_total[mid_sea] > 0 {
+return false // Blocked by enemy fleet
+}
+}
+
+// Check destination
+if gc.enemy_blockade_total[to_sea] > 0 {
+return false
+}
+
+return true
+}

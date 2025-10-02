@@ -2,6 +2,11 @@ package oaaa
 
 import "core:fmt"
 import "core:math/rand"
+import sa "core:container/small_array"
+
+// Debug separators
+SEP_LONG :: "======================================================================"
+SEP_MED  :: "============================================================"
 
 /*
 Pro AI Turn Implementation
@@ -62,27 +67,57 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 // Test Pro AI for a single turn with debug output
 test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
-	fmt.println("\n=== Testing Pro AI Single Turn ===")
-	fmt.println("Current Player:", gs.cur_player)
-	fmt.println("Player Money:", gs.money[gs.cur_player])
+	fmt.println("\n" + SEP_LONG)
+	fmt.println("PRO AI SINGLE TURN TEST (TripleA Purchase & Place)")
+	fmt.println(SEP_LONG)
+	fmt.printf("Starting Player: %v\n", gs.cur_player)
+	fmt.printf("Starting Money: %d IPCs\n", gs.money[gs.cur_player])
+	
+	// Count initial units
+	total_units := 0
+	for land in Land_ID {
+		for player in Player_ID {
+			for army in Idle_Army {
+				total_units += int(gs.idle_armies[land][player][army])
+			}
+		}
+	}
+	fmt.printf("Total units on board: %d\n", total_units)
+	fmt.println(SEP_LONG)
 	
 	gc: Game_Cache
 	load_cache_from_state(&gc, gs)
 	gc.answers_remaining = 65000
 	gc.seed = u16(rand.int_max(RANDOM_MAX))
 	
-	fmt.println("\n--- Starting Pro AI Turn ---")
 	debug_checks(&gc)
 	
-	// Run a single Pro AI turn
+	// Run a single Pro AI turn using TripleA methods
 	if !play_full_proai_turn(&gc) {
-		fmt.eprintln("Pro AI turn failed!")
+		fmt.eprintln("\n" + SEP_LONG)
+		fmt.eprintln("*** PRO AI TURN FAILED! ***")
+		fmt.eprintln(SEP_LONG + "\n")
 		return false
 	}
 	
-	fmt.println("\n--- Pro AI Turn Complete ---")
-	fmt.println("New Current Player:", gc.cur_player)
-	fmt.println("Score:", evaluate_cache(&gc))
+	// Count final units
+	final_units := 0
+	for land in Land_ID {
+		for player in Player_ID {
+			for army in Idle_Army {
+				final_units += int(gc.state.idle_armies[land][player][army])
+			}
+		}
+	}
+	
+	fmt.println("\n" + SEP_LONG)
+	fmt.println("PRO AI TURN COMPLETE")
+	fmt.println(SEP_LONG)
+	fmt.printf("Next Player: %v\n", gc.cur_player)
+	fmt.printf("Final Money: %d IPCs\n", gc.state.money[gs.cur_player])
+	fmt.printf("Units Added: %d\n", final_units - total_units)
+	fmt.printf("Game Score: %.1f\n", evaluate_cache(&gc))
+	fmt.println(SEP_LONG + "\n")
 	
 	// Save the state back
 	gs^ = gc.state
@@ -93,28 +128,310 @@ test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
 /*
 Phase 1: Purchase Phase
 
-Pro AI strategic purchasing decisions are implemented in pro_purchase.odin
+Pro AI strategic purchasing decisions using TripleA's ProPurchaseAi.java logic.
 This includes:
 - Evaluating current board state
 - Determining strategic priorities (offense vs defense)
 - Purchasing units that best serve immediate needs
 - Considering factory placement if economically viable
 */
-// proai_purchase_phase is implemented in pro_purchase.odin
+proai_purchase_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
+	starting_money := gc.money[gc.cur_player]
+	
+	when ODIN_DEBUG {
+		fmt.println("\n" + SEP_MED)
+		fmt.println("PURCHASE PHASE")
+		fmt.println(SEP_MED)
+		fmt.printf("Player: %v\n", gc.cur_player)
+		fmt.printf("Starting Money: %d IPCs\n", starting_money)
+		fmt.println()
+	}
+	
+	// Call TripleA purchase implementation
+	if !purchase_triplea(gc) {
+		when ODIN_DEBUG {
+			fmt.println("\n*** PURCHASE PHASE FAILED ***")
+		}
+		return false
+	}
+	
+	when ODIN_DEBUG {
+		money_spent := starting_money - gc.money[gc.cur_player]
+		fmt.printf("\nRemaining Money: %d IPCs\n", gc.money[gc.cur_player])
+		fmt.printf("Money Spent: %d IPCs\n", money_spent)
+		if money_spent == 0 && starting_money > 0 {
+			fmt.println("  [WARNING] No money was spent despite having IPCs available!")
+			fmt.println("  This may indicate purchase logic is not executing properly.")
+		}
+		fmt.println(SEP_MED + "\n")
+	}
+	
+	return true
+}
 
 /*
 Phase 2: Combat Move Phase
 
-Pro AI combat movement strategy is implemented in pro_combat_move.odin
-This includes:
-- Identifying vulnerable enemy territories
-- Calculating attack odds for potential battles
-- Moving fighters and bombers to support key attacks
-- Positioning naval units for amphibious assaults
-- Moving ground units to maximize attack power
-- Loading transports with invasion forces
+Pro AI combat movement strategy using TripleA's ProCombatMoveAi.java logic.
+The implementation uses the TripleA methods from pro_combat_move_triplea_methods.odin.
+
+For now, simplified version with detailed debug output showing decision logic.
 */
-// proai_combat_move_phase is implemented in pro_combat_move.odin
+proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
+	when ODIN_DEBUG {
+		fmt.println("\n" + SEP_MED)
+		fmt.println("COMBAT MOVE PHASE")
+		fmt.println(SEP_MED)
+	}
+	
+	// Step 1: Find all enemy territories we might want to attack
+	attack_options := make([dynamic]Attack_Option)
+	defer delete(attack_options)
+	
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 1] Finding ALL units that can attack (populateAttackOptions)...")
+	}
+	
+	// Call the FULL TripleA implementation
+	populate_attack_options_triplea(gc, &attack_options)
+	
+	when ODIN_DEBUG {
+		fmt.printf("  → Found %d potential attack targets\n", len(attack_options))
+	}
+	
+	if len(attack_options) == 0 {
+		when ODIN_DEBUG {
+			fmt.println("  → No enemy territories found")
+			fmt.println(SEP_MED + "\n")
+		}
+		return true
+	}
+	
+	// Step 2: Prioritize attack options by strategic value
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 2] Prioritizing attack targets by strategic value...")
+	}
+	
+	prioritize_attack_options_triplea(gc, &attack_options, false)
+	
+	when ODIN_DEBUG {
+		fmt.println("  Attack priority order:")
+		count := min(10, len(attack_options)) // Show top 10
+		for i := 0; i < count; i += 1 {
+			opt := attack_options[i]
+			production, is_capital := get_production_and_is_capital_triplea(gc, opt.territory)
+			has_factory_flag := has_factory(gc, opt.territory)
+			fmt.printf("    %d. %v (value: %.1f, production: %d", 
+				i+1, opt.territory, opt.attack_value, production)
+			if is_capital do fmt.printf(", CAPITAL")
+			if has_factory_flag do fmt.printf(", FACTORY")
+			fmt.printf(")\n")
+		}
+		if len(attack_options) > 10 {
+			fmt.printf("    ... and %d more targets\n", len(attack_options) - 10)
+		}
+	}
+	
+	// Step 3: Check which territories can be held after capture
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 3] Checking which territories can be held after capture...")
+	}
+	
+	determine_territories_that_can_be_held_triplea(gc, &attack_options)
+	
+	when ODIN_DEBUG {
+		holdable_count := 0
+		for opt in attack_options {
+			if opt.can_hold do holdable_count += 1
+		}
+		fmt.printf("  → %d of %d territories can be held\n", 
+			holdable_count, len(attack_options))
+		
+		// Show first few holdable territories
+		shown := 0
+		for opt in attack_options {
+			if opt.can_hold && shown < 5 {
+				fmt.printf("    ✓ %v (can hold)\n", opt.territory)
+				shown += 1
+			}
+		}
+	}
+	
+	// Step 4: Remove territories not worth attacking
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 4] Filtering out low-value targets...")
+		initial_count := len(attack_options)
+	}
+	
+	remove_territories_that_arent_worth_attacking_triplea(gc, &attack_options)
+	
+	when ODIN_DEBUG {
+		removed := initial_count - len(attack_options)
+		fmt.printf("  → Removed %d low-value targets, %d remain\n", removed, len(attack_options))
+		if len(attack_options) > 0 {
+			fmt.println("  Targets worth attacking:")
+			for opt in attack_options {
+				fmt.printf("    - %v (value: %.1f, holdable: %v)\n", 
+					opt.territory, opt.attack_value, opt.can_hold)
+			}
+		} else {
+			fmt.println("  → No attacks worth executing (all targets filtered out)")
+			fmt.println("  Reasons: low strategic value, can't hold after capture, or too risky")
+		}
+	}
+	
+	// Early exit if no attacks to execute
+	if len(attack_options) == 0 {
+		when ODIN_DEBUG {
+			fmt.println(SEP_MED + "\n")
+		}
+		return true
+	}
+	
+	// Step 5: Determine which territories to actually attack (iterative selection)
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 5] Selecting territories to attack (iterative algorithm)...")
+		initial_count = len(attack_options)
+	}
+	
+	determine_territories_to_attack_triplea(gc, &attack_options)
+	
+	when ODIN_DEBUG {
+		removed = initial_count - len(attack_options)
+		fmt.printf("  → Selected %d territories for attack (removed %d unsuccessful)\n", 
+			len(attack_options), removed)
+		if len(attack_options) > 0 {
+			fmt.println("  Final attack targets:")
+			for opt in attack_options {
+				fmt.printf("    - %v (value: %.1f)\n", opt.territory, opt.attack_value)
+			}
+		}
+	}
+	
+	if len(attack_options) == 0 {
+		when ODIN_DEBUG {
+			fmt.println("  → No successful attacks possible")
+			fmt.println(SEP_MED + "\n")
+		}
+		return true
+	}
+	
+	// Step 6: Re-calculate enemy attacks and re-filter with final selection
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 6] Re-calculating with final attack selection...")
+	}
+	
+	recalculate_enemy_attacks_after_territory_selection_triplea(gc, &attack_options)
+	
+	when ODIN_DEBUG {
+		fmt.printf("  → %d attacks remain after recalculation\n", len(attack_options))
+	}
+	
+	if len(attack_options) == 0 {
+		when ODIN_DEBUG {
+			fmt.println("  → All attacks became unfavorable after recalculation")
+			fmt.println(SEP_MED + "\n")
+		}
+		return true
+	}
+	
+	// Step 7: Move defenders to border territories
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 7] Moving defenders to border territories...")
+	}
+	
+	border_moves := move_one_defender_to_land_territories_bordering_enemy_triplea(gc, &attack_options)
+	defer delete(border_moves)
+	
+	when ODIN_DEBUG {
+		fmt.printf("  → Made %d border defender moves\n", len(border_moves))
+	}
+	
+	// Step 8: Remove attacks where transports would be exposed
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 8] Checking transport safety...")
+		initial_count = len(attack_options)
+	}
+	
+	remove_territories_where_transports_are_exposed_triplea(gc, &attack_options)
+	
+	when ODIN_DEBUG {
+		removed = initial_count - len(attack_options)
+		if removed > 0 {
+			fmt.printf("  → Removed %d amphibious attacks (transports exposed)\n", removed)
+		} else {
+			fmt.println("  → All transports safe")
+		}
+	}
+	
+	// Step 9: Ensure capital can be defended
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 9] Ensuring capital defense...")
+		initial_count = len(attack_options)
+	}
+	
+	remove_attacks_until_capital_can_be_held_triplea(gc, &attack_options)
+	
+	when ODIN_DEBUG {
+		removed = initial_count - len(attack_options)
+		if removed > 0 {
+			fmt.printf("  → Removed %d attacks to defend capital\n", removed)
+		} else {
+			fmt.println("  → Capital can be defended with current attack plan")
+		}
+		
+		if len(attack_options) > 0 {
+			fmt.println("\n  FINAL ATTACK PLAN:")
+			for opt in attack_options {
+				fmt.printf("    → Attack %v (value: %.1f, holdable: %v)\n", 
+					opt.territory, opt.attack_value, opt.can_hold)
+			}
+		} else {
+			fmt.println("\n  → No attacks will be executed (all removed for capital defense)")
+		}
+	}
+	
+	// Step 10: Determine specific units to attack with
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 10] Assigning units to each attack...")
+	}
+	
+	determine_units_to_attack_with_triplea(gc, &attack_options, &border_moves)
+	
+	when ODIN_DEBUG {
+		if len(attack_options) > 0 {
+			fmt.println("\n  UNIT ASSIGNMENTS:")
+			for opt in attack_options {
+				attacker_count := len(opt.attackers)
+				amphib_count := len(opt.amphib_attackers)
+				bombard_count := len(opt.bombard_units)
+				
+				fmt.printf("    %v:\n", opt.territory)
+				fmt.printf("      Ground/Air: %d units\n", attacker_count)
+				if amphib_count > 0 {
+					fmt.printf("      Amphibious: %d units\n", amphib_count)
+				}
+				if bombard_count > 0 {
+					fmt.printf("      Bombardment: %d units\n", bombard_count)
+				}
+				
+				// Show attack vs defense strength
+				attack_power := calculate_total_attack_power(gc, opt.attackers, opt.amphib_attackers)
+				defense_power := calculate_total_defense_power(gc, opt.defenders)
+				fmt.printf("      %.1f attack vs %.1f defense\n", attack_power, defense_power)
+			}
+		}
+	}
+	
+	when ODIN_DEBUG {
+		fmt.println(SEP_MED + "\n")
+	}
+	
+	// TODO: Step 11: Execute combat moves (doMove)
+	// For now, just analysis phase
+	
+	return true
+}
 
 /*
 Phase 3: Combat Phase
@@ -161,28 +478,31 @@ proai_combat_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 /*
 Phase 4: Non-Combat Move Phase
 
-Pro AI non-combat movement strategy is implemented in pro_noncombat_move.odin
-This includes:
+Pro AI non-combat movement strategy.
+This is implemented in pro_noncombat_move.odin and includes:
 - Moving air units to safe landing zones
 - Repositioning naval units for defense/next turn
 - Moving ground units to defensive positions
 - Consolidating forces in key territories
 - Moving AA guns to important locations
+
+The proai_noncombat_move_phase function is defined in pro_noncombat_move.odin.
 */
-// proai_noncombat_move_phase is implemented in pro_noncombat_move.odin
 
 /*
 Phase 5: Place Units Phase
 
-Pro AI unit placement strategy is implemented in pro_place.odin
-This includes:
+Pro AI unit placement strategy using TripleA's ProPurchaseAi.java logic.
+This is implemented in pro_place.odin and includes:
 - Place units purchased during purchase phase
 - Prioritize threatened territories needing defense
 - Place defenders at capital and factories first
 - Place remaining units at strategic locations
 - Respect factory production capacity limits
+
+The proai_place_units_phase function is defined in pro_place.odin
+and uses the TripleA methods from pro_purchase_triplea_methods.odin.
 */
-// proai_place_units_phase is implemented in pro_place.odin
 
 /*
 Phase 6: End Turn Phase
