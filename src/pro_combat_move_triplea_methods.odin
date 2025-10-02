@@ -427,49 +427,79 @@ determine_territories_that_can_be_held_triplea :: proc(gc: ^Game_Cache, options:
 		// If strafing then can't hold
 		if option.is_strafing {
 			option.can_hold = false
+			when ODIN_DEBUG {
+				fmt.printf("%s: CANNOT HOLD (strafing attack)\n", mm.land_name[t])
+			}
 			continue
 		}
 		
-		// Calculate potential attacking units we could send (from adjacent territories)
-		available_attack_power := calculate_available_attack_power(gc, t)
+		// Calculate actual attack power from assigned attackers (not potential)
+		// This matches Java: uses result.getAverageAttackersRemaining()
+		attack_power := calculate_total_attack_power(gc, option.attackers, option.amphib_attackers)
 		
-		// Estimate current defender strength
-		defender_power := estimate_defender_power(gc, t)
+		// Get actual defender strength
+		defender_power := calculate_total_defense_power(gc, option.defenders)
 		
-		// Estimate surviving attackers (simplified battle calc)
-		// Assume we need 1.5x attacking power to win with survivors
+		// Simulate the attack battle to find survivors
+		// Java: calc.estimateAttackBattleResults() -> result.getAverageAttackersRemaining()
+		// Simplified: Assume 60% casualties for attacker, 80% for defender when attacker wins
+		// If attacker doesn't have 1.5x advantage, assume total loss
 		surviving_power := f64(0.0)
-		if available_attack_power > defender_power * 1.5 {
-			// Win with survivors: roughly 40% of excess power remains
-			surviving_power = (available_attack_power - defender_power) * 0.4
+		if attack_power > defender_power * 1.5 {
+			// Win with survivors: attackers take ~60% casualties
+			surviving_power = attack_power * 0.4
 		}
 		
-		// Calculate maximum enemy counter-attack power from adjacent territories
+		// Calculate maximum enemy counter-attack power
 		enemy_counter_attack := calculate_enemy_counter_attack_power(gc, t)
 		
-		// Determine if we can hold based on:
-		// 1. Do we have enough attackers to win the initial battle?
-		// 2. Will we have survivors to defend?
-		// 3. Can survivors hold against enemy counter-attack?
-		can_win_battle := available_attack_power > defender_power * 1.2
-		can_defend_after := surviving_power > enemy_counter_attack * 0.8
+		// Java logic (lines 497-499):
+		// canHold = (!result2.isHasLandUnitRemaining() && !t.isWater())
+		//        || (result2.getTuvSwing() < 0)
+		//        || (result2.getWinPercentage() < proData.getMinWinPercentage())
+		//
+		// Translation:
+		// - Enemy counter-attack fails to keep land units (we killed them all)
+		// - Enemy counter-attack has negative TUV swing (they lose more value)
+		// - Enemy counter-attack has low win percentage (<60%)
 		
-		// Also consider strategic value - always try to hold high-value targets
-		production, is_capital := get_production_and_is_capital_triplea(gc, t)
-		is_high_value := is_capital || production >= 5
+		// Simulate enemy counter-attack (our survivors vs their counter-attack)
+		// Enemy needs ~1.2x advantage to win reliably
+		enemy_wins_counter := enemy_counter_attack > surviving_power * 1.2
+		enemy_win_percentage := f64(0.0)
+		if surviving_power > 0 {
+			// Rough win percentage calculation
+			power_ratio := enemy_counter_attack / surviving_power
+			if power_ratio > 2.0 {
+				enemy_win_percentage = 90.0
+			} else if power_ratio > 1.5 {
+				enemy_win_percentage = 75.0
+			} else if power_ratio > 1.0 {
+				enemy_win_percentage = 50.0
+			} else {
+				enemy_win_percentage = 25.0
+			}
+		} else {
+			enemy_win_percentage = 100.0 // No survivors = enemy wins for free
+		}
 		
-		// Can hold if: we can win AND defend, OR it's so valuable we should try anyway
-		option.can_hold = (can_win_battle && can_defend_after) || is_high_value
+		// Can hold if enemy counter-attack fails (win% < 60%)
+		// Note: We do NOT give bonus for "high value" - that was the bug!
+		// If we can't defend it, we can't hold it, period.
+		option.can_hold = enemy_win_percentage < 60.0
 		
 		when ODIN_DEBUG {
+			production, is_capital := get_production_and_is_capital_triplea(gc, t)
+			is_high_value := is_capital || production >= 5
+			
 			fmt.printf("%s:", mm.land_name[t])
 			if option.can_hold {
 				fmt.printf(" CAN HOLD")
 			} else {
 				fmt.printf(" CANNOT HOLD")
 			}
-			fmt.printf(" (%.1f attack vs %.1f defense, %.1f survivors vs %.1f enemy", 
-				available_attack_power, defender_power, surviving_power, enemy_counter_attack)
+			fmt.printf(" (%.1f attack vs %.1f defense, %.1f survivors vs %.1f enemy, enemy win %.0f%%", 
+				attack_power, defender_power, surviving_power, enemy_counter_attack, enemy_win_percentage)
 			if is_high_value do fmt.printf(", HIGH VALUE")
 			fmt.printf(")\n")
 		}

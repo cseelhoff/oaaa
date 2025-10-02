@@ -407,18 +407,74 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				bombard_count := len(opt.bombard_units)
 				
 				fmt.printf("    %v:\n", opt.territory)
-				fmt.printf("      Ground/Air: %d units\n", attacker_count)
-				if amphib_count > 0 {
-					fmt.printf("      Amphibious: %d units\n", amphib_count)
+				
+				// Show ground/air attackers with source territories
+				if attacker_count > 0 {
+					fmt.printf("      Ground/Air attackers (%d units):\n", attacker_count)
+					// Group by unit type for cleaner output
+					unit_type_counts: map[Unit_Type][dynamic]Land_ID
+					defer {
+						for _, sources in unit_type_counts {
+							delete(sources)
+						}
+						delete(unit_type_counts)
+					}
+					
+					for unit in opt.attackers {
+						if unit.unit_type not_in unit_type_counts {
+							unit_type_counts[unit.unit_type] = make([dynamic]Land_ID)
+						}
+						append(&unit_type_counts[unit.unit_type], unit.from_territory)
+					}
+					
+					// Print grouped by type
+					for unit_type, sources in unit_type_counts {
+						fmt.printf("        - %d x %v from: ", len(sources), unit_type)
+						for source, i in sources {
+							if i > 0 do fmt.printf(", ")
+							fmt.printf("%v", source)
+						}
+						fmt.printf("\n")
+					}
 				}
+				
+				// Show amphibious attackers
+				if amphib_count > 0 {
+					fmt.printf("      Amphibious attackers (%d units):\n", amphib_count)
+					unit_type_counts: map[Unit_Type][dynamic]Land_ID
+					defer {
+						for _, sources in unit_type_counts {
+							delete(sources)
+						}
+						delete(unit_type_counts)
+					}
+					
+					for unit in opt.amphib_attackers {
+						if unit.unit_type not_in unit_type_counts {
+							unit_type_counts[unit.unit_type] = make([dynamic]Land_ID)
+						}
+						append(&unit_type_counts[unit.unit_type], unit.from_territory)
+					}
+					
+					for unit_type, sources in unit_type_counts {
+						fmt.printf("        - %d x %v from sea zones: ", len(sources), unit_type)
+						for source, i in sources {
+							if i > 0 do fmt.printf(", ")
+							fmt.printf("Sea_%v", source)
+						}
+						fmt.printf("\n")
+					}
+				}
+				
+				// Show bombardment support
 				if bombard_count > 0 {
-					fmt.printf("      Bombardment: %d units\n", bombard_count)
+					fmt.printf("      Bombardment support (%d units):\n", bombard_count)
 				}
 				
 				// Show attack vs defense strength
 				attack_power := calculate_total_attack_power(gc, opt.attackers, opt.amphib_attackers)
 				defense_power := calculate_total_defense_power(gc, opt.defenders)
-				fmt.printf("      %.1f attack vs %.1f defense\n", attack_power, defense_power)
+				fmt.printf("      Total: %.1f attack vs %.1f defense\n", attack_power, defense_power)
 			}
 		}
 	}
