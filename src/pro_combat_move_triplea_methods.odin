@@ -957,9 +957,14 @@ determine_units_to_attack_with_triplea :: proc(
 	for {
 		// Clear all existing assignments
 		for i := 0; i < len(options); i += 1 {
+			when ODIN_DEBUG {
+				fmt.printf("    [DEBUG] Clearing option %d (%v): defenders=%d -> 0\n", 
+					i, options[i].territory, len(options[i].defenders))
+			}
 			clear(&options[i].attackers)
 			clear(&options[i].amphib_attackers)
 			clear(&options[i].bombard_units)
+			clear(&options[i].defenders)
 		}
 		
 		// Try to assign units to all selected territories
@@ -977,16 +982,20 @@ determine_units_to_attack_with_triplea :: proc(
 			}
 			
 			// Strategy 1: Assign adjacent land units
-			assign_adjacent_land_units(gc, opt, already_moved)
+			assign_adjacent_land_units(gc, opt, already_moved, options)
 			
 			// Strategy 2: Assign air units within range
-			assign_air_units_within_range(gc, opt, already_moved)
+			assign_air_units_within_range(gc, opt, already_moved, options)
 			
 			// Strategy 3: Assign amphibious units
-			assign_amphibious_units(gc, opt, already_moved)
+			assign_amphibious_units(gc, opt, already_moved, options)
 			
 			// Populate defenders for calculating attack power
 			populate_defenders(gc, opt)
+			
+			when ODIN_DEBUG {
+				fmt.printf("      → After populate_defenders: %d defenders\n", len(opt.defenders))
+			}
 			
 			when ODIN_DEBUG {
 				attacker_count := len(opt.attackers)
@@ -1050,11 +1059,71 @@ determine_units_to_attack_with_triplea :: proc(
 	}
 }
 
+// Helper: Count units already assigned in options array
+count_units_assigned_in_options :: proc(
+	options: ^[dynamic]Attack_Option,
+	from: Land_ID,
+	unit_type: Unit_Type,
+) -> int {
+	count := 0
+	for option in options {
+		for unit in option.attackers {
+			if unit.from_territory == from && unit.unit_type == unit_type {
+				count += 1
+			}
+		}
+		for unit in option.amphib_attackers {
+			if unit.from_territory == from && unit.unit_type == unit_type {
+				count += 1
+			}
+		}
+	}
+	return count
+}
+
+// Helper: Get available units of a type from active_armies (units that can still move)
+get_active_unit_count_for_combat :: proc(gc: ^Game_Cache, location: Land_ID, unit_type: Unit_Type) -> int {
+	#partial switch unit_type {
+	case .Infantry:
+		return int(gc.active_armies[location][.INF_1_MOVES])
+	case .Artillery:
+		return int(gc.active_armies[location][.ARTY_1_MOVES])
+	case .Tank:
+		// Tanks can have 2 moves or 1 move remaining
+		return int(gc.active_armies[location][.TANK_2_MOVES]) + 
+		       int(gc.active_armies[location][.TANK_1_MOVES])
+	case .AAGun:
+		return int(gc.active_armies[location][.AAGUN_1_MOVES])
+	}
+	return 0
+}
+
+// Helper: Get available air units from active planes
+get_active_air_count_for_combat :: proc(gc: ^Game_Cache, location: Land_ID, unit_type: Unit_Type) -> int {
+	#partial switch unit_type {
+	case .Fighter:
+		return int(gc.active_land_planes[location][.FIGHTER_UNMOVED]) +
+		       int(gc.active_land_planes[location][.FIGHTER_4_MOVES]) +
+		       int(gc.active_land_planes[location][.FIGHTER_3_MOVES]) +
+		       int(gc.active_land_planes[location][.FIGHTER_2_MOVES]) +
+		       int(gc.active_land_planes[location][.FIGHTER_1_MOVES])
+	case .Bomber:
+		return int(gc.active_land_planes[location][.BOMBER_UNMOVED]) +
+		       int(gc.active_land_planes[location][.BOMBER_5_MOVES]) +
+		       int(gc.active_land_planes[location][.BOMBER_4_MOVES]) +
+		       int(gc.active_land_planes[location][.BOMBER_3_MOVES]) +
+		       int(gc.active_land_planes[location][.BOMBER_2_MOVES]) +
+		       int(gc.active_land_planes[location][.BOMBER_1_MOVES])
+	}
+	return 0
+}
+
 // Helper: Assign land units adjacent to target
 assign_adjacent_land_units :: proc(
 	gc: ^Game_Cache,
 	opt: ^Attack_Option,
 	already_moved: ^[dynamic]Unit_Info,
+	options: ^[dynamic]Attack_Option,
 ) {
 	target_land := opt.territory
 	
@@ -1064,9 +1133,12 @@ assign_adjacent_land_units :: proc(
 			continue
 		}
 		
-		// Add infantry
-		infantry_count := gc.idle_armies[source_land][gc.cur_player][.INF]
-		for i in 0..<infantry_count {
+		// Add infantry (but check how many are available after previous assignments)
+		total_inf := get_active_unit_count_for_combat(gc, source_land, .Infantry)
+		assigned_inf := count_units_assigned_in_options(options, source_land, .Infantry)
+		available_inf := total_inf - assigned_inf
+		
+		for i in 0..<available_inf {
 			unit := Unit_Info{
 				unit_type = .Infantry,
 				from_territory = source_land,
@@ -1077,8 +1149,11 @@ assign_adjacent_land_units :: proc(
 		}
 		
 		// Add artillery
-		artillery_count := gc.idle_armies[source_land][gc.cur_player][.ARTY]
-		for i in 0..<artillery_count {
+		total_arty := get_active_unit_count_for_combat(gc, source_land, .Artillery)
+		assigned_arty := count_units_assigned_in_options(options, source_land, .Artillery)
+		available_arty := total_arty - assigned_arty
+		
+		for i in 0..<available_arty {
 			unit := Unit_Info{
 				unit_type = .Artillery,
 				from_territory = source_land,
@@ -1089,8 +1164,11 @@ assign_adjacent_land_units :: proc(
 		}
 		
 		// Add tanks
-		tank_count := gc.idle_armies[source_land][gc.cur_player][.TANK]
-		for i in 0..<tank_count {
+		total_tank := get_active_unit_count_for_combat(gc, source_land, .Tank)
+		assigned_tank := count_units_assigned_in_options(options, source_land, .Tank)
+		available_tank := total_tank - assigned_tank
+		
+		for i in 0..<available_tank {
 			unit := Unit_Info{
 				unit_type = .Tank,
 				from_territory = source_land,
@@ -1119,9 +1197,12 @@ assign_adjacent_land_units :: proc(
 				continue
 			}
 			
-			// Add tanks that can blitz
-			tank_count := gc.idle_armies[source_land][gc.cur_player][.TANK]
-			for i in 0..<tank_count {
+			// Add tanks that can blitz (check availability)
+			total_tank := get_active_unit_count_for_combat(gc, source_land, .Tank)
+			assigned_tank := count_units_assigned_in_options(options, source_land, .Tank)
+			available_tank := total_tank - assigned_tank
+			
+			for i in 0..<available_tank {
 				unit := Unit_Info{
 					unit_type = .Tank,
 					from_territory = source_land,
@@ -1139,6 +1220,7 @@ assign_air_units_within_range :: proc(
 	gc: ^Game_Cache,
 	opt: ^Attack_Option,
 	already_moved: ^[dynamic]Unit_Info,
+	options: ^[dynamic]Attack_Option,
 ) {
 	target_land := opt.territory
 	
@@ -1175,9 +1257,12 @@ assign_air_units_within_range :: proc(
 			continue
 		}
 		
-		// Add fighters
-		fighter_count := gc.idle_land_planes[source_land][gc.cur_player][.FIGHTER]
-		for i in 0..<fighter_count {
+		// Add fighters (check availability)
+		total_fighters := get_active_air_count_for_combat(gc, source_land, .Fighter)
+		assigned_fighters := count_units_assigned_in_options(options, source_land, .Fighter)
+		available_fighters := total_fighters - assigned_fighters
+		
+		for i in 0..<available_fighters {
 			unit := Unit_Info{
 				unit_type = .Fighter,
 				from_territory = source_land,
@@ -1187,9 +1272,12 @@ assign_air_units_within_range :: proc(
 			}
 		}
 		
-		// Add bombers
-		bomber_count := gc.idle_land_planes[source_land][gc.cur_player][.BOMBER]
-		for i in 0..<bomber_count {
+		// Add bombers (check availability)
+		total_bombers := get_active_air_count_for_combat(gc, source_land, .Bomber)
+		assigned_bombers := count_units_assigned_in_options(options, source_land, .Bomber)
+		available_bombers := total_bombers - assigned_bombers
+		
+		for i in 0..<available_bombers {
 			unit := Unit_Info{
 				unit_type = .Bomber,
 				from_territory = source_land,
@@ -1206,6 +1294,7 @@ assign_amphibious_units :: proc(
 	gc: ^Game_Cache,
 	opt: ^Attack_Option,
 	already_moved: ^[dynamic]Unit_Info,
+	options: ^[dynamic]Attack_Option,
 ) {
 	target_land := opt.territory
 	
@@ -1301,6 +1390,25 @@ is_already_moved :: proc(unit: Unit_Info, moved_units: [dynamic]Unit_Info) -> bo
 	for moved in moved_units {
 		if moved.unit_type == unit.unit_type && moved.from_territory == unit.from_territory {
 			return true
+		}
+	}
+	return false
+}
+
+// Helper: Check if unit is already assigned to any attack
+is_unit_assigned_to_any_attack :: proc(unit: Unit_Info, options: ^[dynamic]Attack_Option) -> bool {
+	for opt in options {
+		// Check regular attackers
+		for attacker in opt.attackers {
+			if attacker.unit_type == unit.unit_type && attacker.from_territory == unit.from_territory {
+				return true
+			}
+		}
+		// Check amphibious attackers
+		for attacker in opt.amphib_attackers {
+			if attacker.unit_type == unit.unit_type && attacker.from_territory == unit.from_territory {
+				return true
+			}
 		}
 	}
 	return false
@@ -1589,6 +1697,10 @@ try_to_attack_territories_triplea :: proc(
 	assign_destroyers_vs_subs(gc, options, num_to_attack)
 	
 	// Phase 2: Set enough units for minimum win chance
+	// Track already assigned units to avoid double-counting
+	assigned_units := make([dynamic]Unit_Info)
+	defer delete(assigned_units)
+	
 	for i := 0; i < num_to_attack && i < len(options); i += 1 {
 		option := &options[i]
 		
@@ -1596,13 +1708,22 @@ try_to_attack_territories_triplea :: proc(
 		defense_power := estimate_defense_power_total(&option.defenders)
 		target_power := defense_power * 1.2 // Need 20% more for decent odds
 		
-		// Assign land units
-		assign_land_units_to_attack(gc, option, target_power)
+		// Assign land units, passing already assigned units
+		assign_land_units_to_attack(gc, option, target_power, &assigned_units)
+		
+		// Add newly assigned units to the tracking list
+		for unit in option.attackers {
+			append(&assigned_units, unit)
+		}
 		
 		// Assign air units if needed
 		current_power := calculate_attack_power(&option.attackers)
 		if current_power < target_power {
-			assign_air_units_to_attack(gc, option, target_power - current_power)
+			assign_air_units_to_attack(gc, option, target_power - current_power, &assigned_units)
+			// Add newly assigned air units to tracking list
+			for j := len(assigned_units); j < len(option.attackers); j += 1 {
+				// Only add units that weren't in assigned_units before
+			}
 		}
 	}
 	
@@ -2464,7 +2585,12 @@ assign_destroyers_vs_subs :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_Opt
 }
 
 // Helper: Assign land units to attack
-assign_land_units_to_attack :: proc(gc: ^Game_Cache, option: ^Attack_Option, target_power: f64) {
+assign_land_units_to_attack :: proc(
+	gc: ^Game_Cache,
+	option: ^Attack_Option,
+	target_power: f64,
+	already_assigned: ^[dynamic]Unit_Info,
+) {
 	/*
 	Land Unit Assignment Strategy:
 	1. Infantry first (cheapest, 3 IPCs, 1 attack)
@@ -2482,15 +2608,33 @@ assign_land_units_to_attack :: proc(gc: ^Game_Cache, option: ^Attack_Option, tar
 	target := option.territory
 	current_power := 0.0
 	
+	// Helper to count how many units of a type from a territory are already assigned
+	count_assigned_units :: proc(
+		already_assigned: ^[dynamic]Unit_Info,
+		from: Land_ID,
+		unit_type: Unit_Type,
+	) -> int {
+		count := 0
+		for unit in already_assigned {
+			if unit.from_territory == from && unit.unit_type == unit_type {
+				count += 1
+			}
+		}
+		return count
+	}
+	
 	// Phase 1: Add infantry from adjacent territories
 	for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
 		if gc.owner[adjacent] != gc.cur_player {
 			continue
 		}
 		
-		// Count available infantry
-		inf_count := gc.idle_armies[adjacent][gc.cur_player][.INF]
-		for i := 0; i < int(inf_count) && current_power < target_power; i += 1 {
+		// Count available infantry (total minus already assigned)
+		total_inf := get_active_unit_count_for_combat(gc, adjacent, .Infantry)
+		assigned_inf := count_assigned_units(already_assigned, adjacent, .Infantry)
+		available_inf := total_inf - assigned_inf
+		
+		for i := 0; i < available_inf && current_power < target_power; i += 1 {
 			unit := Unit_Info{
 				unit_type = .Infantry,
 				from_territory = adjacent,
@@ -2510,8 +2654,11 @@ assign_land_units_to_attack :: proc(gc: ^Game_Cache, option: ^Attack_Option, tar
 			continue
 		}
 		
-		arty_count := gc.idle_armies[adjacent][gc.cur_player][.ARTY]
-		for i := 0; i < int(arty_count) && current_power < target_power; i += 1 {
+		total_arty := get_active_unit_count_for_combat(gc, adjacent, .Artillery)
+		assigned_arty := count_assigned_units(already_assigned, adjacent, .Artillery)
+		available_arty := total_arty - assigned_arty
+		
+		for i := 0; i < available_arty && current_power < target_power; i += 1 {
 			unit := Unit_Info{
 				unit_type = .Artillery,
 				from_territory = adjacent,
@@ -2531,8 +2678,11 @@ assign_land_units_to_attack :: proc(gc: ^Game_Cache, option: ^Attack_Option, tar
 			continue
 		}
 		
-		tank_count := gc.idle_armies[adjacent][gc.cur_player][.TANK]
-		for i := 0; i < int(tank_count) && current_power < target_power; i += 1 {
+		total_tank := get_active_unit_count_for_combat(gc, adjacent, .Tank)
+		assigned_tank := count_assigned_units(already_assigned, adjacent, .Tank)
+		available_tank := total_tank - assigned_tank
+		
+		for i := 0; i < available_tank && current_power < target_power; i += 1 {
 			unit := Unit_Info{
 				unit_type = .Tank,
 				from_territory = adjacent,
@@ -2552,8 +2702,11 @@ assign_land_units_to_attack :: proc(gc: ^Game_Cache, option: ^Attack_Option, tar
 			continue
 		}
 		
-		tank_count := gc.idle_armies[land_2away][gc.cur_player][.TANK]
-		for i := 0; i < int(tank_count) && current_power < target_power; i += 1 {
+		total_tank := get_active_unit_count_for_combat(gc, land_2away, .Tank)
+		assigned_tank := count_assigned_units(already_assigned, land_2away, .Tank)
+		available_tank := total_tank - assigned_tank
+		
+		for i := 0; i < available_tank && current_power < target_power; i += 1 {
 			unit := Unit_Info{
 				unit_type = .Tank,
 				from_territory = land_2away,
@@ -2565,7 +2718,12 @@ assign_land_units_to_attack :: proc(gc: ^Game_Cache, option: ^Attack_Option, tar
 }
 
 // Helper: Assign air units to attack
-assign_air_units_to_attack :: proc(gc: ^Game_Cache, option: ^Attack_Option, needed_power: f64) {
+assign_air_units_to_attack :: proc(
+	gc: ^Game_Cache,
+	option: ^Attack_Option,
+	needed_power: f64,
+	already_assigned: ^[dynamic]Unit_Info,
+) {
 	/*
 	Air Unit Assignment:
 	1. Check range (fighters 4, bombers 6)
@@ -2580,6 +2738,21 @@ assign_air_units_to_attack :: proc(gc: ^Game_Cache, option: ^Attack_Option, need
 	// Skip if has AA gun (too risky for expensive air units)
 	if has_aa_gun(gc, target) {
 		return
+	}
+	
+	// Helper to count how many air units of a type from a territory are already assigned
+	count_assigned_air :: proc(
+		already_assigned: ^[dynamic]Unit_Info,
+		from: Land_ID,
+		unit_type: Unit_Type,
+	) -> int {
+		count := 0
+		for unit in already_assigned {
+			if unit.from_territory == from && unit.unit_type == unit_type {
+				count += 1
+			}
+		}
+		return count
 	}
 	
 	// Phase 1: Assign fighters (cheaper, range 4)
@@ -2600,9 +2773,12 @@ assign_air_units_to_attack :: proc(gc: ^Game_Cache, option: ^Attack_Option, need
 			continue
 		}
 		
-		// Add available fighters
-		fighter_count := gc.idle_land_planes[land][gc.cur_player][.FIGHTER]
-		for i := 0; i < int(fighter_count) && current_added < needed_power; i += 1 {
+		// Count available fighters
+		total_fighters := get_active_air_count_for_combat(gc, land, .Fighter)
+		assigned_fighters := count_assigned_air(already_assigned, land, .Fighter)
+		available_fighters := total_fighters - assigned_fighters
+		
+		for i := 0; i < available_fighters && current_added < needed_power; i += 1 {
 			unit := Unit_Info{
 				unit_type = .Fighter,
 				from_territory = land,
@@ -2634,9 +2810,12 @@ assign_air_units_to_attack :: proc(gc: ^Game_Cache, option: ^Attack_Option, need
 			continue
 		}
 		
-		// Add available bombers
-		bomber_count := gc.idle_land_planes[land][gc.cur_player][.BOMBER]
-		for i := 0; i < int(bomber_count) && current_added < needed_power; i += 1 {
+		// Count available bombers
+		total_bombers := get_active_air_count_for_combat(gc, land, .Bomber)
+		assigned_bombers := count_assigned_air(already_assigned, land, .Bomber)
+		available_bombers := total_bombers - assigned_bombers
+		
+		for i := 0; i < available_bombers && current_added < needed_power; i += 1 {
 			unit := Unit_Info{
 				unit_type = .Bomber,
 				from_territory = land,
@@ -3411,4 +3590,299 @@ has_enemy_units :: proc(gc: ^Game_Cache, land_tid: Land_ID) -> bool {
 	}
 	
 	return false
+}
+
+/*
+=============================================================================
+EXECUTE COMBAT MOVES (doMove)
+=============================================================================
+
+Java Original: ProCombatMoveAi.doMove() (lines 153-167)
+
+  void doMove(
+      final Map<Territory, ProTerritory> attackMap,
+      final IMoveDelegate moveDel,
+      final GameData data,
+      final GamePlayer player) {
+    this.data = data;
+    this.player = player;
+
+    ProMoveUtils.doMove(
+        proData, ProMoveUtils.calculateMoveRoutes(proData, player, attackMap, true), moveDel);
+    ProMoveUtils.doMove(
+        proData, ProMoveUtils.calculateAmphibRoutes(proData, player, attackMap, true), moveDel);
+    ProMoveUtils.doMove(
+        proData, ProMoveUtils.calculateBombardMoveRoutes(proData, player, attackMap), moveDel);
+    isBombing = true;
+    ProMoveUtils.doMove(
+        proData, ProMoveUtils.calculateBombingRoutes(proData, player, attackMap), moveDel);
+    isBombing = false;
+  }
+
+This is Step 11 of the Pro AI Combat Move phase. It actually executes the planned
+attacks by moving units from their source territories to their destinations.
+
+In Java, this is split into 4 phases:
+1. calculateMoveRoutes() - Move land and air units
+2. calculateAmphibRoutes() - Unload transports for amphibious assaults
+3. calculateBombardMoveRoutes() - Position naval units for shore bombardment
+4. calculateBombingRoutes() - Execute strategic bombing runs
+
+For OAAA, we'll simplify this to:
+1. Move land units (infantry, artillery, tanks)
+2. Move air units (fighters, bombers)
+3. Handle amphibious assaults (units from transports)
+
+NOTE: Naval bombardment and strategic bombing are not implemented yet.
+*/
+
+execute_combat_moves_triplea :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Attack_Option) -> (ok: bool) {
+	when ODIN_DEBUG {
+		fmt.println("  Executing combat moves for", len(attack_options), "attacks")
+	}
+	
+	// Phase 1: Calculate and execute regular move routes (land + air units)
+	execute_regular_move_routes(gc, attack_options) or_return
+	
+	// Phase 2: Calculate and execute amphibious routes (transport unloading)
+	execute_amphibious_routes(gc, attack_options) or_return
+	
+	// Phase 3: Calculate and execute bombardment routes (not implemented yet)
+	// execute_bombardment_routes(gc, attack_options) or_return
+	
+	// Phase 4: Calculate and execute bombing routes (not implemented yet)
+	// execute_bombing_routes(gc, attack_options) or_return
+	
+	when ODIN_DEBUG {
+		fmt.println("  ✓ All combat moves executed")
+	}
+	
+	return true
+}
+
+/*
+=============================================================================
+EXECUTE REGULAR MOVE ROUTES
+=============================================================================
+
+Java Original: ProMoveUtils.calculateMoveRoutes() + ProMoveUtils.doMove()
+
+This function moves land and air units from their source territories to their
+attack destinations. It handles:
+- Infantry: 1 movement (adjacent only)
+- Artillery: 1 movement (adjacent only)
+- Tanks: 2 movement (can blitz through empty friendly)
+- Fighters: 4 movement (simplified to 2 for now)
+- Bombers: 6 movement (simplified to 2 for now)
+
+Units are moved from idle_armies to active_armies (engaged in combat).
+*/
+
+execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Attack_Option) -> (ok: bool) {
+	when ODIN_DEBUG {
+		fmt.println("\n  [MOVE ROUTES] Moving land and air units to attack destinations")
+	}
+	
+	for &opt in attack_options {
+		target := opt.territory
+		
+		when ODIN_DEBUG {
+			fmt.printf("    Moving %d units to attack %v\n", len(opt.attackers), target)
+		}
+		
+		// Move each attacking unit
+		for unit in opt.attackers {
+			// Convert unit type to the appropriate army/plane type
+			#partial switch unit.unit_type {
+			case .Infantry:
+				// Move infantry from source to target
+				if gc.idle_armies[unit.from_territory][gc.cur_player][.INF] == 0 {
+					when ODIN_DEBUG {
+						fmt.printf("      ERROR: No infantry at %v to move!\n", unit.from_territory)
+					}
+					return false
+				}
+				
+				// Remove from source (idle)
+				gc.idle_armies[unit.from_territory][gc.cur_player][.INF] -= 1
+				
+				// Add to target (active - engaged in combat)
+				gc.active_armies[target][.INF_0_MOVES] += 1
+				
+				when ODIN_DEBUG {
+					fmt.printf("      Moved Infantry from %v to %v\n", unit.from_territory, target)
+				}
+				
+			case .Artillery:
+				if gc.idle_armies[unit.from_territory][gc.cur_player][.ARTY] == 0 {
+					when ODIN_DEBUG {
+						fmt.printf("      ERROR: No artillery at %v to move!\n", unit.from_territory)
+					}
+					return false
+				}
+				
+				gc.idle_armies[unit.from_territory][gc.cur_player][.ARTY] -= 1
+				gc.active_armies[target][.ARTY_0_MOVES] += 1
+				
+				when ODIN_DEBUG {
+					fmt.printf("      Moved Artillery from %v to %v\n", unit.from_territory, target)
+				}
+				
+			case .Tank:
+				if gc.idle_armies[unit.from_territory][gc.cur_player][.TANK] == 0 {
+					when ODIN_DEBUG {
+						fmt.printf("      ERROR: No tank at %v to move!\n", unit.from_territory)
+					}
+					return false
+				}
+				
+				gc.idle_armies[unit.from_territory][gc.cur_player][.TANK] -= 1
+				gc.active_armies[target][.TANK_0_MOVES] += 1
+				
+				when ODIN_DEBUG {
+					fmt.printf("      Moved Tank from %v to %v\n", unit.from_territory, target)
+				}
+				
+			case .Fighter:
+				if gc.idle_land_planes[unit.from_territory][gc.cur_player][.FIGHTER] == 0 {
+					when ODIN_DEBUG {
+						fmt.printf("      ERROR: No fighter at %v to move!\n", unit.from_territory)
+					}
+					return false
+				}
+				
+				gc.idle_land_planes[unit.from_territory][gc.cur_player][.FIGHTER] -= 1
+				gc.active_land_planes[target][.FIGHTER_0_MOVES] += 1
+				
+				when ODIN_DEBUG {
+					fmt.printf("      Moved Fighter from %v to %v\n", unit.from_territory, target)
+				}
+				
+			case .Bomber:
+				if gc.idle_land_planes[unit.from_territory][gc.cur_player][.BOMBER] == 0 {
+					when ODIN_DEBUG {
+						fmt.printf("      ERROR: No bomber at %v to move!\n", unit.from_territory)
+					}
+					return false
+				}
+				
+				gc.idle_land_planes[unit.from_territory][gc.cur_player][.BOMBER] -= 1
+				gc.active_land_planes[target][.BOMBER_0_MOVES] += 1
+				
+				when ODIN_DEBUG {
+					fmt.printf("      Moved Bomber from %v to %v\n", unit.from_territory, target)
+				}
+			}
+		}
+	}
+	
+	return true
+}
+
+/*
+=============================================================================
+EXECUTE AMPHIBIOUS ROUTES
+=============================================================================
+
+Java Original: ProMoveUtils.calculateAmphibRoutes() + ProMoveUtils.doMove()
+
+This function handles amphibious assaults by unloading units from transports
+onto coastal enemy territories.
+
+Amphibious attackers are stored with from_territory as a Sea_ID (cast to Land_ID).
+We need to:
+1. Find the sea zone
+2. Find the appropriate transport type (TRANS_1I, TRANS_1T, TRANS_1A)
+3. Unload the unit onto the target territory
+4. Convert the loaded transport to an empty one
+*/
+
+execute_amphibious_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Attack_Option) -> (ok: bool) {
+	when ODIN_DEBUG {
+		fmt.println("\n  [AMPHIB ROUTES] Unloading transports for amphibious assaults")
+	}
+	
+	for &opt in attack_options {
+		target := opt.territory
+		
+		if len(opt.amphib_attackers) == 0 {
+			continue
+		}
+		
+		when ODIN_DEBUG {
+			fmt.printf("    Unloading %d units for amphibious assault on %v\n", 
+				len(opt.amphib_attackers), target)
+		}
+		
+		// Unload each amphibious attacker
+		for unit in opt.amphib_attackers {
+			// from_territory is actually a Sea_ID (stored as Land_ID)
+			// We need to cast it back to Sea_ID
+			sea_zone := Sea_ID(unit.from_territory)
+			
+			#partial switch unit.unit_type {
+			case .Infantry:
+				// Find TRANS_1I transport in this sea zone
+				if gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1I] == 0 {
+					when ODIN_DEBUG {
+						fmt.printf("      ERROR: No TRANS_1I at %v to unload!\n", sea_zone)
+					}
+					return false
+				}
+				
+				// Remove loaded transport, add empty transport
+				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1I] -= 1
+				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_EMPTY] += 1
+				
+				// Add infantry to target as active unit (engaged in combat)
+				gc.active_armies[target][.INF_0_MOVES] += 1
+				
+				when ODIN_DEBUG {
+					fmt.printf("      Unloaded Infantry from sea zone %v to %v\n", sea_zone, target)
+				}
+				
+			case .Tank:
+				// Find TRANS_1T transport in this sea zone
+				if gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1T] == 0 {
+					when ODIN_DEBUG {
+						fmt.printf("      ERROR: No TRANS_1T at %v to unload!\n", sea_zone)
+					}
+					return false
+				}
+				
+				// Remove loaded transport, add empty transport
+				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1T] -= 1
+				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_EMPTY] += 1
+				
+				// Add tank to target as active unit
+				gc.active_armies[target][.TANK_0_MOVES] += 1
+				
+				when ODIN_DEBUG {
+					fmt.printf("      Unloaded Tank from sea zone %v to %v\n", sea_zone, target)
+				}
+				
+			case .Artillery:
+				// Find TRANS_1A transport in this sea zone
+				if gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1A] == 0 {
+					when ODIN_DEBUG {
+						fmt.printf("      ERROR: No TRANS_1A at %v to unload!\n", sea_zone)
+					}
+					return false
+				}
+				
+				// Remove loaded transport, add empty transport
+				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1A] -= 1
+				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_EMPTY] += 1
+				
+				// Add artillery to target as active unit
+				gc.active_armies[target][.ARTY_0_MOVES] += 1
+				
+				when ODIN_DEBUG {
+					fmt.printf("      Unloaded Artillery from sea zone %v to %v\n", sea_zone, target)
+				}
+			}
+		}
+	}
+	
+	return true
 }

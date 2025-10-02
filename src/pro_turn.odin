@@ -483,8 +483,36 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		fmt.println(SEP_MED + "\n")
 	}
 	
-	// TODO: Step 11: Execute combat moves (doMove)
-	// For now, just analysis phase
+	// Step 11: Execute combat moves (doMove)
+	// Java Original: ProCombatMoveAi.doMove() (lines 153-167)
+	/*
+	  void doMove(
+	      final Map<Territory, ProTerritory> attackMap,
+	      final IMoveDelegate moveDel,
+	      final GameData data,
+	      final GamePlayer player) {
+	    this.data = data;
+	    this.player = player;
+
+	    ProMoveUtils.doMove(
+	        proData, ProMoveUtils.calculateMoveRoutes(proData, player, attackMap, true), moveDel);
+	    ProMoveUtils.doMove(
+	        proData, ProMoveUtils.calculateAmphibRoutes(proData, player, attackMap, true), moveDel);
+	    ProMoveUtils.doMove(
+	        proData, ProMoveUtils.calculateBombardMoveRoutes(proData, player, attackMap), moveDel);
+	    isBombing = true;
+	    ProMoveUtils.doMove(
+	        proData, ProMoveUtils.calculateBombingRoutes(proData, player, attackMap), moveDel);
+	    isBombing = false;
+	  }
+	*/
+	
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 11] Executing combat moves (doMove)")
+	}
+	
+	// Execute all planned attacks
+	execute_combat_moves_triplea(gc, &attack_options) or_return
 	
 	return true
 }

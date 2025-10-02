@@ -21,7 +21,7 @@
       "args": [
         "build",
         "src",
-        "-out:build/main",
+        "-out:build/oaaa.exe",
         "-debug"
       ],
       "problemMatcher": []
@@ -33,7 +33,7 @@
       "args": [
         "build",
         "src",
-        "-out:build/main",
+        "-out:build/oaaa.exe",
         "-o:aggressive",
         "-debug",
         // "-no-bounds-check",
