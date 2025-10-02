@@ -1,3 +1,4 @@
+#+feature global-context
 package oaaa
 
 Sea_ID :: enum {

@@ -1,3 +1,4 @@
+#+feature global-context
 package oaaa
 
 Land_ID :: distinct enum u8 {
