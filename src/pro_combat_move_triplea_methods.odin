@@ -159,11 +159,11 @@ prioritize_attack_options_triplea :: proc(gc: ^Game_Cache, options: ^[dynamic]At
 	// Calculate value of attacking territory
 	for i := len(options) - 1; i >= 0; i -= 1 {
 		option := &options[i]
-		t := option.territory
+		territory := option.territory
 		
 		// Determine territory attack properties
-		is_land := !is_water_territory(t) ? 1 : 0
-		is_neutral := is_neutral_land(gc, t) ? 1 : 0
+		is_land := !is_water_territory(territory) ? 1 : 0
+		is_neutral := false //is_neutral_land(gc, territory) ? 1 : 0
 		is_can_hold := option.can_hold ? 1 : 0
 		is_amphib := option.is_amphib ? 1 : 0
 		
@@ -172,17 +172,17 @@ prioritize_attack_options_triplea :: proc(gc: ^Game_Cache, options: ^[dynamic]At
 		is_empty_land := (is_land == 1 && defending_units == 0 && !option.is_amphib) ? 1 : 0
 		
 		// Check if adjacent to capital
-		is_adjacent_to_capital := is_adjacent_to_my_capital(gc, t)
-		is_not_neutral_adj_capital := (is_adjacent_to_capital && !is_neutral_land(gc, t)) ? 1 : 0
+		is_adjacent_to_capital := is_adjacent_to_my_capital(gc, territory)
+		is_not_neutral_adj_capital := (is_adjacent_to_capital && !is_neutral_land(gc, territory)) ? 1 : 0
 		
 		// Check for factory
-		is_factory := has_factory(gc, t) ? 1 : 0
+		is_factory := gc.factory_prod[territory] > 0 ? 1 : 0
 		
 		// Check if FFA mode (more than 2 teams)
 		is_ffa := is_free_for_all(gc) ? 1 : 0
 		
 		// Get production value and capital status
-		production, is_capital := get_production_and_is_capital_triplea(gc, t)
+		production, is_capital := get_production_and_is_capital_triplea(gc, territory)
 		
 		// Calculate attack value for prioritization
 		tuv_swing := option.tuv_swing
@@ -194,14 +194,15 @@ prioritize_attack_options_triplea :: proc(gc: ^Game_Cache, options: ^[dynamic]At
 			f64(1 + is_empty_land) * f64(1 + is_factory) * (1 - 0.5 * f64(is_amphib)) * f64(production)
 		
 		is_capital_value := is_capital ? 1.0 : 0.0
+		is_neutral_value := 0.0
 		attack_value := (tuv_swing + territory_value) * (1 + 4.0 * is_capital_value) *
-			(1 + 2.0 * f64(is_not_neutral_adj_capital)) * (1 - 0.9 * f64(is_neutral))
+			(1 + 2.0 * f64(is_not_neutral_adj_capital))
 		
 		// Remove negative value territories
 		option.attack_value = attack_value
 		
 		if attack_value <= 0 || (is_defensive && attack_value <= 8 && 
-			calculate_distance(gc, get_my_capital(gc), t) <= 3) {
+			calculate_distance(gc, get_my_capital(gc), territory) <= 3) {
 			unordered_remove(options, i)
 		}
 	}
@@ -957,10 +958,6 @@ determine_units_to_attack_with_triplea :: proc(
 	for {
 		// Clear all existing assignments
 		for i := 0; i < len(options); i += 1 {
-			when ODIN_DEBUG {
-				fmt.printf("    [DEBUG] Clearing option %d (%v): defenders=%d -> 0\n", 
-					i, options[i].territory, len(options[i].defenders))
-			}
 			clear(&options[i].attackers)
 			clear(&options[i].amphib_attackers)
 			clear(&options[i].bombard_units)
@@ -992,10 +989,6 @@ determine_units_to_attack_with_triplea :: proc(
 			
 			// Populate defenders for calculating attack power
 			populate_defenders(gc, opt)
-			
-			when ODIN_DEBUG {
-				fmt.printf("      → After populate_defenders: %d defenders\n", len(opt.defenders))
-			}
 			
 			when ODIN_DEBUG {
 				attacker_count := len(opt.attackers)
@@ -3705,9 +3698,12 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 				
 				// Remove from source (idle)
 				gc.idle_armies[unit.from_territory][gc.cur_player][.INF] -= 1
+				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
 				
 				// Add to target (active - engaged in combat)
+				gc.idle_armies[target][gc.cur_player][.INF] += 1
 				gc.active_armies[target][.INF_0_MOVES] += 1
+				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
 					fmt.printf("      Moved Infantry from %v to %v\n", unit.from_territory, target)
@@ -3722,7 +3718,10 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 				}
 				
 				gc.idle_armies[unit.from_territory][gc.cur_player][.ARTY] -= 1
+				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
+				gc.idle_armies[target][gc.cur_player][.ARTY] += 1
 				gc.active_armies[target][.ARTY_0_MOVES] += 1
+				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
 					fmt.printf("      Moved Artillery from %v to %v\n", unit.from_territory, target)
@@ -3737,7 +3736,10 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 				}
 				
 				gc.idle_armies[unit.from_territory][gc.cur_player][.TANK] -= 1
+				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
+				gc.idle_armies[target][gc.cur_player][.TANK] += 1
 				gc.active_armies[target][.TANK_0_MOVES] += 1
+				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
 					fmt.printf("      Moved Tank from %v to %v\n", unit.from_territory, target)
@@ -3752,7 +3754,10 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 				}
 				
 				gc.idle_land_planes[unit.from_territory][gc.cur_player][.FIGHTER] -= 1
+				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
+				gc.idle_land_planes[target][gc.cur_player][.FIGHTER] += 1
 				gc.active_land_planes[target][.FIGHTER_0_MOVES] += 1
+				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
 					fmt.printf("      Moved Fighter from %v to %v\n", unit.from_territory, target)
@@ -3767,7 +3772,10 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 				}
 				
 				gc.idle_land_planes[unit.from_territory][gc.cur_player][.BOMBER] -= 1
+				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
+				gc.idle_land_planes[target][gc.cur_player][.BOMBER] += 1
 				gc.active_land_planes[target][.BOMBER_0_MOVES] += 1
+				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
 					fmt.printf("      Moved Bomber from %v to %v\n", unit.from_territory, target)
@@ -3835,7 +3843,9 @@ execute_amphibious_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Att
 				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_EMPTY] += 1
 				
 				// Add infantry to target as active unit (engaged in combat)
+				gc.idle_armies[target][gc.cur_player][.INF] += 1
 				gc.active_armies[target][.INF_0_MOVES] += 1
+				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
 					fmt.printf("      Unloaded Infantry from sea zone %v to %v\n", sea_zone, target)
@@ -3855,7 +3865,9 @@ execute_amphibious_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Att
 				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_EMPTY] += 1
 				
 				// Add tank to target as active unit
+				gc.idle_armies[target][gc.cur_player][.TANK] += 1
 				gc.active_armies[target][.TANK_0_MOVES] += 1
+				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
 					fmt.printf("      Unloaded Tank from sea zone %v to %v\n", sea_zone, target)
@@ -3875,7 +3887,9 @@ execute_amphibious_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Att
 				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_EMPTY] += 1
 				
 				// Add artillery to target as active unit
+				gc.idle_armies[target][gc.cur_player][.ARTY] += 1
 				gc.active_armies[target][.ARTY_0_MOVES] += 1
+				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
 					fmt.printf("      Unloaded Artillery from sea zone %v to %v\n", sea_zone, target)
