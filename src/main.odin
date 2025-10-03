@@ -67,6 +67,7 @@ start :: proc() {
 	if test_proai {
 		fmt.println("\n=== Pro AI Test Mode ===")
 		test_proai_single_turn(&game_state)
+		test_proai_single_turn(&game_state)
 		return
 	}
 	

@@ -717,6 +717,7 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		}
 		combat_rounds_counter = 0
 		for {
+			fmt.println("Starting combat round ", combat_rounds_counter, " for land ", land)
 			debug_checks(gc)
 			combat_rounds_counter += 1
 			if combat_rounds_counter > MAX_COMBAT_ROUNDS {
@@ -728,9 +729,10 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			}
 			if land in gc.land_combat_started {
 				gc.current_territory = to_air(land)
-				add_valid_land_retreat_destinations(gc)
-				dst_action := get_action_input(gc) or_return
-				if retreat_land_units(gc, dst_action) do break
+				// RETREAT PHASE DISABLED
+				// add_valid_land_retreat_destinations(gc)
+				// dst_action := get_action_input(gc) or_return
+				// if retreat_land_units(gc, dst_action) do break
 			}
 			gc.land_combat_started += {land}
 			attacker_hits := calculate_attacker_hits_low_luck(
@@ -1009,6 +1011,11 @@ hit_my_battleship :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 		gc.active_ships[sea][.BATTLESHIP_BOMBARDED] -= 1
 		gc.idle_ships[sea][gc.cur_player][.BATTLESHIP] -= 1
 		// Don't update combat totals - damaged battleship still counts
+		
+		when ODIN_DEBUG {
+			fmt.printf("  [COMBAT] %v battleship damaged at %v\n", gc.cur_player, sea)
+		}
+		
 		return true
 	}
 	return false
@@ -1040,6 +1047,11 @@ hit_enemy_battleship :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 		if gc.idle_ships[sea][enemy][.BATTLESHIP] > 0 {
 			gc.idle_ships[sea][enemy][.BATTLESHIP] -= 1
 			gc.idle_ships[sea][enemy][.BS_DAMAGED] += 1
+			
+			when ODIN_DEBUG {
+				fmt.printf("  [COMBAT] %v battleship damaged at %v\n", enemy, sea)
+			}
+			
 			return true
 		}
 	}
@@ -1091,6 +1103,11 @@ remove_my_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Active_S
 			// 	// All non-transport ships are combat ships
 			// 	gc.allied_sea_combatants_total[sea] -= 1
 			// }
+			
+			when ODIN_DEBUG {
+				fmt.printf("  [COMBAT] %v lost 1 %v at %v\n", gc.cur_player, Active_Ship_To_Idle[ship], sea)
+			}
+			
 			return true
 		}
 	}
@@ -1128,6 +1145,11 @@ remove_enemy_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Idle_
 				// else if ship == .TRANSPORT {
 				// 	gc.enemy_subvuln_ships_total[sea] -= 1
 				// }
+				
+				when ODIN_DEBUG {
+					fmt.printf("  [COMBAT] %v lost 1 %v at %v\n", enemy, ship, sea)
+				}
+				
 				return true
 			}
 		}
@@ -1145,6 +1167,11 @@ remove_my_land_planes :: proc(
 			gc.active_land_planes[land][plane] -= 1
 			gc.idle_land_planes[land][gc.cur_player][Active_Plane_To_Idle[plane]] -= 1
 			gc.team_land_units[land][mm.team[gc.cur_player]] -= 1
+			
+			when ODIN_DEBUG {
+				fmt.printf("  [COMBAT] %v lost 1 %v at %v\n", gc.cur_player, Active_Plane_To_Idle[plane], land)
+			}
+			
 			return true
 		}
 	}
@@ -1156,6 +1183,11 @@ remove_my_sea_fighters :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 		if gc.active_sea_planes[sea][plane] > 0 {
 			gc.active_sea_planes[sea][plane] -= 1
 			remove_ally_fighters_from_sea(gc, sea, gc.cur_player, 1)
+			
+			when ODIN_DEBUG {
+				fmt.printf("  [COMBAT] %v lost 1 %v at %v\n", gc.cur_player, Active_Plane_To_Idle[plane], sea)
+			}
+			
 			return true
 		}
 	}
@@ -1183,6 +1215,11 @@ remove_my_sea_bombers :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 			gc.team_sea_units[sea][mm.team[gc.cur_player]] -= 1
 			gc.allied_antifighter_ships_total[sea] -= 1
 			gc.allied_sea_combatants_total[sea] -= 1
+			
+			when ODIN_DEBUG {
+				fmt.printf("  [COMBAT] %v lost 1 %v at %v\n", gc.cur_player, Active_Plane_To_Idle[plane], sea)
+			}
+			
 			return true
 		}
 	}
@@ -1285,6 +1322,11 @@ remove_my_armies :: proc(gc: ^Game_Cache, land: Land_ID, casualty_order: []Activ
 			gc.active_armies[land][army] -= 1
 			gc.idle_armies[land][gc.cur_player][Active_Army_To_Idle[army]] -= 1
 			gc.team_land_units[land][mm.team[gc.cur_player]] -= 1
+			
+			when ODIN_DEBUG {
+				fmt.printf("  [COMBAT] %v lost 1 %v at %v\n", gc.cur_player, Active_Army_To_Idle[army], land)
+			}
+			
 			return true
 		}
 	}
@@ -1297,6 +1339,11 @@ remove_enemy_armies :: proc(gc: ^Game_Cache, land: Land_ID, casualty_order: []Id
 			if gc.idle_armies[land][player][army] > 0 {
 				gc.idle_armies[land][player][army] -= 1
 				gc.team_land_units[land][mm.team[player]] -= 1
+				
+				when ODIN_DEBUG {
+					fmt.printf("  [COMBAT] %v lost 1 %v at %v\n", player, army, land)
+				}
+				
 				return true
 			}
 		}

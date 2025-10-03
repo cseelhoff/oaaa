@@ -537,6 +537,7 @@ Purchased_Units :: struct {
 
 // Global purchase tracking (set during purchase phase, cleared during place phase)
 g_purchased_units: [dynamic]Purchased_Units
+g_purchased_factories: [dynamic]Land_ID // Territories where factories should be placed
 
 /*
 =============================================================================
@@ -877,24 +878,24 @@ purchase_defenders_triplea :: proc(
 				"      Decision: Purchasing infantry (best defensive efficiency: 2 def / 3 cost)\n",
 			)
 			fmt.printf("      Available money: %d IPCs\n", gc.money[gc.cur_player])
+			fmt.printf("      Factory production remaining: %d units\n", gc.builds_left[factory_loc])
 		}
 
 		inf_count := u8(0)
 		// Prefer infantry for defense (best efficiency)
-		for defense_gap > 0 && gc.money[gc.cur_player] >= 3 {
+		// Respect both money AND production capacity limits
+		for defense_gap > 0 && gc.money[gc.cur_player] >= 3 && gc.builds_left[factory_loc] > 0 {
 			if gc.money[gc.cur_player] >= 3 {
-				// Buy infantry
+				// Buy infantry - store in g_purchased_units for placement phase
 				gc.money[gc.cur_player] -= 3
-				gc.idle_armies[factory_loc][gc.cur_player][.INF] += 1
-				gc.team_land_units[factory_loc][mm.team[gc.cur_player]] += 1
+				gc.builds_left[factory_loc] -= 1  // Decrement production capacity
+				add_units_to_place_triplea(factory_loc, .Infantry, 1)
 				inf_count += 1
 				defense_gap -= 2.0 // Infantry has defense 2
 			} else {
 				break
 			}
-		}
-
-		when ODIN_DEBUG {
+		}		when ODIN_DEBUG {
 			if inf_count > 0 {
 				fmt.printf(
 					"      Purchased: %d infantry (defense power +%.1f)\n",
@@ -920,13 +921,23 @@ find_nearest_factory_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> May
 	This finds factories that can reach the territory (considering movement)
 	*/
 
-	// For now: return first factory owned by current player
-	// TODO: Find closest factory that can actually reach the territory
+	// Find factory with remaining production capacity
+	// Prefer factories with more capacity available
+	best_factory: Maybe(Land_ID) = nil
+	max_capacity := u8(0)
+	
 	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
-		// Return first factory we find
-		return factory_loc
+		if gc.owner[factory_loc] != gc.cur_player do continue
+		if gc.builds_left[factory_loc] == 0 do continue // Skip exhausted factories
+		
+		// Prefer factory with most remaining capacity
+		if gc.builds_left[factory_loc] > max_capacity {
+			max_capacity = gc.builds_left[factory_loc]
+			best_factory = factory_loc
+		}
 	}
-	return nil
+	
+	return best_factory
 }
 
 // Helper: Estimate defense power of units
@@ -1369,6 +1380,11 @@ purchase_factory_triplea :: proc(gc: ^Game_Cache, has_extra_pus: bool) -> bool {
 	5. Must be adjacent to sea OR have 4+ nearby enemy territories
 	*/
 
+	// Initialize tracking if needed
+	if g_purchased_factories == nil {
+		g_purchased_factories = make([dynamic]Land_ID)
+	}
+
 	// Check if all current production is being used
 	// (Simplified: assume we want factories if we have money)
 
@@ -1381,8 +1397,16 @@ purchase_factory_triplea :: proc(gc: ^Game_Cache, has_extra_pus: bool) -> bool {
 	for territory in Land_ID {
 		if gc.owner[territory] != gc.cur_player do continue
 
-		// Check if already has factory
+		// Check if already has factory or is scheduled to get one
 		if gc.factory_prod[territory] > 0 do continue
+		already_purchased := false
+		for purchased_factory in g_purchased_factories {
+			if purchased_factory == territory {
+				already_purchased = true
+				break
+			}
+		}
+		if already_purchased do continue
 
 		// Check production value
 		production := mm.value[territory]
@@ -1422,13 +1446,13 @@ purchase_factory_triplea :: proc(gc: ^Game_Cache, has_extra_pus: bool) -> bool {
 	}
 
 	if max_value > 0 {
-		// Purchase factory
+		// Store factory purchase for later placement
 		gc.money[gc.cur_player] -= 15
-		gc.factory_prod[max_territory] = mm.value[max_territory]
-		gc.factory_dmg[max_territory] = 0
+		append(&g_purchased_factories, max_territory)
 
-		// Add to factory locations
-		sa.push(&gc.factory_locations[gc.cur_player], max_territory)
+		when ODIN_DEBUG {
+			fmt.printf("  [FACTORY] Purchased factory for %v (value: %.1f)\n", max_territory, max_value)
+		}
 
 		return true
 	}
@@ -2090,35 +2114,69 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 	*/
 
 	// Place all purchased units from tracking structure
-	if g_purchased_units == nil || len(g_purchased_units) == 0 do return
+	if g_purchased_units == nil || len(g_purchased_units) == 0 {
+		when ODIN_DEBUG {
+			fmt.println("  [PLACE] No units to place (g_purchased_units is empty)")
+		}
+		return
+	}
+	
+	when ODIN_DEBUG {
+		fmt.printf("  [PLACE] Placing units from %d territories\\n", len(g_purchased_units))
+	}
 
 	for purchase in g_purchased_units {
 		territory := purchase.territory
+		units_placed := false
 
 		// Place land units
 		if purchase.inf > 0 {
 			gc.idle_armies[territory][gc.cur_player][.INF] += purchase.inf
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.inf
+			when ODIN_DEBUG {
+				fmt.printf("  [PLACE] %d Infantry -> %v\n", purchase.inf, territory)
+			}
+			units_placed = true
 		}
 		if purchase.arty > 0 {
 			gc.idle_armies[territory][gc.cur_player][.ARTY] += purchase.arty
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.arty
+			when ODIN_DEBUG {
+				fmt.printf("  [PLACE] %d Artillery -> %v\n", purchase.arty, territory)
+			}
+			units_placed = true
 		}
 		if purchase.tank > 0 {
 			gc.idle_armies[territory][gc.cur_player][.TANK] += purchase.tank
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.tank
+			when ODIN_DEBUG {
+				fmt.printf("  [PLACE] %d Tank -> %v\n", purchase.tank, territory)
+			}
+			units_placed = true
 		}
 		if purchase.aa > 0 {
 			gc.idle_armies[territory][gc.cur_player][.AAGUN] += purchase.aa
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.aa
+			when ODIN_DEBUG {
+				fmt.printf("  [PLACE] %d AA Gun -> %v\n", purchase.aa, territory)
+			}
+			units_placed = true
 		}
 		if purchase.fighter > 0 {
 			gc.idle_land_planes[territory][gc.cur_player][.FIGHTER] += purchase.fighter
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.fighter
+			when ODIN_DEBUG {
+				fmt.printf("  [PLACE] %d Fighter -> %v\n", purchase.fighter, territory)
+			}
+			units_placed = true
 		}
 		if purchase.bomber > 0 {
 			gc.idle_land_planes[territory][gc.cur_player][.BOMBER] += purchase.bomber
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.bomber
+			when ODIN_DEBUG {
+				fmt.printf("  [PLACE] %d Bomber -> %v\n", purchase.bomber, territory)
+			}
+			units_placed = true
 		}
 
 		// Place naval units (find adjacent sea zone)
@@ -2132,21 +2190,45 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 			for sea_id in sa.slice(&mm.l2s_1away_via_land[territory]) {
 				if purchase.sub > 0 {
 					gc.idle_ships[sea_id][gc.cur_player][.SUB] += purchase.sub
+					when ODIN_DEBUG {
+						fmt.printf("  [PLACE] %d Submarine -> %v (from factory at %v)\n", purchase.sub, sea_id, territory)
+					}
+					units_placed = true
 				}
 				if purchase.destroyer > 0 {
 					gc.idle_ships[sea_id][gc.cur_player][.DESTROYER] += purchase.destroyer
+					when ODIN_DEBUG {
+						fmt.printf("  [PLACE] %d Destroyer -> %v (from factory at %v)\n", purchase.destroyer, sea_id, territory)
+					}
+					units_placed = true
 				}
 				if purchase.cruiser > 0 {
 					gc.idle_ships[sea_id][gc.cur_player][.CRUISER] += purchase.cruiser
+					when ODIN_DEBUG {
+						fmt.printf("  [PLACE] %d Cruiser -> %v (from factory at %v)\n", purchase.cruiser, sea_id, territory)
+					}
+					units_placed = true
 				}
 				if purchase.carrier > 0 {
 					gc.idle_ships[sea_id][gc.cur_player][.CARRIER] += purchase.carrier
+					when ODIN_DEBUG {
+						fmt.printf("  [PLACE] %d Carrier -> %v (from factory at %v)\n", purchase.carrier, sea_id, territory)
+					}
+					units_placed = true
 				}
 				if purchase.battleship > 0 {
 					gc.idle_ships[sea_id][gc.cur_player][.BATTLESHIP] += purchase.battleship
+					when ODIN_DEBUG {
+						fmt.printf("  [PLACE] %d Battleship -> %v (from factory at %v)\n", purchase.battleship, sea_id, territory)
+					}
+					units_placed = true
 				}
 				if purchase.transport > 0 {
 					gc.idle_ships[sea_id][gc.cur_player][.TRANS_EMPTY] += purchase.transport
+					when ODIN_DEBUG {
+						fmt.printf("  [PLACE] %d Transport -> %v (from factory at %v)\n", purchase.transport, sea_id, territory)
+					}
+					units_placed = true
 				}
 				break // Only place in first adjacent sea zone
 			}
@@ -2155,7 +2237,52 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 
 	// Clear purchases after placing
 	clear(&g_purchased_units)
+	
+	when ODIN_DEBUG {
+		fmt.println("  ✓ All purchased units placed")
+	}
 }
+
+// place_factory_triplea - Place factories that were purchased during purchase phase
+place_factory_triplea :: proc(gc: ^Game_Cache) {
+	/*
+	Place factories from g_purchased_factories tracking structure.
+	This is called during the place phase after units are placed.
+	*/
+
+	if g_purchased_factories == nil || len(g_purchased_factories) == 0 {
+		when ODIN_DEBUG {
+			fmt.println("  [PLACE] No factories to place")
+		}
+		return
+	}
+
+	when ODIN_DEBUG {
+		fmt.printf("  [PLACE] Placing %d factory/factories\\n", len(g_purchased_factories))
+	}
+
+	for factory_territory in g_purchased_factories {
+		// Set factory production
+		gc.factory_prod[factory_territory] = mm.value[factory_territory]
+		gc.factory_dmg[factory_territory] = 0
+
+		// Add to factory locations
+		sa.push(&gc.factory_locations[gc.cur_player], factory_territory)
+
+		when ODIN_DEBUG {
+			fmt.printf("  [PLACE] Factory -> %v (production capacity: %d)\\n", 
+				factory_territory, mm.value[factory_territory])
+		}
+	}
+
+	// Clear factory purchases after placing
+	clear(&g_purchased_factories)
+	
+	when ODIN_DEBUG {
+		fmt.println("  ✓ All factories placed")
+	}
+}
+
 
 // placeUnits - Place remaining units
 place_units_triplea :: proc(gc: ^Game_Cache) {

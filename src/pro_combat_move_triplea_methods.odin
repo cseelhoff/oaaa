@@ -443,12 +443,29 @@ determine_territories_that_can_be_held_triplea :: proc(gc: ^Game_Cache, options:
 		
 		// Simulate the attack battle to find survivors
 		// Java: calc.estimateAttackBattleResults() -> result.getAverageAttackersRemaining()
-		// Simplified: Assume 60% casualties for attacker, 80% for defender when attacker wins
-		// If attacker doesn't have 1.5x advantage, assume total loss
+		// 
+		// Simplified battle outcome estimation:
+		// - Need 1.2x advantage to expect survivors (not 1.5x - that's too conservative)
+		// - Casualties are roughly proportional to combat strength
+		// - Attackers take more casualties than defenders (worse odds per unit)
+		//
+		// Example: 12 attack vs 8 defense (1.5x ratio)
+		//   - Exchange is roughly 2 attacker hits for every 3 defender hits
+		//   - Attacker survives with ~40% of original force
 		surviving_power := f64(0.0)
-		if attack_power > defender_power * 1.5 {
-			// Win with survivors: attackers take ~60% casualties
-			surviving_power = attack_power * 0.4
+		if attack_power > defender_power * 1.2 {
+			// Estimate casualties: Higher ratio = more survivors
+			power_ratio := attack_power / defender_power
+			if power_ratio >= 2.0 {
+				// Overwhelming force: ~50% survivors
+				surviving_power = attack_power * 0.5
+			} else if power_ratio >= 1.5 {
+				// Strong advantage: ~40% survivors
+				surviving_power = attack_power * 0.4
+			} else {
+				// Modest advantage: ~25% survivors  
+				surviving_power = attack_power * 0.25
+			}
 		}
 		
 		// Calculate maximum enemy counter-attack power
@@ -1704,6 +1721,11 @@ try_to_attack_territories_triplea :: proc(
 		// Assign land units, passing already assigned units
 		assign_land_units_to_attack(gc, option, target_power, &assigned_units)
 		
+		when ODIN_DEBUG {
+			fmt.printf("    After land assignment: %v has %d attackers (target power: %.1f)\n",
+				mm.land_name[option.territory], len(option.attackers), target_power)
+		}
+		
 		// Add newly assigned units to the tracking list
 		for unit in option.attackers {
 			append(&assigned_units, unit)
@@ -1713,6 +1735,11 @@ try_to_attack_territories_triplea :: proc(
 		current_power := calculate_attack_power(&option.attackers)
 		if current_power < target_power {
 			assign_air_units_to_attack(gc, option, target_power - current_power, &assigned_units)
+			
+			when ODIN_DEBUG {
+				fmt.printf("    After air assignment: %v has %d attackers\n",
+					mm.land_name[option.territory], len(option.attackers))
+			}
 			// Add newly assigned air units to tracking list
 			for j := len(assigned_units); j < len(option.attackers); j += 1 {
 				// Only add units that weren't in assigned_units before
@@ -3265,6 +3292,14 @@ recalculate_enemy_attacks_after_territory_selection_triplea :: proc(
 	- Enemy can now focus their counter-attacks on fewer targets
 	*/
 	
+	// Step 0: Re-populate attackers for all selected territories
+	// The previous step may have removed some options, so we need to recalculate
+	// which units can attack which territories
+	when ODIN_DEBUG {
+		fmt.println("  Re-assigning attackers to selected territories...")
+	}
+	_ = try_to_attack_territories_triplea(gc, options, len(options))
+	
 	// Step 1: Re-run holdability check with final attack list
 	when ODIN_DEBUG {
 		fmt.println("  Re-checking which territories can be held...")
@@ -3554,7 +3589,59 @@ add_territory_to_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Atta
 		can_hold = false,
 	}
 	
+	// Populate defenders with all enemy units at this territory
+	my_team := mm.team[gc.cur_player]
+	for player in Player_ID {
+		if mm.team[player] == my_team {
+			continue  // Skip allies
+		}
+		
+		// Add enemy land units
+		for army_type in Idle_Army {
+			count := gc.idle_armies[target][player][army_type]
+			for i in 0..<count {
+				unit := Unit_Info{
+					unit_type = idle_army_to_unit_type(army_type),
+					from_territory = target,
+				}
+				append(&option.defenders, unit)
+			}
+		}
+		
+		// Add enemy air units
+		for plane_type in Idle_Plane {
+			count := gc.idle_land_planes[target][player][plane_type]
+			for i in 0..<count {
+				unit := Unit_Info{
+					unit_type = idle_plane_to_unit_type(plane_type),
+					from_territory = target,
+				}
+				append(&option.defenders, unit)
+			}
+		}
+	}
+	
 	append(options, option)
+}
+
+// Helper: Convert Idle_Army to Unit_Type
+idle_army_to_unit_type :: proc(army: Idle_Army) -> Unit_Type {
+	switch army {
+	case .INF:   return .Infantry
+	case .ARTY:  return .Artillery
+	case .TANK:  return .Tank
+	case .AAGUN: return .AAGun
+	}
+	return .Infantry  // Default
+}
+
+// Helper: Convert Idle_Plane to Unit_Type
+idle_plane_to_unit_type :: proc(plane: Idle_Plane) -> Unit_Type {
+	switch plane {
+	case .FIGHTER: return .Fighter
+	case .BOMBER:  return .Bomber
+	}
+	return .Fighter  // Default
 }
 
 // Helper: Check if territory has enemy units
@@ -3646,9 +3733,25 @@ execute_combat_moves_triplea :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]
 	// Phase 4: Calculate and execute bombing routes (not implemented yet)
 	// execute_bombing_routes(gc, attack_options) or_return
 	
-	when ODIN_DEBUG {
-		fmt.println("  ✓ All combat moves executed")
+	// Phase 5: Mark territories for combat and resolve battles
+	for &opt in attack_options {
+		// Mark this territory for combat resolution if there are enemy units
+		if gc.team_land_units[opt.territory][mm.enemy_team[gc.cur_player]] > 0 {
+			gc.more_land_combat_needed += {opt.territory}
+			when ODIN_DEBUG {
+				fmt.printf("  Marked %v for combat resolution\n", opt.territory)
+			}
+		}
 	}
+	
+	// Resolve all marked land battles
+	// resolve_land_battles(gc) or_return
+
+	// when ODIN_DEBUG {
+	// 	fmt.println("  ✓ All combat moves executed and battles resolved")
+	// 	// print_game_state(gc)
+	// }
+	
 	
 	return true
 }

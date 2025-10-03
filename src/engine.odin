@@ -50,7 +50,6 @@ when ODIN_DEBUG {//&& false {
 			}
 			if gc.team_sea_units[sea][.Axis] != team_idles[.Axis] {
 				fmt.eprintln("Unequal team 1 units")
-				print_game_state(gc)
 			}
 			if gc.team_sea_units[sea][.Allies] < 0 {
 				fmt.eprintln("Negative team units")
@@ -97,7 +96,7 @@ when ODIN_DEBUG {//&& false {
 					if team_idles[mm.team[player]] > 0 &&
 					   mm.team[gc.owner[land]] == mm.team[gc.cur_player] &&
 					   mm.team[player] != mm.team[gc.cur_player] {
-						fmt.eprintln("Enemy units on land")
+						fmt.eprintln("Enemy units on land ", land)
 					}
 				}
 			}

@@ -60,37 +60,83 @@ proai_place_units_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 // Place units that were purchased during purchase phase
 place_purchased_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
+	/*
+	Java Original (ProPurchaseAi.java lines 461-503):
+	This places all units calculated during purchase phase.
+	Land units are placed first, then sea units to reduce failed placements.
+	*/
+	
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Placing purchased units at factories")
+		
+		// Show factory locations and their remaining production capacity
+		factory_count := 0
+		for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+			if gc.owner[factory_loc] == gc.cur_player {
+				fmt.printf("  Factory at %v: %d production capacity, %d units to place\n",
+					factory_loc, gc.factory_prod[factory_loc], gc.builds_left[factory_loc])
+				factory_count += 1
+			}
+		}
+		
+		if factory_count == 0 {
+			fmt.println("  No factories available for placement")
+		}
 	}
 	
-	// In Pro AI, the purchase phase already decided where to place units
-	// The placement is tracked in idle arrays after purchase
-	// In OAAA, buy_units() already handles placement
+	// Place land units first (reduces failed placements)
+	// This consumes g_purchased_units and places into idle_armies
+	place_units_triplea(gc)
 	
-	// Place land units first
-	buy_units(gc) or_return
-	
-	// Place factories
-	buy_factory(gc) or_return
+	// Place factories purchased during purchase phase
+	// This consumes g_purchased_factories and places into factory arrays
+	place_factory_triplea(gc)
 	
 	return true
 }
 
 // Place any remaining unplaced units
 place_remaining_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
+	/*
+	Java Original (ProPurchaseAi.java lines 505-574):
+	This handles remaining units that weren't placed during purchase phase.
+	Examples: WW2v3 China units, units from special rules, etc.
+	
+	Steps:
+	1. Check if any units remain to be placed
+	2. Find all place territories
+	3. Populate enemy attack options
+	4. Find defenders in place territories
+	5. Prioritize land territories needing defense and place defenders
+	6. Prioritize sea territories needing defense and place defenders
+	7. Find strategic values for territories
+	8. Prioritize all place territories
+	9. Place regular (non-construction) units first
+	10. Place construction units (factories) second
+	*/
+	
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Checking for remaining unplaced units")
 	}
 	
-	// Check if there are any unplaced units
-	// In OAAA's system, all purchased units are immediately placed
-	// This function is here for completeness matching TripleA structure
+	// In OAAA, units are typically all placed during the purchase phase
+	// This section would handle special cases like:
+	// - Units from bid phase
+	// - Units from special game rules
+	// - Factory construction units
 	
-	// If we had unplaced units, we would:
-	// 1. Find territories where they can be placed
-	// 2. Prioritize by threat level and strategic value
-	// 3. Place at highest priority locations
+	// For now, this is a placeholder for future implementation
+	// The Java code has extensive logic here for:
+	// - findDefendersInPlaceTerritories()
+	// - prioritizeTerritoriesToDefend() for land and sea
+	// - placeDefenders() for threatened territories
+	// - Finding strategic values
+	// - placeUnits() for non-construction units
+	// - placeUnits() for construction units (factories)
+	
+	when ODIN_DEBUG {
+		fmt.println("  ✓ No remaining units to place (placeholder implementation)")
+	}
 	
 	return true
 }
