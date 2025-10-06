@@ -21,10 +21,14 @@
       "args": [
         "build",
         "src",
-        "-out:build/oaaa.exe",
+        "-out:bin/oaaa",
         "-debug"
       ],
-      "problemMatcher": []
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
     },
     {
       "label": "build-release",
@@ -33,12 +37,9 @@
       "args": [
         "build",
         "src",
-        "-out:build/oaaa.exe",
+        "-out:bin/oaaa",
         "-o:aggressive",
-        "-debug",
-        // "-no-bounds-check",
-        // "-disable-assert",
-        // "-no-type-assert"
+        "-debug"
       ],
       "problemMatcher": []
     },
@@ -49,7 +50,7 @@
       "args": [
         "build",
         "src",
-        "-out:build/liboaaa.so",
+        "-out:bin/liboaaa.so",
         "-debug",
         "-build-mode:shared"
       ],
@@ -62,13 +63,10 @@
       "args": [
         "build",
         "src",
-        "-out:build/liboaaa.so",
+        "-out:bin/liboaaa.so",
         "-debug",
         "-o:aggressive",
-        "-build-mode:shared",
-        // "-no-bounds-check",
-        // "-disable-assert",
-        // "-no-type-assert",
+        "-build-mode:shared"
       ],
       "problemMatcher": []
     },
@@ -79,7 +77,7 @@
       "args": [
         "build",
         "tests",
-        "-out:build/tests",
+        "-out:bin/tests",
         "-debug",
         "-collection:src=src"
       ],
@@ -90,10 +88,7 @@
       "type": "shell",
       "command": "odin test tests",
       "problemMatcher": [],
-      "group": {
-        "kind": "test",
-        "isDefault": true
-      }
+      "group": "build"
     }
   ]
 }

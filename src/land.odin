@@ -29,7 +29,7 @@ to_land_count :: #force_inline proc(action: Action_ID) -> (Land_ID, u8) {
 }
 
 air_to_land :: #force_inline proc(air: Air_ID) -> Land_ID {
-	assert(int(air) < len(Land_ID))
+	assert(is_land(air))
 	return Land_ID(air)
 }
 

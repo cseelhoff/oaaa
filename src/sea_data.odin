@@ -1,4 +1,4 @@
-#+feature global-context
+//#+feature global-context
 package oaaa
 
 Sea_ID :: enum {

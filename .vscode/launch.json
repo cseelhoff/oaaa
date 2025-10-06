@@ -5,7 +5,7 @@
           "name": "Debug",
           "type": "lldb",
           "request": "launch",
-          "program": "${workspaceFolder}/build/main",
+          "program": "${workspaceFolder}/bin/oaaa",
         //   "args": ["../alpha-zero-general/game_state.json"],
           "cwd": "${workspaceFolder}",
           "preLaunchTask": "build-debug"
@@ -14,7 +14,7 @@
           "name": "Release",
           "type": "lldb",
           "request": "launch",
-          "program": "${workspaceFolder}/build/main",
+          "program": "${workspaceFolder}/bin/oaaa",
           "args": [],
           "cwd": "${workspaceFolder}",
           "preLaunchTask": "build-release"
@@ -23,7 +23,7 @@
           "name": "Debug Tests",
           "type": "lldb",
           "request": "launch",
-          "program": "${workspaceFolder}/build/tests",
+          "program": "${workspaceFolder}/bin/tests",
           "args": [],
           "cwd": "${workspaceFolder}",
           "preLaunchTask": "build-test-debug"

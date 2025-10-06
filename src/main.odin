@@ -72,9 +72,7 @@ start :: proc() {
 	}
 	load_cache_from_state(&game_cache, &game_state)
 	print_game_state(&game_cache)
-	if true {
-		return
-	}
+
 	// }
 	
 	// get_canonical_form(&game_state, 0)

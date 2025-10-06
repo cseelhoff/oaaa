@@ -21,31 +21,78 @@ generate_enemy_attack_options :: proc(gc: ^Game_Cache, enemy_attack_options: ^[P
 			if enemy_gc.active_land_planes[src_land][.FIGHTER_UNMOVED] > 0 {
                 get_airs(get_valid_unmoved_fighter_moves(&enemy_gc), &air_array)
 				for dst in sa.slice(&air_array) {
-                    if gc.owner[to_land(dst)] != gc.cur_player &&
-                       gc.active_armies[to_land(dst)][.INF_1_MOVES] == 0 &&
-                       gc.active_armies[to_land(dst)][.ARTY_1_MOVES] == 0 &&
-                       gc.active_armies[to_land(dst)][.TANK_2_MOVES] == 0 &&
-                       gc.active_armies[to_land(dst)][.AAGUN_1_MOVES] == 0 &&
-                       gc.active_land_planes[to_land(dst)][.FIGHTER_UNMOVED] == 0 &&
-                       gc.active_land_planes[to_land(dst)][.BOMBER_UNMOVED] == 0 {
-                       continue
+                    // check if dst is land or sea
+                    if is_land(dst) {
+                        dst_land := to_land(dst)
+                        if gc.owner[dst_land] != gc.cur_player &&
+                        gc.active_armies[dst_land][.INF_1_MOVES] == 0 &&
+                        gc.active_armies[dst_land][.ARTY_1_MOVES] == 0 &&
+                        gc.active_armies[dst_land][.TANK_2_MOVES] == 0 &&
+                        gc.active_armies[dst_land][.AAGUN_1_MOVES] == 0 &&
+                        gc.active_land_planes[dst_land][.FIGHTER_UNMOVED] == 0 &&
+                        gc.active_land_planes[dst_land][.BOMBER_UNMOVED] == 0 {
+                        continue
+                        }
+                        enemy_attack_options[enemy][dst].Fighters += enemy_gc.active_land_planes[src_land][.FIGHTER_UNMOVED]
                     }
-					enemy_attack_options[enemy][dst].Fighters += enemy_gc.active_land_planes[src_land][.FIGHTER_UNMOVED]
+                    else {
+                        dst_sea := to_sea(dst)
+                        if gc.active_ships[dst_sea][.TRANS_EMPTY_UNMOVED] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_1I_UNMOVED] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_1A_UNMOVED] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_1T_UNMOVED] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_2I_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_1I_1A_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_1I_1T_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.SUB_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.DESTROYER_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.CARRIER_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.CRUISER_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.BATTLESHIP_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.BS_DAMAGED_2_MOVES] == 0 &&
+                           gc.active_sea_planes[dst_sea][.FIGHTER_UNMOVED] == 0 {                           
+                           continue
+                        }
+                        enemy_attack_options[enemy][dst].Fighters += enemy_gc.active_land_planes[src_land][.FIGHTER_UNMOVED]
+                    }
 				}
 			}
 			if enemy_gc.active_land_planes[src_land][.BOMBER_UNMOVED] > 0 {
                 get_airs(get_valid_unmoved_bomber_moves(&enemy_gc), &air_array)
 				for dst in sa.slice(&air_array) {
-                    if gc.owner[to_land(dst)] != gc.cur_player &&
-                       gc.active_armies[to_land(dst)][.INF_1_MOVES] == 0 &&
-                       gc.active_armies[to_land(dst)][.ARTY_1_MOVES] == 0 &&
-                       gc.active_armies[to_land(dst)][.TANK_2_MOVES] == 0 &&
-                       gc.active_armies[to_land(dst)][.AAGUN_1_MOVES] == 0 &&
-                       gc.active_land_planes[to_land(dst)][.FIGHTER_UNMOVED] == 0 &&
-                       gc.active_land_planes[to_land(dst)][.BOMBER_UNMOVED] == 0 {
-                       continue
+                    
+                    if is_land(dst) {
+                        dst_land := to_land(dst)
+                        if gc.owner[dst_land] != gc.cur_player &&
+                        gc.active_armies[dst_land][.INF_1_MOVES] == 0 &&
+                        gc.active_armies[dst_land][.ARTY_1_MOVES] == 0 &&
+                        gc.active_armies[dst_land][.TANK_2_MOVES] == 0 &&
+                        gc.active_armies[dst_land][.AAGUN_1_MOVES] == 0 &&
+                        gc.active_land_planes[dst_land][.FIGHTER_UNMOVED] == 0 &&
+                        gc.active_land_planes[dst_land][.BOMBER_UNMOVED] == 0 {
+                        continue
+                        }
+                        enemy_attack_options[enemy][dst].Bombers += enemy_gc.active_land_planes[src_land][.BOMBER_UNMOVED]
+                    } else {
+                        dst_sea := to_sea(dst)
+                        if gc.active_ships[dst_sea][.TRANS_EMPTY_UNMOVED] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_1I_UNMOVED] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_1A_UNMOVED] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_1T_UNMOVED] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_2I_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_1I_1A_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.TRANS_1I_1T_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.SUB_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.DESTROYER_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.CARRIER_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.CRUISER_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.BATTLESHIP_2_MOVES] == 0 &&
+                           gc.active_ships[dst_sea][.BS_DAMAGED_2_MOVES] == 0 &&
+                           gc.active_sea_planes[dst_sea][.FIGHTER_UNMOVED] == 0 {                           
+                           continue
+                        }
+                        enemy_attack_options[enemy][dst].Bombers += enemy_gc.active_land_planes[src_land][.BOMBER_UNMOVED]
                     }
-					enemy_attack_options[enemy][dst].Bombers += enemy_gc.active_land_planes[src_land][.BOMBER_UNMOVED]
 				}
 			}
             for dst in mm.l2l_1away_via_land_bitset[src_land] {
