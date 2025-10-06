@@ -28,7 +28,8 @@ move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		if !gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 		for gc.active_land_planes[src_land][.FIGHTER_UNMOVED] > 0 {
 			reset_valid_actions(gc)
-			add_valid_unmoved_fighter_moves(gc, gc.active_land_planes[src_land][.FIGHTER_UNMOVED])
+			valid_unmoved_fighter_moves := get_valid_unmoved_fighter_moves(gc)
+			add_airs_to_valid_actions(gc, valid_unmoved_fighter_moves, gc.active_land_planes[src_land][.FIGHTER_UNMOVED])
 			dst_action := get_action_input(gc) or_return
 			if skip_land_fighter(gc, dst_action) do return
 			if is_land(dst_action) {
@@ -39,12 +40,13 @@ move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		}
 	}
 	for src_sea in Sea_ID {
-		if gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] == 0 do return true
+		if gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] == 0 do continue
 		gc.current_territory = to_air(src_sea)
 		if !gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 		for gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED] > 0 {
 			reset_valid_actions(gc)
-			add_valid_unmoved_fighter_moves(gc, gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED])
+			valid_unmoved_fighter_moves := get_valid_unmoved_fighter_moves(gc)
+			add_airs_to_valid_actions(gc, valid_unmoved_fighter_moves, gc.active_sea_planes[src_sea][.FIGHTER_UNMOVED])
 			dst_action := get_action_input(gc) or_return
 			if skip_sea_fighter(gc, dst_action) do return
 			if is_land(dst_action) {
@@ -57,16 +59,19 @@ move_unmoved_fighters :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-add_valid_unmoved_fighter_moves :: #force_inline proc(gc: ^Game_Cache, unit_count: u8) {
+get_valid_unmoved_fighter_moves :: #force_inline proc(gc: ^Game_Cache) -> Air_Bitset {
 	src_air := gc.current_territory
-	add_airs_to_valid_actions(
-		gc,
+	// A fighter valid move could be:
+	// - Move to a land or sea territory within 4 moves where it can land
+	// - Move to a territory has enemy units that is within 2 moves
+	// - Move to a territory within 3 moves where it can land in 1 move
+	valid_unmoved_fighter_destinations :=
 		((mm.a2a_within_4_moves[src_air] & gc.can_fighter_land_here) |
 			(gc.air_has_enemies &
 					(mm.a2a_within_2_moves[src_air] |
-							(mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move)))),
-		unit_count,
-	)
+							(mm.a2a_within_3_moves[src_air] & gc.can_fighter_land_in_1_move))))
+							
+	return valid_unmoved_fighter_destinations
 }
 
 move_unmoved_fighter_from_land_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
@@ -189,7 +194,8 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 		to_air_bitset(gc.friendly_owner & ~gc.more_land_combat_needed & ~gc.land_combat_started) |
 		to_air_bitset(gc.has_carrier_space | gc.possible_factory_carriers)
 	debug_checks(gc)
-	
+
+	air_array: Air_ID_Array
 	for sea in Sea_ID {
 		// if player owns a carrier, then landing area is 2 spaces away
 		if gc.active_ships[sea][.CARRIER_2_MOVES] == 0 do continue
@@ -197,16 +203,16 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 			mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea] |
 			mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][sea],
 		)
-		get_airs(new_fighter_land_here, &air_positions)
-		for air in air_positions {
+		get_airs(new_fighter_land_here, &air_array)
+		for air in sa.slice(&air_array) {
 			add_air(&gc.can_fighter_land_here, air)
 		}
-		get_airs(gc.can_fighter_land_here, &air_positions)
+		get_airs(gc.can_fighter_land_here, &air_array)
 	}
 	gc.can_fighter_land_in_1_move = {}
 
-	get_airs(gc.can_fighter_land_here, &air_positions)
-	for air in air_positions {
+	get_airs(gc.can_fighter_land_here, &air_array)
+	for air in sa.slice(&air_array) {
 		gc.can_fighter_land_in_1_move += mm.a2a_within_1_moves[air]
 	}
 	gc.is_fighter_cache_current = true

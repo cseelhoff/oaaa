@@ -135,7 +135,7 @@ place_remaining_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// - placeUnits() for construction units (factories)
 	
 	when ODIN_DEBUG {
-		fmt.println("  ✓ No remaining units to place (placeholder implementation)")
+		fmt.println("  + No remaining units to place (placeholder implementation)")
 	}
 	
 	return true

@@ -1,5 +1,7 @@
 package oaaa
 
+import sa "core:container/small_array"
+
 Bomber_After_Moves := [?]Active_Plane {
 	/*
     AI NOTE: Bomber Movement State Transitions
@@ -32,6 +34,8 @@ Unlanded_Bombers := [?]Active_Plane {
 
 BOMBER_MAX_MOVES :: 6
 
+air_array: Air_ID_Array
+
 move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	gc.clear_history_needed = false
     gc.current_active_unit = .BOMBER_UNMOVED
@@ -41,7 +45,8 @@ move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
         gc.current_territory = to_air(src_land)
 		for gc.active_land_planes[src_land][.BOMBER_UNMOVED] > 0 {
 			reset_valid_actions(gc)
-			add_valid_unmoved_bomber_moves(gc)
+			valid_bomber_destinations := get_valid_unmoved_bomber_moves(gc)
+			gc.valid_actions = air_bitset_to_action_bitset(valid_bomber_destinations)
 			dst_action := get_action_input(gc) or_return
 			if is_land(dst_action) {
 				move_unmoved_bomber_to_land(gc, dst_action)
@@ -54,7 +59,7 @@ move_unmoved_bombers :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-add_valid_unmoved_bomber_moves :: #force_inline proc(gc: ^Game_Cache) {
+get_valid_unmoved_bomber_moves :: #force_inline proc(gc: ^Game_Cache) -> Air_Bitset{
 	/*
     AI NOTE: Unmoved Bomber Move Validation
     
@@ -76,7 +81,32 @@ add_valid_unmoved_bomber_moves :: #force_inline proc(gc: ^Game_Cache) {
 				(mm.a2a_within_3_moves[to_air(src_land)] |
 						(mm.a2a_within_4_moves[to_air(src_land)] & gc.can_bomber_land_in_2_moves) |
 						(mm.a2a_within_5_moves[to_air(src_land)] & gc.can_bomber_land_in_1_moves)))
+	//set gc.valid_actions
+	return valid_bomber_destinations
+}
 
+max_bombers_can_attack_here :: proc(gc: ^Game_Cache, air: Air_ID) -> u8 {
+	// Calculate max bombers that can attack a given air territory
+	max_bombers :u8= 0
+	if contains_air(gc.can_bomber_land_in_1_moves, air) {
+		get_airs(mm.a2a_within_5_moves[air], &air_array)
+		for bomber_src in sa.slice(&air_array) {
+			max_bombers += gc.idle_land_planes[to_land(bomber_src)][gc.cur_player][.BOMBER]
+		}
+		return max_bombers
+	}
+	if contains_air(gc.can_bomber_land_in_2_moves, air) {
+		get_airs(mm.a2a_within_4_moves[air], &air_array)
+		for bomber_src in sa.slice(&air_array) {
+			max_bombers += gc.idle_land_planes[to_land(bomber_src)][gc.cur_player][.BOMBER]
+		}
+		return max_bombers
+	}
+	get_airs(mm.a2a_within_3_moves[air], &air_array)
+	for bomber_src in sa.slice(&air_array) {
+		max_bombers += gc.idle_land_planes[to_land(bomber_src)][gc.cur_player][.BOMBER]
+	}
+	return max_bombers
 }
 
 move_unmoved_bomber_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
@@ -87,8 +117,7 @@ move_unmoved_bomber_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 		gc.active_land_planes[dst_land][.BOMBER_0_MOVES] += 1
 	} else {
 		gc.more_land_combat_needed += {dst_land}
-		gc.active_land_planes[dst_land][Bomber_After_Moves[mm.air_distances[to_air(src_land)][to_air(dst_land)]]] +=
-		1
+		gc.active_land_planes[dst_land][Bomber_After_Moves[mm.air_distances[to_air(src_land)][to_air(dst_land)]]] += 1
 	}
 	gc.idle_land_planes[dst_land][gc.cur_player][.BOMBER] += 1
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += 1
@@ -289,5 +318,4 @@ add_my_bomber_to_sea :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) {
 
 remove_my_bomber_from_sea :: #force_inline proc(gc: ^Game_Cache) {
 	sea := to_sea(gc.current_territory)
-
 }

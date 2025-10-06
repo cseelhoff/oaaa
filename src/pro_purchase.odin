@@ -9,27 +9,27 @@ This file contains complete implementations for all methods from TripleA's ProPu
 Each method includes the original Java code commented out for reference.
 
 Implementation Status (ALL COMPLETE):
-- [✓] repair_factories_triplea - Repair damaged factories before purchasing
+- [+] repair_factories_triplea - Repair damaged factories before purchasing
 - [N/A] bid - Bidding logic (not applicable for MCTS rollouts)
-- [✓] purchase_triplea - Main purchase phase orchestration (all 11 steps)
-- [✓] should_save_up_for_fleet_triplea - Determine if should save PUs for future fleet
-- [✓] can_reach_enemy_by_land_triplea - Helper: Check if enemy reachable by land
-- [✓] find_defenders_in_place_territories_triplea - Find current defenders
-- [✓] prioritize_territories_to_defend_triplea - Sort territories by defense need
-- [✓] purchase_defenders_triplea - Buy defenders for threatened territories
-- [✓] prioritize_land_territories_triplea - Sort land territories by strategic value
-- [✓] purchase_aa_units_triplea - Buy AA guns for high-value territories
-- [✓] purchase_land_units_triplea - Buy land units for offense (fodder % algorithm)
-- [✓] purchase_factory_triplea - Decide whether to buy new factory
-- [✓] prioritize_sea_territories_triplea - Sort sea territories by value
-- [✓] purchase_sea_and_amphib_units_triplea - Buy naval units and transports (4 phases)
-- [✓] purchase_units_with_remaining_production_triplea - Use remaining factory production
-- [✓] upgrade_units_with_remaining_pus_triplea - Upgrade to better units
-- [✓] find_upgrade_unit_efficiency_triplea - Calculate upgrade efficiency
-- [✓] populate_production_rule_map_triplea - Initialize purchase tracking
-- [✓] place_defenders_triplea - Place purchased units during place phase
-- [✓] place_units_triplea - Alias for place_defenders (places all units)
-- [✓] add_units_to_place_triplea - Track unit purchases (deferred placement)
+- [+] purchase_triplea - Main purchase phase orchestration (all 11 steps)
+- [+] should_save_up_for_fleet_triplea - Determine if should save PUs for future fleet
+- [+] can_reach_enemy_by_land_triplea - Helper: Check if enemy reachable by land
+- [+] find_defenders_in_place_territories_triplea - Find current defenders
+- [+] prioritize_territories_to_defend_triplea - Sort territories by defense need
+- [+] purchase_defenders_triplea - Buy defenders for threatened territories
+- [+] prioritize_land_territories_triplea - Sort land territories by strategic value
+- [+] purchase_aa_units_triplea - Buy AA guns for high-value territories
+- [+] purchase_land_units_triplea - Buy land units for offense (fodder % algorithm)
+- [+] purchase_factory_triplea - Decide whether to buy new factory
+- [+] prioritize_sea_territories_triplea - Sort sea territories by value
+- [+] purchase_sea_and_amphib_units_triplea - Buy naval units and transports (4 phases)
+- [+] purchase_units_with_remaining_production_triplea - Use remaining factory production
+- [+] upgrade_units_with_remaining_pus_triplea - Upgrade to better units
+- [+] find_upgrade_unit_efficiency_triplea - Calculate upgrade efficiency
+- [+] populate_production_rule_map_triplea - Initialize purchase tracking
+- [+] place_defenders_triplea - Place purchased units during place phase
+- [+] place_units_triplea - Alias for place_defenders (places all units)
+- [+] add_units_to_place_triplea - Track unit purchases (deferred placement)
 
 Plus 15+ helper methods fully implemented.
 Total: 25 methods mapped from Java, 17 fully implemented, 4 architectural N/A, 4 stubs/helpers
@@ -38,6 +38,50 @@ Total: 25 methods mapped from Java, 17 fully implemented, 4 architectural N/A, 4
 import sa "core:container/small_array"
 import "core:fmt"
 import "core:math"
+
+/*
+Phase 1: Purchase Phase
+
+Pro AI strategic purchasing decisions using TripleA's ProPurchaseAi.java logic.
+This includes:
+- Evaluating current board state
+- Determining strategic priorities (offense vs defense)
+- Purchasing units that best serve immediate needs
+- Considering factory placement if economically viable
+*/
+proai_purchase_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
+	starting_money := gc.money[gc.cur_player]
+	
+	when ODIN_DEBUG {
+		fmt.println("\n" + SEP_MED)
+		fmt.println("PURCHASE PHASE")
+		fmt.println(SEP_MED)
+		fmt.printf("Player: %v\n", gc.cur_player)
+		fmt.printf("Starting Money: %d IPCs\n", starting_money)
+		fmt.println()
+	}
+	
+	// Call TripleA purchase implementation
+	if !purchase_triplea(gc) {
+		when ODIN_DEBUG {
+			fmt.println("\n*** PURCHASE PHASE FAILED ***")
+		}
+		return false
+	}
+	
+	when ODIN_DEBUG {
+		money_spent := starting_money - gc.money[gc.cur_player]
+		fmt.printf("\nRemaining Money: %d IPCs\n", gc.money[gc.cur_player])
+		fmt.printf("Money Spent: %d IPCs\n", money_spent)
+		if money_spent == 0 && starting_money > 0 {
+			fmt.println("  [WARNING] No money was spent despite having IPCs available!")
+			fmt.println("  This may indicate purchase logic is not executing properly.")
+		}
+		fmt.println(SEP_MED + "\n")
+	}
+	
+	return true
+}
 
 /*
 =============================================================================
@@ -271,22 +315,48 @@ purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 	}
 
 	// Step 1: Initialize purchase tracking (clear any previous purchases)
-	populate_production_rule_map_triplea(gc)
+	// populate_production_rule_map_triplea(gc)
 
 	// Step 2: Repair damaged factories FIRST (critical - affects production capacity)
-	repair_factories_triplea(gc)
+	// repair_factories_triplea(gc)
 
-	if gc.money[gc.cur_player] == 0 {
-		return true // All money spent on repairs
-	}
+	// if gc.money[gc.cur_player] == 0 {
+	// 	return true // All money spent on repairs
+	// }
 
 	// Step 3: Find territories that need defense and purchase defenders
 	// Prioritize land territories needing defense
-	need_to_defend_land := prioritize_territories_to_defend_triplea(gc, true)
+
+	enemy_attack_options := [Player_ID][Air_ID]Territory_Target{}
+	generate_enemy_attack_options(gc, &enemy_attack_options)
+	// debug print each enemy's attack options
+	fmt.println("Enemy Attack Options:")
+	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
+		fmt.println("Enemy:", enemy)
+		for territory in Air_ID {
+			if enemy_attack_options[enemy][territory].Fighters > 0 {
+				fmt.println("  Territory:", territory, "Fighters:", enemy_attack_options[enemy][territory].Fighters)
+			}
+			if enemy_attack_options[enemy][territory].Bombers > 0 {
+				fmt.println("  Territory:", territory, "Bombers:", enemy_attack_options[enemy][territory].Bombers)
+			}
+			if enemy_attack_options[enemy][territory].Infantry > 0 {
+				fmt.println("  Territory:", territory, "Infantry:", enemy_attack_options[enemy][territory].Infantry)
+			}
+			if enemy_attack_options[enemy][territory].Artillery > 0 {
+				fmt.println("  Territory:", territory, "Artillery:", enemy_attack_options[enemy][territory].Artillery)
+			}
+			if enemy_attack_options[enemy][territory].Tanks > 0 {
+				fmt.println("  Territory:", territory, "Tanks:", enemy_attack_options[enemy][territory].Tanks)
+			}
+		}
+	}
+
+	need_to_defend_land := prioritize_territories_to_defend_triplea(gc, true, &enemy_attack_options)
 	purchase_defenders_triplea(gc, need_to_defend_land, true)
 
 	// Prioritize sea territories needing defense (if any)
-	need_to_defend_sea := prioritize_territories_to_defend_triplea(gc, false)
+	need_to_defend_sea := prioritize_territories_to_defend_triplea(gc, false, &enemy_attack_options)
 	purchase_defenders_triplea(gc, need_to_defend_sea, false)
 
 	if gc.money[gc.cur_player] == 0 {
@@ -618,30 +688,51 @@ Java Original (lines 590-713):
   }
 */
 
+Territory_Target :: struct {
+	Infantry: u8,
+	Artillery: u8,
+	Tanks: u8,
+	Fighters: u8,
+	Bombers: u8,
+	Subs: u8,
+	Destroyers: u8,
+	Carriers: u8,
+	Cruisers: u8,
+	Battleships: u8,
+	Bs_Damaged: u8,
+}
+
 // Odin Implementation:
 prioritize_territories_to_defend_triplea :: proc(
 	gc: ^Game_Cache,
 	is_land: bool,
+	enemy_attack_options: ^[Player_ID][Air_ID]Territory_Target
 ) -> [dynamic]Place_Territory_Defense {
 	need_to_defend := make([dynamic]Place_Territory_Defense, context.temp_allocator)
 
 	when ODIN_DEBUG {
 		fmt.printf(
-			"  [RATIONALE] Evaluating %s territories for defensive needs...\\n",
+			"  [RATIONALE] Evaluating %s territories for defensive needs...\n",
 			is_land ? "land" : "sea",
 		)
+	}
+
+	// Sea territories not implemented yet - return empty list: TODO
+	if !is_land {
+		when ODIN_DEBUG {
+			fmt.println("    (Sea territory defense not yet implemented - skipping)")
+		}
+		return make([dynamic]Place_Territory_Defense)
 	}
 
 	// Check all territories we own
 	for territory in Land_ID {
 		if gc.owner[territory] != gc.cur_player do continue
 
-		// Filter by land/sea (for now just land)
-		// if !is_land do continue // Sea territories not implemented yet
-
 		// Get current defenders
 		defending_units := get_defending_units_triplea(gc, territory)
 
+		// Check if any of the place territories can't be held with current defenders
 		// Estimate if we can hold against enemy attack
 		// For now, simplified: check if we have < 3 units
 		total_units :=
@@ -712,7 +803,7 @@ prioritize_territories_to_defend_triplea :: proc(
 
 	when ODIN_DEBUG {
 		fmt.printf(
-			"  [RATIONALE] Found %d threatened territories (sorted by priority)\\n",
+			"  [RATIONALE] Found %d threatened territories (sorted by priority)\n",
 			len(result),
 		)
 	}
@@ -846,13 +937,51 @@ purchase_defenders_triplea :: proc(
 		// Calculate defense gap
 		current_defense := estimate_defense_power_triplea(place_terr.defending_units)
 
-		// Estimate enemy threat (simplified - assume moderate threat)
-		enemy_threat := f64(15.0) // Simplified
+		// Calculate enemy threat from adjacent territories
+		// This counts all enemy units in territories adjacent to this one
+		enemy_threat := calculate_enemy_counter_attack_power(gc, place_terr.territory)
 
 		when ODIN_DEBUG {
 			fmt.printf("    Territory: %v\n", place_terr.territory)
 			fmt.printf("      Current defense power: %.1f\n", current_defense)
-			fmt.printf("      Enemy threat estimate: %.1f\n", enemy_threat)
+			fmt.printf("      Enemy threat estimate: %.1f (from adjacent territories)\n", enemy_threat)
+			
+			// Show breakdown of threats
+			threat_details := make([dynamic]string)
+			defer delete(threat_details)
+			
+			for adjacent in sa.slice(&mm.l2l_1away_via_land[place_terr.territory]) {
+				adjacent_threat := f64(0)
+				enemy_count := 0
+				
+				for player in Player_ID {
+					if mm.team[player] != mm.team[gc.cur_player] {
+						inf := gc.idle_armies[adjacent][player][.INF]
+						arty := gc.idle_armies[adjacent][player][.ARTY]
+						tank := gc.idle_armies[adjacent][player][.TANK]
+						
+						if inf > 0 || arty > 0 || tank > 0 {
+							adjacent_threat += f64(inf) * 1.0 + f64(arty) * 2.0 + f64(tank) * 3.0
+							enemy_count += int(inf) + int(arty) + int(tank)
+						}
+					}
+				}
+				
+				if adjacent_threat > 0 {
+					append(&threat_details, fmt.tprintf("        %v: %.1f threat (%d units)", 
+						mm.land_name[adjacent], adjacent_threat, enemy_count))
+				}
+			}
+			
+			if len(threat_details) > 0 {
+				fmt.println("      Threats from adjacent territories:")
+				for detail in threat_details {
+					fmt.println(detail)
+				}
+			} else {
+				fmt.println("      No adjacent enemy threats detected")
+			}
+			
 			fmt.printf("      Defense gap: %.1f\n", enemy_threat - current_defense)
 			fmt.printf("      Nearest factory: %v\n", factory_loc)
 		}
@@ -920,6 +1049,16 @@ find_nearest_factory_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> May
 	
 	This finds factories that can reach the territory (considering movement)
 	*/
+
+	// First check if the territory itself is a factory with capacity
+	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+		if factory_loc == territory {
+			if gc.owner[factory_loc] == gc.cur_player && gc.builds_left[factory_loc] > 0 {
+				return territory // Place at the territory's own factory
+			}
+			break
+		}
+	}
 
 	// Find factory with remaining production capacity
 	// Prefer factories with more capacity available
@@ -1215,6 +1354,15 @@ purchase_land_units_triplea :: proc(
 	- Far from enemy (distance 10+): Buy mostly cheap infantry
 	*/
 
+	when ODIN_DEBUG {
+		fmt.println("  [RATIONALE] Purchasing offensive land units...")
+	}
+
+	total_inf := 0
+	total_arty := 0
+	total_tank := 0
+	starting_money := gc.money[gc.cur_player]
+
 	for place_terr in prioritized_territories {
 		if gc.money[gc.cur_player] < 3 do break
 
@@ -1230,6 +1378,10 @@ purchase_land_units_triplea :: proc(
 		fodder_percent := 80 - enemy_distance * 5
 		if fodder_percent < 20 do fodder_percent = 20
 		if fodder_percent > 80 do fodder_percent = 80
+
+		when ODIN_DEBUG {
+			fmt.printf("    %v: enemy distance=%d, fodder%%=%d\n", territory, enemy_distance, fodder_percent)
+		}
 
 		// Purchase units using fodder percentage
 		// Buy mix of infantry (fodder) and tanks/artillery (attack)
@@ -1248,6 +1400,7 @@ purchase_land_units_triplea :: proc(
 					gc.idle_armies[territory][gc.cur_player][.INF] += 1
 					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
 					units_bought += 1
+					total_inf += 1
 				}
 			} else {
 				// Buy attack unit (prefer tank > artillery)
@@ -1257,16 +1410,28 @@ purchase_land_units_triplea :: proc(
 					gc.idle_armies[territory][gc.cur_player][.TANK] += 1
 					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
 					units_bought += 1
+					total_tank += 1
 				} else if gc.money[gc.cur_player] >= 4 {
 					// Buy artillery
 					gc.money[gc.cur_player] -= 4
 					gc.idle_armies[territory][gc.cur_player][.ARTY] += 1
 					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
 					units_bought += 1
+					total_arty += 1
 				} else {
 					break
 				}
 			}
+		}
+	}
+
+	when ODIN_DEBUG {
+		if total_inf > 0 || total_arty > 0 || total_tank > 0 {
+			money_spent := starting_money - gc.money[gc.cur_player]
+			fmt.printf("    Purchased: %d infantry, %d artillery, %d tanks (%d IPCs)\n",
+				total_inf, total_arty, total_tank, money_spent)
+		} else {
+			fmt.println("    No offensive units purchased")
 		}
 	}
 }
@@ -1371,6 +1536,14 @@ Java Original (lines 1223-1435):
 purchase_factory_triplea :: proc(gc: ^Game_Cache, has_extra_pus: bool) -> bool {
 	if gc.money[gc.cur_player] < 15 do return false // Factory costs 15
 
+	when ODIN_DEBUG {
+		if has_extra_pus {
+			fmt.println("  [RATIONALE] Evaluating factory purchase with remaining funds...")
+		} else {
+			fmt.println("  [RATIONALE] Evaluating factory purchase...")
+		}
+	}
+
 	/*
 	TripleA logic:
 	1. Only buy factory if all current production is being used
@@ -1455,6 +1628,10 @@ purchase_factory_triplea :: proc(gc: ^Game_Cache, has_extra_pus: bool) -> bool {
 		}
 
 		return true
+	}
+
+	when ODIN_DEBUG {
+		fmt.println("    No suitable location found for factory")
 	}
 
 	return false
@@ -1862,6 +2039,14 @@ purchase_units_with_remaining_production_triplea :: proc(
 	2. For unsafe territories: Buy defensive units
 	*/
 
+	when ODIN_DEBUG {
+		fmt.println("  [RATIONALE] Using remaining production capacity...")
+	}
+
+	starting_money := gc.money[gc.cur_player]
+	fighters_bought := 0
+	infantry_bought := 0
+
 	// Split territories into safe and unsafe
 	safe_territories := make([dynamic]Place_Territory_Land, context.temp_allocator)
 	unsafe_territories := make([dynamic]Place_Territory_Land, context.temp_allocator)
@@ -1888,6 +2073,10 @@ purchase_units_with_remaining_production_triplea :: proc(
 		if gc.money[gc.cur_player] >= 10 {
 			gc.money[gc.cur_player] -= 10
 			gc.idle_land_planes[territory][gc.cur_player][.FIGHTER] += 1
+			fighters_bought += 1
+			when ODIN_DEBUG {
+				fmt.printf("    Bought fighter at %v (safe territory)\n", territory)
+			}
 		}
 	}
 
@@ -1902,6 +2091,17 @@ purchase_units_with_remaining_production_triplea :: proc(
 			gc.money[gc.cur_player] -= 3
 			gc.idle_armies[territory][gc.cur_player][.INF] += 1
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+			infantry_bought += 1
+		}
+	}
+
+	when ODIN_DEBUG {
+		if fighters_bought > 0 || infantry_bought > 0 {
+			money_spent := starting_money - gc.money[gc.cur_player]
+			fmt.printf("    Purchased: %d fighters, %d infantry (%d IPCs)\n",
+				fighters_bought, infantry_bought, money_spent)
+		} else {
+			fmt.println("    No units purchased with remaining production")
 		}
 	}
 }
@@ -1951,6 +2151,13 @@ upgrade_units_with_remaining_pus_triplea :: proc(
 	3. Use findUpgradeUnitEfficiency to determine best upgrade
 	*/
 
+	when ODIN_DEBUG {
+		fmt.println("  [RATIONALE] Upgrading units with remaining funds...")
+	}
+
+	starting_money := gc.money[gc.cur_player]
+	upgrades := 0
+
 	// Reverse prioritization - upgrade far territories first
 	for i := len(prioritized_land) - 1; i >= 0; i -= 1 {
 		if gc.money[gc.cur_player] < 3 do break
@@ -1979,6 +2186,10 @@ upgrade_units_with_remaining_pus_triplea :: proc(
 				gc.money[gc.cur_player] -= 4 // Buy artillery
 				gc.idle_armies[territory][gc.cur_player][.ARTY] += 1
 				gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+				upgrades += 1
+				when ODIN_DEBUG {
+					fmt.printf("    Upgraded infantry -> artillery at %v\n", territory)
+				}
 			}
 		}
 
@@ -2000,7 +2211,20 @@ upgrade_units_with_remaining_pus_triplea :: proc(
 				gc.money[gc.cur_player] -= 6 // Buy tank
 				gc.idle_armies[territory][gc.cur_player][.TANK] += 1
 				gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+				upgrades += 1
+				when ODIN_DEBUG {
+					fmt.printf("    Upgraded infantry -> tank at %v\n", territory)
+				}
 			}
+		}
+	}
+
+	when ODIN_DEBUG {
+		if upgrades > 0 {
+			money_spent := starting_money - gc.money[gc.cur_player]
+			fmt.printf("    Completed %d unit upgrades (%d IPCs)\n", upgrades, money_spent)
+		} else {
+			fmt.println("    No upgrades performed")
 		}
 	}
 }
@@ -2040,11 +2264,11 @@ find_upgrade_unit_efficiency_triplea :: proc(
 	- Tank (6 cost, 3 attack, 3 defense, 2 movement)
 	
 	Example:
-	- Upgrade Infantry → Artillery near enemy (strategic_value = 2.0):
+	- Upgrade Infantry -> Artillery near enemy (strategic_value = 2.0):
 	  multiplier = defense = 2.0
 	  efficiency = 2.0 * 2.0 * 4 / 1 = 16.0
 	
-	- Upgrade Infantry → Tank far from enemy (strategic_value = 0.5):
+	- Upgrade Infantry -> Tank far from enemy (strategic_value = 0.5):
 	  multiplier = movement = 2
 	  efficiency = 3.0 * 2.0 * 6 / 1 = 36.0 (tanks better for mobility)
 	*/
@@ -2122,7 +2346,7 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 	}
 	
 	when ODIN_DEBUG {
-		fmt.printf("  [PLACE] Placing units from %d territories\\n", len(g_purchased_units))
+		fmt.printf("  [PLACE] Placing units from %d territories\n", len(g_purchased_units))
 	}
 
 	for purchase in g_purchased_units {
@@ -2239,7 +2463,7 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 	clear(&g_purchased_units)
 	
 	when ODIN_DEBUG {
-		fmt.println("  ✓ All purchased units placed")
+		fmt.println("  + All purchased units placed")
 	}
 }
 
@@ -2258,7 +2482,7 @@ place_factory_triplea :: proc(gc: ^Game_Cache) {
 	}
 
 	when ODIN_DEBUG {
-		fmt.printf("  [PLACE] Placing %d factory/factories\\n", len(g_purchased_factories))
+		fmt.printf("  [PLACE] Placing %d factory/factories\n", len(g_purchased_factories))
 	}
 
 	for factory_territory in g_purchased_factories {
@@ -2270,7 +2494,7 @@ place_factory_triplea :: proc(gc: ^Game_Cache) {
 		sa.push(&gc.factory_locations[gc.cur_player], factory_territory)
 
 		when ODIN_DEBUG {
-			fmt.printf("  [PLACE] Factory -> %v (production capacity: %d)\\n", 
+			fmt.printf("  [PLACE] Factory -> %v (production capacity: %d)\n", 
 				factory_territory, mm.value[factory_territory])
 		}
 	}
@@ -2279,7 +2503,7 @@ place_factory_triplea :: proc(gc: ^Game_Cache) {
 	clear(&g_purchased_factories)
 	
 	when ODIN_DEBUG {
-		fmt.println("  ✓ All factories placed")
+		fmt.println("  + All factories placed")
 	}
 }
 

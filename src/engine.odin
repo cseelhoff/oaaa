@@ -243,6 +243,9 @@ collect_money :: proc(gc: ^Game_Cache) {
 
 rotate_turns :: proc(gc: ^Game_Cache) {
 	gc.cur_player = Player_ID((u8(gc.cur_player) + 1) % len(Player_ID))
+	rotate_turns_reset(gc)
+}
+rotate_turns_reset :: proc(gc: ^Game_Cache) {
 	gc.more_land_combat_needed = {}
 	gc.land_combat_started = {}
 	gc.more_sea_combat_needed = {}

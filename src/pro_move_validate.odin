@@ -193,8 +193,8 @@ find_air_territories_within_range :: proc(
 	src: Air_ID,
 	max_range: int,
 	allocator := context.allocator,
-) -> [dynamic]Air_ID {
-	territories := make([dynamic]Air_ID, allocator)
+) -> Air_ID_Array {
+	territories := Air_ID_Array{}
 
 	// Get appropriate range bitset from map graph
 	range_bitset: Air_Bitset
@@ -480,7 +480,7 @@ get_unit_max_moves :: proc(unit_type: Unit_Type) -> int {
 Convert unit type to initial active army state.
 
 Returns the active army state with maximum moves available.
-For example, TANK → TANK_2_MOVES.
+For example, TANK -> TANK_2_MOVES.
 */
 unit_type_to_active_army :: proc(unit_type: Unit_Type) -> (Active_Army, bool) #optional_ok {
 	#partial switch unit_type {

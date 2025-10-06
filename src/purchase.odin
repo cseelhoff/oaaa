@@ -146,16 +146,16 @@ FACTORY_COST :: 15
 // 	}
 // 	gc.valid_actions -= transmute(Action_Bitset)u32(transmute(u16)gc.skipped_buys[src_air])
 // }
-
 buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
+	air_array: Air_ID_Array
 	for dst_sea in sa.slice(&mm.l2s_1away_via_land[land]) {
 		for (gc.builds_left[land] > 0 &&
 			    gc.smallest_allowable_action[to_air(dst_sea)] != .Skip_Action) {
 			repair_cost := u8(max(0, 1 + int(gc.factory_dmg[land]) - int(gc.builds_left[land])))
 			reset_valid_actions(gc)
 			if gc.money[gc.cur_player] >= Cost_Buy[.BUY_FIGHTER_ACTION] + repair_cost {
-				get_airs(gc.can_fighter_land_here, &air_positions)
-				_, found := slice.linear_search(air_positions[:], to_air(dst_sea))
+				get_airs(gc.can_fighter_land_here, &air_array)
+				_, found := slice.linear_search(sa.slice(&air_array), to_air(dst_sea))
 				if found {
 					add_valid_action(gc, .BUY_FIGHTER_ACTION)
 				}

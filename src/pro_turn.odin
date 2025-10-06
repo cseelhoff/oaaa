@@ -59,6 +59,8 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	
 	// Phase 6: End Turn Phase
 	// Clean up, collect income, rotate to next player
+	reset_units_fully(gc)
+	collect_money(gc)
 	rotate_turns(gc)
 	debug_checks(gc)
 	
@@ -126,50 +128,6 @@ test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
 }
 
 /*
-Phase 1: Purchase Phase
-
-Pro AI strategic purchasing decisions using TripleA's ProPurchaseAi.java logic.
-This includes:
-- Evaluating current board state
-- Determining strategic priorities (offense vs defense)
-- Purchasing units that best serve immediate needs
-- Considering factory placement if economically viable
-*/
-proai_purchase_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	starting_money := gc.money[gc.cur_player]
-	
-	when ODIN_DEBUG {
-		fmt.println("\n" + SEP_MED)
-		fmt.println("PURCHASE PHASE")
-		fmt.println(SEP_MED)
-		fmt.printf("Player: %v\n", gc.cur_player)
-		fmt.printf("Starting Money: %d IPCs\n", starting_money)
-		fmt.println()
-	}
-	
-	// Call TripleA purchase implementation
-	if !purchase_triplea(gc) {
-		when ODIN_DEBUG {
-			fmt.println("\n*** PURCHASE PHASE FAILED ***")
-		}
-		return false
-	}
-	
-	when ODIN_DEBUG {
-		money_spent := starting_money - gc.money[gc.cur_player]
-		fmt.printf("\nRemaining Money: %d IPCs\n", gc.money[gc.cur_player])
-		fmt.printf("Money Spent: %d IPCs\n", money_spent)
-		if money_spent == 0 && starting_money > 0 {
-			fmt.println("  [WARNING] No money was spent despite having IPCs available!")
-			fmt.println("  This may indicate purchase logic is not executing properly.")
-		}
-		fmt.println(SEP_MED + "\n")
-	}
-	
-	return true
-}
-
-/*
 Phase 2: Combat Move Phase
 
 Pro AI combat movement strategy using TripleA's ProCombatMoveAi.java logic.
@@ -196,12 +154,12 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	populate_attack_options_triplea(gc, &attack_options)
 	
 	when ODIN_DEBUG {
-		fmt.printf("  → Found %d potential attack targets\n", len(attack_options))
+		fmt.printf("  -> Found %d potential attack targets\n", len(attack_options))
 	}
 	
 	if len(attack_options) == 0 {
 		when ODIN_DEBUG {
-			fmt.println("  → No enemy territories found")
+			fmt.println("  -> No enemy territories found")
 			fmt.println(SEP_MED + "\n")
 		}
 		return true
@@ -244,14 +202,14 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		for opt in attack_options {
 			if opt.can_hold do holdable_count += 1
 		}
-		fmt.printf("  → %d of %d territories can be held\n", 
+		fmt.printf("  -> %d of %d territories can be held\n", 
 			holdable_count, len(attack_options))
 		
 		// Show first few holdable territories
 		shown := 0
 		for opt in attack_options {
 			if opt.can_hold && shown < 5 {
-				fmt.printf("    ✓ %v (can hold)\n", opt.territory)
+				fmt.printf("    + %v (can hold)\n", opt.territory)
 				shown += 1
 			}
 		}
@@ -267,7 +225,7 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	
 	when ODIN_DEBUG {
 		removed := initial_count - len(attack_options)
-		fmt.printf("  → Removed %d low-value targets, %d remain\n", removed, len(attack_options))
+		fmt.printf("  -> Removed %d low-value targets, %d remain\n", removed, len(attack_options))
 		if len(attack_options) > 0 {
 			fmt.println("  Targets worth attacking:")
 			for opt in attack_options {
@@ -275,7 +233,7 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 					opt.territory, opt.attack_value, opt.can_hold)
 			}
 		} else {
-			fmt.println("  → No attacks worth executing (all targets filtered out)")
+			fmt.println("  -> No attacks worth executing (all targets filtered out)")
 			fmt.println("  Reasons: low strategic value, can't hold after capture, or too risky")
 		}
 	}
@@ -298,7 +256,7 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	
 	when ODIN_DEBUG {
 		removed = initial_count - len(attack_options)
-		fmt.printf("  → Selected %d territories for attack (removed %d unsuccessful)\n", 
+		fmt.printf("  -> Selected %d territories for attack (removed %d unsuccessful)\n", 
 			len(attack_options), removed)
 		if len(attack_options) > 0 {
 			fmt.println("  Final attack targets:")
@@ -310,7 +268,7 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	
 	if len(attack_options) == 0 {
 		when ODIN_DEBUG {
-			fmt.println("  → No successful attacks possible")
+			fmt.println("  -> No successful attacks possible")
 			fmt.println(SEP_MED + "\n")
 		}
 		return true
@@ -324,12 +282,12 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	recalculate_enemy_attacks_after_territory_selection_triplea(gc, &attack_options)
 	
 	when ODIN_DEBUG {
-		fmt.printf("  → %d attacks remain after recalculation\n", len(attack_options))
+		fmt.printf("  -> %d attacks remain after recalculation\n", len(attack_options))
 	}
 	
 	if len(attack_options) == 0 {
 		when ODIN_DEBUG {
-			fmt.println("  → All attacks became unfavorable after recalculation")
+			fmt.println("  -> All attacks became unfavorable after recalculation")
 			fmt.println(SEP_MED + "\n")
 		}
 		return true
@@ -343,10 +301,6 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	border_moves := move_one_defender_to_land_territories_bordering_enemy_triplea(gc, &attack_options)
 	defer delete(border_moves)
 	
-	when ODIN_DEBUG {
-		fmt.printf("  → Made %d border defender moves\n", len(border_moves))
-	}
-	
 	// Step 8: Remove attacks where transports would be exposed
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 8] Checking transport safety...")
@@ -358,9 +312,9 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	when ODIN_DEBUG {
 		removed = initial_count - len(attack_options)
 		if removed > 0 {
-			fmt.printf("  → Removed %d amphibious attacks (transports exposed)\n", removed)
+			fmt.printf("  -> Removed %d amphibious attacks (transports exposed)\n", removed)
 		} else {
-			fmt.println("  → All transports safe")
+			fmt.println("  -> All transports safe")
 		}
 	}
 	
@@ -375,19 +329,19 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	when ODIN_DEBUG {
 		removed = initial_count - len(attack_options)
 		if removed > 0 {
-			fmt.printf("  → Removed %d attacks to defend capital\n", removed)
+			fmt.printf("  -> Removed %d attacks to defend capital\n", removed)
 		} else {
-			fmt.println("  → Capital can be defended with current attack plan")
+			fmt.println("  -> Capital can be defended with current attack plan")
 		}
 		
 		if len(attack_options) > 0 {
 			fmt.println("\n  FINAL ATTACK PLAN:")
 			for opt in attack_options {
-				fmt.printf("    → Attack %v (value: %.1f, holdable: %v)\n", 
+				fmt.printf("    -> Attack %v (value: %.1f, holdable: %v)\n", 
 					opt.territory, opt.attack_value, opt.can_hold)
 			}
 		} else {
-			fmt.println("\n  → No attacks will be executed (all removed for capital defense)")
+			fmt.println("\n  -> No attacks will be executed (all removed for capital defense)")
 		}
 	}
 	

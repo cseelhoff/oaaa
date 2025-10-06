@@ -9,19 +9,19 @@ This file contains implementations of all methods from TripleA's ProCombatMoveAi
 Each method is fully implemented in Odin based on the original Java logic.
 
 Current Implementation Status:
-- [✓] prioritizeAttackOptions - Calculate attack value and sort territories
-- [✓] determineTerritoriesToAttack - Iteratively select territories to attack
-- [✓] determineTerritoriesThatCanBeHeld - Check if conquered territories can be defended
-- [✓] removeTerritoriesThatArentWorthAttacking - Filter low-value targets
-- [✓] moveOneDefenderToLandTerritoriesBorderingEnemy - Defensive positioning
-- [✓] removeTerritoriesWhereTransportsAreExposed - Protect naval units
-- [✓] determineUnitsToAttackWith - Assign specific units to each attack
-- [✓] determineTerritoriesThatCanBeBombed - Strategic bombing logic
-- [✓] determineBestBombingAttackForBomber - Per-bomber targeting
-- [✓] tryToAttackTerritories - Attempt attack with available units
-- [✓] checkContestedSeaTerritories - Sub warfare in contested seas
-- [✓] logAttackMoves - Debug output
-- [✓] canAirSafelyLandAfterAttack - Air unit safety check
+- [+] prioritizeAttackOptions - Calculate attack value and sort territories
+- [+] determineTerritoriesToAttack - Iteratively select territories to attack
+- [+] determineTerritoriesThatCanBeHeld - Check if conquered territories can be defended
+- [+] removeTerritoriesThatArentWorthAttacking - Filter low-value targets
+- [+] moveOneDefenderToLandTerritoriesBorderingEnemy - Defensive positioning
+- [+] removeTerritoriesWhereTransportsAreExposed - Protect naval units
+- [+] determineUnitsToAttackWith - Assign specific units to each attack
+- [+] determineTerritoriesThatCanBeBombed - Strategic bombing logic
+- [+] determineBestBombingAttackForBomber - Per-bomber targeting
+- [+] tryToAttackTerritories - Attempt attack with available units
+- [+] checkContestedSeaTerritories - Sub warfare in contested seas
+- [+] logAttackMoves - Debug output
+- [+] canAirSafelyLandAfterAttack - Air unit safety check
 
 All methods are now fully implemented with complete logic matching TripleA's Pro AI.
 Helper functions have been added to support the main implementations.
@@ -61,10 +61,16 @@ Unit_Info :: struct {
 // Attack_Option represents a planned attack on a territory
 Attack_Option :: struct {
 	territory:          Land_ID,
+	// Assigned units (populated in Step 10)
 	attackers:          [dynamic]Unit_Info,
 	amphib_attackers:   [dynamic]Unit_Info,
 	bombard_units:      [dynamic]Unit_Info,
+	// Potential units (populated in Step 1, used for holdability check in Step 3)
+	potential_attackers:       [dynamic]Unit_Info,
+	potential_amphib_attackers: [dynamic]Unit_Info,
+	// Enemy defenders
 	defenders:          [dynamic]Unit_Info,
+	// Battle metrics
 	attack_value:       f64,
 	win_percentage:     f64,
 	tuv_swing:          f64,
@@ -434,9 +440,10 @@ determine_territories_that_can_be_held_triplea :: proc(gc: ^Game_Cache, options:
 			continue
 		}
 		
-		// Calculate actual attack power from assigned attackers (not potential)
-		// This matches Java: uses result.getAverageAttackersRemaining()
-		attack_power := calculate_total_attack_power(gc, option.attackers, option.amphib_attackers)
+		// Calculate potential attack power (ALL units that could attack)
+		// Java uses patd.getMaxUnits() and patd.getMaxAmphibUnits() here
+		// These are populated in Step 1, before unit assignment
+		attack_power := calculate_total_attack_power(gc, option.potential_attackers, option.potential_amphib_attackers)
 		
 		// Get actual defender strength
 		defender_power := calculate_total_defense_power(gc, option.defenders)
@@ -637,7 +644,7 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 	options: ^[dynamic]Attack_Option,
 ) -> [dynamic]Unit_Info {
 	when ODIN_DEBUG {
-		fmt.println("Determine which territories to defend with one land unit")
+		fmt.println("  Searching for empty border territories needing defenders...")
 	}
 	
 	already_moved := make([dynamic]Unit_Info)
@@ -687,6 +694,11 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 		
 		// If no units and has enemy neighbors, move one defender here
 		if enemy_neighbor_count > 0 {
+			when ODIN_DEBUG {
+				fmt.printf("    %s: empty territory with %d enemy neighbor(s)\n",
+					mm.land_name[land_tid], enemy_neighbor_count)
+			}
+			
 			// Find cheapest unit from adjacent friendly territory
 			cheapest_cost := 999
 			cheapest_from := max(Land_ID)
@@ -735,17 +747,25 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 				})
 				
 				when ODIN_DEBUG {
-					fmt.printf("  Moved %v from %s to border territory %s\n",
+					fmt.printf("      -> Moved 1x %v from %s to %s\n",
 						cheapest_army,
 						mm.land_name[cheapest_from],
 						mm.land_name[land_tid])
+				}
+			} else {
+				when ODIN_DEBUG {
+					fmt.printf("      -> No available units to move (skipping)\n")
 				}
 			}
 		}
 	}
 	
 	when ODIN_DEBUG {
-		fmt.printf("  Made %d border defender moves\n", len(already_moved))
+		if len(already_moved) == 0 {
+			fmt.println("  (No border territories needed defenders)")
+		} else {
+			fmt.printf("  Summary: Made %d border defender move(s)\n", len(already_moved))
+		}
 	}
 	
 	return already_moved
@@ -1010,7 +1030,7 @@ determine_units_to_attack_with_triplea :: proc(
 			when ODIN_DEBUG {
 				attacker_count := len(opt.attackers)
 				amphib_count := len(opt.amphib_attackers)
-				fmt.printf("      → Assigned %d land/air, %d amphib\n", attacker_count, amphib_count)
+				fmt.printf("      -> Assigned %d land/air, %d amphib\n", attacker_count, amphib_count)
 			}
 		}
 		
@@ -1032,7 +1052,7 @@ determine_units_to_attack_with_triplea :: proc(
 			// If no units assigned, this attack is invalid
 			if len(opt.attackers) == 0 && len(opt.amphib_attackers) == 0 {
 				when ODIN_DEBUG {
-					fmt.printf("    → Removing %v (no units assigned)\n", opt.territory)
+					fmt.printf("    -> Removing %v (no units assigned)\n", opt.territory)
 				}
 				territory_to_remove = i
 				break
@@ -1041,7 +1061,7 @@ determine_units_to_attack_with_triplea :: proc(
 			// If attack power is too low, remove this attack
 			if attack_power == 0 {
 				when ODIN_DEBUG {
-					fmt.printf("    → Removing %v (zero attack power)\n", opt.territory)
+					fmt.printf("    -> Removing %v (zero attack power)\n", opt.territory)
 				}
 				territory_to_remove = i
 				break
@@ -1051,7 +1071,7 @@ determine_units_to_attack_with_triplea :: proc(
 		// If all attacks are valid, we're done
 		if territory_to_remove == -1 {
 			when ODIN_DEBUG {
-				fmt.println("  → All attacks have units assigned")
+				fmt.println("  -> All attacks have units assigned")
 			}
 			break
 		}
@@ -1062,7 +1082,7 @@ determine_units_to_attack_with_triplea :: proc(
 		// If no attacks left, we're done
 		if len(options) == 0 {
 			when ODIN_DEBUG {
-				fmt.println("  → No valid attacks possible")
+				fmt.println("  -> No valid attacks possible")
 			}
 			break
 		}
@@ -3583,6 +3603,9 @@ add_territory_to_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Atta
 	option := Attack_Option{
 		territory = target,
 		attackers = make([dynamic]Unit_Info),
+		amphib_attackers = make([dynamic]Unit_Info),
+		potential_attackers = make([dynamic]Unit_Info),
+		potential_amphib_attackers = make([dynamic]Unit_Info),
 		defenders = make([dynamic]Unit_Info),
 		attack_value = f64(territory_value),
 		win_percentage = 0.0,
@@ -3621,6 +3644,10 @@ add_territory_to_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Atta
 		}
 	}
 	
+	// Populate POTENTIAL attackers (all units that could reach this territory)
+	// This is used in Step 3 to check if we can hold the territory
+	populate_potential_attackers(gc, &option)
+	
 	append(options, option)
 }
 
@@ -3642,6 +3669,122 @@ idle_plane_to_unit_type :: proc(plane: Idle_Plane) -> Unit_Type {
 	case .BOMBER:  return .Bomber
 	}
 	return .Fighter  // Default
+}
+
+// Helper: Populate potential attackers for a target territory
+// This finds all friendly units within attack range of the target
+populate_potential_attackers :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
+	target := option.territory
+	
+	// Find all friendly ground units within 2 moves (simplified - tanks can move 2, inf/arty can move 1)
+	// 1 move away
+	for adj1 in sa.slice(&mm.l2l_1away_via_land[target]) {
+		if gc.owner[adj1] == gc.cur_player {
+			// Add all ground units from this territory
+			for army_type in Idle_Army {
+				count := gc.idle_armies[adj1][gc.cur_player][army_type]
+				for i in 0..<count {
+					unit := Unit_Info{
+						unit_type = idle_army_to_unit_type(army_type),
+						from_territory = adj1,
+					}
+					append(&option.potential_attackers, unit)
+				}
+			}
+		}
+	}
+	
+	// 2 moves away (for tanks)
+	for adj1 in sa.slice(&mm.l2l_1away_via_land[target]) {
+		for adj2 in sa.slice(&mm.l2l_1away_via_land[adj1]) {
+			if adj2 == target { continue }
+			if gc.owner[adj2] == gc.cur_player {
+				// Only add tanks (they can move 2)
+				count := gc.idle_armies[adj2][gc.cur_player][.TANK]
+				for i in 0..<count {
+					unit := Unit_Info{
+						unit_type = .Tank,
+						from_territory = adj2,
+					}
+					append(&option.potential_attackers, unit)
+				}
+			}
+		}
+	}
+	
+	// Add all friendly fighters within 4 moves (simplified - just add nearby)
+	// For now, add fighters from 1-2 territories away
+	for adj1 in sa.slice(&mm.l2l_1away_via_land[target]) {
+		if gc.owner[adj1] == gc.cur_player {
+			count := gc.idle_land_planes[adj1][gc.cur_player][.FIGHTER]
+			for i in 0..<count {
+				unit := Unit_Info{
+					unit_type = .Fighter,
+					from_territory = adj1,
+				}
+				append(&option.potential_attackers, unit)
+			}
+		}
+	}
+	
+	// Add all friendly bombers within 6 moves (simplified)
+	for adj1 in sa.slice(&mm.l2l_1away_via_land[target]) {
+		if gc.owner[adj1] == gc.cur_player {
+			count := gc.idle_land_planes[adj1][gc.cur_player][.BOMBER]
+			for i in 0..<count {
+				unit := Unit_Info{
+					unit_type = .Bomber,
+					from_territory = adj1,
+				}
+				append(&option.potential_attackers, unit)
+			}
+		}
+	}
+	
+	// Check for amphibious attackers from adjacent sea zones
+	for sea_id in Sea_ID {
+		// Check if this sea zone is adjacent to the target
+		is_adjacent := false
+		for land in sa.slice(&mm.s2l_1away_via_sea[sea_id]) {
+			if land == target {
+				is_adjacent = true
+				break
+			}
+		}
+		if !is_adjacent do continue
+		
+		// Check for loaded transports
+		trans_1i := gc.idle_ships[sea_id][gc.cur_player][.TRANS_1I]
+		trans_1t := gc.idle_ships[sea_id][gc.cur_player][.TRANS_1T]
+		trans_1a := gc.idle_ships[sea_id][gc.cur_player][.TRANS_1A]
+		
+		// Add infantry from transports
+		for i in 0..<trans_1i {
+			unit := Unit_Info{
+				unit_type = .Infantry,
+				from_territory = Land_ID(sea_id),  // Sea zone as source
+			}
+			append(&option.potential_amphib_attackers, unit)
+		}
+		
+		// Add tanks from transports
+		for i in 0..<trans_1t {
+			unit := Unit_Info{
+				unit_type = .Tank,
+				from_territory = Land_ID(sea_id),
+			}
+			append(&option.potential_amphib_attackers, unit)
+		}
+		
+		// Add artillery from transports
+		for i in 0..<trans_1a {
+			unit := Unit_Info{
+				unit_type = .Artillery,
+				from_territory = Land_ID(sea_id),
+			}
+			append(&option.potential_amphib_attackers, unit)
+		}
+	}
 }
 
 // Helper: Check if territory has enemy units
@@ -3748,7 +3891,7 @@ execute_combat_moves_triplea :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]
 	// resolve_land_battles(gc) or_return
 
 	// when ODIN_DEBUG {
-	// 	fmt.println("  ✓ All combat moves executed and battles resolved")
+	// 	fmt.println("  + All combat moves executed and battles resolved")
 	// 	// print_game_state(gc)
 	// }
 	

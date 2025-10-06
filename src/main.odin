@@ -64,12 +64,18 @@ start :: proc() {
 	load_default_game_state(&game_state)
 	
 	// If test-proai mode, run a single Pro AI turn
-	if test_proai {
-		fmt.println("\n=== Pro AI Test Mode ===")
+	// if test_proai {
+	fmt.println("\n=== Pro AI Test Mode ===")
+	//loop 10 times
+	for _ in 0..<1 {
 		test_proai_single_turn(&game_state)
-		test_proai_single_turn(&game_state)
+	}
+	load_cache_from_state(&game_cache, &game_state)
+	print_game_state(&game_cache)
+	if true {
 		return
 	}
+	// }
 	
 	// get_canonical_form(&game_state, 0)
 	//save_json(game_state, "game_state.json")

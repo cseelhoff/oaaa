@@ -43,15 +43,25 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	defense_targets := find_noncombat_defense_targets(gc, &pro_data)
 	defer pro_noncombat_move_cleanup(&defense_targets)
 	
-	if len(defense_targets) == 0 {
-		when ODIN_DEBUG {
+	when ODIN_DEBUG {
+		if len(defense_targets) == 0 {
 			fmt.println("[PRO-AI] No territories need defense")
+		} else {
+			fmt.printf("[PRO-AI] Found %d territories needing defense:\n", len(defense_targets))
+			for target in defense_targets {
+				fmt.printf("  - %s: defense=%.1f vs threat=%.1f (gap=%.1f, factory=%v, capital=%v)\n",
+					mm.land_name[target.territory],
+					target.current_defense,
+					target.enemy_threat,
+					target.defense_needed,
+					target.has_factory,
+					target.is_capital)
+			}
 		}
-		return true
 	}
 	
-	when ODIN_DEBUG {
-		fmt.printf("[PRO-AI] Found %d territories needing defense\n", len(defense_targets))
+	if len(defense_targets) == 0 {
+		return true
 	}
 	
 	// Step 2: Prioritize defense targets by strategic value
@@ -95,6 +105,10 @@ Defense_Target :: struct {
 find_noncombat_defense_targets :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) -> [dynamic]Defense_Target {
 	targets := make([dynamic]Defense_Target)
 	
+	when ODIN_DEBUG {
+		fmt.println("  [NONCOMBAT] Scanning all friendly territories for defense needs...")
+	}
+	
 	// Check all friendly territories
 	for land_id in Land_ID {
 		if gc.owner[land_id] != gc.cur_player {
@@ -103,17 +117,9 @@ find_noncombat_defense_targets :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) -> 
 		
 		// Calculate enemy threat
 		enemy_threat := calculate_enemy_threat(gc, land_id, pro_data)
-		if enemy_threat <= 0 {
-			continue // No enemy threat
-		}
 		
 		// Calculate current defense
 		current_defense := calculate_current_defense(gc, land_id)
-		
-		// Check if we need more defense
-		if current_defense >= enemy_threat * 1.2 {
-			continue // Already well defended
-		}
 		
 		// Calculate strategic value
 		territory_value := calculate_territory_value(gc, land_id)
@@ -128,11 +134,45 @@ find_noncombat_defense_targets :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) -> 
 			strategic_value *= 3.0
 		}
 		
+		// Check if this territory needs defense:
+		// 1. Has enemy threat AND insufficient defense
+		// 2. OR is strategically important (factory/capital) with no units
+		needs_defense := false
+		defense_gap := 0.0
+		
+		if enemy_threat > 0 {
+			// Under threat - check if we have enough defense
+			if current_defense < enemy_threat * 1.2 {
+				needs_defense = true
+				defense_gap = enemy_threat * 1.2 - current_defense
+			}
+		}
+		
+		// CRITICAL FIX: Also defend strategically important empty territories
+		// This handles the case where all units moved out during combat phase
+		if current_defense < 4.0 && (has_factory || is_capital || territory_value >= 3) {
+			// Weak or empty strategic territory - check if enemy could attack next turn
+			if has_enemy_neighbors(gc, land_id) {
+				needs_defense = true
+				// Assume minimum threat for weak strategic territories
+				defense_gap = max(8.0 - current_defense, enemy_threat * 1.2 - current_defense)
+				
+				when ODIN_DEBUG {
+					fmt.printf("    [DEFENSE] %v is WEAK (cur_def=%.1f) with strategic value (factory=%v, capital=%v, value=%.1f, has_enemy_neighbors=true)\n",
+						land_id, current_defense, has_factory, is_capital, territory_value)
+				}
+			}
+		}
+		
+		if !needs_defense {
+			continue
+		}
+		
 		target := Defense_Target{
 			territory = land_id,
-			enemy_threat = enemy_threat,
+			enemy_threat = max(enemy_threat, 4.0), // Minimum assumed threat
 			current_defense = current_defense,
-			defense_needed = enemy_threat * 1.2 - current_defense,
+			defense_needed = defense_gap,
 			strategic_value = strategic_value,
 			is_capital = is_capital,
 			has_factory = has_factory,
@@ -142,6 +182,20 @@ find_noncombat_defense_targets :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) -> 
 	}
 	
 	return targets
+}
+
+// Check if territory has enemy neighbors (territories with enemy units)
+has_enemy_neighbors :: proc(gc: ^Game_Cache, land_id: Land_ID) -> bool {
+	my_team := mm.team[gc.cur_player]
+	
+	for adj in sa.slice(&mm.l2l_1away_via_land[land_id]) {
+		if mm.team[gc.owner[adj]] != my_team {
+			// Enemy or neutral territory adjacent
+			return true
+		}
+	}
+	
+	return false
 }
 
 // Calculate enemy threat to a territory

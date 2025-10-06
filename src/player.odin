@@ -29,8 +29,10 @@ Team_ID :: enum {
 
 initialize_player_data :: proc() {
 	for player in Player_ID {
+		// set enemy team to be the opposite of the player's team
 		mm.enemy_team[player] = Team_ID(len(Team_ID) - int(mm.team[player]) - 1)
-		mm.color[player] = mm.color[player]
+		
+		// populate allies and enemies lists based on team
 		for other_player in Player_ID {
 			if mm.team[other_player] == mm.team[player] {
 				sa.push(&mm.allies[player], other_player)
