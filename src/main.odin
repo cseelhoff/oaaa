@@ -113,8 +113,9 @@ start :: proc() {
 	game_state = game_cache.state
 
 	fmt.println(game_cache.pro_value)
-	for _ in 0..<1 {
+	for round_num in 0..<21 {
 		test_proai_single_turn(&game_state)
+		fmt.println(round_num)
 	}
 	load_cache_from_state(&game_cache, &game_state)
 	print_game_state(&game_cache)
@@ -127,10 +128,18 @@ start :: proc() {
 	// fmt.println("String representation: ", str_rep)
 	// fmt.println("Current territory: ", get_cur_terr(&game_state))
 
-	root :^MCTSNode= mcts_search(&game_state, iterations)
-	best_action := select_best_action(root)
-	// print_mcts_tree(root, 0, nil, 0)
-	fmt.println("Best action: ", best_action)
-	delete_mcts(root)
-	// save_mcts(root)
+
+
+
+
+	// root :^MCTSNode= mcts_search(&game_state, iterations)
+	// best_action := select_best_action(root)
+	// // print_mcts_tree(root, 0, nil, 0)
+	// fmt.println("Best action: ", best_action)
+	// delete_mcts(root)
+	// // save_mcts(root)
+
+
+
+
 }

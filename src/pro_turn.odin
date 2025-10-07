@@ -46,11 +46,17 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// Resolve all sea and land battles
 	proai_combat_phase(gc) or_return
 	debug_checks(gc)
+
+	resolve_land_battles(gc)
+	debug_checks(gc)
 	
 	// Phase 4: Non-Combat Move Phase
 	// Move remaining units to defensive/strategic positions
 	proai_noncombat_move_phase(gc) or_return
 	debug_checks(gc)
+
+	// land your planes!
+	
 	
 	// Phase 5: Place Units Phase
 	// Place purchased units at factories
@@ -141,7 +147,7 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		fmt.println("COMBAT MOVE PHASE")
 		fmt.println(SEP_MED)
 	}
-	
+	debug_checks(gc)
 	// Step 1: Find all enemy territories we might want to attack
 	my_territory_targets :[Air_ID]Territory_Target= {}
 	generate_my_attack_options(gc, &my_territory_targets)
@@ -159,7 +165,7 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 2] Prioritizing attack targets by strategic value...")
 	}
-
+debug_checks(gc)
 	attack_options := make([dynamic]Attack_Option)
 	defer delete(attack_options)
 	// prioritize_attack_options_triplea(gc, &attack_options, false)
@@ -187,7 +193,7 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 3] Checking which territories can be held after capture...")
 	}
-	
+	debug_checks(gc)
 	determine_territories_that_can_be_held_triplea(gc, &attack_options)
 	
 	when ODIN_DEBUG {
@@ -213,7 +219,7 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		fmt.println("\n[STEP 4] Filtering out low-value targets...")
 		initial_count := len(attack_options)
 	}
-	
+	debug_checks(gc)
 	remove_territories_that_arent_worth_attacking_triplea(gc, &attack_options)
 	
 	when ODIN_DEBUG {
@@ -239,27 +245,46 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		return true
 	}
 	
+
+
+	attack_options2 := make([dynamic]Attack_Option)
+	defer delete(attack_options2)
+	populate_attack_options_triplea(gc, &attack_options2)
+	prioritize_attack_options_triplea(gc, &attack_options2, false)
+	
+	attack_options3 := make([dynamic]Attack_Option)
+	defer delete(attack_options3)
+	
+	for attack_option2 in attack_options2 {
+		for attack_option in attack_options {
+			if attack_option2.territory == attack_option.territory {
+				append(&attack_options3, attack_option2)
+				break
+			}
+		}
+	}
+
 	// Step 5: Determine which territories to actually attack (iterative selection)
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 5] Selecting territories to attack (iterative algorithm)...")
-		initial_count = len(attack_options)
+		initial_count = len(attack_options3)
 	}
-	
-	determine_territories_to_attack_triplea(gc, &attack_options)
+	debug_checks(gc)
+	determine_territories_to_attack_triplea(gc, &attack_options3)
 	
 	when ODIN_DEBUG {
-		removed = initial_count - len(attack_options)
+		removed = initial_count - len(attack_options3)
 		fmt.printf("  -> Selected %d territories for attack (removed %d unsuccessful)\n", 
-			len(attack_options), removed)
-		if len(attack_options) > 0 {
+			len(attack_options3), removed)
+		if len(attack_options3) > 0 {
 			fmt.println("  Final attack targets:")
-			for opt in attack_options {
+			for opt in attack_options3 {
 				fmt.printf("    - %v (value: %.1f)\n", opt.territory, opt.attack_value)
 			}
 		}
 	}
 	
-	if len(attack_options) == 0 {
+	if len(attack_options3) == 0 {
 		when ODIN_DEBUG {
 			fmt.println("  -> No successful attacks possible")
 			fmt.println(SEP_MED + "\n")
@@ -271,14 +296,14 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 6] Re-calculating with final attack selection...")
 	}
-	
-	recalculate_enemy_attacks_after_territory_selection_triplea(gc, &attack_options)
+	debug_checks(gc)
+	recalculate_enemy_attacks_after_territory_selection_triplea(gc, &attack_options3)
 	
 	when ODIN_DEBUG {
-		fmt.printf("  -> %d attacks remain after recalculation\n", len(attack_options))
+		fmt.printf("  -> %d attacks remain after recalculation\n", len(attack_options3))
 	}
 	
-	if len(attack_options) == 0 {
+	if len(attack_options3) == 0 {
 		when ODIN_DEBUG {
 			fmt.println("  -> All attacks became unfavorable after recalculation")
 			fmt.println(SEP_MED + "\n")
@@ -290,20 +315,20 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 7] Moving defenders to border territories...")
 	}
-	
-	border_moves := move_one_defender_to_land_territories_bordering_enemy_triplea(gc, &attack_options)
+	debug_checks(gc)
+	border_moves := move_one_defender_to_land_territories_bordering_enemy_triplea(gc, &attack_options3)
 	defer delete(border_moves)
 	
 	// Step 8: Remove attacks where transports would be exposed
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 8] Checking transport safety...")
-		initial_count = len(attack_options)
+		initial_count = len(attack_options3)
 	}
-	
-	remove_territories_where_transports_are_exposed_triplea(gc, &attack_options)
+	debug_checks(gc)
+	remove_territories_where_transports_are_exposed_triplea(gc, &attack_options3)
 	
 	when ODIN_DEBUG {
-		removed = initial_count - len(attack_options)
+		removed = initial_count - len(attack_options3)
 		if removed > 0 {
 			fmt.printf("  -> Removed %d amphibious attacks (transports exposed)\n", removed)
 		} else {
@@ -314,22 +339,22 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// Step 9: Ensure capital can be defended
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 9] Ensuring capital defense...")
-		initial_count = len(attack_options)
+		initial_count = len(attack_options3)
 	}
-	
-	remove_attacks_until_capital_can_be_held_triplea(gc, &attack_options)
+	debug_checks(gc)
+	remove_attacks_until_capital_can_be_held_triplea(gc, &attack_options3)
 	
 	when ODIN_DEBUG {
-		removed = initial_count - len(attack_options)
+		removed = initial_count - len(attack_options3)
 		if removed > 0 {
 			fmt.printf("  -> Removed %d attacks to defend capital\n", removed)
 		} else {
 			fmt.println("  -> Capital can be defended with current attack plan")
 		}
 		
-		if len(attack_options) > 0 {
+		if len(attack_options3) > 0 {
 			fmt.println("\n  FINAL ATTACK PLAN:")
-			for opt in attack_options {
+			for opt in attack_options3 {
 				fmt.printf("    -> Attack %v (value: %.1f, holdable: %v)\n", 
 					opt.territory, opt.attack_value, opt.can_hold)
 			}
@@ -342,13 +367,13 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 10] Assigning units to each attack...")
 	}
-	
-	determine_units_to_attack_with_triplea(gc, &attack_options, &border_moves)
+	debug_checks(gc)
+	determine_units_to_attack_with_triplea(gc, &attack_options3, &border_moves)
 	
 	when ODIN_DEBUG {
-		if len(attack_options) > 0 {
+		if len(attack_options3) > 0 {
 			fmt.println("\n  UNIT ASSIGNMENTS:")
-			for opt in attack_options {
+			for opt in attack_options3 {
 				attacker_count := len(opt.attackers)
 				amphib_count := len(opt.amphib_attackers)
 				bombard_count := len(opt.bombard_units)
@@ -459,7 +484,7 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	}
 	
 	// Execute all planned attacks
-	execute_combat_moves_triplea(gc, &attack_options) or_return
+	execute_combat_moves_triplea(gc, &attack_options3) or_return
 	
 	return true
 }

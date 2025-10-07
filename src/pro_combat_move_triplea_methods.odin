@@ -300,19 +300,52 @@ determine_territories_to_attack_triplea :: proc(gc: ^Game_Cache, options: ^[dyna
 		are_successful := true
 		for i := 0; i < num_to_attack && i < len(options); i += 1 {
 			option := &options[i]
-			
+			fmt.println("         Trying ", option.territory)
 			// Estimate battle result if not already done
 			if option.win_percentage == 0 {
-				// Simple estimation: if we have 1.2x their power, assume 70% win
-				attack_power := calculate_available_attack_power(gc, option.territory)
-				defense_power := estimate_defender_power(gc, option.territory)
-				if attack_power > defense_power * 1.2 {
-					option.win_percentage = 0.7
-				} else if attack_power > defense_power {
-					option.win_percentage = 0.5
-				} else {
-					option.win_percentage = 0.3
+				combatants := Land_Combatants{}
+				for attacker in option.attackers {
+					#partial switch attacker.unit_type {
+						case .Infantry:
+							combatants.attackers[0].Infantry += 1
+						case .Artillery:
+							combatants.attackers[0].Artillery += 1
+						case .Tank:
+							combatants.attackers[0].Tanks += 1
+						case .Fighter:
+							combatants.attackers[1].Fighters += 1
+						case .Bomber:
+							combatants.attackers[2].Bombers += 1
+					}
 				}
+				for defender in option.defenders {
+					#partial switch defender.unit_type {
+						case .Infantry:
+							combatants.defenders.Infantry += 1
+						case .Artillery:
+							combatants.defenders.Artillery += 1
+						case .Tank:
+							combatants.defenders.Tanks += 1
+						case .Fighter:
+							combatants.defenders.Fighters += 1
+						case .Bomber:
+							combatants.defenders.Bombers += 1
+					}
+				}
+				results := simulate_battle(combatants)
+				fmt.println("Simulated battle results: ", results)
+				option.win_percentage = results.invaded_percent
+
+				// // Simple estimation: if we have 1.2x their power, assume 70% win
+				// attack_power := calculate_available_attack_power(gc, option.territory)
+				// defense_power := estimate_defender_power(gc, option.territory)
+				// if attack_power > defense_power * 1.2 {
+				// 	option.win_percentage = 0.7
+				// } else if attack_power > defense_power {
+				// 	option.win_percentage = 0.5
+				// } else {
+				// 	option.win_percentage = 0.3
+				// }
 			}
 			
 			when ODIN_DEBUG {
@@ -475,7 +508,7 @@ determine_territories_that_can_be_held_triplea :: proc(gc: ^Game_Cache, options:
 				surviving_power = attack_power * 0.25
 			}
 		}
-		
+		surviving_power = option.avg_survivor_def_power
 		// Calculate maximum enemy counter-attack power
 		enemy_counter_attack := calculate_enemy_counter_attack_power(gc, t)
 		
@@ -703,7 +736,8 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 			// Find cheapest unit from adjacent friendly territory
 			cheapest_cost := 999
 			cheapest_from := max(Land_ID)
-			cheapest_army := Idle_Army.INF
+			cheapest_army := Active_Army.INF_1_MOVES
+			tracked_army :Unit_Type= .Infantry
 			
 			for adj in sa.slice(&mm.l2l_1away_via_land[land_tid]) {
 				if mm.team[gc.owner[adj]] == mm.team[gc.cur_player] {
@@ -712,7 +746,8 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 						if 3 < cheapest_cost {
 							cheapest_cost = 3
 							cheapest_from = adj
-							cheapest_army = .INF
+							cheapest_army = .INF_1_MOVES
+							tracked_army = .Infantry
 						}
 					}
 					
@@ -721,7 +756,8 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 						if 4 < cheapest_cost {
 							cheapest_cost = 4
 							cheapest_from = adj
-							cheapest_army = .ARTY
+							cheapest_army = .ARTY_1_MOVES
+							tracked_army = .Artillery
 						}
 					}
 					
@@ -730,7 +766,8 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 						if 5 < cheapest_cost {
 							cheapest_cost = 5
 							cheapest_from = adj
-							cheapest_army = .TANK
+							cheapest_army = .TANK_2_MOVES
+							tracked_army = .Tank
 						}
 					}
 				}
@@ -738,20 +775,22 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 			
 			// Move the unit
 			if cheapest_from != max(Land_ID) {
-				gc.idle_armies[cheapest_from][gc.cur_player][cheapest_army] -= 1
-				gc.idle_armies[land_tid][gc.cur_player][cheapest_army] += 1
+				gc.current_territory = to_air(cheapest_from)
+				move_single_army_land(gc, to_action(land_tid), cheapest_army)
+				// gc.idle_armies[cheapest_from][gc.cur_player][cheapest_army] -= 1
+				// gc.idle_armies[land_tid][gc.cur_player][cheapest_army] += 1
 				
 				// Track the move
 				append(&already_moved, Unit_Info{
-					unit_type = .Infantry,
+					unit_type = tracked_army,
 					from_territory = cheapest_from,
 				})
 				
 				when ODIN_DEBUG {
 					fmt.printf("      -> Moved 1x %v from %s to %s\n",
 						cheapest_army,
-						mm.land_name[cheapest_from],
-						mm.land_name[land_tid])
+						cheapest_from,
+						land_tid)
 				}
 			} else {
 				when ODIN_DEBUG {
@@ -1795,6 +1834,7 @@ try_to_attack_territories_triplea :: proc(
 			append(&assigned, unit)
 		}
 	}
+	fmt.println("Total assigned units: ", assigned)
 	
 	return assigned
 }
@@ -2681,7 +2721,7 @@ assign_land_units_to_attack :: proc(
 				from_territory = adjacent,
 			}
 			append(&option.attackers, unit)
-			current_power += 1.0
+			current_power += INFANTRY_ATTACK
 		}
 	}
 	
@@ -2705,7 +2745,7 @@ assign_land_units_to_attack :: proc(
 				from_territory = adjacent,
 			}
 			append(&option.attackers, unit)
-			current_power += 2.0
+			current_power += ARTILLERY_ATTACK
 		}
 	}
 	
@@ -2729,7 +2769,7 @@ assign_land_units_to_attack :: proc(
 				from_territory = adjacent,
 			}
 			append(&option.attackers, unit)
-			current_power += 3.0
+			current_power += TANK_ATTACK
 		}
 	}
 	
@@ -2739,7 +2779,7 @@ assign_land_units_to_attack :: proc(
 	
 	// Phase 4: Add tanks from 2 moves away
 	for land_2away in mm.l2l_2away_via_land_bitset[target] {
-		if gc.owner[land_2away] != gc.cur_player {
+		if mm.team[gc.owner[land_2away]] != mm.team[gc.cur_player] {
 			continue
 		}
 		
@@ -2753,7 +2793,7 @@ assign_land_units_to_attack :: proc(
 				from_territory = land_2away,
 			}
 			append(&option.attackers, unit)
-			current_power += 3.0
+			current_power += TANK_ATTACK
 		}
 	}
 }
