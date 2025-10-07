@@ -66,6 +66,24 @@ start :: proc() {
 	// If test-proai mode, run a single Pro AI turn
 	// if test_proai {
 	fmt.println("\n=== Pro AI Test Mode ===")
+	
+	defenders:Land_Defenders = {
+		Infantry = 10,
+		Artillery = 5,
+		AntiAir = 3,
+		Tanks = 7,
+		Fighters = 4,
+		Bombers = 2,
+	}
+	attackers:Land_Attackers = {
+		Infantry = 8,
+		Artillery = 6,
+		Tanks = 8,
+		Fighters = 3,
+		Bombers = 7,
+	}
+	results := simulate_battle(defenders, attackers)
+	fmt.println("Battle Results: ", results.avg_TUV_swing, ", ", results.invaded_percent)
 	//loop 10 times
 	for _ in 0..<1 {
 		test_proai_single_turn(&game_state)

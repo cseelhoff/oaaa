@@ -62,6 +62,7 @@ MapData :: struct {
 	land_name:                    [Land_ID]string,
 	sea_name:                     [Sea_ID]string,
 	is_human:                     bit_set[Player_ID;u8],
+	battle_results:               map[Land_Combatants]Battle_Results,
 }
 
 initialize_map_constants :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -70,5 +71,6 @@ initialize_map_constants :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	initialize_sea_connections()
 	initialize_coastal_connections()
 	initialize_air_connections()
+	mm.battle_results = make(map[Land_Combatants]Battle_Results)
 	return true
 }

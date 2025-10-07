@@ -702,6 +702,8 @@ Territory_Target :: struct {
 	Bs_Damaged: u8,
 }
 
+win_percentage_needed :: 0.95
+
 // Odin Implementation:
 prioritize_territories_to_defend_triplea :: proc(
 	gc: ^Game_Cache,
@@ -723,6 +725,44 @@ prioritize_territories_to_defend_triplea :: proc(
 			fmt.println("    (Sea territory defense not yet implemented - skipping)")
 		}
 		return make([dynamic]Place_Territory_Defense)
+	}
+
+	lands_checked : Land_Bitset = {}
+
+	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
+		fmt.println("Enemy:", enemy)
+		for territory in Air_ID {
+			land_territory := to_land(territory)
+			if land_territory in lands_checked {
+				continue
+			}
+
+			//check if units are placeable here
+			if gc.factory_prod[land_territory] == 0 {
+				continue
+			}
+
+			// Check if there are any enemy units that can capture this territory
+			if enemy_attack_options[enemy][territory].Tanks == 0 &&
+			enemy_attack_options[enemy][territory].Infantry == 0 &&
+			enemy_attack_options[enemy][territory].Artillery == 0 {// &&
+			// enemy_attack_options[enemy][territory].Fighters == 0 &&
+			// enemy_attack_options[enemy][territory].Bombers == 0 {}
+				continue
+			}
+
+			lands_checked += {land_territory}
+			
+			fmt.println("  Territory:", territory)
+			hold_value := 0.0
+
+			//calculate battle result
+			land_defenders: Land_Defenders = {}
+			land_attackers: Land_Attackers = {}
+
+			//check if subsequent enemies could attack
+		
+		}
 	}
 
 	// Check all territories we own
