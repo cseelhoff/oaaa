@@ -727,80 +727,69 @@ prioritize_territories_to_defend_triplea :: proc(
 		return make([dynamic]Place_Territory_Defense)
 	}
 
-	lands_checked : Land_Bitset = {}
-
-	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
-		fmt.println("Enemy:", enemy)
-		for territory in Air_ID {
-			land_territory := to_land(territory)
-			if land_territory in lands_checked {
-				continue
-			}
-
-			//check if units are placeable here
-			if gc.factory_prod[land_territory] == 0 {
-				continue
-			}
-
-			// Check if there are any enemy units that can capture this territory
-			if enemy_attack_options[enemy][territory].Tanks == 0 &&
-			enemy_attack_options[enemy][territory].Infantry == 0 &&
-			enemy_attack_options[enemy][territory].Artillery == 0 {// &&
-			// enemy_attack_options[enemy][territory].Fighters == 0 &&
-			// enemy_attack_options[enemy][territory].Bombers == 0 {}
-				continue
-			}
-
-			lands_checked += {land_territory}
-			
-			fmt.println("  Territory:", territory)
-			hold_value := 0.0
-
-			//calculate battle result
-			land_defenders: Land_Defenders = {}
-			land_attackers: Land_Attackers = {}
-
-			//check if subsequent enemies could attack
+	for land_territory in Land_ID {		
+		territory := land_to_air(land_territory)
+		//check if units are placeable here
+		// if gc.factory_prod[land_territory] == 0 do continue
 		
+		//check if we own it
+		if gc.owner[land_territory] != gc.cur_player do continue
+
+		land_combatants :Land_Combatants = {}
+		
+		attacker_order := 0
+		for player_offset in Player_ID {
+			//ensure turn order
+			num_players := len(Player_ID)
+			enemy := Player_ID((int(gc.cur_player) + int(player_offset)) % num_players)
+			//skip allies
+			if mm.team[enemy] == mm.team[gc.cur_player] do continue
+			land_combatants.attackers[attacker_order].Infantry += enemy_attack_options[enemy][territory].Infantry
+			land_combatants.attackers[attacker_order].Artillery += enemy_attack_options[enemy][territory].Artillery
+			land_combatants.attackers[attacker_order].Tanks += enemy_attack_options[enemy][territory].Tanks
+			land_combatants.attackers[attacker_order].Fighters += enemy_attack_options[enemy][territory].Fighters
+			land_combatants.attackers[attacker_order].Bombers += enemy_attack_options[enemy][territory].Bombers
+			attacker_order += 1
 		}
-	}
+		
+		fmt.println("    Possible Enemy Target Territory:", territory)
+		hold_value := 0.0
+		//calculate battle result
+		land_defenders: Land_Defenders = {}
+		for player in sa.slice(&mm.allies[gc.cur_player]) {
+			land_combatants.defenders.Infantry += gc.idle_armies[land_territory][player][.INF]
+			land_combatants.defenders.Artillery += gc.idle_armies[land_territory][player][.ARTY]
+			land_combatants.defenders.AntiAir += gc.idle_armies[land_territory][player][.AAGUN]
+			land_combatants.defenders.Tanks += gc.idle_armies[land_territory][player][.TANK]
+			land_combatants.defenders.Fighters += gc.idle_land_planes[land_territory][player][.FIGHTER]
+			land_combatants.defenders.Bombers += gc.idle_land_planes[land_territory][player][.BOMBER]
+		}
+		results: Battle_Results = simulate_battle(land_combatants)
+		fmt.println("    Battle Results: ", results.avg_TUV_swing, ", ", results.invaded_percent)
 
-	// Check all territories we own
-	for territory in Land_ID {
-		if gc.owner[territory] != gc.cur_player do continue
+		// Skip territories that are not sufficiently threatened
+		if(results.invaded_percent < 1.0 - win_percentage_needed) do continue
 
-		// Get current defenders
-		defending_units := get_defending_units_triplea(gc, territory)
-
-		// Check if any of the place territories can't be held with current defenders
-		// Estimate if we can hold against enemy attack
-		// For now, simplified: check if we have < 3 units
-		total_units :=
-			defending_units.inf +
-			defending_units.arty +
-			defending_units.tank +
-			defending_units.fighter +
-			defending_units.bomber
-
-		if total_units >= 3 do continue // Probably safe
-
+		//check if subsequent enemies could attack
+	
 		// Calculate defense value using TripleA formula:
 		// value = (2*production + 4*isFactory + 0.5*defenderValue) * (1+isFactory) * (1+10*isCapital)
 
-		is_capital := mm.capital[gc.cur_player] == territory
-		has_factory := gc.factory_prod[territory] > 0
+		is_capital := mm.capital[gc.cur_player] == land_territory
+		has_factory := gc.factory_prod[land_territory] > 0
 
-		production := f64(mm.value[territory])
+		production := f64(mm.value[land_territory])
 		is_factory_mult := has_factory ? 1.0 : 0.0
 		is_capital_mult := is_capital ? 1.0 : 0.0
 
 		// Calculate defending unit value (simplified TUV)
 		defender_value := f64(
-			defending_units.inf * 3 +
-			defending_units.arty * 4 +
-			defending_units.tank * 6 +
-			defending_units.fighter * 10 +
-			defending_units.bomber * 12,
+			land_combatants.defenders.Infantry * Cost_Buy[.BUY_INF_ACTION] +
+			land_combatants.defenders.Artillery * Cost_Buy[.BUY_ARTY_ACTION] +
+			land_combatants.defenders.AntiAir * Cost_Buy[.BUY_AAGUN_ACTION] +
+			land_combatants.defenders.Tanks * Cost_Buy[.BUY_TANK_ACTION] +
+			land_combatants.defenders.Fighters * Cost_Buy[.BUY_FIGHTER_ACTION] +
+			land_combatants.defenders.Bombers * Cost_Buy[.BUY_BOMBER_ACTION],
 		)
 
 		defense_value :=
@@ -809,7 +798,7 @@ prioritize_territories_to_defend_triplea :: proc(
 			(1.0 + 10.0 * is_capital_mult)
 
 		when ODIN_DEBUG {
-			fmt.printf("    %v: units=%d, value=%.1f", territory, total_units, defense_value)
+			fmt.printf("    %v: value=%.1f", land_territory, defense_value)
 			if is_capital do fmt.printf(" [CAPITAL]")
 			if has_factory do fmt.printf(" [FACTORY]")
 			fmt.println()
@@ -817,9 +806,9 @@ prioritize_territories_to_defend_triplea :: proc(
 
 		if defense_value > 0 {
 			place_terr := Place_Territory_Defense {
-				territory       = territory,
+				territory       = land_territory,
 				defense_value   = defense_value,
-				defending_units = defending_units,
+				defending_units = land_combatants.defenders,
 				is_capital      = is_capital,
 				has_factory     = has_factory,
 			}
@@ -854,24 +843,9 @@ prioritize_territories_to_defend_triplea :: proc(
 Place_Territory_Defense :: struct {
 	territory:       Land_ID,
 	defense_value:   f64,
-	defending_units: Territory_Defenders,
+	defending_units: Land_Defenders,
 	is_capital:      bool,
 	has_factory:     bool,
-}
-
-// Helper: Get defending units at territory
-get_defending_units_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> Territory_Defenders {
-	defenders := Territory_Defenders{}
-	//loop through allies
-	for ally in sa.slice(&mm.allies[gc.cur_player]) {
-		defenders.inf += gc.idle_armies[territory][ally][.INF]
-		defenders.arty += gc.idle_armies[territory][ally][.ARTY]
-		defenders.tank += gc.idle_armies[territory][ally][.TANK]
-		defenders.aa += gc.idle_armies[territory][ally][.AAGUN]
-		defenders.fighter += gc.idle_land_planes[territory][ally][.FIGHTER]
-		defenders.bomber += gc.idle_land_planes[territory][ally][.BOMBER]
-	}
-	return defenders
 }
 
 /*
@@ -948,23 +922,9 @@ purchase_defenders_triplea :: proc(
 	if gc.money[gc.cur_player] == 0 do return
 	if len(territories) == 0 do return
 
-	when ODIN_DEBUG {
-		factory_count := 0
-		for _ in sa.slice(&gc.factory_locations[gc.cur_player]) {
-			factory_count += 1
-		}
-		fmt.printf("  [DEBUG] Player %v has %d factories: ", gc.cur_player, factory_count)
-		for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
-			fmt.printf("%v ", factory_loc)
-		}
-		fmt.println()
-	}
-
 	// Purchase defenders for each threatened territory (in priority order)
 	when ODIN_DEBUG {
-		if len(territories) > 0 {
-			fmt.println("  [RATIONALE] Analyzing territories needing defense:")
-		}
+		fmt.println("  [RATIONALE] Analyzing territories needing defense:")
 	}
 
 	for place_terr in territories {
@@ -1120,15 +1080,15 @@ find_nearest_factory_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> May
 }
 
 // Helper: Estimate defense power of units
-estimate_defense_power_triplea :: proc(units: Territory_Defenders) -> f64 {
+estimate_defense_power_triplea :: proc(units: Land_Defenders) -> f64 {
 	// Defense values (from game rules):
 	// Infantry: 2, Artillery: 2, Tank: 3, AA: 0 (special), Fighter: 4, Bomber: 1
 	power := f64(0)
-	power += f64(units.inf) * 2.0
-	power += f64(units.arty) * 2.0
-	power += f64(units.tank) * 3.0
-	power += f64(units.fighter) * 4.0
-	power += f64(units.bomber) * 1.0
+	power += f64(units.Infantry) * INFANTRY_DEFENSE
+	power += f64(units.Artillery) * ARTILLERY_DEFENSE
+	power += f64(units.Tanks) * TANK_DEFENSE
+	power += f64(units.Fighters) * FIGHTER_DEFENSE
+	power += f64(units.Bombers) * BOMBER_DEFENSE
 	return power
 }
 
@@ -1175,7 +1135,7 @@ prioritize_land_territories_triplea :: proc(gc: ^Game_Cache) -> [dynamic]Place_T
 		if gc.owner[territory] != gc.cur_player do continue
 
 		// Calculate strategic value for this territory
-		strategic_value := calculate_territory_value(gc, territory)
+		strategic_value := gc.pro_value[territory]
 
 		// Skip if no value
 		if strategic_value == 0 do continue
@@ -1209,7 +1169,7 @@ prioritize_land_territories_triplea :: proc(gc: ^Game_Cache) -> [dynamic]Place_T
 
 Place_Territory_Land :: struct {
 	territory:       Land_ID,
-	strategic_value: f64,
+	strategic_value: f32,
 	has_factory:     bool,
 }
 
@@ -2290,7 +2250,7 @@ find_upgrade_unit_efficiency_triplea :: proc(
 	attack: f64,
 	defense: f64,
 	movement: int,
-	strategic_value: f64,
+	strategic_value: f32,
 ) -> f64 {
 	/*
 	TripleA algorithm:

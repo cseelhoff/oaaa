@@ -77,6 +77,7 @@ Attack_Option :: struct {
 	can_hold:           bool,
 	is_amphib:          bool,
 	is_strafing:        bool,
+	avg_survivor_def_power: f64,
 }
 
 /*

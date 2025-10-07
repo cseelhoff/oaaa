@@ -21,41 +21,93 @@ Land_Attackers :: struct {
 
 Land_Combatants :: struct {
 	defenders: Land_Defenders,
-	attackers: Land_Attackers,
+	attackers: [3]Land_Attackers,
 }
 
 Battle_Results :: struct {
-	avg_TUV_swing:   f32,
-	invaded_percent: f32,
+	avg_TUV_swing:   f64,
+	invaded_percent: f64,
+	avg_survivor_def_power: f64,
 }
 
-get_battle_results :: proc(
+Land_Combatants_Counter :: struct {
 	defenders: Land_Defenders,
 	attackers: Land_Attackers,
-) -> Battle_Results {
-	key := Land_Combatants{defenders, attackers}
-	if result, exists := mm.battle_results[key]; exists {
+	counter_attackers: Land_Attackers,
+}
+
+get_battle_results :: proc(combatants: Land_Combatants) -> Battle_Results {
+	if result, exists := mm.battle_results[combatants]; exists {
 		return result
 	}
 	// Compute battle results if not cached
-	result := simulate_battle(defenders, attackers)
-	mm.battle_results[key] = result
+	result := simulate_battle(combatants)
+	mm.battle_results[combatants] = result
 	return result
 }
 
-simulate_battle :: proc(defenders: Land_Defenders, attackers: Land_Attackers) -> Battle_Results {
+simulate_battle :: proc(combatants: Land_Combatants) -> Battle_Results {
+	simulations_count := 1000
+	invasions := 0
+	tuv_swing: i32 = 0
+	survivor_def_power: i32 = 0
+	for i in 0 ..< simulations_count {
+		def := combatants.defenders
+		for att_wave in 0 ..< len(combatants.attackers) {
+			att := combatants.attackers[att_wave]
+			// resolve_naval_bombardment(gc, land)
+			sim_tactical_aa_defense(def.AntiAir, &att.Fighters, &att.Bombers, &tuv_swing)
+			for combat_round in 0 ..< MAX_COMBAT_ROUNDS {
+				if sim_no_defenders_remain(&def) || sim_no_attackers_remain(&att) do break
+				attacker_hits := sim_attacker_hits(&att)
+				defender_hits := sim_defender_hits(&def)
+				remove_attackers(&att, defender_hits, &tuv_swing)
+				remove_defenders(&def, attacker_hits, &tuv_swing)
+			}
+
+			if sim_no_defenders_remain(&def) {
+				if sim_invaders_remain(&att) {
+					tuv_swing += i32(def.AntiAir) * i32(Cost_Buy[.BUY_AAGUN_ACTION])
+					def.AntiAir = 0
+					invasions += 1
+					survivor_def_power += i32(att.Infantry) * i32(INFANTRY_DEFENSE)
+					survivor_def_power += i32(att.Artillery) * i32(ARTILLERY_DEFENSE)
+					survivor_def_power += i32(att.Tanks) * i32(TANK_DEFENSE)
+					break
+				}
+			}
+		}
+	}
+	result := Battle_Results {
+		avg_TUV_swing        = f64(tuv_swing) / f64(simulations_count),
+		invaded_percent      = f64(invasions) / f64(simulations_count),
+		avg_survivor_def_power = f64(survivor_def_power) / f64(simulations_count),
+	}
+	return result
+}
+
+simulate_battle_countered :: proc(combatants: Land_Combatants_Counter) -> Battle_Results {
 	simulations_count := 1000
 	invasions := 0
 	tuv_swing: i32 = 0
 	for i in 0 ..< simulations_count {
-		def := defenders
-		att := attackers
+		def := combatants.defenders
+		att := combatants.attackers
 		// resolve_naval_bombardment(gc, land)
 		sim_tactical_aa_defense(def.AntiAir, &att.Fighters, &att.Bombers, &tuv_swing)
 		for combat_round in 0 ..< MAX_COMBAT_ROUNDS {
 			if sim_no_defenders_remain(&def) {
 				if sim_invaders_remain(&att) {
-                    tuv_swing += i32(def.AntiAir) * i32(Cost_Buy[.BUY_AAGUN_ACTION])
+					//PREPARE FOR COUNTER-ATTACK
+					new_defenders := Land_Defenders {
+						Infantry = att.Infantry,
+						Artillery = att.Artillery,
+						Tanks = att.Tanks,
+						AntiAir = def.AntiAir,
+					}
+					
+					tuv_swing += i32(def.AntiAir) * i32(Cost_Buy[.BUY_AAGUN_ACTION])
+					def.AntiAir = 0
 					invasions += 1
 				}
 				break
@@ -69,13 +121,14 @@ simulate_battle :: proc(defenders: Land_Defenders, attackers: Land_Attackers) ->
 			remove_defenders(&def, attacker_hits, &tuv_swing)
 		}
 	}
-
 	result := Battle_Results {
-		avg_TUV_swing   = f32(tuv_swing) / f32(simulations_count),
-		invaded_percent = f32(invasions) / f32(simulations_count),
+		avg_TUV_swing   = f64(tuv_swing) / f64(simulations_count),
+		invaded_percent = f64(invasions) / f64(simulations_count),
 	}
 	return result
 }
+
+
 sim_seed := 0
 sim_tactical_aa_defense :: proc(total_aaguns: u8, fighters: ^u8, bombers: ^u8, tuv_swing: ^i32) {
 	total_air_targets := fighters^ + bombers^

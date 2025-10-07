@@ -143,34 +143,27 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	}
 	
 	// Step 1: Find all enemy territories we might want to attack
-	attack_options := make([dynamic]Attack_Option)
-	defer delete(attack_options)
-	
+	my_territory_targets :[Air_ID]Territory_Target= {}
+	generate_my_attack_options(gc, &my_territory_targets)
+
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 1] Finding ALL units that can attack (populateAttackOptions)...")
 	}
 	
 	// Call the FULL TripleA implementation
-	populate_attack_options_triplea(gc, &attack_options)
+	// TODO: populate_amphib_attack_options
+	// populate_attack_options_triplea(gc, &attack_options)
 	
-	when ODIN_DEBUG {
-		fmt.printf("  -> Found %d potential attack targets\n", len(attack_options))
-	}
-	
-	if len(attack_options) == 0 {
-		when ODIN_DEBUG {
-			fmt.println("  -> No enemy territories found")
-			fmt.println(SEP_MED + "\n")
-		}
-		return true
-	}
 	
 	// Step 2: Prioritize attack options by strategic value
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 2] Prioritizing attack targets by strategic value...")
 	}
-	
-	prioritize_attack_options_triplea(gc, &attack_options, false)
+
+	attack_options := make([dynamic]Attack_Option)
+	defer delete(attack_options)
+	// prioritize_attack_options_triplea(gc, &attack_options, false)
+	prioritize_my_attack_options(gc, &my_territory_targets, &attack_options)
 	
 	when ODIN_DEBUG {
 		fmt.println("  Attack priority order:")

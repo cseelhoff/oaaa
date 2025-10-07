@@ -24,6 +24,7 @@ generate_enemy_attack_options :: proc(gc: ^Game_Cache, enemy_attack_options: ^[P
                     // check if dst is land or sea
                     if is_land(dst) {
                         dst_land := to_land(dst)
+                        // not concerned with land thats not mine and if I have no troops there to lose
                         if gc.owner[dst_land] != gc.cur_player &&
                         gc.active_armies[dst_land][.INF_1_MOVES] == 0 &&
                         gc.active_armies[dst_land][.ARTY_1_MOVES] == 0 &&
