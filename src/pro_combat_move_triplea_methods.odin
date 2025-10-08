@@ -776,6 +776,7 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 			// Move the unit
 			if cheapest_from != max(Land_ID) {
 				gc.current_territory = to_air(cheapest_from)
+				gc.current_active_unit = to_unit(cheapest_army)
 				move_single_army_land(gc, to_action(land_tid), cheapest_army)
 				// gc.idle_armies[cheapest_from][gc.cur_player][cheapest_army] -= 1
 				// gc.idle_armies[land_tid][gc.cur_player][cheapest_army] += 1
@@ -4043,7 +4044,16 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 				gc.idle_land_planes[unit.from_territory][gc.cur_player][.FIGHTER] -= 1
 				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
 				gc.idle_land_planes[target][gc.cur_player][.FIGHTER] += 1
-				gc.active_land_planes[target][.FIGHTER_0_MOVES] += 1
+				distance:= mm.air_distances[to_air(unit.from_territory)][to_air(target)]
+				if distance == 1 {
+					gc.active_land_planes[target][.FIGHTER_3_MOVES] += 1
+				} else if distance == 2 {
+					gc.active_land_planes[target][.FIGHTER_2_MOVES] += 1
+				} else if distance == 3 {
+					gc.active_land_planes[target][.FIGHTER_1_MOVES] += 1
+				} else if distance == 4 {
+					gc.active_land_planes[target][.FIGHTER_0_MOVES] += 1
+				}
 				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
@@ -4061,7 +4071,20 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 				gc.idle_land_planes[unit.from_territory][gc.cur_player][.BOMBER] -= 1
 				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
 				gc.idle_land_planes[target][gc.cur_player][.BOMBER] += 1
-				gc.active_land_planes[target][.BOMBER_0_MOVES] += 1
+				distance:= mm.air_distances[to_air(unit.from_territory)][to_air(target)]
+				if distance == 1 {
+					gc.active_land_planes[target][.BOMBER_5_MOVES] += 1
+				} else if distance == 2 {
+					gc.active_land_planes[target][.BOMBER_4_MOVES] += 1
+				} else if distance == 3 {
+					gc.active_land_planes[target][.BOMBER_3_MOVES] += 1
+				} else if distance == 4 {
+					gc.active_land_planes[target][.BOMBER_2_MOVES] += 1
+				} else if distance == 5 {
+					gc.active_land_planes[target][.BOMBER_1_MOVES] += 1
+				} else if distance == 6 {
+					gc.active_land_planes[target][.BOMBER_0_MOVES] += 1
+				}
 				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
