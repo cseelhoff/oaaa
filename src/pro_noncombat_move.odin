@@ -62,9 +62,9 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		}
 	}
 
-	if len(defense_targets) == 0 {
-		return true
-	}
+	// if len(defense_targets) == 0 {
+	// 	return true
+	// }
 
 	// Step 2: Prioritize defense targets by strategic value
 	prioritize_defense_targets(&defense_targets, gc, &pro_data)
@@ -741,6 +741,9 @@ land_air_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, plane_typ
 	*/
 
 	// Step 1: Find all air units of this type that need landing
+	when ODIN_DEBUG {
+		fmt.printf("  [AIR] Find all air units of this type that need landing...\n")
+	}
 	air_units := find_air_units_needing_landing(gc, pro_data, plane_type)
 	defer delete(air_units)
 

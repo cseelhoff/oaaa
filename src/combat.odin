@@ -357,7 +357,7 @@ calculate_defender_hits_low_luck :: proc(
 
 	// For deep search, use random roll for fractional part
 	defender_hits +=
-		RANDOM_NUMBERS[gc.seed] % DICE_SIDES < u16(total_defense_value) % DICE_SIDES ? 1 : 0
+		RANDOM_NUMBERS[gc.seed % RANDOM_MAX] % DICE_SIDES < u16(total_defense_value) % DICE_SIDES ? 1 : 0
 	gc.seed = (gc.seed + 1) % RANDOM_MAX
 	return
 }
@@ -711,6 +711,7 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 			// Otherwise proceed with traditional combat sequence
 			resolve_naval_bombardment(gc, land)
+			debug_checks(gc)
 			resolve_tactical_aa_defense(gc, land)
 			if no_attackers_remain(gc, land) do continue
 			if check_and_conquer_land(gc, land) do continue

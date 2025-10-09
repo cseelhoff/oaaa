@@ -56,7 +56,7 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	debug_checks(gc)
 
 	// land your planes!
-	
+
 	
 	// Phase 5: Place Units Phase
 	// Place purchased units at factories
@@ -67,6 +67,7 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// Clean up, collect income, rotate to next player
 	reset_units_fully(gc)
 	collect_money(gc)
+	debug_checks(gc)
 	rotate_turns(gc)
 	debug_checks(gc)
 	
@@ -526,6 +527,7 @@ proai_combat_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	unload_transports(gc) or_return
 	
 	// Resolve land battles
+	debug_checks(gc)
 	resolve_land_battles(gc) or_return
 	
 	return true
