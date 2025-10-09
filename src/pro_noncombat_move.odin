@@ -68,6 +68,12 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 	// Step 2: Prioritize defense targets by strategic value
 	prioritize_defense_targets(&defense_targets, gc, &pro_data)
+	
+	fmt.println("[PRO-AI] Prioritized defense targets:")
+	for target in defense_targets {
+		fmt.printf("  - %s: priority=%.1f, defense_needed=%.1f\n",
+			target.territory, target.priority, target.defense_needed)
+	}
 
 	// Step 3: Move units to defend priority territories
 	move_units_to_defense(&defense_targets, gc, &pro_data)
@@ -83,7 +89,7 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 	// Step 7: Move remaining land units to consolidate
 	move_land_units_noncombat(gc, &pro_data)
-
+	debug_checks(gc)
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Completed non-combat move phase")
 	}
@@ -296,11 +302,11 @@ calculate_current_defense :: proc(gc: ^Game_Cache, air_id: Air_ID) -> f64 {
 get_army_defense_value :: proc(army_type: Idle_Army) -> f64 {
 	switch army_type {
 	case .INF:
-		return 2.0
+		return INFANTRY_DEFENSE
 	case .ARTY:
-		return 2.0
+		return ARTILLERY_DEFENSE
 	case .TANK:
-		return 3.0
+		return TANK_DEFENSE
 	case .AAGUN:
 		return 0.5
 	case:
@@ -335,21 +341,113 @@ prioritize_defense_targets :: proc(
 	gc: ^Game_Cache,
 	pro_data: ^Pro_Data,
 ) {
-	// Calculate priority for each target
+	/*
+	From ProNonCombatMoveAi.java prioritizeDefendOptions (lines 520-645):
+	
+	Calculates territory value using:
+	territoryValue = unitOwnerMultiplier * 
+	                 (2.0 * production + 10.0 * isFactory + 0.5 * cantMoveUnitValue + 0.5 * neighborValue) *
+	                 (1 + 10.0 * isMyCapital) *
+	                 (1 + 4.0 * isEnemyCapital)
+	
+	Then FILTERS territories removing those with:
+	- isNotFactoryAndHasNoEnemyNeighbors (THIS IS KEY!)
+	- Other conditions (can't hold, should hold, etc.)
+	*/
+
+	
+	my_team := mm.team[gc.cur_player]
+	
+	// Calculate priority for each target using TripleA's formula
 	for &target in targets {
-		// Priority = strategic value * threat ratio
-		threat_ratio := target.enemy_threat / max(target.current_defense, 1.0)
-		target.priority = target.strategic_value * threat_ratio
-
-		// Extra priority for capital
-		if target.is_capital {
-			target.priority *= 5.0
+		land_id := target.territory
+		
+		// Determine production value
+		production := f64(gc.factory_prod[land_id])
+		
+		// Determine if it has a factory
+		is_factory := target.has_factory ? 1.0 : 0.0
+		
+		// Determine if it is my capital
+		is_my_capital := target.is_capital ? 1.0 : 0.0
+		
+		// Determine if it is enemy capital
+		is_enemy_capital := 0.0
+		for player in Player_ID {
+			if mm.team[player] == my_team do continue
+			if is_player_capital(gc, land_id, player) {
+				is_enemy_capital = 1.0
+				break
+			}
 		}
-
-		// Extra priority for factories
-		if target.has_factory {
-			target.priority *= 2.0
+		
+		// Calculate neighbor value (sum of adjacent territory production)
+		neighbor_value := 0.0
+		for neighbor in sa.slice(&mm.l2l_1away_via_land[land_id]) {
+			neighbor_production := f64(gc.factory_prod[neighbor])
+			if mm.team[gc.owner[neighbor]] == my_team {
+				// Allied territories count at 10%
+				neighbor_value += neighbor_production * 0.1
+			} else {
+				// Enemy/neutral territories count at 100%
+				neighbor_value += neighbor_production
+			}
 		}
+		
+		// Determine defending unit value (cant move units)
+		cant_move_unit_value := target.current_defense
+		
+		// Calculate territory value using TripleA formula
+		territory_value := (2.0 * production + 
+			10.0 * is_factory + 
+			0.5 * cant_move_unit_value + 
+			0.5 * neighbor_value) *
+			(1.0 + 10.0 * is_my_capital) *
+			(1.0 * 4.0 * is_enemy_capital)
+		
+		target.priority = territory_value
+		target.strategic_value = territory_value
+	}
+
+	// CRITICAL: Filter out territories that shouldn't be defended
+	// This is what makes Germany (capital) get removed, allowing Poland to be chosen!
+	filtered := make([dynamic]Defense_Target, 0, len(targets))
+	defer delete(filtered)
+	
+	for target in targets {
+		land_id := target.territory
+		has_factory := target.has_factory
+		has_enemy_neighbors := has_enemy_neighbors(gc, land_id)
+		is_capital := target.is_capital
+		
+		// Remove if: not a factory AND no enemy neighbors (matches isNotFactoryAndHasNoEnemyNeighbors)
+		is_not_factory_and_has_no_enemy_neighbors := !has_factory && !has_enemy_neighbors
+		
+		if is_not_factory_and_has_no_enemy_neighbors && !is_capital {
+			when ODIN_DEBUG {
+				fmt.printf(
+					"  [FILTER] Removing %v (value=%.2f): not factory, no enemy neighbors\n",
+					mm.land_name[land_id], target.priority,
+				)
+			}
+			continue
+		}
+		
+		append(&filtered, target)
+	}
+
+	// fmt.println("---[PRO-AI] Prioritized defense targets:")
+	// for target in filtered {
+	// 	fmt.printf("  - %s: priority=%.1f, defense_needed=%.1f\n",
+	// 		target.territory, target.priority, target.defense_needed)
+	// }
+
+	// targets^ = filtered
+
+	//clear targets and reappend from filtered list
+	clear(targets)
+	for target in filtered {
+		append(targets, target)
 	}
 
 	// Sort by priority (highest first)
@@ -358,16 +456,17 @@ prioritize_defense_targets :: proc(
 	})
 
 	when ODIN_DEBUG {
-		fmt.println("[PRO-AI] Prioritized defense targets:")
+		fmt.println("[PRO-AI] Prioritized defense targets (after filtering):")
 		for target, i in targets {
-			if i >= 5 {break} 	// Only show top 5
+			if i >= 10 {break} 	// Show top 10
 			fmt.printf(
-				"  %d. Territory %v: priority=%.1f, threat=%.1f, defense=%.1f\n",
+				"  %d. %v: value=%.1f, factory=%v, capital=%v, enemyNeighbors=%v\n",
 				i + 1,
-				target.territory,
+				mm.land_name[target.territory],
 				target.priority,
-				target.enemy_threat,
-				target.current_defense,
+				target.has_factory,
+				target.is_capital,
+				has_enemy_neighbors(gc, target.territory),
 			)
 		}
 	}
@@ -436,16 +535,19 @@ move_nearby_units_to_defense :: proc(
 	defense_provided := f64(0)
 
 	// Check all adjacent land territories
+	fmt.println("territory: ", territory)
+	fmt.println("to_int: ", int(territory))
 	for adjacent in sa.slice(&mm.l2l_1away_via_land[territory]) {
 		if gc.owner[adjacent] != gc.cur_player do continue
 		if adjacent == territory do continue
 
 		// Try to move infantry first (most expendable)
-		inf_available := get_available_unit_count(gc, adjacent, .INF, moved)
+		// inf_available := get_available_unit_count(gc, adjacent, .INF, moved)
+		inf_available := gc.active_armies[adjacent][.INF_1_MOVES]
 		if inf_available > 0 && defense_provided < defense_needed {
 			inf_to_move := min(inf_available, u8((defense_needed - defense_provided) / 2) + 1)
 
-			success := execute_land_move(gc, adjacent, territory, .INF, inf_to_move, moved)
+			success := execute_land_move(gc, adjacent, territory, .INF_1_MOVES, inf_to_move, moved)
 			if success {
 				units_moved += int(inf_to_move)
 				defense_provided += f64(inf_to_move) * 2.0 // Infantry has 2 defense
@@ -454,14 +556,15 @@ move_nearby_units_to_defense :: proc(
 
 		// Try artillery if still need defense
 		if defense_provided < defense_needed {
-			arty_available := get_available_unit_count(gc, adjacent, .ARTY, moved)
+			// arty_available := get_available_unit_count(gc, adjacent, .ARTY, moved)
+			arty_available := gc.active_armies[adjacent][.ARTY_1_MOVES]
 			if arty_available > 0 {
 				arty_to_move := min(
 					arty_available,
 					u8((defense_needed - defense_provided) / 2) + 1,
 				)
 
-				success := execute_land_move(gc, adjacent, territory, .ARTY, arty_to_move, moved)
+				success := execute_land_move(gc, adjacent, territory, .ARTY_1_MOVES, arty_to_move, moved)
 				if success {
 					units_moved += int(arty_to_move)
 					defense_provided += f64(arty_to_move) * 2.0 // Artillery has 2 defense
@@ -471,14 +574,28 @@ move_nearby_units_to_defense :: proc(
 
 		// Try tanks if still need defense
 		if defense_provided < defense_needed {
-			tank_available := get_available_unit_count(gc, adjacent, .TANK, moved)
+			// tank_available := get_available_unit_count(gc, adjacent, .TANK, moved)
+			tank_available := gc.active_armies[adjacent][.TANK_1_MOVES]
 			if tank_available > 0 {
 				tank_to_move := min(
 					tank_available,
 					u8((defense_needed - defense_provided) / 3) + 1,
 				)
 
-				success := execute_land_move(gc, adjacent, territory, .TANK, tank_to_move, moved)
+				success := execute_land_move(gc, adjacent, territory, .TANK_1_MOVES, tank_to_move, moved)
+				if success {
+					units_moved += int(tank_to_move)
+					defense_provided += f64(tank_to_move) * 3.0 // Tanks have 3 defense
+				}
+			}
+			tank_available = gc.active_armies[adjacent][.TANK_2_MOVES]
+			if tank_available > 0 {
+				tank_to_move := min(
+					tank_available,
+					u8((defense_needed - defense_provided) / 3) + 1,
+				)
+
+				success := execute_land_move(gc, adjacent, territory, .TANK_2_MOVES, tank_to_move, moved)
 				if success {
 					units_moved += int(tank_to_move)
 					defense_provided += f64(tank_to_move) * 3.0 // Tanks have 3 defense
@@ -514,7 +631,7 @@ move_nearby_units_to_defense :: proc(
 						gc,
 						land_2_away,
 						territory,
-						.TANK,
+						.TANK_2_MOVES,
 						tank_to_move,
 						moved,
 					)
@@ -1137,43 +1254,529 @@ move_sea_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 
 // Move land units to consolidate positions
 move_land_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
+	/*
+	From ProNonCombatMoveAi.java (lines 1842-1989):
+	
+	Three-pass algorithm:
+	1. Move land units to territory with highest value and highest transport capacity
+	2. Move land units towards nearest factory that is adjacent to the sea
+	3. Move any remaining land units to safest territory (fallback)
+	
+	NOTE: Uses gc.pro_value which is calculated by build_map_production_value() during
+	game cache initialization. This matches TripleA's ProTerritoryValueUtils.findTerritoryValues.
+	*/
+	
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Moving land units to consolidate")
 	}
 
-	// For each territory with friendly land units:
-	// 1. Check if units are needed for defense elsewhere
-	// 2. If not, move towards strategic positions
-	// 3. Consolidate scattered forces
+	// Initialize movement tracker
+	moved := init_moved_units()
+	defer cleanup_moved_units(&moved)
 
-	// Strategic positions:
-	// - Adjacent to enemy territories (for future attacks)
-	// - Near factories (for loading onto transports)
-	// - On important defensive lines
+	// PASS 1: Move to high-value territories with transport capacity
+	when ODIN_DEBUG {
+		fmt.println("  [LAND] Pass 1: Move to high-value territories near transports")
+	}
+	
+	move_land_to_high_value_territories(gc, pro_data, &moved)
+	debug_checks(gc)
 
-	// Placeholder - simplified implementation
+	// PASS 2: Move towards coastal factories
+	when ODIN_DEBUG {
+		fmt.println("  [LAND] Pass 2: Move towards coastal factories")
+	}
+	
+	move_land_towards_coastal_factories(gc, pro_data, &moved)
+
+	// PASS 3: Move remaining units to safest territory
+	when ODIN_DEBUG {
+		fmt.println("  [LAND] Pass 3: Move remaining units to safety")
+	}
+	
+	move_land_to_safest_territories(gc, pro_data, &moved)
+}
+
+// PASS 1: Move land units to high-value territories with transport capacity
+move_land_to_high_value_territories :: proc(
+	gc: ^Game_Cache,
+	pro_data: ^Pro_Data,
+	moved: ^Moved_Units,
+) {
+	/*
+	From ProNonCombatMoveAi.java (lines 1842-1904):
+	
+	// Move land units to territory with highest value and highest transport capacity
+	// TODO: consider if territory ends up being safe
+	final Predicate<Territory> canMoveSeaUnits = ProMatches.territoryCanMoveSeaUnits(player, true);
+	final List<Unit> addedUnits = new ArrayList<>();
+	for (final Unit u : unitMoveMap.keySet()) {
+		if (!Matches.unitIsLand().test(u) || addedUnits.contains(u)) {
+			continue;
+		}
+		Territory maxValueTerritory = null;
+		double maxValue = 0;
+		int maxNeedAmphibUnitValue = Integer.MIN_VALUE;
+		for (final Territory t : unitMoveMap.get(u)) {
+			final ProTerritory proTerritory = moveMap.get(t);
+			if (proTerritory.isCanHold() && proTerritory.getValue() >= maxValue) {
+				// Find transport capacity of neighboring (distance 1) transports
+				final Set<Territory> seaNeighbors = data.getMap().getNeighbors(t, canMoveSeaUnits);
+				int transportCapacity1 = 0;
+				for (Unit tr : ProTransportUtils.getTransports(player, moveMap, seaNeighbors)) {
+					transportCapacity1 += tr.getUnitAttachment().getTransportCapacity();
+				}
+				
+				// Find transport capacity of nearby (distance 2) transports
+				final Set<Territory> nearbySeaTerritories =
+					data.getMap().getNeighbors(t, 2, canMoveSeaUnits);
+				nearbySeaTerritories.removeAll(seaNeighbors);
+				int transportCapacity2 = 0;
+				for (Unit tr : ProTransportUtils.getTransports(player, moveMap, nearbySeaTerritories)) {
+					transportCapacity2 += tr.getUnitAttachment().getTransportCapacity();
+				}
+				final List<Unit> unitsToTransport =
+					CollectionUtils.getMatches(
+						proTerritory.getAllDefenders(), ProMatches.unitIsOwnedTransportableUnit(player));
+				
+				// Find transport cost of potential amphib units
+				int transportCost = 0;
+				for (final Unit unit : unitsToTransport) {
+					transportCost += unit.getUnitAttachment().getTransportCost();
+				}
+				
+				// Find territory that needs amphib units the most
+				int hasFactory = 0;
+				if (ProMatches.territoryHasInfraFactoryAndIsOwnedLandAdjacentToSea(player).test(t)) {
+					hasFactory = 1;
+				}
+				final int neededNeighborTransportValue = Math.max(0, transportCapacity1 - transportCost);
+				final int neededNearbyTransportValue =
+					Math.max(0, transportCapacity1 + transportCapacity2 - transportCost);
+				final int needAmphibUnitValue =
+					1000 * neededNeighborTransportValue
+						+ 100 * neededNearbyTransportValue
+						+ (1 + 10 * hasFactory) * data.getMap().getNeighbors(t, canMoveSeaUnits).size();
+				if (proTerritory.getValue() > maxValue || needAmphibUnitValue > maxNeedAmphibUnitValue) {
+					maxValue = proTerritory.getValue();
+					maxNeedAmphibUnitValue = needAmphibUnitValue;
+					maxValueTerritory = t;
+				}
+			}
+		}
+		if (maxValueTerritory != null) {
+			ProLogger.trace(
+				String.format(
+					"%s moved to %s with value=%s, needAmphibUnitValue=%s",
+					u, maxValueTerritory, maxValue, maxNeedAmphibUnitValue));
+			final List<Unit> unitsToAdd = ProTransportUtils.getUnitsToAdd(proData, u, moveMap);
+			moveMap.get(maxValueTerritory).addUnits(unitsToAdd);
+			addedUnits.addAll(unitsToAdd);
+		}
+	}
+	*/
+	
+	my_team := mm.team[gc.cur_player]
+	
+	// For each unit type at this location
+	for army in Unmoved_Armies {
+		// For each land territory with our units
+		for src_land in Land_ID {
+			// if gc.owner[src_land] != gc.cur_player {
+			// 	continue
+			// }
+
+			available := gc.active_armies[src_land][army]
+			if available == 0 {
+				continue
+			}
+			
+			// Find best destination considering value and transport capacity
+			best_territory:= src_land
+			best_value := 0.0
+			best_amphib_value := 0.0
+			
+			// Check all territories this unit can reach
+			//if army == .TANK_2_MOVES do add_valid_army_moves_2(gc)
+
+			for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
+				if !can_hold_destination(gc, pro_data, dst_land) {					
+					when ODIN_DEBUG {
+						fmt.printf("Cannot hold destination: %v\n", dst_land)
+					}
+					continue
+				}
+				// Calculate transport capacity (amphib potential)
+				amphib_value := calculate_amphib_value(gc, dst_land)
+				
+				// Choose if better than current best
+				if gc.pro_value[dst_land] > best_value || amphib_value > best_amphib_value {
+					best_value = gc.pro_value[dst_land]
+					best_amphib_value = amphib_value
+					best_territory = dst_land
+				}
+			}
+
+			//TODO add tanks with 2 moves
+
+
+			//todo game_cache bitset for is_boat_available large, small
+			// for dst_sea in sa.slice(&mm.l2s_1away_via_land[src_land]) {
+			// 	idle_ships := &gc.idle_ships[dst_sea][gc.cur_player]
+			// 	transport_available := false
+			// 	for transport in Trans_Allowed_By_Army_Size[Army_Size[army]] {
+			// 		if idle_ships[transport] > 0 {
+			// 			transport_available = true
+			// 			break
+			// 		}
+			// 	}
+			// 	if !transport_available {
+			// 		continue
+			// 	}
+			// }
+			
+			// Move unit to best destination
+			if best_value > 0 {
+				if best_territory != src_land {
+					// success := execute_land_move(gc, src_land, best_land, army_type, 1, moved)
+					gc.current_territory = to_air(src_land)
+					gc.current_active_unit = to_unit(army)
+					dst_action := to_action(best_territory)
+					debug_checks(gc)
+					next_state := blitz_checks(gc, dst_action)
+					move_single_army_land(gc, dst_action, next_state)
+					when ODIN_DEBUG {
+						fmt.printf(
+							"    Moved %v from %v to %v (value: %.1f, amphib: %.1f)\n",
+							army, src_land, best_territory, best_value, best_amphib_value,
+						)
+					}
+					debug_checks(gc)
+				}
+			}
+		}
+	}
+}
+
+// PASS 2: Move land units towards coastal factories
+move_land_towards_coastal_factories :: proc(
+	gc: ^Game_Cache,
+	pro_data: ^Pro_Data,
+	moved: ^Moved_Units,
+) {
+	/*
+	From ProNonCombatMoveAi.java (lines 1910-1944):
+	
+	// Move land units towards nearest factory that is adjacent to the sea
+	final Collection<Territory> myFactoriesAdjacentToSea =
+		CollectionUtils.getMatches(
+			data.getMap().getTerritories(),
+			ProMatches.territoryHasInfraFactoryAndIsOwnedLandAdjacentToSea(player));
+	final Predicate<Territory> canMoveLandUnits =
+		ProMatches.territoryCanMoveLandUnits(player, true);
+	for (final Unit u : unitMoveMap.keySet()) {
+		if (!Matches.unitIsLand().test(u) || addedUnits.contains(u)) {
+			continue;
+		}
+		int minDistance = Integer.MAX_VALUE;
+		Territory minTerritory = null;
+		for (final Territory t : unitMoveMap.get(u)) {
+			if (!moveMap.get(t).isCanHold()) {
+				continue;
+			}
+			for (final Territory factory : myFactoriesAdjacentToSea) {
+				int distance = data.getMap().getDistance(t, factory, canMoveLandUnits);
+				if (distance < 0) {
+					distance = 10 * data.getMap().getDistance(t, factory);
+				}
+				if (distance >= 0 && distance < minDistance) {
+					minDistance = distance;
+					minTerritory = t;
+				}
+			}
+		}
+		if (minTerritory != null) {
+			ProLogger.trace(
+				u.getType().getName()
+					+ " moved towards closest factory adjacent to sea at "
+					+ minTerritory.getName());
+			final List<Unit> unitsToAdd = ProTransportUtils.getUnitsToAdd(proData, u, moveMap);
+			moveMap.get(minTerritory).addUnits(unitsToAdd);
+			addedUnits.addAll(unitsToAdd);
+		}
+	}
+	*/
+	
+	// Find all our coastal factories
+	coastal_factories := make([dynamic]Land_ID)
+	defer delete(coastal_factories)
+	
 	for land_id in Land_ID {
 		if gc.owner[land_id] != gc.cur_player {
 			continue
 		}
-
-		// Check if we have idle units here
-		has_units := false
-		for army_type in Idle_Army {
-			if gc.idle_armies[land_id][gc.cur_player][army_type] > 0 {
-				has_units = true
-				break
-			}
-		}
-
-		if !has_units {
+		
+		// Has factory?
+		if gc.factory_prod[land_id] == 0 {
 			continue
 		}
-
-		// Determine if units should move
-		// Would check: enemy threats, strategic value, consolidation opportunities
-		// If beneficial, would move to better position
+		
+		// Adjacent to sea?
+		if is_land_adjacent_to_sea(land_id) {
+			append(&coastal_factories, land_id)
+		}
 	}
+	
+	if len(coastal_factories) == 0 {
+		return
+	}
+	
+	when ODIN_DEBUG {
+		fmt.printf("    Found %d coastal factories\n", len(coastal_factories))
+	}
+	
+	// For each unit type at this location
+	for army in Unmoved_Armies {
+		// For each land territory with our units
+		for src_land in Land_ID {
+			// if gc.owner[src_land] != gc.cur_player {
+			// 	continue
+			// }
+			
+			// Find nearest coastal factory
+			min_distance := max(i32)
+			best_territory: Maybe(Land_ID) = nil
+			
+			// max_moves := idle_army_to_max_moves(army_type)
+			
+			// Check all reachable territories
+
+			for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
+				
+				// Skip if can't hold
+				if !can_hold_destination(gc, pro_data, dst_land) {
+					continue
+				}
+				
+				// Calculate distance to nearest coastal factory
+				for factory in coastal_factories {
+					distance := calculate_land_distance(gc, dst_land, factory)
+					
+					if distance >= 0 && distance < min_distance {
+						min_distance = distance
+						best_territory = dst_land
+					}
+				}
+			}
+
+			//TODO add tanks with 2 moves
+			
+			// Move towards coastal factory
+			if best_land, ok := best_territory.?; ok {
+				if best_land != src_land {
+					success := execute_land_move(gc, src_land, best_land, army, 1, moved)
+					
+					when ODIN_DEBUG {
+						if success {
+							fmt.printf(
+								"    Moved %v from %v to %v (distance to factory: %d)\n",
+								army, src_land, best_land, min_distance,
+							)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// PASS 3: Move land units to safest territories (fallback)
+move_land_to_safest_territories :: proc(
+	gc: ^Game_Cache,
+	pro_data: ^Pro_Data,
+	moved: ^Moved_Units,
+) {
+	/*
+	From ProNonCombatMoveAi.java (lines 1950-1989):
+	
+	// Move any remaining land units to safest territory (this is rarely used)
+	for (final Unit u : unitMoveMap.keySet()) {
+		if (!Matches.unitIsLand().test(u) || addedUnits.contains(u)) {
+			continue;
+		}
+		
+		// Get all units that have already moved
+		final List<Unit> alreadyMovedUnits =
+			moveMap.values().stream()
+				.map(ProTerritory::getUnits)
+				.flatMap(Collection::stream)
+				.collect(Collectors.toList());
+		
+		// Find safest territory
+		double minStrengthDifference = Double.POSITIVE_INFINITY;
+		Territory minTerritory = null;
+		for (final Territory t : unitMoveMap.get(u)) {
+			final ProTerritory proTerritory = moveMap.get(t);
+			final List<Unit> attackers = proTerritory.getMaxEnemyUnits();
+			final List<Unit> defenders = proTerritory.getMaxDefenders();
+			defenders.removeAll(alreadyMovedUnits);
+			defenders.addAll(proTerritory.getUnits());
+			final double strengthDifference =
+				ProBattleUtils.estimateStrengthDifference(t, attackers, defenders);
+			if (strengthDifference < minStrengthDifference) {
+				minStrengthDifference = strengthDifference;
+				minTerritory = t;
+			}
+		}
+		if (minTerritory != null) {
+			ProLogger.debug(
+				u.getType().getName()
+					+ " moved to safest territory at "
+					+ minTerritory.getName()
+					+ " with strengthDifference="
+					+ minStrengthDifference);
+			final List<Unit> unitsToAdd = ProTransportUtils.getUnitsToAdd(proData, u, moveMap);
+			moveMap.get(minTerritory).addUnits(unitsToAdd);
+			addedUnits.addAll(unitsToAdd);
+		}
+	}
+	*/
+	
+	// For each land territory with our units
+	// For each land territory with our units
+	// For each unit type at this location
+	for army in Unmoved_Armies {
+		// For each land territory with our units
+		for src_land in Land_ID {
+			
+			// Find safest reachable territory
+			min_strength_diff := math.F64_MAX
+			best_territory: Maybe(Land_ID) = nil			
+			
+			for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
+				
+				// Calculate strength difference (attackers - defenders)
+				enemy_threat := calculate_enemy_threat(gc, to_air(dst_land), pro_data)
+				current_defense := calculate_current_defense(gc, to_air(dst_land))
+				unit_defense := get_army_defense_value(Active_Army_To_Idle[army])
+				
+				strength_diff := enemy_threat - (current_defense + unit_defense)
+				
+				if strength_diff < min_strength_diff {
+					min_strength_diff = strength_diff
+					best_territory = dst_land
+				}
+			}
+			
+			// Move to safest territory
+			if best_land, ok := best_territory.?; ok {
+				if best_land != src_land {
+					success := execute_land_move(gc, src_land, best_land, army, 1, moved)
+					
+					when ODIN_DEBUG {
+						if success {
+							fmt.printf(
+								"    Moved %v from %v to %v (strength diff: %.1f)\n",
+								army, src_land, best_land, min_strength_diff,
+							)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// ============================================================================
+// HELPER FUNCTIONS FOR LAND MOVEMENT
+// ============================================================================
+
+// Calculate amphib value - how useful is this territory for amphibious assaults
+calculate_amphib_value :: proc(gc: ^Game_Cache, land: Land_ID) -> f64 {
+	/*
+	From Java:
+	final int needAmphibUnitValue =
+		1000 * neededNeighborTransportValue
+			+ 100 * neededNearbyTransportValue
+			+ (1 + 10 * hasFactory) * data.getMap().getNeighbors(t, canMoveSeaUnits).size();
+	*/
+	
+	// Check if has factory
+	has_factory := gc.factory_prod[land] > 0
+	factory_multiplier := has_factory ? 10.0 : 1.0
+	
+	// Simplified: Just count adjacent seas weighted by factory presence
+	// Full implementation would count transport capacity at those seas
+	amphib_value := factory_multiplier * f64(mm.l2s_1away_via_land[land].len)
+	
+	// TODO: Count actual transports in adjacent/nearby seas
+	// For now, use simplified calculation
+	
+	return amphib_value
+}
+
+// Check if land territory is adjacent to sea
+is_land_adjacent_to_sea :: proc(land: Land_ID) -> bool {
+	return sa.len(mm.l2s_1away_via_land[land]) > 0
+}
+
+// Calculate distance between two land territories
+calculate_land_distance :: proc(gc: ^Game_Cache, from: Land_ID, to: Land_ID) -> i32 {
+	/*
+	Simplified distance calculation using BFS-style traversal
+	
+	In full implementation, would use:
+	- mm.land_distances[from][to] if available
+	- Or implement proper pathfinding considering team ownership
+	
+	For now, use approximation:
+	- Adjacent = 1
+	- 2-away = 2
+	- Otherwise = high value
+	*/
+	
+	if from == to {
+		return 0
+	}
+	
+	// Check if adjacent
+	for adj in sa.slice(&mm.l2l_1away_via_land[from]) {
+		if adj == to {
+			return 1
+		}
+	}
+	
+	// Check if 2-away
+	for land_2 in mm.l2l_2away_via_land_bitset[from] {
+		if land_2 == to {
+			return 2
+		}
+	}
+	
+	// Otherwise return high value (unreachable or far)
+	return 10
+}
+
+// Check if destination can be held
+can_hold_destination :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, land: Land_ID) -> bool {
+	/*
+	From Java:
+	if (!moveMap.get(t).isCanHold()) {
+		continue;
+	}
+	*/
+	
+	// Check if we own it or an ally owns it
+	if mm.team[gc.owner[land]] != mm.team[gc.cur_player] {
+		return false
+	}
+	
+	// Calculate if we can hold it
+	enemy_threat := calculate_enemy_threat(gc, to_air(land), pro_data)
+	current_defense := calculate_current_defense(gc, to_air(land))
+	
+	// Can hold if defense is sufficient
+	return current_defense >= enemy_threat * 0.8
 }
 
 // Helper: Move one unit to each territory bordering enemy

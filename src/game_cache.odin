@@ -55,7 +55,7 @@ Game_Cache :: struct {
 	allied_destroyers_total:        [Sea_ID]u8,
 	allied_antifighter_ships_total: [Sea_ID]u8,
 	allied_sea_combatants_total:    [Sea_ID]u8,
-	pro_value:                      [Land_ID]f32,	
+	pro_value:                      [Land_ID]f64,
 	income:                         [Player_ID]u8,
 	answers_remaining:              u32,
 	max_loops:                      u16,

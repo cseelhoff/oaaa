@@ -1169,7 +1169,7 @@ prioritize_land_territories_triplea :: proc(gc: ^Game_Cache) -> [dynamic]Place_T
 
 Place_Territory_Land :: struct {
 	territory:       Land_ID,
-	strategic_value: f32,
+	strategic_value: f64,
 	has_factory:     bool,
 }
 
@@ -2250,7 +2250,7 @@ find_upgrade_unit_efficiency_triplea :: proc(
 	attack: f64,
 	defense: f64,
 	movement: int,
-	strategic_value: f32,
+	strategic_value: f64,
 ) -> f64 {
 	/*
 	TripleA algorithm:

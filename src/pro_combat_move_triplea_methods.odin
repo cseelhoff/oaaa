@@ -3983,16 +3983,13 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 					}
 					return false
 				}
-				
-				// Remove from source (idle)
-				gc.idle_armies[unit.from_territory][gc.cur_player][.INF] -= 1
-				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
-				
-				// Add to target (active - engaged in combat)
-				gc.idle_armies[target][gc.cur_player][.INF] += 1
-				gc.active_armies[target][.INF_0_MOVES] += 1
-				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
-				
+
+				gc.current_territory = to_air(unit.from_territory)
+				gc.current_active_unit = Active_Unit.INF_1_MOVES
+				dst_action := to_action(target)
+				next_state := blitz_checks(gc, dst_action)
+				move_single_army_land(gc, dst_action, next_state)
+
 				when ODIN_DEBUG {
 					fmt.printf("      Moved Infantry from %v to %v\n", unit.from_territory, target)
 				}
@@ -4005,12 +4002,12 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 					return false
 				}
 				
-				gc.idle_armies[unit.from_territory][gc.cur_player][.ARTY] -= 1
-				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
-				gc.idle_armies[target][gc.cur_player][.ARTY] += 1
-				gc.active_armies[target][.ARTY_0_MOVES] += 1
-				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
-				
+				gc.current_territory = to_air(unit.from_territory)
+				gc.current_active_unit = Active_Unit.ARTY_1_MOVES
+				dst_action := to_action(target)
+				next_state := blitz_checks(gc, dst_action)
+				move_single_army_land(gc, dst_action, next_state)
+
 				when ODIN_DEBUG {
 					fmt.printf("      Moved Artillery from %v to %v\n", unit.from_territory, target)
 				}
@@ -4023,12 +4020,12 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 					return false
 				}
 				
-				gc.idle_armies[unit.from_territory][gc.cur_player][.TANK] -= 1
-				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
-				gc.idle_armies[target][gc.cur_player][.TANK] += 1
-				gc.active_armies[target][.TANK_0_MOVES] += 1
-				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
-				
+				gc.current_territory = to_air(unit.from_territory)
+				gc.current_active_unit = Active_Unit.TANK_2_MOVES
+				dst_action := to_action(target)
+				next_state := blitz_checks(gc, dst_action)
+				move_single_army_land(gc, dst_action, next_state)
+
 				when ODIN_DEBUG {
 					fmt.printf("      Moved Tank from %v to %v\n", unit.from_territory, target)
 				}
@@ -4041,20 +4038,22 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 					return false
 				}
 				
-				gc.idle_land_planes[unit.from_territory][gc.cur_player][.FIGHTER] -= 1
-				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
-				gc.idle_land_planes[target][gc.cur_player][.FIGHTER] += 1
-				distance:= mm.air_distances[to_air(unit.from_territory)][to_air(target)]
-				if distance == 1 {
-					gc.active_land_planes[target][.FIGHTER_3_MOVES] += 1
-				} else if distance == 2 {
-					gc.active_land_planes[target][.FIGHTER_2_MOVES] += 1
-				} else if distance == 3 {
-					gc.active_land_planes[target][.FIGHTER_1_MOVES] += 1
-				} else if distance == 4 {
-					gc.active_land_planes[target][.FIGHTER_0_MOVES] += 1
-				}
-				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
+				gc.current_territory = to_air(unit.from_territory)
+				move_unmoved_fighter_from_land_to_land(gc, to_action(target))
+				// gc.idle_land_planes[unit.from_territory][gc.cur_player][.FIGHTER] -= 1
+				// gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
+				// gc.idle_land_planes[target][gc.cur_player][.FIGHTER] += 1
+				// distance:= mm.air_distances[to_air(unit.from_territory)][to_air(target)]
+				// if distance == 1 {
+				// 	gc.active_land_planes[target][.FIGHTER_3_MOVES] += 1
+				// } else if distance == 2 {
+				// 	gc.active_land_planes[target][.FIGHTER_2_MOVES] += 1
+				// } else if distance == 3 {
+				// 	gc.active_land_planes[target][.FIGHTER_1_MOVES] += 1
+				// } else if distance == 4 {
+				// 	gc.active_land_planes[target][.FIGHTER_0_MOVES] += 1
+				// }
+				// gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
 					fmt.printf("      Moved Fighter from %v to %v\n", unit.from_territory, target)
@@ -4067,25 +4066,28 @@ execute_regular_move_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]A
 					}
 					return false
 				}
+
+				gc.current_territory = to_air(unit.from_territory)
+				move_unmoved_bomber_to_land(gc, to_action(target))
 				
-				gc.idle_land_planes[unit.from_territory][gc.cur_player][.BOMBER] -= 1
-				gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
-				gc.idle_land_planes[target][gc.cur_player][.BOMBER] += 1
-				distance:= mm.air_distances[to_air(unit.from_territory)][to_air(target)]
-				if distance == 1 {
-					gc.active_land_planes[target][.BOMBER_5_MOVES] += 1
-				} else if distance == 2 {
-					gc.active_land_planes[target][.BOMBER_4_MOVES] += 1
-				} else if distance == 3 {
-					gc.active_land_planes[target][.BOMBER_3_MOVES] += 1
-				} else if distance == 4 {
-					gc.active_land_planes[target][.BOMBER_2_MOVES] += 1
-				} else if distance == 5 {
-					gc.active_land_planes[target][.BOMBER_1_MOVES] += 1
-				} else if distance == 6 {
-					gc.active_land_planes[target][.BOMBER_0_MOVES] += 1
-				}
-				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
+				// gc.idle_land_planes[unit.from_territory][gc.cur_player][.BOMBER] -= 1
+				// gc.team_land_units[unit.from_territory][mm.team[gc.cur_player]] -= 1
+				// gc.idle_land_planes[target][gc.cur_player][.BOMBER] += 1
+				// distance:= mm.air_distances[to_air(unit.from_territory)][to_air(target)]
+				// if distance == 1 {
+				// 	gc.active_land_planes[target][.BOMBER_5_MOVES] += 1
+				// } else if distance == 2 {
+				// 	gc.active_land_planes[target][.BOMBER_4_MOVES] += 1
+				// } else if distance == 3 {
+				// 	gc.active_land_planes[target][.BOMBER_3_MOVES] += 1
+				// } else if distance == 4 {
+				// 	gc.active_land_planes[target][.BOMBER_2_MOVES] += 1
+				// } else if distance == 5 {
+				// 	gc.active_land_planes[target][.BOMBER_1_MOVES] += 1
+				// } else if distance == 6 {
+				// 	gc.active_land_planes[target][.BOMBER_0_MOVES] += 1
+				// }
+				// gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 				
 				when ODIN_DEBUG {
 					fmt.printf("      Moved Bomber from %v to %v\n", unit.from_territory, target)

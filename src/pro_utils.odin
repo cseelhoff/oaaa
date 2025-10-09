@@ -23,21 +23,17 @@ import sa "core:container/small_array"
 // Territory value calculation - how important is this territory?
 // Based on IPC value, strategic position, and tactical importance
 calculate_territory_value :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
+	// Simple territory value calculation for defensive prioritization
+	// Note: gc.pro_value (from build_map_production_value) is used for strategic
+	// movement decisions. This function is for other tactical calculations.
+	
 	value := f64(0)
 	
-	// Base value: IPC income (from map data, not gc)
-	// TODO: Need to add IPC values to map_data or calculate from ownership
-	value += 1.0  // Placeholder - all territories have base value
+	// Base value: production value
+	value += f64(gc.factory_prod[territory])
 	
 	// Bonus value: Factories are highly valuable
-	has_factory := false
-	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
-		if land == territory {
-			has_factory = true
-			break
-		}
-	}
-	if has_factory {
+	if gc.factory_prod[territory] > 0 {
 		value += 10.0
 	}
 	

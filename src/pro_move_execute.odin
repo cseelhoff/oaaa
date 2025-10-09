@@ -69,7 +69,7 @@ execute_land_move :: proc(
 	gc: ^Game_Cache,
 	src: Land_ID,
 	dst: Land_ID,
-	unit_type: Idle_Army,
+	unit_type: Active_Army,
 	count: u8,
 	moved: ^Moved_Units,
 ) -> bool {
@@ -90,57 +90,38 @@ execute_land_move :: proc(
 	*/
 	
 	// Validate unit availability
-	available := gc.idle_armies[src][gc.cur_player][unit_type]
-	
-	// Check how many already moved
-	already_moved: u8 = 0
-	if src in moved.land_units {
-		if unit_type in moved.land_units[src] {
-			already_moved = moved.land_units[src][unit_type]
-		}
-	}
-	
-	if available - already_moved < count {
-		when ODIN_DEBUG {
-			fmt.eprintfln("[PRO-MOVE] Not enough %v at %v (available: %d, moved: %d, need: %d)",
-				unit_type, src, available, already_moved, count)
-		}
-		return false
-	}
-	
-	// Validate movement is legal using map graph
-	max_moves := idle_army_to_max_moves(unit_type)
-	if !can_land_units_move(gc, src, dst, max_moves) {
-		when ODIN_DEBUG {
-			fmt.eprintfln("[PRO-MOVE] Invalid land move: %v cannot reach %v from %v (max_moves: %d)",
-				unit_type, dst, src, max_moves)
-		}
-		return false
-	}
+	available := gc.active_armies[src][unit_type]
 	
 	// Execute movement (following army.odin pattern)
 	// Determine active army state based on distance
-	active_state := get_active_army_state(unit_type, src, dst)
+	// active_state := get_active_army_state(unit_type, src, dst)
 	
 	// Update destination
-	gc.active_armies[dst][active_state] += count
-	gc.idle_armies[dst][gc.cur_player][unit_type] += count
-	gc.team_land_units[dst][mm.team[gc.cur_player]] += count
+	// gc.active_armies[dst][active_state] += count
+	// gc.idle_armies[dst][gc.cur_player][unit_type] += count
+	// gc.team_land_units[dst][mm.team[gc.cur_player]] += count
 	
-	// Update source
-	gc.idle_armies[src][gc.cur_player][unit_type] -= count
-	gc.team_land_units[src][mm.team[gc.cur_player]] -= count
-	
+	// // Update source
+	// gc.idle_armies[src][gc.cur_player][unit_type] -= count
+	// gc.team_land_units[src][mm.team[gc.cur_player]] -= count
+
+	gc.current_territory = to_air(src)
+	gc.current_active_unit = to_unit(unit_type)
+	dst_action := to_action(dst)
+	debug_checks(gc)
+	next_state := blitz_checks(gc, dst_action)
+	move_single_army_land(gc, dst_action, next_state)
+
 	// Track moved units
 	if !(src in moved.land_units) {
 		moved.land_units[src] = make(map[Idle_Army]u8)
 	}
 	unit_map := &moved.land_units[src]
-	unit_map[unit_type] += count
+	unit_map[Active_Army_To_Idle[unit_type]] += count
 	
 	when ODIN_DEBUG {
-		fmt.eprintfln("[PRO-MOVE] Moved %d %v from %v to %v (state: %v)",
-			count, unit_type, src, dst, active_state)
+		fmt.eprintfln("[PRO-MOVE-03] Moved %d %v from %v to %v",
+			count, unit_type, src, dst)
 	}
 	
 	return true
@@ -308,7 +289,7 @@ execute_air_move :: proc(
 	plane_map[plane_type] += count
 	
 	when ODIN_DEBUG {
-		fmt.eprintfln("[PRO-MOVE] Moved %d %v from air %v to air %v",
+		fmt.eprintfln("[PRO-MOVE-02] Moved %d %v from air %v to air %v",
 			count, plane_type, src, dst)
 	}
 	
@@ -402,7 +383,7 @@ execute_sea_move :: proc(
 	ship_map[ship_type] += count
 	
 	when ODIN_DEBUG {
-		fmt.eprintfln("[PRO-MOVE] Moved %d %v from %v to %v (state: %v)",
+		fmt.eprintfln("[PRO-MOVE-01] Moved %d %v from %v to %v (state: %v)",
 			count, ship_type, src, dst, active_state)
 	}
 	
