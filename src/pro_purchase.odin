@@ -969,7 +969,7 @@ purchase_defenders_triplea :: proc(
 				
 				if adjacent_threat > 0 {
 					append(&threat_details, fmt.tprintf("        %v: %.1f threat (%d units)", 
-						mm.land_name[adjacent], adjacent_threat, enemy_count))
+						adjacent, adjacent_threat, enemy_count))
 				}
 			}
 			
@@ -2355,6 +2355,7 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 
 		// Place land units
 		if purchase.inf > 0 {
+			gc.active_armies[territory][.INF_0_MOVES] += purchase.inf
 			gc.idle_armies[territory][gc.cur_player][.INF] += purchase.inf
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.inf
 			when ODIN_DEBUG {
@@ -2363,6 +2364,7 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 			units_placed = true
 		}
 		if purchase.arty > 0 {
+			gc.active_armies[territory][.ARTY_0_MOVES] += purchase.arty
 			gc.idle_armies[territory][gc.cur_player][.ARTY] += purchase.arty
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.arty
 			when ODIN_DEBUG {
@@ -2371,6 +2373,7 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 			units_placed = true
 		}
 		if purchase.tank > 0 {
+			gc.active_armies[territory][.TANK_0_MOVES] += purchase.tank
 			gc.idle_armies[territory][gc.cur_player][.TANK] += purchase.tank
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.tank
 			when ODIN_DEBUG {
@@ -2379,6 +2382,7 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 			units_placed = true
 		}
 		if purchase.aa > 0 {
+			gc.active_armies[territory][.AAGUN_0_MOVES] += purchase.aa
 			gc.idle_armies[territory][gc.cur_player][.AAGUN] += purchase.aa
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.aa
 			when ODIN_DEBUG {
@@ -2387,6 +2391,7 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 			units_placed = true
 		}
 		if purchase.fighter > 0 {
+			gc.active_land_planes[territory][.FIGHTER_0_MOVES] += purchase.fighter
 			gc.idle_land_planes[territory][gc.cur_player][.FIGHTER] += purchase.fighter
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.fighter
 			when ODIN_DEBUG {
@@ -2395,6 +2400,7 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 			units_placed = true
 		}
 		if purchase.bomber > 0 {
+			gc.active_land_planes[territory][.BOMBER_0_MOVES] += purchase.bomber
 			gc.idle_land_planes[territory][gc.cur_player][.BOMBER] += purchase.bomber
 			gc.team_land_units[territory][mm.team[gc.cur_player]] += purchase.bomber
 			when ODIN_DEBUG {
@@ -2413,42 +2419,59 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 			// Find first adjacent sea zone
 			for sea_id in sa.slice(&mm.l2s_1away_via_land[territory]) {
 				if purchase.sub > 0 {
+					gc.active_ships[sea_id][.SUB_0_MOVES] += purchase.sub
 					gc.idle_ships[sea_id][gc.cur_player][.SUB] += purchase.sub
+					gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += purchase.sub
 					when ODIN_DEBUG {
 						fmt.printf("  [PLACE] %d Submarine -> %v (from factory at %v)\n", purchase.sub, sea_id, territory)
 					}
 					units_placed = true
 				}
 				if purchase.destroyer > 0 {
+					gc.active_ships[sea_id][.DESTROYER_0_MOVES] += purchase.destroyer
 					gc.idle_ships[sea_id][gc.cur_player][.DESTROYER] += purchase.destroyer
+					gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += purchase.destroyer
 					when ODIN_DEBUG {
 						fmt.printf("  [PLACE] %d Destroyer -> %v (from factory at %v)\n", purchase.destroyer, sea_id, territory)
 					}
 					units_placed = true
 				}
 				if purchase.cruiser > 0 {
+					gc.active_ships[sea_id][.CRUISER_0_MOVES] += purchase.cruiser
 					gc.idle_ships[sea_id][gc.cur_player][.CRUISER] += purchase.cruiser
+					gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += purchase.cruiser
 					when ODIN_DEBUG {
 						fmt.printf("  [PLACE] %d Cruiser -> %v (from factory at %v)\n", purchase.cruiser, sea_id, territory)
 					}
 					units_placed = true
 				}
 				if purchase.carrier > 0 {
+					gc.active_ships[sea_id][.CARRIER_0_MOVES] += purchase.carrier
 					gc.idle_ships[sea_id][gc.cur_player][.CARRIER] += purchase.carrier
+					gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += purchase.carrier
+					gc.allied_carriers_total[sea_id] += purchase.carrier
+					if gc.allied_carriers_total[sea_id] * 2 > gc.allied_fighters_total[sea_id] {
+						gc.has_carrier_space += {sea_id}
+						gc.is_fighter_cache_current = false
+					}
 					when ODIN_DEBUG {
 						fmt.printf("  [PLACE] %d Carrier -> %v (from factory at %v)\n", purchase.carrier, sea_id, territory)
 					}
 					units_placed = true
 				}
 				if purchase.battleship > 0 {
+					gc.active_ships[sea_id][.BATTLESHIP_0_MOVES] += purchase.battleship
 					gc.idle_ships[sea_id][gc.cur_player][.BATTLESHIP] += purchase.battleship
+					gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += purchase.battleship
 					when ODIN_DEBUG {
 						fmt.printf("  [PLACE] %d Battleship -> %v (from factory at %v)\n", purchase.battleship, sea_id, territory)
 					}
 					units_placed = true
 				}
 				if purchase.transport > 0 {
+					gc.active_ships[sea_id][.TRANS_EMPTY_0_MOVES] += purchase.transport
 					gc.idle_ships[sea_id][gc.cur_player][.TRANS_EMPTY] += purchase.transport
+					gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += purchase.transport
 					when ODIN_DEBUG {
 						fmt.printf("  [PLACE] %d Transport -> %v (from factory at %v)\n", purchase.transport, sea_id, territory)
 					}

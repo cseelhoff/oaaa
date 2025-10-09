@@ -350,7 +350,7 @@ determine_territories_to_attack_triplea :: proc(gc: ^Game_Cache, options: ^[dyna
 			
 			when ODIN_DEBUG {
 				fmt.printf("%s: %.1f%% win, attackers=%d\n",
-					mm.land_name[option.territory], option.win_percentage * 100, len(option.attackers))
+					option.territory, option.win_percentage * 100, len(option.attackers))
 			}
 			
 			// Check if successful (need 60% win + land units remaining)
@@ -379,8 +379,8 @@ determine_territories_to_attack_triplea :: proc(gc: ^Game_Cache, options: ^[dyna
 			// Not all successful - remove the last territory
 			when ODIN_DEBUG {
 				if num_to_attack > 0 && num_to_attack <= len(options) {
-					fmt.printf("Removing territory: %s\n", 
-						mm.land_name[options[num_to_attack - 1].territory])
+					fmt.printf("Removing territory: %s\n",
+						options[num_to_attack - 1].territory)
 				}
 			}
 			
@@ -469,7 +469,7 @@ determine_territories_that_can_be_held_triplea :: proc(gc: ^Game_Cache, options:
 		if option.is_strafing {
 			option.can_hold = false
 			when ODIN_DEBUG {
-				fmt.printf("%s: CANNOT HOLD (strafing attack)\n", mm.land_name[t])
+				fmt.printf("%s: CANNOT HOLD (strafing attack)\n", t)
 			}
 			continue
 		}
@@ -551,7 +551,7 @@ determine_territories_that_can_be_held_triplea :: proc(gc: ^Game_Cache, options:
 			production, is_capital := get_production_and_is_capital_triplea(gc, t)
 			is_high_value := is_capital || production >= 5
 			
-			fmt.printf("%s:", mm.land_name[t])
+			fmt.printf("%s:", t)
 			if option.can_hold {
 				fmt.printf(" CAN HOLD")
 			} else {
@@ -730,7 +730,7 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 		if enemy_neighbor_count > 0 {
 			when ODIN_DEBUG {
 				fmt.printf("    %s: empty territory with %d enemy neighbor(s)\n",
-					mm.land_name[land_tid], enemy_neighbor_count)
+					land_tid, enemy_neighbor_count)
 			}
 			
 			// Find cheapest unit from adjacent friendly territory
@@ -962,7 +962,7 @@ remove_territories_where_transports_are_exposed_triplea :: proc(gc: ^Game_Cache,
 		if max_transport_loss > 0 && max_transport_loss * 0.75 > option.attack_value {
 			when ODIN_DEBUG {
 				fmt.printf("  Removing amphib attack on %s - transports exposed (%.1f loss vs %.1f value)\n",
-					mm.land_name[option.territory], max_transport_loss, option.attack_value)
+					option.territory, max_transport_loss, option.attack_value)
 			}
 			
 			unordered_remove(options, i)
@@ -1690,7 +1690,7 @@ determine_best_bombing_attack_for_bomber_triplea :: proc(
 				append(&options[i].attackers, bomber)
 				when ODIN_DEBUG {
 					fmt.printf("Bomber from %s will bomb factory at %s (score: %d)\n",
-						mm.land_name[bomber.from_territory], mm.land_name[target], max_bombing_score)
+						bomber.from_territory, target, max_bombing_score)
 				}
 				return
 			}
@@ -1784,7 +1784,7 @@ try_to_attack_territories_triplea :: proc(
 		
 		when ODIN_DEBUG {
 			fmt.printf("    After land assignment: %v has %d attackers (target power: %.1f)\n",
-				mm.land_name[option.territory], len(option.attackers), target_power)
+				option.territory, len(option.attackers), target_power)
 		}
 		
 		// Add newly assigned units to the tracking list
@@ -1799,7 +1799,7 @@ try_to_attack_territories_triplea :: proc(
 			
 			when ODIN_DEBUG {
 				fmt.printf("    After air assignment: %v has %d attackers\n",
-					mm.land_name[option.territory], len(option.attackers))
+					option.territory, len(option.attackers))
 			}
 			// Add newly assigned air units to tracking list
 			for j := len(assigned_units); j < len(option.attackers); j += 1 {
@@ -1984,7 +1984,7 @@ log_attack_moves_triplea :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_Opti
 		
 		fmt.println("\nPrioritized territories:")
 		for option, idx in options {
-			fmt.printf("\n%d. %s\n", idx + 1, mm.land_name[option.territory])
+			fmt.printf("\n%d. %s\n", idx + 1, option.territory)
 			fmt.printf("   Value: %.1f | Win: %.1f%% | TUV Swing: %.1f\n",
 				option.attack_value, option.win_percentage * 100, option.tuv_swing)
 			
@@ -1994,7 +1994,7 @@ log_attack_moves_triplea :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_Opti
 				fmt.print("     Land: ")
 				for unit in option.attackers {
 					fmt.printf("%v(", unit.unit_type)
-					fmt.printf("%s) ", mm.land_name[unit.from_territory])
+					fmt.printf("%s) ", unit.from_territory)
 				}
 				fmt.println()
 			}
@@ -2002,7 +2002,7 @@ log_attack_moves_triplea :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_Opti
 				fmt.print("     Amphib: ")
 				for unit in option.amphib_attackers {
 					fmt.printf("%v(", unit.unit_type)
-					fmt.printf("%s) ", mm.land_name[unit.from_territory])
+					fmt.printf("%s) ", unit.from_territory)
 				}
 				fmt.println()
 			}
@@ -2959,7 +2959,7 @@ assign_transports_for_amphib :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 			
 			when ODIN_DEBUG {
 				fmt.printf("Using %d transports from %s for amphib assault on %s\n",
-					used, mm.sea_name[sea], mm.land_name[target])
+					used, mm.sea_name[sea], target)
 			}
 			
 			if transports_needed == 0 {
@@ -2971,7 +2971,7 @@ assign_transports_for_amphib :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 	if transports_needed > 0 {
 		when ODIN_DEBUG {
 			fmt.printf("WARNING: Not enough transports for amphib assault on %s (need %d more)\n",
-				mm.land_name[target], transports_needed)
+				target, transports_needed)
 		}
 	}
 }
@@ -3037,7 +3037,7 @@ assign_bombard_units :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 				}
 			}
 			fmt.printf("Naval bombardment support for %s: %d ships, %.0f attack power\n",
-				mm.land_name[target], len(option.bombard_units), total_bombard)
+				target, len(option.bombard_units), total_bombard)
 		}
 	}
 }
@@ -3284,7 +3284,7 @@ remove_attacks_until_capital_can_be_held_triplea :: proc(
 		if max_index >= 0 {
 			when ODIN_DEBUG {
 				fmt.printf("  Removing attack on %s to defend capital\n", 
-					mm.land_name[options[max_index].territory])
+					options[max_index].territory)
 			}
 			
 			// Return units to capital defense

@@ -51,7 +51,7 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			for target in defense_targets {
 				fmt.printf(
 					"  - %s: defense=%.1f vs threat=%.1f (gap=%.1f, factory=%v, capital=%v)\n",
-					mm.land_name[target.territory],
+					target.territory,
 					target.current_defense,
 					target.enemy_threat,
 					target.defense_needed,
@@ -427,7 +427,7 @@ prioritize_defense_targets :: proc(
 			when ODIN_DEBUG {
 				fmt.printf(
 					"  [FILTER] Removing %v (value=%.2f): not factory, no enemy neighbors\n",
-					mm.land_name[land_id], target.priority,
+					land_id, target.priority,
 				)
 			}
 			continue
@@ -462,7 +462,7 @@ prioritize_defense_targets :: proc(
 			fmt.printf(
 				"  %d. %v: value=%.1f, factory=%v, capital=%v, enemyNeighbors=%v\n",
 				i + 1,
-				mm.land_name[target.territory],
+				target.territory,
 				target.priority,
 				target.has_factory,
 				target.is_capital,
@@ -535,8 +535,6 @@ move_nearby_units_to_defense :: proc(
 	defense_provided := f64(0)
 
 	// Check all adjacent land territories
-	fmt.println("territory: ", territory)
-	fmt.println("to_int: ", int(territory))
 	for adjacent in sa.slice(&mm.l2l_1away_via_land[territory]) {
 		if gc.owner[adjacent] != gc.cur_player do continue
 		if adjacent == territory do continue
@@ -1447,12 +1445,14 @@ move_land_to_high_value_territories :: proc(
 					dst_action := to_action(best_territory)
 					debug_checks(gc)
 					next_state := blitz_checks(gc, dst_action)
-					move_single_army_land(gc, dst_action, next_state)
-					when ODIN_DEBUG {
-						fmt.printf(
-							"    Moved %v from %v to %v (value: %.1f, amphib: %.1f)\n",
-							army, src_land, best_territory, best_value, best_amphib_value,
-						)
+					for _ in 0..<available {
+						move_single_army_land(gc, dst_action, next_state)
+						when ODIN_DEBUG {
+							fmt.printf(
+								"    [PASS 1] Moved %v from %v to %v (value: %.1f, amphib: %.1f)\n",
+								army, src_land, best_territory, best_value, best_amphib_value,
+							)
+						}
 					}
 					debug_checks(gc)
 				}
@@ -1569,17 +1569,36 @@ move_land_towards_coastal_factories :: proc(
 			//TODO add tanks with 2 moves
 			
 			// Move towards coastal factory
+
 			if best_territory != src_land {
-				success := execute_land_move(gc, src_land, best_territory, army, 1, moved)
-				when ODIN_DEBUG {
-					if success {
+				// success := execute_land_move(gc, src_land, best_land, army_type, 1, moved)
+				gc.current_territory = to_air(src_land)
+				gc.current_active_unit = to_unit(army)
+				dst_action := to_action(best_territory)
+				debug_checks(gc)
+				next_state := blitz_checks(gc, dst_action)
+				for _ in 0..<available {
+					move_single_army_land(gc, dst_action, next_state)
+					when ODIN_DEBUG {
 						fmt.printf(
-							"    Moved %v from %v to %v (distance to factory: %d)\n",
+							"    [PASS 2] Moved %v from %v to %v (distance to factory: %d)\n",
 							army, src_land, best_territory, min_distance,
 						)
 					}
 				}
+				debug_checks(gc)
 			}
+			// if best_territory != src_land {
+			// 	success := execute_land_move(gc, src_land, best_territory, army, 1, moved)
+			// 	when ODIN_DEBUG {
+			// 		if success {
+			// 			fmt.printf(
+			// 				"    Moved %v from %v to %v (distance to factory: %d)\n",
+			// 				army, src_land, best_territory, min_distance,
+			// 			)
+			// 		}
+			// 	}
+			// }
 		}
 	}
 }
@@ -1665,19 +1684,37 @@ move_land_to_safest_territories :: proc(
 				}
 			}
 			
-			// Move to safest territory
 			if best_territory != src_land {
-				success := execute_land_move(gc, src_land, best_territory, army, 1, moved)
-
-				when ODIN_DEBUG {
-					if success {
+				gc.current_territory = to_air(src_land)
+				gc.current_active_unit = to_unit(army)
+				dst_action := to_action(best_territory)
+				// debug_checks(gc)
+				next_state := blitz_checks(gc, dst_action)
+				for _ in 0..<available {
+					move_single_army_land(gc, dst_action, next_state)
+					when ODIN_DEBUG {
 						fmt.printf(
-							"    Moved %v from %v to %v (strength diff: %.1f)\n",
+							"    [PASS 3] Moved %v from %v to %v (strength diff: %.1f)\n",
 							army, src_land, best_territory, min_strength_diff,
 						)
 					}
 				}
+				// debug_checks(gc)
 			}
+
+			// Move to safest territory
+			// if best_territory != src_land {
+			// 	success := execute_land_move(gc, src_land, best_territory, army, 1, moved)
+
+			// 	when ODIN_DEBUG {
+			// 		if success {
+			// 			fmt.printf(
+			// 				"    Moved %v from %v to %v (strength diff: %.1f)\n",
+			// 				army, src_land, best_territory, min_strength_diff,
+			// 			)
+			// 		}
+			// 	}
+			// }
 		}
 	}
 }

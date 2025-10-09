@@ -59,7 +59,7 @@ MapData :: struct {
 	s2s_2away_via_midseas:        [Canal_States][Sea_ID][Sea_ID]Mid_Seas,
 	sea_distances:                [Canal_States][Sea_ID][Sea_ID]u8,
 	color:                        [Player_ID]string,
-	land_name:                    [Land_ID]string,
+	// land_name:                    [Land_ID]string,
 	sea_name:                     [Sea_ID]string,
 	is_human:                     bit_set[Player_ID;u8],
 	battle_results:               map[Land_Combatants]Battle_Results,
