@@ -1514,16 +1514,7 @@ move_land_towards_coastal_factories :: proc(
 	coastal_factories := make([dynamic]Land_ID)
 	defer delete(coastal_factories)
 	
-	for land_id in Land_ID {
-		if gc.owner[land_id] != gc.cur_player {
-			continue
-		}
-		
-		// Has factory?
-		if gc.factory_prod[land_id] == 0 {
-			continue
-		}
-		
+	for land_id in sa.slice(&gc.factory_locations[gc.cur_player]) {
 		// Adjacent to sea?
 		if is_land_adjacent_to_sea(land_id) {
 			append(&coastal_factories, land_id)
@@ -1545,10 +1536,13 @@ move_land_towards_coastal_factories :: proc(
 			// if gc.owner[src_land] != gc.cur_player {
 			// 	continue
 			// }
-			
+			available := gc.active_armies[src_land][army]
+			if available == 0 {
+				continue
+			}
 			// Find nearest coastal factory
-			min_distance := max(i32)
-			best_territory: Maybe(Land_ID) = nil
+			min_distance := max(u8)
+			best_territory:= src_land
 			
 			// max_moves := idle_army_to_max_moves(army_type)
 			
@@ -1563,7 +1557,7 @@ move_land_towards_coastal_factories :: proc(
 				
 				// Calculate distance to nearest coastal factory
 				for factory in coastal_factories {
-					distance := calculate_land_distance(gc, dst_land, factory)
+					distance := mm.air_distances[to_air(src_land)][to_air(factory)]
 					
 					if distance >= 0 && distance < min_distance {
 						min_distance = distance
@@ -1575,17 +1569,14 @@ move_land_towards_coastal_factories :: proc(
 			//TODO add tanks with 2 moves
 			
 			// Move towards coastal factory
-			if best_land, ok := best_territory.?; ok {
-				if best_land != src_land {
-					success := execute_land_move(gc, src_land, best_land, army, 1, moved)
-					
-					when ODIN_DEBUG {
-						if success {
-							fmt.printf(
-								"    Moved %v from %v to %v (distance to factory: %d)\n",
-								army, src_land, best_land, min_distance,
-							)
-						}
+			if best_territory != src_land {
+				success := execute_land_move(gc, src_land, best_territory, army, 1, moved)
+				when ODIN_DEBUG {
+					if success {
+						fmt.printf(
+							"    Moved %v from %v to %v (distance to factory: %d)\n",
+							army, src_land, best_territory, min_distance,
+						)
 					}
 				}
 			}
@@ -1651,10 +1642,13 @@ move_land_to_safest_territories :: proc(
 	for army in Unmoved_Armies {
 		// For each land territory with our units
 		for src_land in Land_ID {
-			
+			available := gc.active_armies[src_land][army]
+			if available == 0 {
+				continue
+			}
 			// Find safest reachable territory
 			min_strength_diff := math.F64_MAX
-			best_territory: Maybe(Land_ID) = nil			
+			best_territory:= src_land	
 			
 			for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
 				
@@ -1672,17 +1666,15 @@ move_land_to_safest_territories :: proc(
 			}
 			
 			// Move to safest territory
-			if best_land, ok := best_territory.?; ok {
-				if best_land != src_land {
-					success := execute_land_move(gc, src_land, best_land, army, 1, moved)
-					
-					when ODIN_DEBUG {
-						if success {
-							fmt.printf(
-								"    Moved %v from %v to %v (strength diff: %.1f)\n",
-								army, src_land, best_land, min_strength_diff,
-							)
-						}
+			if best_territory != src_land {
+				success := execute_land_move(gc, src_land, best_territory, army, 1, moved)
+
+				when ODIN_DEBUG {
+					if success {
+						fmt.printf(
+							"    Moved %v from %v to %v (strength diff: %.1f)\n",
+							army, src_land, best_territory, min_strength_diff,
+						)
 					}
 				}
 			}
