@@ -4135,77 +4135,54 @@ execute_amphibious_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Att
 		}
 		
 		// Unload each amphibious attacker
+		// Note: Unlike regular unloading in transport.odin, amphibious assaults occur during combat move
+		// and don't use the interactive unload_transports() flow. We directly manipulate the transport states.
 		for unit in opt.amphib_attackers {
 			// from_territory is actually a Sea_ID (stored as Land_ID)
-			// We need to cast it back to Sea_ID
 			sea_zone := Sea_ID(unit.from_territory)
 			
-			#partial switch unit.unit_type {
-			case .Infantry:
-				// Find TRANS_1I transport in this sea zone
-				if gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1I] == 0 {
+			// Find which transport has this unit type and unload it
+			// We need to find the Active_Ship state (with 0 moves) that contains this unit
+			ship_found := false
+			for trans_ship in Transports_With_Cargo {
+				// Check if this transport type can carry the unit we're trying to unload
+				unload_army := Transport_Unload_Unit[trans_ship]
+				expected_idle_army: Idle_Army
+				
+				#partial switch unit.unit_type {
+				case .Infantry:  expected_idle_army = .INF
+				case .Tank:      expected_idle_army = .TANK
+				case .Artillery: expected_idle_army = .ARTY
+				case:            continue  // Not a transportable unit
+				}
+				
+				// Check if this transport type carries the unit we need AND exists in this sea zone
+				if Active_Army_To_Idle[unload_army] == expected_idle_army &&
+				   gc.active_ships[sea_zone][trans_ship] > 0 {
+					
 					when ODIN_DEBUG {
-						fmt.printf("      ERROR: No TRANS_1I at %v to unload!\n", sea_zone)
+						fmt.printf("      Unloading %v from %v (sea zone %v) to %v\n", 
+							unit.unit_type, trans_ship, sea_zone, target)
 					}
-					return false
+					
+					// Use the existing unload_unit helper from transport.odin
+					unload_unit(gc, target, trans_ship)
+					
+					// Use the existing replace_ship helper to update transport state
+					new_ship := Trans_After_Unload[trans_ship]
+					replace_ship(gc, sea_zone, trans_ship, new_ship)
+					
+					ship_found = true
+					break
 				}
-				
-				// Remove loaded transport, add empty transport
-				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1I] -= 1
-				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_EMPTY] += 1
-				
-				// Add infantry to target as active unit (engaged in combat)
-				gc.idle_armies[target][gc.cur_player][.INF] += 1
-				gc.active_armies[target][.INF_0_MOVES] += 1
-				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
-				
+			}
+			
+			if !ship_found {
 				when ODIN_DEBUG {
-					fmt.printf("      Unloaded Infantry from sea zone %v to %v\n", sea_zone, target)
+					fmt.printf("      ERROR: No suitable transport found at sea zone %v for %v\n", 
+						sea_zone, unit.unit_type)
 				}
-				
-			case .Tank:
-				// Find TRANS_1T transport in this sea zone
-				if gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1T] == 0 {
-					when ODIN_DEBUG {
-						fmt.printf("      ERROR: No TRANS_1T at %v to unload!\n", sea_zone)
-					}
-					return false
-				}
-				
-				// Remove loaded transport, add empty transport
-				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1T] -= 1
-				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_EMPTY] += 1
-				
-				// Add tank to target as active unit
-				gc.idle_armies[target][gc.cur_player][.TANK] += 1
-				gc.active_armies[target][.TANK_0_MOVES] += 1
-				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
-				
-				when ODIN_DEBUG {
-					fmt.printf("      Unloaded Tank from sea zone %v to %v\n", sea_zone, target)
-				}
-				
-			case .Artillery:
-				// Find TRANS_1A transport in this sea zone
-				if gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1A] == 0 {
-					when ODIN_DEBUG {
-						fmt.printf("      ERROR: No TRANS_1A at %v to unload!\n", sea_zone)
-					}
-					return false
-				}
-				
-				// Remove loaded transport, add empty transport
-				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_1A] -= 1
-				gc.idle_ships[sea_zone][gc.cur_player][.TRANS_EMPTY] += 1
-				
-				// Add artillery to target as active unit
-				gc.idle_armies[target][gc.cur_player][.ARTY] += 1
-				gc.active_armies[target][.ARTY_0_MOVES] += 1
-				gc.team_land_units[target][mm.team[gc.cur_player]] += 1
-				
-				when ODIN_DEBUG {
-					fmt.printf("      Unloaded Artillery from sea zone %v to %v\n", sea_zone, target)
-				}
+				return false
 			}
 		}
 	}
