@@ -44,6 +44,7 @@ Game_Cache :: struct {
 	using state:                    Game_State,
 	team_land_units:                [Land_ID][Team_ID]u8,
 	team_sea_units:                 [Sea_ID][Team_ID]u8,
+	pro_value:                      [Land_ID]f64,
 	factory_locations:              [Player_ID]SA_Land,
 	enemy_blockade_total:           [Sea_ID]u8,
 	enemy_destroyer_total:          [Sea_ID]u8,
@@ -55,7 +56,6 @@ Game_Cache :: struct {
 	allied_destroyers_total:        [Sea_ID]u8,
 	allied_antifighter_ships_total: [Sea_ID]u8,
 	allied_sea_combatants_total:    [Sea_ID]u8,
-	pro_value:                      [Land_ID]f64,
 	income:                         [Player_ID]u8,
 	answers_remaining:              u32,
 	max_loops:                      u16,
@@ -67,6 +67,7 @@ Game_Cache :: struct {
 	can_fighter_land_here:          Air_Bitset,
 	can_fighter_land_in_1_move:     Air_Bitset,
 	air_has_enemies:                Air_Bitset,
+	has_factory:                    Land_Bitset,
 	has_bombable_factory:           Land_Bitset,
 	has_enemy_factory:              Land_Bitset,
 	has_enemy_units:                Land_Bitset,
@@ -132,15 +133,18 @@ resfresh_cache :: proc(gc: ^Game_Cache) {
 	gc.is_fighter_cache_current = false
 	gc.clear_history_needed = false
 	gc.use_selected_action = false
-	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
-		for factory_location in sa.slice(&gc.factory_locations[enemy]) {
-			gc.has_enemy_factory += {factory_location}
-			if gc.factory_dmg[factory_location] < gc.factory_prod[factory_location] * 2 {
-				gc.has_bombable_factory += {factory_location}
+	for player in Player_ID {
+		for factory_location in sa.slice(&gc.factory_locations[player]) {
+			gc.has_factory += {factory_location}
+			if mm.team[player] != mm.team[gc.cur_player] {
+				gc.has_enemy_factory += {factory_location}
+				if gc.factory_dmg[factory_location] < gc.factory_prod[factory_location] * 2 {
+					gc.has_bombable_factory += {factory_location}
+				}
 			}
 		}
 	}
-	build_map_production_value(gc)
+	// build_map_production_value(gc)
 }
 
 count_sea_unit_totals :: proc(gc: ^Game_Cache) {

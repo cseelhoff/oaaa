@@ -5,12 +5,6 @@ import "core:slice"
 
 SA_Adjacent_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
 
-Land_Data :: struct {
-	land:       Land_ID,
-	orig_owner: Player_ID,
-	value:      u8,
-}
-
 to_land :: proc {
 	air_to_land,
 	action_to_land,
@@ -116,4 +110,18 @@ transfer_land_ownership :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool
 	assert(found, "factory conquered, but not found in owned factory locations")
 	sa.unordered_remove(&gc.factory_locations[old_owner], index)
 	return true
+}
+
+initialize_land_mass_size :: proc() {
+	air_id_array: Air_ID_Array = {}
+	for land in Land_ID {
+		airs_within_6 := mm.a2a_within_6_moves[to_air(land)]
+		get_airs(airs_within_6, &air_id_array)
+		mm.land_mass_size[land] = 1
+		for air in sa.slice(&air_id_array) {
+			if is_air_land(air) {
+				mm.land_mass_size[land] += 1
+			}
+		}
+	}
 }

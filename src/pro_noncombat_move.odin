@@ -31,7 +31,274 @@ import "core:fmt"
 import "core:math"
 import "core:slice"
 
+
+
+do_non_combat_move :: proc(
+      initialFactoryMoveMap: map[Territory]ProTerritory,
+      purchaseTerritories: map[Territory]ProPurchaseTerritory,
+      moveDel: IMoveDelegate) -> map[Territory]ProTerritory
+    {
+
+    ProLogger.info("Starting non-combat move phase");
+
+    // Current data at the start of non-combat move
+    // data = proData.getData();
+    // player = proData.getPlayer();
+    // unitTerritoryMap = proData.getUnitTerritoryMap();
+    // territoryManager = new ProTerritoryManager(calc, proData);
+
+    // Find the max number of units that can move to each allied territory
+    // territoryManager.populateDefenseOptions(new ArrayList<>());
+	findNavalMoveOptions(
+        proData,
+        player,
+        myUnitTerritories,
+        moveMap,
+        unitMoveMap,
+        transportMoveMap,
+        ProMatches.territoryHasNoEnemyUnitsOrCleared(player, clearedTerritories),
+        clearedTerritories,
+        false,
+        isCheckingEnemyAttacks);
+    findLandMoveOptions(
+        proData,
+        player,
+        myUnitTerritories,
+        moveMap,
+        unitMoveMap,
+        landRoutesMap,
+        Matches.isTerritoryAllied(player),
+        new ArrayList<>(),
+        clearedTerritories,
+        false,
+        isCheckingEnemyAttacks,
+        false);
+    findAirMoveOptions(
+        proData,
+        player,
+        myUnitTerritories,
+        moveMap,
+        unitMoveMap,
+        ProMatches.territoryCanLandAirUnits(player, false, new ArrayList<>(), new ArrayList<>()),
+        new ArrayList<>(),
+        new ArrayList<>(),
+        false,
+        isCheckingEnemyAttacks,
+        false);
+    findAmphibMoveOptions(
+        proData,
+        player,
+        myUnitTerritories,
+        moveMap,
+        transportMapList,
+        landRoutesMap,
+        Matches.isTerritoryAllied(player),
+        false,
+        isCheckingEnemyAttacks,
+        false);
+
+    // Note: On maps that have a single move phase, this function may be called with this true.
+    // boolean isCombatMove = GameStepPropertiesHelper.isCombatMove(data);
+
+    // Find number of units in each move territory that can't move and all infra units
+    findUnitsThatCantMove(purchaseTerritories, proData.getPurchaseOptions().getLandOptions());
+    // final Map<Unit, Set<Territory>> infraUnitMoveMap = findInfraUnitsThatCanMove();
+
+    // Try to have one land unit in each territory that is bordering an enemy territory
+    moved_one_defender_to_territories: Land_Bitset = moveOneDefenderToLandTerritoriesBorderingEnemy();
+
+    // Determine max enemy attack units and if territories can be held
+    territoryManager.populateEnemyAttackOptions(
+        moved_one_defender_to_territories, territoryManager.getDefendTerritories());
+    determineIfMoveTerritoriesCanBeHeld();
+
+    // Prioritize territories to defend
+    Map<Territory, ProTerritory> factoryMoveMap = initialFactoryMoveMap;
+    final List<ProTerritory> prioritizedTerritories = prioritizeDefendOptions(factoryMoveMap);
+
+    // Determine which territories to defend and how many units each one needs
+    final Territory myCapital = proData.getMyCapital();
+    int enemyDistanceToMyCapital = Integer.MAX_VALUE;
+    if (myCapital != null) {
+      enemyDistanceToMyCapital =
+          ProUtils.getClosestEnemyLandTerritoryDistance(data, player, myCapital);
+      moveUnitsToDefendTerritories(isCombatMove, prioritizedTerritories, enemyDistanceToMyCapital);
+    }
+
+    // Copy data in case capital defense needs increased
+    final ProTerritoryManager territoryManagerCopy =
+        new ProTerritoryManager(calc, proData, territoryManager);
+
+    // Get list of territories that can't be held and find move value for each territory
+    final List<Territory> territoriesThatCantBeHeld = territoryManager.getCantHoldTerritories();
+    final Map<Territory, Double> territoryValueMap =
+        ProTerritoryValueUtils.findTerritoryValues(
+            proData,
+            player,
+            territoriesThatCantBeHeld,
+            List.of(),
+            new HashSet<>(territoryManager.getDefendTerritories()));
+    final Map<Territory, Double> seaTerritoryValueMap =
+        ProTerritoryValueUtils.findSeaTerritoryValues(
+            player, territoriesThatCantBeHeld, territoryManager.getDefendTerritories());
+    Map<Territory, ProTerritory> moveMap = territoryManager.getDefendOptions().getTerritoryMap();
+
+    // Use loop to ensure capital is protected after moves
+    if (myCapital != null) {
+      int defenseRange = -1;
+      while (true) {
+        // Add value to territories near capital if necessary
+        Predicate<Territory> canMove = ProMatches.territoryCanMoveLandUnits(player, isCombatMove);
+        for (final Territory t : territoryManager.getDefendTerritories()) {
+          double value = territoryValueMap.get(t);
+          final int distance = data.getMap().getDistance(myCapital, t, canMove);
+          if (distance >= 0 && distance <= defenseRange) {
+            value *= 10;
+          }
+          moveMap.get(t).setValue(value);
+          if (t.isWater()) {
+            moveMap.get(t).setSeaValue(seaTerritoryValueMap.get(t));
+          }
+        }
+        String a = String.valueOf(moveMap.get(myCapital).getValue());
+        ProLogger.info("Capital value: " + a);
+        moveUnitsToBestTerritories(isCombatMove);
+
+        // Check if capital has local land superiority
+        ProLogger.info(
+            "Checking if capital has local land superiority with enemyDistanceToMyCapital="
+                + enemyDistanceToMyCapital);
+        if (enemyDistanceToMyCapital >= 2
+            && enemyDistanceToMyCapital <= 3
+            && defenseRange == -1
+            && !ProBattleUtils.territoryHasLocalLandSuperiorityAfterMoves(
+                proData, myCapital, enemyDistanceToMyCapital, player, moveMap)) {
+          defenseRange = enemyDistanceToMyCapital - 1;
+          territoryManager = territoryManagerCopy;
+          ProLogger.debug(
+              "Capital doesn't have local land superiority so setting defensive stance");
+        } else {
+          break;
+        }
+      }
+    } else {
+      moveUnitsToBestTerritories(isCombatMove);
+    }
+
+    // Determine where to move infra units
+    factoryMoveMap = moveInfraUnits(isCombatMove, factoryMoveMap, infraUnitMoveMap);
+
+    // Log a warning if any units not assigned to a territory (skip infrastructure for now)
+    for (final Unit u : territoryManager.getDefendOptions().getUnitMoveMap().keySet()) {
+      if (Matches.unitIsInfrastructure().negate().test(u)) {
+        ProLogger.warn(
+            player
+                + ": "
+                + unitTerritoryMap.get(u)
+                + " has unmoved unit: "
+                + u
+                + " with options: "
+                + territoryManager.getDefendOptions().getUnitMoveMap().get(u));
+      }
+    }
+
+    // Calculate move routes and perform moves
+    doMove(isCombatMove, moveMap, moveDel, data, player);
+
+    // Log results
+    ProLogger.info("Logging results");
+    logAttackMoves(prioritizedTerritories);
+
+    territoryManager = null;
+    return factoryMoveMap;
+  }
+
+
+
 // Main non-combat move phase entry point
+
+
+move_one_defender_to_land_territories_bordering_enemy :: proc() -> Land_Bitset {
+	when ODIN_DEBUG {
+		fmt.println("Determine which territories to defend with one land unit");
+	}
+	// Find land territories with no can't move units and adjacent to enemy land units
+	territoriesToDefendWithOneUnit : Land_Bitset={}
+	final Predicate<Unit> alliedAndNotInfra = ProMatches.unitIsAlliedLandAndNotInfra(player);
+	for land in gc.friendly_owner {
+		enemy_neighbors := mm.l2l_1away_via_land_bitset[land] & has_enemy_units
+		if enemy_neighbors == {} do continue
+		if gc.team_land_units[land] > 0 do continue
+		territoriesToDefendWithOneUnit += {land}
+	}
+
+	// Sort units by number of defend options and cost
+	sortedUnitMoveOptions : map[Unit]Land_Bitset ={}
+	inf_avail_to_move : Land_Bitset = {}
+	art_avail_to_move : Land_Bitset = {}
+	tank_avail_to_move : Land_Bitset = {}
+	aagun_avail_to_move : Land_Bitset = {}
+	fighter_avail_to_move : Land_Bitset = {}
+	bomber_avail_to_move : Land_Bitset = {}
+
+	for land in Land_ID {
+		if gc.active_armies[land][.INF_1_MOVES] > 0 {
+			inf_avail_to_move += {land}
+		}
+		if gc.active_armies[land][.ARTY_1_MOVES] > 0 {
+			art_avail_to_move += {land}
+		}
+		if gc.active_armies[land][.TANK_2_MOVES] > 0 {
+			tank_avail_to_move += {land}
+		}
+		if gc.active_armies[land][.AAGUN_1_MOVES] > 0 {
+			aagun_avail_to_move += {land}
+		}
+		if gc.active_armies[land][.FIGHTER_UNMOVED] > 0 {
+			fighter_avail_to_move += {land}
+		}
+		if gc.active_armies[land[.BOMBER_UNMOVED]] > 0 {
+			
+		}
+	}
+
+	// Set unit with the fewest move options in each territory
+	for (final Unit unit : sortedUnitMoveOptions.keySet()) {
+		if (Matches.unitIsLand().test(unit)) {
+		for (final Territory t : sortedUnitMoveOptions.get(unit)) {
+			final int unitValue = proData.getUnitValue(unit.getType());
+			final int production = TerritoryAttachment.getProduction(t);
+
+			// Only defend territories that either already have units (avoid abandoning territories)
+			// or where unit value is less than production + 3 (avoid sacrificing expensive units to
+			// block)
+			if (territoriesToDefendWithOneUnit.contains(t)
+				&& (unitValue <= (production + 3)
+					|| Matches.territoryHasUnitsOwnedBy(player).test(t))) {
+			moveMap.get(t).addUnit(unit);
+			unitMoveMap.remove(unit);
+			territoriesToDefendWithOneUnit.remove(t);
+			ProLogger.debug(t + ", added one land unit: " + unit);
+			break;
+			}
+		}
+		if (territoriesToDefendWithOneUnit.isEmpty()) {
+			break;
+		}
+		}
+	}
+
+	// Only return territories that received a defender
+	return territoriesToDefendWithOneUnit;
+}
+
+
+
+
+
+
+
+
 proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Starting non-combat move phase")
@@ -96,6 +363,13 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 	return true
 }
+
+
+
+
+
+
+
 
 // Defense_Target represents a territory that needs defensive units
 Defense_Target :: struct {

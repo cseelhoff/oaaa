@@ -54,6 +54,7 @@ MapData :: struct {
 	land_distances:               [Land_ID][Land_ID]u8,
 	air_distances:                [Air_ID][Air_ID]u8,
 	value:                        [Land_ID]u8,
+	land_mass_size:               [Land_ID]u8,
 	s2s_1away_via_sea:            [Canal_States][Sea_ID]Sea_Bitset,
 	s2s_2away_via_sea:            [Canal_States][Sea_ID]Sea_Bitset,
 	s2s_2away_via_midseas:        [Canal_States][Sea_ID][Sea_ID]Mid_Seas,
@@ -71,6 +72,7 @@ initialize_map_constants :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	initialize_sea_connections()
 	initialize_coastal_connections()
 	initialize_air_connections()
+	initialize_land_mass_size()
 	mm.battle_results = make(map[Land_Combatants]Battle_Results)
 	return true
 }
