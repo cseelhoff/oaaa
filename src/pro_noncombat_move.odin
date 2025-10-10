@@ -354,12 +354,18 @@ prioritize_defense_targets :: proc(
 	- isNotFactoryAndHasNoEnemyNeighbors (THIS IS KEY!)
 	- Other conditions (can't hold, should hold, etc.)
 	*/
+	when ODIN_DEBUG {
+		fmt.println("[PRO-AI] Prioritizing defense targets...")
+	}
 
 	
 	my_team := mm.team[gc.cur_player]
 	
 	// Calculate priority for each target using TripleA's formula
 	for &target in targets {
+		when ODIN_DEBUG {
+			fmt.printf("  [DEFENSE] Evaluating %v\n", target.territory)
+		}
 		land_id := target.territory
 		
 		// Determine production value
@@ -421,12 +427,19 @@ prioritize_defense_targets :: proc(
 		is_capital := target.is_capital
 		
 		// Remove if: not a factory AND no enemy neighbors (matches isNotFactoryAndHasNoEnemyNeighbors)
-		is_not_factory_and_has_no_enemy_neighbors := !has_factory && !has_enemy_neighbors
+		is_not_factory_and_has_no_enemy_neighbors := !has_enemy_neighbors //&& !has_factory
 		
-		if is_not_factory_and_has_no_enemy_neighbors && !is_capital {
+		when ODIN_DEBUG {
+			fmt.printf(
+				"  [FILTER] Considering %v (value=%.2f): factory=%v, enemyNeighbors=%v, capital=%v\n",
+				land_id, target.priority, has_factory, has_enemy_neighbors, is_capital,
+			)
+		}
+
+		if is_not_factory_and_has_no_enemy_neighbors { //&& !is_capital {
 			when ODIN_DEBUG {
 				fmt.printf(
-					"  [FILTER] Removing %v (value=%.2f): not factory, no enemy neighbors\n",
+					"  [FILTER] Removing %v (value=%.2f): no enemy neighbors\n",
 					land_id, target.priority,
 				)
 			}
