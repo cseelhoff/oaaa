@@ -110,6 +110,8 @@ Pro_Purchase_Territory :: struct {
 	fighters_to_place: u8,
 	bombers_to_place: u8,
 	factories_to_place: u8,
+
+	can_place_territories: Land_Bitset,
 }
 
 // Pro_Data is the main data container for Pro AI analysis

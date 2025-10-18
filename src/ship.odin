@@ -293,6 +293,7 @@ skip_ship :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> bool {
 	ship := to_ship(gc.current_active_unit)
 	gc.active_ships[src_sea][Ships_Moved[ship]] += gc.active_ships[src_sea][ship]
 	gc.active_ships[src_sea][ship] = 0
+	gc.ships_available_to_move[ship] -= {src_sea}
 	return true
 }
 
@@ -324,9 +325,13 @@ move_single_ship :: proc(
 	dst_sea, unit_count := to_sea_count(dst_action)
 	unit_count = min(unit_count, gc.active_ships[src_sea][src_unit])
 	gc.active_ships[dst_sea][dst_unit] += unit_count
+	gc.ships_available_to_move[dst_unit] += {dst_sea}
 	gc.idle_ships[dst_sea][gc.cur_player][Active_Ship_To_Idle[dst_unit]] += unit_count
 	gc.team_sea_units[dst_sea][mm.team[gc.cur_player]] += unit_count
 	gc.active_ships[src_sea][src_unit] -= unit_count
+	if gc.active_ships[src_sea][src_unit] == 0 {
+		gc.ships_available_to_move[src_unit] -= {src_sea}
+	}
 	gc.idle_ships[src_sea][gc.cur_player][Active_Ship_To_Idle[src_unit]] -= unit_count
 	gc.team_sea_units[src_sea][mm.team[gc.cur_player]] -= unit_count
 }

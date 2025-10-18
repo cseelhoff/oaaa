@@ -184,6 +184,9 @@ move_armies :: proc(gc: ^Game_Cache) -> (ok: bool) {
                             gc.active_ships[dst_sea][new_ship] += 1
                             gc.idle_ships[dst_sea][gc.cur_player][Active_Ship_To_Idle[new_ship]] += 1
                             gc.active_armies[src_land][army] -= 1
+                            if gc.active_armies[src_land][army] == 0 {
+                                gc.armies_available_to_move[Active_Army_To_Idle[army]] -= {src_land}
+                            }
                             gc.idle_armies[src_land][gc.cur_player][idle_army] -= 1
                             gc.team_land_units[src_land][mm.team[gc.cur_player]] -= 1
                             gc.active_ships[dst_sea][transport] -= 1
@@ -281,9 +284,13 @@ move_single_army_land :: proc(
 	gc.active_armies[dst_land][dst_unit] += unit_count
 	gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[dst_unit]] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.cur_player]] += unit_count
+    // gc.armies_available_to_move[Active_Army_To_Idle[dst_unit]] += {dst_land}
 	gc.active_armies[src_land][src_unit] -= unit_count
 	gc.idle_armies[src_land][gc.cur_player][Active_Army_To_Idle[src_unit]] -= unit_count
 	gc.team_land_units[src_land][mm.team[gc.cur_player]] -= unit_count
+    if gc.active_armies[src_land][src_unit] == 0 {
+        gc.armies_available_to_move[Active_Army_To_Idle[src_unit]] -= {src_land}
+    }
 }
 
 is_boat_available :: proc(

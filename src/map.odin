@@ -30,8 +30,8 @@ MapData :: struct {
 	capital:                      [Player_ID]Land_ID,
 	team:                         [Player_ID]Team_ID,
 	enemy_team:                   [Player_ID]Team_ID,
-	allies:                       [Player_ID]SA_Players,
-	enemies:                      [Player_ID]SA_Players,
+	allies:                       [Player_ID]SA_Players, // TODO: Player_Bitset
+	enemies:                      [Player_ID]SA_Players, // TODO: Player_Bitset
 	orig_owner:                   [Land_ID]Player_ID,
 	a2a_within_1_moves:           [Air_ID]Air_Bitset,
 	a2a_within_2_moves:           [Air_ID]Air_Bitset,

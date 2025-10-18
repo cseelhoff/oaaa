@@ -131,6 +131,12 @@ air_bitset_to_action_bitset :: proc(air_bitset: Air_Bitset) -> (result: Action_B
 	return result
 }
 
+air_bitset_to_land_bitset :: proc(air_bitset: Air_Bitset) -> (result: Land_Bitset) {
+	value_low := u128(air_bitset[0]) | (u128(air_bitset[1]) << 64)
+	result = transmute(Land_Bitset)(value_low & ((1 << uint(len(Land_ID))) - 1))
+	return result
+}
+
 // does_air_has_enemies :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> bool {
 // 	chunk_index := uint(dst_action) / 64
 // 	bit_index := uint(dst_action) % 64

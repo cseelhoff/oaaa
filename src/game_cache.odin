@@ -57,6 +57,10 @@ Game_Cache :: struct {
 	allied_antifighter_ships_total: [Sea_ID]u8,
 	allied_sea_combatants_total:    [Sea_ID]u8,
 	income:                         [Player_ID]u8,
+	armies_available_to_move:       [Idle_Army]Land_Bitset,
+	land_planes_available_to_move:  [Active_Plane]Land_Bitset,
+	ships_available_to_move:        [Active_Ship]Sea_Bitset,
+	sea_planes_available_to_move:   [Active_Plane]Sea_Bitset,
 	answers_remaining:              u32,
 	max_loops:                      u16,
 	valid_actions:                  Action_Bitset,
@@ -71,6 +75,7 @@ Game_Cache :: struct {
 	has_bombable_factory:           Land_Bitset,
 	has_enemy_factory:              Land_Bitset,
 	has_enemy_units:                Land_Bitset,
+	has_enemy_ships:              Sea_Bitset,
 	has_carrier_space:              Sea_Bitset,
 	possible_factory_carriers:      Sea_Bitset,
 	canals_open:                    Canals_Open,
@@ -120,6 +125,10 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 				gc.team_sea_units[sea][mm.team[player]] += plane
 			}
 		}
+		if gc.team_sea_units[sea][mm.enemy_team[gc.cur_player]] > 0 {
+			gc.has_enemy_ships += {sea}
+			add_air(&gc.air_has_enemies, to_air(sea))
+		}
 	}
 	resfresh_cache(gc)
 	count_sea_unit_totals(gc)
@@ -144,6 +153,10 @@ resfresh_cache :: proc(gc: ^Game_Cache) {
 			}
 		}
 	}
+	set_land_armies_avail_to_move(gc)
+	set_land_planes_avail_to_move(gc)
+	set_sea_ships_avail_to_move(gc)
+	set_sea_planes_avail_to_move(gc)
 	// build_map_production_value(gc)
 }
 
@@ -225,6 +238,57 @@ load_open_canals :: proc(gc: ^Game_Cache) {
 		if mm.team[gc.owner[CANALS[canal].lands[0]]] == mm.team[gc.cur_player] &&
 		   mm.team[gc.owner[CANALS[canal].lands[1]]] == mm.team[gc.cur_player] {
 			gc.canals_open += {Canal_ID(canal)}
+		}
+	}
+}
+
+set_land_armies_avail_to_move :: proc(gc: ^Game_Cache) {
+	gc.armies_available_to_move = {}
+	for land in Land_ID {
+		if gc.active_armies[land][.INF_1_MOVES] > 0 {
+			gc.armies_available_to_move[.INF] += {land}
+		}
+		if gc.active_armies[land][.ARTY_1_MOVES] > 0 {
+			gc.armies_available_to_move[.ARTY] += {land}
+		}
+		if gc.active_armies[land][.TANK_2_MOVES] > 0 {
+			gc.armies_available_to_move[.TANK] += {land}
+		}
+		if gc.active_armies[land][.AAGUN_1_MOVES] > 0 {
+			gc.armies_available_to_move[.AAGUN] += {land}
+		}
+	}
+}
+
+set_land_planes_avail_to_move :: proc(gc: ^Game_Cache) {
+	gc.land_planes_available_to_move = {}
+	for plane in Active_Plane {
+		for land in Land_ID {
+			if gc.active_land_planes[land][plane] > 0 {
+				gc.land_planes_available_to_move[plane] += {land}
+			}
+		}
+	}
+}
+
+set_sea_ships_avail_to_move :: proc(gc: ^Game_Cache) {
+	gc.ships_available_to_move = {}
+	for ship in Active_Ship {
+		for sea in Sea_ID {
+			if gc.active_ships[sea][ship] > 0 {
+				gc.ships_available_to_move[ship] += {sea}
+			}
+		}
+	}
+}
+
+set_sea_planes_avail_to_move :: proc(gc: ^Game_Cache) {
+	gc.sea_planes_available_to_move = {}
+	for sea in Sea_ID {
+		for plane in Active_Plane {
+			if gc.active_sea_planes[sea][plane] > 0 {
+				gc.sea_planes_available_to_move[plane] += {sea}
+			}
 		}
 	}
 }

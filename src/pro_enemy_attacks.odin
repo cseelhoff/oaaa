@@ -4,7 +4,6 @@ import sa "core:container/small_array"
 import "core:fmt"
 import "core:math"
 
-
 generate_enemy_attack_options :: proc(gc: ^Game_Cache, enemy_attack_options: ^[Player_ID][Air_ID]Territory_Target) {
 	//loop through enemies
 	enemy_gc := gc^

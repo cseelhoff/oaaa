@@ -768,12 +768,16 @@ retreat_land_units :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> bool {
 	dst_land := to_land(dst_action)
 	for army in Active_Army {
 		number_of_armies := gc.active_armies[src_land][army]
-		gc.active_armies[dst_land][army] += number_of_armies
+		// if number_of_armies == 0 do continue
+		gc.active_armies[dst_land][Armies_Moved[army]] += number_of_armies
+		// gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[army]] += number_of_armies
 		gc.idle_armies[dst_land][gc.cur_player][Active_Army_To_Idle[army]] += number_of_armies
 		gc.team_land_units[dst_land][mm.team[gc.cur_player]] += number_of_armies
+		// gc.armies_available_to_move[Active_Army_To_Idle[army]] += {dst_land}
 		gc.active_armies[src_land][army] = 0
 		gc.idle_armies[src_land][gc.cur_player][Active_Army_To_Idle[army]] = 0
 		gc.team_land_units[src_land][mm.team[gc.cur_player]] -= number_of_armies
+		// gc.armies_available_to_move[Active_Army_To_Idle[army]] -= {src_land}
 	}
 	gc.more_land_combat_needed -= {src_land}
 	return true
