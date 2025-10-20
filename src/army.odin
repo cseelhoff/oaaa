@@ -318,7 +318,7 @@ add_if_boat_available :: proc(
 
 are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands) -> bool {
 	for mid_land in sa.slice(mid_lands) {
-		if mid_land in (gc.has_enemy_factory | gc.has_enemy_units) do return false
+		if mid_land in (gc.has_enemy_factory | gc.has_enemy_armies) do return false
 	}
 	return true
 }
@@ -356,7 +356,7 @@ add_valid_army_moves_2 :: proc(gc: ^Game_Cache) {
     src_land := to_land(gc.current_territory)
     army := to_army(gc.current_active_unit)
 	for dst_land in (mm.l2l_2away_via_land_bitset[src_land]) {
-		if (mm.l2l_2away_via_midland_bitset[src_land][dst_land] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
+		if (mm.l2l_2away_via_midland_bitset[src_land][dst_land] & ~gc.has_enemy_factory & ~gc.has_enemy_armies) == {} {
 			continue
 		}
 		add_land_to_valid_actions(gc, dst_land, gc.active_armies[src_land][army])

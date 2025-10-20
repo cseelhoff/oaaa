@@ -3,19 +3,9 @@ import sa "core:container/small_array"
 import "core:fmt"
 import "core:slice"
 
-populate_enemy_attack_options :: proc(
-	gc: ^Game_Cache,
-	cleared_territories: Land_Bitset,
-	territories_to_check: Land_Bitset,
-	enemy_attack_options: ^Pro_Other_Move_Options,
-) {
-	find_enemy_attack_options(
-		gc,
-		gc.cur_player,
-		cleared_territories,
-		territories_to_check,
-		enemy_attack_options,
-	)
+Unit :: struct {
+	owner:     Player_ID,
+	unit_type: Idle_Army,
 }
 
 find_enemy_attack_options :: proc(
@@ -32,9 +22,12 @@ find_enemy_attack_options :: proc(
 	// Loop through each enemy to determine the maximum number of enemy units that can attack each
 	// territory
 	for enemy_player in sa.slice(&mm.enemies[gc.cur_player]) {
-		enemy_unit_territories_land := gc.has_enemy_units
+		enemy_unit_territories_land := gc.has_enemy_armies
 		enemy_unit_territories_sea := gc.has_enemy_ships
 		attack_map := map[Air_ID]Pro_Territory{}
+		unit_attack_map := map[Unit]Land_Bitset{}
+		transport_attack_map := map[Unit]Land_Bitset{}
+		bombard_map := map[Unit]Air_Bitset{}
 		enemy_attack_maps[enemy_player] = attack_map
 		find_attack_options(
 			gc,
@@ -42,6 +35,9 @@ find_enemy_attack_options :: proc(
 			enemy_unit_territories_land,
 			enemy_unit_territories_sea,
 			attack_map,
+			unit_attack_map,
+			transport_attack_map,
+			bombard_map,
 			territories_to_check,
 		)
 		for air_id in attack_map {
@@ -55,99 +51,35 @@ find_enemy_attack_options :: proc(
 	set_move_maps(gc, enemy_attack_options, &enemy_attack_maps)
 }
 
-set_max_move_map :: proc(
-	gc: ^Game_Cache,
-	enemy_attack_options: ^Pro_Other_Move_Options,
-	enemy_attack_maps: ^[Player_ID]map[Air_ID]Pro_Territory,
-	player: Player_ID,
-	is_attacker: bool,
-) {
-	//   private static Map<Territory, ProTerritory> newMaxMoveMap(
-	//       final List<Map<Territory, ProTerritory>> moveMaps,
-	//       final GamePlayer player,
-	//       final boolean isAttacker) {
-
-	//     final Map<Territory, ProTerritory> result = new HashMap<>();
-	//     final List<GamePlayer> players = ProUtils.getOtherPlayersInTurnOrder(player);
-	//     for (final Map<Territory, ProTerritory> moveMap : moveMaps) {
-	//       for (final Territory t : moveMap.keySet()) {
-	//         final ProTerritory proTerritory = moveMap.get(t);
-	//         // Get current player
-	//         final Set<Unit> currentUnits = new HashSet<>(proTerritory.getMaxUnits());
-	//         currentUnits.addAll(proTerritory.getMaxAmphibUnits());
-	//         if (currentUnits.isEmpty()) {
-	//           continue;
-	//         }
-	//         final GamePlayer movePlayer = CollectionUtils.getAny(currentUnits).getOwner();
-	//         // Skip if checking allied moves and their turn doesn't come before territory owner's
-	//         if (player.isAllied(movePlayer)
-	//             && !ProUtils.isPlayersTurnFirst(players, movePlayer, t.getOwner())) {
-	//           continue;
-	//         }
-
-	//         // Add to max move map if its empty or its strength is greater than existing
-	//         if (!result.containsKey(t)) {
-	//           result.put(t, proTerritory);
-	//         } else {
-	//           final ProTerritory proResult = result.get(t);
-	//           final Set<Unit> maxUnits = new HashSet<>(proResult.getMaxUnits());
-	//           maxUnits.addAll(proResult.getMaxAmphibUnits());
-	//           double maxStrength = 0;
-	//           if (!maxUnits.isEmpty()) {
-	//             maxStrength = ProBattleUtils.estimateStrength(t, maxUnits, List.of(), isAttacker);
-	//           }
-	//           final double currentStrength =
-	//               ProBattleUtils.estimateStrength(t, currentUnits, List.of(), isAttacker);
-	//           final boolean currentHasLandUnits = currentUnits.stream().anyMatch(Matches.unitIsLand());
-	//           final boolean maxHasLandUnits = maxUnits.stream().anyMatch(Matches.unitIsLand());
-	//           if ((currentHasLandUnits
-	//                   && ((!maxHasLandUnits && !t.isWater()) || currentStrength > maxStrength))
-	//               || ((!maxHasLandUnits || t.isWater()) && currentStrength > maxStrength)) {
-	//             result.put(t, proTerritory);
-	//           }
-	//         }
-	//       }
-	//     }
-	//     return result;
-}
-
-set_move_maps :: proc(
-	gc: ^Game_Cache,
-	enemy_attack_options: ^Pro_Other_Move_Options,
-	enemy_attack_maps: ^[Player_ID]map[Air_ID]Pro_Territory,
-) {
-	// private static Map<Territory, List<ProTerritory>> newMoveMaps(
-	//       final List<Map<Territory, ProTerritory>> moveMapList) {
-	//     final Map<Territory, List<ProTerritory>> result = new HashMap<>();
-	//     for (final Map<Territory, ProTerritory> moveMap : moveMapList) {
-	//       for (final Territory t : moveMap.keySet()) {
-	//         result.computeIfAbsent(t, key -> new ArrayList<>()).add(moveMap.get(t));
-	//       }
-	//     }
-	//     return result;
-	//   }
-}
-
 find_attack_options :: proc(
 	gc: ^Game_Cache,
-	enemy_player: Player_ID,
-	enemy_unit_territories_land: Land_Bitset,
-	enemy_unit_territories_sea: Sea_Bitset,
-	attack_map: map[Air_ID]Pro_Territory,
+	player: Player_ID,
+	my_unit_territories_land: Land_Bitset,
+	my_unit_territories_sea: Sea_Bitset,
+	move_map: map[Air_ID]Pro_Territory,
+	unit_move_map: map[Unit]Land_Bitset,
+	transport_move_map: map[Unit]Land_Bitset,
+	bombard_map: map[Unit]Air_Bitset,
+	enemy_territories: Land_Bitset,
 	territories_to_check: Land_Bitset,
+	is_checking_enemy_attacks: bool,
 ) {
 	land_routes_map: map[Land_ID]Land_Bitset = {}
-	territories_that_cant_be_held: Land_Bitset = territories_to_check
+	territories_that_cant_be_held: Land_Bitset = enemy_territories
 	find_naval_move_options(
 		gc,
-		enemy_player,
-		enemy_unit_territories_sea,
-		attack_map,
-		territories_that_cant_be_held,
+		player,
+		my_unit_territories_sea,
+		move_map,
+		unit_move_map,
+		transport_move_map,
+		enemy_territories,
+		true,
+		is_checking_enemy_attacks,
 	)
 	find_land_move_options(
 		gc,
-		enemy_player,
+		player,
 		enemy_unit_territories_land,
 		land_routes_map,
 		attack_map,
@@ -155,7 +87,7 @@ find_attack_options :: proc(
 	)
 	find_air_move_options(
 		gc,
-		enemy_player,
+		player,
 		enemy_unit_territories_land,
 		land_routes_map,
 		attack_map,
@@ -163,7 +95,7 @@ find_attack_options :: proc(
 	)
 	find_amphib_move_options(
 		gc,
-		enemy_player,
+		player,
 		enemy_unit_territories_land,
 		land_routes_map,
 		attack_map,
@@ -171,19 +103,31 @@ find_attack_options :: proc(
 	)
 	find_bombard_options(
 		gc,
-		enemy_player,
+		player,
 		enemy_unit_territories_sea,
 		attack_map,
 		territories_that_cant_be_held,
 	)
 }
 
-find_naval_move_options :: proc(gc: ^Game_Cache,
-	enemy_player: Player_ID,
-	enemy_unit_territories_sea: Sea_Bitset,
-	attack_map: map[Air_ID]Pro_Territory,
+find_naval_move_options :: proc(
+	gc: ^Game_Cache,
+	player: Player_ID,
+	my_unit_territories: Sea_Bitset,
+	move_map: map[Air_ID]Pro_Territory,
+	unit_move_map: map[Unit]Land_Bitset,
+	transport_move_map: map[Unit]Land_Bitset,
 	territories_that_cant_be_held: Land_Bitset,
-) -> (ok: bool) {
+	is_combat_move: bool,
+	is_checking_enemy_attacks: bool,
+) -> (
+	ok: bool,
+) {
 	// Implementation goes here
+	for my_unit_territory in my_unit_territories {
+		// Find my naval units that have movement left
+		possible_move_territories: Land_Bitset = {} // Determine possible move territories for each unit
+	}
+
 	return true
 }

@@ -120,7 +120,7 @@ generate_enemy_attack_options :: proc(gc: ^Game_Cache, enemy_attack_options: ^[P
                    continue
                 }
                 // if all midlands between src and dst have enemy factory or units, skip
-                if (mm.l2l_2away_via_midland_bitset[src_land][dst] & ~enemy_gc.has_enemy_factory & ~enemy_gc.has_enemy_units) == {} {
+                if (mm.l2l_2away_via_midland_bitset[src_land][dst] & ~enemy_gc.has_enemy_factory & ~enemy_gc.has_enemy_armies) == {} {
                     continue
                 }
                 enemy_attack_options[enemy][to_air(dst)].Tanks += enemy_gc.active_armies[src_land][.TANK_2_MOVES]

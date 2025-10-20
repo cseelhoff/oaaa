@@ -276,7 +276,7 @@ rotate_turns_reset :: proc(gc: ^Game_Cache) {
 		gc.active_land_planes[land][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
 		gc.active_land_planes[land][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
 		if gc.team_land_units[land][mm.enemy_team[gc.cur_player]] > 0 {
-			gc.has_enemy_units += {land}
+			gc.has_enemy_armies += {land}
 			add_air(&gc.air_has_enemies, to_air(land))
 		}
 	}

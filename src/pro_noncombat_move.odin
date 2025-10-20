@@ -229,7 +229,7 @@ move_one_defender_to_land_territories_bordering_enemy :: proc(gc: ^Game_Cache) -
 	territories_to_defend_with_one_unit : Land_Bitset={}
 	// final Predicate<Unit> alliedAndNotInfra = ProMatches.unitIsAlliedLandAndNotInfra(player);
 	for land in gc.friendly_owner {
-		enemy_neighbors := mm.l2l_1away_via_land_bitset[land] & gc.has_enemy_units
+		enemy_neighbors := mm.l2l_1away_via_land_bitset[land] & gc.has_enemy_armies
 		if enemy_neighbors == {} do continue
 		if gc.team_land_units[land][mm.team[gc.cur_player]] > 0 do continue
 		territories_to_defend_with_one_unit += {land}

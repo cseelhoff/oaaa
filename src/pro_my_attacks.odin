@@ -77,7 +77,7 @@ generate_my_attack_options :: proc(gc: ^Game_Cache, my_territory_targets: ^[Air_
 			// if all midlands between src and dst have enemy factory or units, skip
 			if (mm.l2l_2away_via_midland_bitset[src_land][dst] &
 				   ~gc.has_enemy_factory &
-				   ~gc.has_enemy_units) ==
+				   ~gc.has_enemy_armies) ==
 			   {} {
 				continue
 			}

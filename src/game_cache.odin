@@ -45,7 +45,7 @@ Game_Cache :: struct {
 	team_land_units:                [Land_ID][Team_ID]u8,
 	team_sea_units:                 [Sea_ID][Team_ID]u8,
 	pro_value:                      [Land_ID]f64,
-	factory_locations:              [Player_ID]SA_Land,
+	factory_locations:              [Player_ID]SA_Land, // TODO: change to Land_Bitset for faster checks
 	enemy_blockade_total:           [Sea_ID]u8,
 	enemy_destroyer_total:          [Sea_ID]u8,
 	enemy_fighters_total:           [Sea_ID]u8,
@@ -74,8 +74,8 @@ Game_Cache :: struct {
 	has_factory:                    Land_Bitset,
 	has_bombable_factory:           Land_Bitset,
 	has_enemy_factory:              Land_Bitset,
-	has_enemy_units:                Land_Bitset,
-	has_enemy_ships:              Sea_Bitset,
+	has_enemy_armies:               Land_Bitset,
+	has_enemy_ships:                Sea_Bitset,
 	has_carrier_space:              Sea_Bitset,
 	possible_factory_carriers:      Sea_Bitset,
 	canals_open:                    Canals_Open,
@@ -111,7 +111,7 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 			}
 		}
 		if gc.team_land_units[land][mm.enemy_team[gc.cur_player]] > 0 {
-			gc.has_enemy_units += {land}
+			gc.has_enemy_armies += {land}
 			add_air(&gc.air_has_enemies, to_air(land))
 		}
 	}
