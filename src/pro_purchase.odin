@@ -1265,18 +1265,29 @@ Java Original (lines 916-954):
 prioritize_land_territories_triplea :: proc(gc: ^Game_Cache) -> [dynamic]Place_Territory_Land {
 	prioritized := make([dynamic]Place_Territory_Land, context.temp_allocator)
 
-	// Get all land territories we own
+	// Get all land territories we own with factories
 	for territory in Land_ID {
 		if gc.owner[territory] != gc.cur_player do continue
 
-		// Calculate strategic value for this territory
-		strategic_value := gc.pro_value[territory]
-
-		// Skip if no value
-		if strategic_value == 0 do continue
-
 		// Check if we have factory here (can place units)
 		has_factory := gc.factory_prod[territory] > 0
+		
+		// For offensive purchases, only consider territories with factories
+		if !has_factory do continue
+		
+		// Calculate strategic value based on:
+		// 1. Factory production capacity
+		// 2. Distance to enemy (closer = more strategic)
+		// 3. Territory IPC value
+		production := f64(gc.factory_prod[territory])
+		territory_value := f64(mm.value[territory])
+		
+		// Get enemy distance - closer territories are more strategic for offense
+		enemy_distance := get_closest_enemy_land_distance(gc, territory)
+		distance_factor := 6.0 - f64(min(enemy_distance, 5)) // 5 at dist 1, 1 at dist 5
+		
+		// Strategic value combines production, territory value, and proximity
+		strategic_value := (production + territory_value) * distance_factor
 
 		place_terr := Place_Territory_Land {
 			territory       = territory,
@@ -1406,19 +1417,21 @@ purchase_aa_units_triplea :: proc(
 try_buy_aa_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> bool {
 	if gc.money[gc.cur_player] < 5 do return false
 
-	// Deduct money
-	gc.money[gc.cur_player] -= 5
-
-	// Add AA to territory (if has factory) or nearest factory
+	// Find factory for placement
 	factory := find_nearest_factory_triplea(gc, territory)
 	if factory_loc, ok := factory.?; ok {
-		gc.idle_armies[factory_loc][gc.cur_player][.AAGUN] += 1
-		gc.team_land_units[factory_loc][mm.team[gc.cur_player]] += 1
+		// Check production capacity
+		if gc.builds_left[factory_loc] == 0 do return false
+		
+		// Deduct money and production
+		gc.money[gc.cur_player] -= 5
+		gc.builds_left[factory_loc] -= 1
+		
+		// Add AA to placement tracking
+		add_units_to_place_triplea(factory_loc, .AAGun, 1)
 		return true
 	}
 
-	// Refund if no factory found
-	gc.money[gc.cur_player] += 5
 	return false
 }
 
@@ -1539,7 +1552,10 @@ purchase_land_units_triplea :: proc(
 		// At distance 10: tank_factor ≈ 4.0, infantry_factor = 1.0
 		tank_distance_factor := calculate_land_distance_factor(2, enemy_distance)
 		
-		for gc.money[gc.cur_player] >= 3 && units_bought < 10 {
+		// Check remaining production capacity at this factory
+		remaining_production := gc.builds_left[territory]
+		
+		for gc.money[gc.cur_player] >= 3 && units_bought < 10 && remaining_production > 0 {
 			// Calculate current fodder ratio (what % of units bought so far are infantry)
 			current_fodder_ratio := units_bought > 0 ? (total_inf * 100) / (total_inf + total_arty + total_tank) : 100
 			
@@ -1557,15 +1573,17 @@ purchase_land_units_triplea :: proc(
 				
 				if should_buy_arty {
 					gc.money[gc.cur_player] -= 4
-					gc.idle_armies[territory][gc.cur_player][.ARTY] += 1
-					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+					gc.builds_left[territory] -= 1
+					remaining_production -= 1
+					add_units_to_place_triplea(territory, .Artillery, 1)
 					units_bought += 1
 					total_arty += 1
 					attack_defense_diff += 0.0  // Artillery: 2 attack, 2 defense = neutral
 				} else if gc.money[gc.cur_player] >= 3 {
 					gc.money[gc.cur_player] -= 3
-					gc.idle_armies[territory][gc.cur_player][.INF] += 1
-					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+					gc.builds_left[territory] -= 1
+					remaining_production -= 1
+					add_units_to_place_triplea(territory, .Infantry, 1)
 					units_bought += 1
 					total_inf += 1
 					attack_defense_diff -= 1.0  // Infantry: 1 attack, 2 defense = defense-heavy
@@ -1582,24 +1600,27 @@ purchase_land_units_triplea :: proc(
 				if prefer_tank && gc.money[gc.cur_player] >= 6 {
 					// Buy tank - high mobility, good at distance
 					gc.money[gc.cur_player] -= 6
-					gc.idle_armies[territory][gc.cur_player][.TANK] += 1
-					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+					gc.builds_left[territory] -= 1
+					remaining_production -= 1
+					add_units_to_place_triplea(territory, .Tank, 1)
 					units_bought += 1
 					total_tank += 1
 					attack_defense_diff += 0.0  // Tank: 3 attack, 3 defense = neutral
 				} else if gc.money[gc.cur_player] >= 4 {
 					// Buy artillery - supports infantry
 					gc.money[gc.cur_player] -= 4
-					gc.idle_armies[territory][gc.cur_player][.ARTY] += 1
-					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+					gc.builds_left[territory] -= 1
+					remaining_production -= 1
+					add_units_to_place_triplea(territory, .Artillery, 1)
 					units_bought += 1
 					total_arty += 1
 					attack_defense_diff += 0.0  // Artillery: 2 attack, 2 defense = neutral
 				} else if gc.money[gc.cur_player] >= 3 {
 					// Fallback to infantry if can't afford attack units
 					gc.money[gc.cur_player] -= 3
-					gc.idle_armies[territory][gc.cur_player][.INF] += 1
-					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+					gc.builds_left[territory] -= 1
+					remaining_production -= 1
+					add_units_to_place_triplea(territory, .Infantry, 1)
 					units_bought += 1
 					total_inf += 1
 					attack_defense_diff -= 1.0
@@ -2132,35 +2153,54 @@ purchase_sea_and_amphib_units_triplea :: proc(
 
 		sea_id := place_sea.sea_zone
 		debug_checks(gc)
+		
+		// Find the coastal factory that can build to this sea zone
+		factory_for_sea: Maybe(Land_ID) = nil
+		for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+			if gc.owner[factory_loc] != gc.cur_player do continue
+			if gc.builds_left[factory_loc] == 0 do continue
+			// Check if factory is adjacent to this sea zone
+			for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+				if adj_sea == sea_id {
+					factory_for_sea = factory_loc
+					break
+				}
+			}
+			if factory_for_sea != nil do break
+		}
+		
+		// Skip if no factory can build to this sea zone
+		if factory_for_sea == nil do continue
+		factory_loc := factory_for_sea.?
 
 		// Phase 1: Check if need destroyer (anti-sub)
 		need_destroyer := check_need_destroyer_triplea(gc, sea_id)
-		if need_destroyer && gc.money[gc.cur_player] >= 8 {
+		if need_destroyer && gc.money[gc.cur_player] >= 8 && gc.builds_left[factory_loc] > 0 {
 			// Buy destroyer
 			gc.money[gc.cur_player] -= 8
-			gc.idle_ships[sea_id][gc.cur_player][.DESTROYER] += 1
-			gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += 1
+			gc.builds_left[factory_loc] -= 1
+			add_naval_units_to_place_triplea(factory_loc, .DESTROYER, 1)
 			bought_units = true
 		}
 		debug_checks(gc)
 
 		// Phase 2: Purchase sea defenders if needed
-		if place_sea.num_defenders < 2 && gc.money[gc.cur_player] >= 12 {
+		if place_sea.num_defenders < 2 && gc.money[gc.cur_player] >= 12 && gc.builds_left[factory_loc] > 0 {
 			// Buy cruiser (good all-around ship)
 			gc.money[gc.cur_player] -= 12
-			gc.idle_ships[sea_id][gc.cur_player][.CRUISER] += 1
-			gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += 1
+			gc.builds_left[factory_loc] -= 1
+			add_naval_units_to_place_triplea(factory_loc, .CRUISER, 1)
 			bought_units = true
 		}
 		debug_checks(gc)
 
 		// Phase 3: Purchase transports if strategic value is high
-		if place_sea.strategic_value >= 3.0 && gc.money[gc.cur_player] >= 7 {
+		if place_sea.strategic_value >= 3.0 && gc.money[gc.cur_player] >= 7 && gc.builds_left[factory_loc] > 0 {
 			// Buy transport for amphibious assault
 			if can_defend_new_transport_triplea(gc, sea_id) {
 				gc.money[gc.cur_player] -= 7
-				gc.idle_ships[sea_id][gc.cur_player][.TRANS_EMPTY] += 1
-				gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += 1
+				gc.builds_left[factory_loc] -= 1
+				add_naval_units_to_place_triplea(factory_loc, .TRANS_EMPTY, 1)
 				bought_units = true
 			} else {
 				wanted_to_buy_but_couldnt_defend = true
@@ -2169,12 +2209,12 @@ purchase_sea_and_amphib_units_triplea :: proc(
 		debug_checks(gc)
 
 		// Phase 4: Purchase attack ships (carriers for fighters)
-		if gc.money[gc.cur_player] >= 14 && place_sea.strategic_value >= 5.0 {
+		if gc.money[gc.cur_player] >= 14 && place_sea.strategic_value >= 5.0 && gc.builds_left[factory_loc] > 0 {
 			// Buy carrier (can hold 2 fighters)
 			if can_defend_new_carrier_triplea(gc, sea_id) {
 				gc.money[gc.cur_player] -= 14
-				gc.idle_ships[sea_id][gc.cur_player][.CARRIER] += 1
-				gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += 1
+				gc.builds_left[factory_loc] -= 1
+				add_naval_units_to_place_triplea(factory_loc, .CARRIER, 1)
 				bought_units = true
 			} else {
 				wanted_to_buy_but_couldnt_defend = true
@@ -2294,11 +2334,15 @@ purchase_units_with_remaining_production_triplea :: proc(
 		if gc.money[gc.cur_player] < 10 do break
 
 		territory := place_terr.territory
+		
+		// Check remaining production capacity
+		if gc.builds_left[territory] == 0 do continue
 
 		// Buy fighter (versatile, good attack and defense)
 		if gc.money[gc.cur_player] >= 10 {
 			gc.money[gc.cur_player] -= 10
-			gc.idle_land_planes[territory][gc.cur_player][.FIGHTER] += 1
+			gc.builds_left[territory] -= 1
+			add_units_to_place_triplea(territory, .Fighter, 1)
 			fighters_bought += 1
 			when ODIN_DEBUG {
 				fmt.printf("    Bought fighter at %v (safe territory)\n", territory)
@@ -2311,12 +2355,15 @@ purchase_units_with_remaining_production_triplea :: proc(
 		if gc.money[gc.cur_player] < 3 do break
 
 		territory := place_terr.territory
+		
+		// Check remaining production capacity
+		if gc.builds_left[territory] == 0 do continue
 
 		// Buy infantry (cheap defenders)
-		for gc.money[gc.cur_player] >= 3 {
+		for gc.money[gc.cur_player] >= 3 && gc.builds_left[territory] > 0 {
 			gc.money[gc.cur_player] -= 3
-			gc.idle_armies[territory][gc.cur_player][.INF] += 1
-			gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+			gc.builds_left[territory] -= 1
+			add_units_to_place_triplea(territory, .Infantry, 1)
 			infantry_bought += 1
 		}
 	}
@@ -2372,13 +2419,16 @@ upgrade_units_with_remaining_pus_triplea :: proc(
 	gc: ^Game_Cache,
 	prioritized_land: [dynamic]Place_Territory_Land,
 ) {
-	if gc.money[gc.cur_player] < 3 do return
+	if gc.money[gc.cur_player] < 1 do return
 
 	/*
 	TripleA logic:
-	1. Upgrade units in far territories first (lower strategic value)
+	1. Upgrade PURCHASED units (not existing ones) in far territories first
 	2. Replace cheap units with better units (e.g., Infantry -> Artillery/Tank)
 	3. Use findUpgradeUnitEfficiency to determine best upgrade
+	
+	Important: We can only upgrade units we purchased THIS TURN, which are
+	tracked in g_purchased_units. We refund the cheaper unit and buy the upgrade.
 	*/
 
 	when ODIN_DEBUG {
@@ -2388,69 +2438,98 @@ upgrade_units_with_remaining_pus_triplea :: proc(
 	starting_money := gc.money[gc.cur_player]
 	upgrades := 0
 
-	// Reverse prioritization - upgrade far territories first
-	for i := len(prioritized_land) - 1; i >= 0; i -= 1 {
-		if gc.money[gc.cur_player] < 3 do break
-
-		place_terr := prioritized_land[i]
-		if !place_terr.has_factory do continue
-
-		territory := place_terr.territory
+	// Iterate through purchased units and try to upgrade them
+	for &purchase in g_purchased_units {
+		if gc.money[gc.cur_player] < 1 do break
+		
+		territory := purchase.territory
+		
+		// Get territory strategic value
+		strategic_value: f64 = 0
+		for place_terr in prioritized_land {
+			if place_terr.territory == territory {
+				strategic_value = place_terr.strategic_value
+				break
+			}
+		}
 		
 		// Get enemy distance for this territory - key for movement factor calculation
 		enemy_distance := get_closest_enemy_land_distance(gc, territory)
 
-		// Try to upgrade infantry to artillery (if we have money)
-		if gc.idle_armies[territory][gc.cur_player][.INF] > 0 && gc.money[gc.cur_player] >= 4 {
-			// Check efficiency - artillery has movement 1, so distance factor won't help much
+		// Try to upgrade purchased infantry to artillery
+		// Cost difference: 4 - 3 = 1 IPC
+		for purchase.inf > 0 && gc.money[gc.cur_player] >= 1 {
 			efficiency := find_upgrade_unit_efficiency_triplea(
 				4,
 				2.0,
 				2.0,
 				1,
-				place_terr.strategic_value,
+				strategic_value,
 				enemy_distance,
 			)
 
-			if efficiency > 3.0 { 	// Worth upgrading
-				// Remove infantry, add artillery
-				gc.idle_armies[territory][gc.cur_player][.INF] -= 1
-				gc.team_land_units[territory][mm.team[gc.cur_player]] -= 1
-				gc.money[gc.cur_player] += 3 // Refund infantry
-				gc.money[gc.cur_player] -= 4 // Buy artillery
-				gc.idle_armies[territory][gc.cur_player][.ARTY] += 1
-				gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+			if efficiency > 3.0 { // Worth upgrading
+				purchase.inf -= 1
+				purchase.arty += 1
+				gc.money[gc.cur_player] -= 1 // Pay upgrade cost (4-3=1)
 				upgrades += 1
 				when ODIN_DEBUG {
 					fmt.printf("    Upgraded infantry -> artillery at %v\n", territory)
 				}
+			} else {
+				break // Not worth upgrading more infantry here
 			}
 		}
 
-		// Try to upgrade infantry to tank (if we have lots of money)
+		// Try to upgrade purchased infantry to tank
+		// Cost difference: 6 - 3 = 3 IPCs
 		// Tanks benefit greatly from the exponential distance factor!
-		if gc.idle_armies[territory][gc.cur_player][.INF] > 0 && gc.money[gc.cur_player] >= 6 {
+		for purchase.inf > 0 && gc.money[gc.cur_player] >= 3 {
 			efficiency := find_upgrade_unit_efficiency_triplea(
 				6,
 				3.0,
 				3.0,
-				2,  // movement 2 gives exponential boost at distance
-				place_terr.strategic_value,
+				2, // movement 2 gives exponential boost at distance
+				strategic_value,
 				enemy_distance,
 			)
 
-			if efficiency > 5.0 { 	// Worth upgrading
-				// Remove infantry, add tank
-				gc.idle_armies[territory][gc.cur_player][.INF] -= 1
-				gc.team_land_units[territory][mm.team[gc.cur_player]] -= 1
-				gc.money[gc.cur_player] += 3 // Refund infantry
-				gc.money[gc.cur_player] -= 6 // Buy tank
-				gc.idle_armies[territory][gc.cur_player][.TANK] += 1
-				gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+			if efficiency > 5.0 { // Worth upgrading
+				purchase.inf -= 1
+				purchase.tank += 1
+				gc.money[gc.cur_player] -= 3 // Pay upgrade cost (6-3=3)
 				upgrades += 1
 				when ODIN_DEBUG {
 					fmt.printf("    Upgraded infantry -> tank at %v (dist=%d)\n", territory, enemy_distance)
 				}
+			} else {
+				break // Not worth upgrading more infantry here
+			}
+		}
+		
+		// Try to upgrade purchased artillery to tank
+		// Cost difference: 6 - 4 = 2 IPCs
+		for purchase.arty > 0 && gc.money[gc.cur_player] >= 2 {
+			efficiency := find_upgrade_unit_efficiency_triplea(
+				6,
+				3.0,
+				3.0,
+				2,
+				strategic_value,
+				enemy_distance,
+			)
+			
+			// Only upgrade if tanks are significantly better (distance factor helps)
+			if efficiency > 6.0 {
+				purchase.arty -= 1
+				purchase.tank += 1
+				gc.money[gc.cur_player] -= 2 // Pay upgrade cost (6-4=2)
+				upgrades += 1
+				when ODIN_DEBUG {
+					fmt.printf("    Upgraded artillery -> tank at %v (dist=%d)\n", territory, enemy_distance)
+				}
+			} else {
+				break
 			}
 		}
 	}
