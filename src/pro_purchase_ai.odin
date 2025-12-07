@@ -65,6 +65,7 @@ purchase_triplea_full :: proc(gc: ^Game_Cache) -> map[Land_ID]Pro_Purchase_Terri
 	need_to_defend_land_territories := prioritize_territories_to_defend_triplea(
 		gc,
 		true,
+		&all_enemies,
 		&enemy_attack_options,
 	)
 	//     purchaseDefenders(
@@ -125,6 +126,7 @@ purchase_triplea_full :: proc(gc: ^Game_Cache) -> map[Land_ID]Pro_Purchase_Terri
 	need_to_defend_sea_territories := prioritize_territories_to_defend_triplea(
 		gc,
 		false,
+		&all_enemies,
 		&enemy_attack_options,
 	)
 	//     purchaseDefenders(

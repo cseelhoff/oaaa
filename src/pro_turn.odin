@@ -1,13 +1,13 @@
 package oaaa
 
+import "base:intrinsics"
+import sa "core:container/small_array"
 import "core:fmt"
 import "core:math/rand"
-import sa "core:container/small_array"
-import "base:intrinsics"
 
 // Debug separators
 SEP_LONG :: "======================================================================"
-SEP_MED  :: "============================================================"
+SEP_MED :: "============================================================"
 
 /*
 Pro AI Turn Implementation
@@ -32,17 +32,17 @@ Key Differences from play_full_turn:
 // Main Pro AI turn function - called during MCTS rollouts when use_pro_ai_rollout flag is set
 play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	debug_checks(gc)
-	
+
 	// Phase 1: Purchase Phase
 	// Pro AI decides what units to purchase based on strategic needs
 	proai_purchase_phase(gc) or_return
 	debug_checks(gc)
-	
+
 	// Phase 2: Combat Move Phase
 	// Move air units, naval units, and ground units into combat positions
 	proai_combat_move_phase(gc) or_return
 	debug_checks(gc)
-	
+
 	// Phase 3: Combat Phase
 	// Resolve all sea and land battles
 	proai_combat_phase(gc) or_return
@@ -50,7 +50,7 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 	resolve_land_battles(gc)
 	debug_checks(gc)
-	
+
 	// Phase 4: Non-Combat Move Phase
 	// Move remaining units to defensive/strategic positions
 	proai_noncombat_move_phase(gc) or_return
@@ -58,12 +58,12 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 	// land your planes!
 
-	
+
 	// Phase 5: Place Units Phase
 	// Place purchased units at factories
 	proai_place_units_phase(gc) or_return
 	debug_checks(gc)
-	
+
 	// Phase 6: End Turn Phase
 	// Clean up, collect income, rotate to next player
 	reset_units_fully(gc)
@@ -71,7 +71,7 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	debug_checks(gc)
 	rotate_turns(gc)
 	debug_checks(gc)
-	
+
 	return true
 }
 
@@ -82,7 +82,7 @@ test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
 	fmt.println(SEP_LONG)
 	fmt.printf("Starting Player: %v\n", gs.cur_player)
 	fmt.printf("Starting Money: %d IPCs\n", gs.money[gs.cur_player])
-	
+
 	// Count initial units
 	total_units := 0
 	for land in Land_ID {
@@ -94,14 +94,14 @@ test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
 	}
 	fmt.printf("Total units on board: %d\n", total_units)
 	fmt.println(SEP_LONG)
-	
+
 	gc: Game_Cache
 	load_cache_from_state(&gc, gs)
 	gc.answers_remaining = 65000
 	gc.seed = u16(rand.int_max(RANDOM_MAX))
-	
+
 	debug_checks(&gc)
-	
+
 	// Run a single Pro AI turn using TripleA methods
 	if !play_full_proai_turn(&gc) {
 		fmt.eprintln("\n" + SEP_LONG)
@@ -110,7 +110,7 @@ test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
 		intrinsics.debug_trap()
 		return false
 	}
-	
+
 	// Count final units
 	final_units := 0
 	for land in Land_ID {
@@ -120,7 +120,7 @@ test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
 			}
 		}
 	}
-	
+
 	fmt.println("\n" + SEP_LONG)
 	fmt.println("PRO AI TURN COMPLETE")
 	fmt.println(SEP_LONG)
@@ -129,10 +129,10 @@ test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
 	fmt.printf("Units Added: %d\n", final_units - total_units)
 	fmt.printf("Game Score: %.1f\n", evaluate_cache(&gc))
 	fmt.println(SEP_LONG + "\n")
-	
+
 	// Save the state back
 	gs^ = gc.state
-	
+
 	return true
 }
 
@@ -152,28 +152,26 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	}
 	debug_checks(gc)
 	// Step 1: Find all enemy territories we might want to attack
-	my_territory_targets :[Air_ID]Territory_Target= {}
-	generate_my_attack_options(gc, &my_territory_targets)
-
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 1] Finding ALL units that can attack (populateAttackOptions)...")
 	}
-	
+	my_territory_targets: [Air_ID]Territory_Target = {}
+	generate_my_attack_options(gc, &my_territory_targets)
+
 	// Call the FULL TripleA implementation
 	// TODO: populate_amphib_attack_options
 	// populate_attack_options_triplea(gc, &attack_options)
-	
-	
+
 	// Step 2: Prioritize attack options by strategic value
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 2] Prioritizing attack targets by strategic value...")
 	}
-debug_checks(gc)
+	debug_checks(gc)
 	attack_options := make([dynamic]Attack_Option)
 	defer delete(attack_options)
 	// prioritize_attack_options_triplea(gc, &attack_options, false)
 	prioritize_my_attack_options(gc, &my_territory_targets, &attack_options)
-	
+
 	when ODIN_DEBUG {
 		fmt.println("  Attack priority order:")
 		count := min(10, len(attack_options)) // Show top 10
@@ -181,8 +179,13 @@ debug_checks(gc)
 			opt := attack_options[i]
 			production, is_capital := get_production_and_is_capital_triplea(gc, opt.territory)
 			has_factory_flag := has_factory(gc, opt.territory)
-			fmt.printf("    %d. %v (value: %.1f, production: %d", 
-				i+1, opt.territory, opt.attack_value, production)
+			fmt.printf(
+				"    %d. %v (value: %.1f, production: %d",
+				i + 1,
+				opt.territory,
+				opt.attack_value,
+				production,
+			)
 			if is_capital do fmt.printf(", CAPITAL")
 			if has_factory_flag do fmt.printf(", FACTORY")
 			fmt.printf(")\n")
@@ -191,22 +194,21 @@ debug_checks(gc)
 			fmt.printf("    ... and %d more targets\n", len(attack_options) - 10)
 		}
 	}
-	
+
 	// Step 3: Check which territories can be held after capture
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 3] Checking which territories can be held after capture...")
 	}
 	debug_checks(gc)
 	determine_territories_that_can_be_held_triplea(gc, &attack_options)
-	
+
 	when ODIN_DEBUG {
 		holdable_count := 0
 		for opt in attack_options {
 			if opt.can_hold do holdable_count += 1
 		}
-		fmt.printf("  -> %d of %d territories can be held\n", 
-			holdable_count, len(attack_options))
-		
+		fmt.printf("  -> %d of %d territories can be held\n", holdable_count, len(attack_options))
+
 		// Show first few holdable territories
 		shown := 0
 		for opt in attack_options {
@@ -216,7 +218,7 @@ debug_checks(gc)
 			}
 		}
 	}
-	
+
 	// Step 4: Remove territories not worth attacking
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 4] Filtering out low-value targets...")
@@ -224,22 +226,26 @@ debug_checks(gc)
 	}
 	debug_checks(gc)
 	remove_territories_that_arent_worth_attacking_triplea(gc, &attack_options)
-	
+
 	when ODIN_DEBUG {
 		removed := initial_count - len(attack_options)
 		fmt.printf("  -> Removed %d low-value targets, %d remain\n", removed, len(attack_options))
 		if len(attack_options) > 0 {
 			fmt.println("  Targets worth attacking:")
 			for opt in attack_options {
-				fmt.printf("    - %v (value: %.1f, holdable: %v)\n", 
-					opt.territory, opt.attack_value, opt.can_hold)
+				fmt.printf(
+					"    - %v (value: %.1f, holdable: %v)\n",
+					opt.territory,
+					opt.attack_value,
+					opt.can_hold,
+				)
 			}
 		} else {
 			fmt.println("  -> No attacks worth executing (all targets filtered out)")
 			fmt.println("  Reasons: low strategic value, can't hold after capture, or too risky")
 		}
 	}
-	
+
 	// Early exit if no attacks to execute
 	if len(attack_options) == 0 {
 		when ODIN_DEBUG {
@@ -247,17 +253,16 @@ debug_checks(gc)
 		}
 		return true
 	}
-	
 
 
 	attack_options2 := make([dynamic]Attack_Option)
 	defer delete(attack_options2)
 	populate_attack_options_triplea(gc, &attack_options2)
 	prioritize_attack_options_triplea(gc, &attack_options2, false)
-	
+
 	attack_options3 := make([dynamic]Attack_Option)
 	defer delete(attack_options3)
-	
+
 	for attack_option2 in attack_options2 {
 		for attack_option in attack_options {
 			if attack_option2.territory == attack_option.territory {
@@ -274,11 +279,14 @@ debug_checks(gc)
 	}
 	debug_checks(gc)
 	determine_territories_to_attack_triplea(gc, &attack_options3)
-	
+
 	when ODIN_DEBUG {
 		removed = initial_count - len(attack_options3)
-		fmt.printf("  -> Selected %d territories for attack (removed %d unsuccessful)\n", 
-			len(attack_options3), removed)
+		fmt.printf(
+			"  -> Selected %d territories for attack (removed %d unsuccessful)\n",
+			len(attack_options3),
+			removed,
+		)
 		if len(attack_options3) > 0 {
 			fmt.println("  Final attack targets:")
 			for opt in attack_options3 {
@@ -286,7 +294,7 @@ debug_checks(gc)
 			}
 		}
 	}
-	
+
 	if len(attack_options3) == 0 {
 		when ODIN_DEBUG {
 			fmt.println("  -> No successful attacks possible")
@@ -294,18 +302,18 @@ debug_checks(gc)
 		}
 		return true
 	}
-	
+
 	// Step 6: Re-calculate enemy attacks and re-filter with final selection
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 6] Re-calculating with final attack selection...")
 	}
 	debug_checks(gc)
 	recalculate_enemy_attacks_after_territory_selection_triplea(gc, &attack_options3)
-	
+
 	when ODIN_DEBUG {
 		fmt.printf("  -> %d attacks remain after recalculation\n", len(attack_options3))
 	}
-	
+
 	if len(attack_options3) == 0 {
 		when ODIN_DEBUG {
 			fmt.println("  -> All attacks became unfavorable after recalculation")
@@ -313,15 +321,18 @@ debug_checks(gc)
 		}
 		return true
 	}
-	
+
 	// Step 7: Move defenders to border territories
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 7] Moving defenders to border territories...")
 	}
 	debug_checks(gc)
-	border_moves := move_one_defender_to_land_territories_bordering_enemy_triplea(gc, &attack_options3)
+	border_moves := move_one_defender_to_land_territories_bordering_enemy_triplea(
+		gc,
+		&attack_options3,
+	)
 	defer delete(border_moves)
-	
+
 	// Step 8: Remove attacks where transports would be exposed
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 8] Checking transport safety...")
@@ -329,7 +340,7 @@ debug_checks(gc)
 	}
 	debug_checks(gc)
 	remove_territories_where_transports_are_exposed_triplea(gc, &attack_options3)
-	
+
 	when ODIN_DEBUG {
 		removed = initial_count - len(attack_options3)
 		if removed > 0 {
@@ -338,7 +349,7 @@ debug_checks(gc)
 			fmt.println("  -> All transports safe")
 		}
 	}
-	
+
 	// Step 9: Ensure capital can be defended
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 9] Ensuring capital defense...")
@@ -346,7 +357,7 @@ debug_checks(gc)
 	}
 	debug_checks(gc)
 	remove_attacks_until_capital_can_be_held_triplea(gc, &attack_options3)
-	
+
 	when ODIN_DEBUG {
 		removed = initial_count - len(attack_options3)
 		if removed > 0 {
@@ -354,25 +365,29 @@ debug_checks(gc)
 		} else {
 			fmt.println("  -> Capital can be defended with current attack plan")
 		}
-		
+
 		if len(attack_options3) > 0 {
 			fmt.println("\n  FINAL ATTACK PLAN:")
 			for opt in attack_options3 {
-				fmt.printf("    -> Attack %v (value: %.1f, holdable: %v)\n", 
-					opt.territory, opt.attack_value, opt.can_hold)
+				fmt.printf(
+					"    -> Attack %v (value: %.1f, holdable: %v)\n",
+					opt.territory,
+					opt.attack_value,
+					opt.can_hold,
+				)
 			}
 		} else {
 			fmt.println("\n  -> No attacks will be executed (all removed for capital defense)")
 		}
 	}
-	
+
 	// Step 10: Determine specific units to attack with
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 10] Assigning units to each attack...")
 	}
 	debug_checks(gc)
 	determine_units_to_attack_with_triplea(gc, &attack_options3, &border_moves)
-	
+
 	when ODIN_DEBUG {
 		if len(attack_options3) > 0 {
 			fmt.println("\n  UNIT ASSIGNMENTS:")
@@ -380,9 +395,9 @@ debug_checks(gc)
 				attacker_count := len(opt.attackers)
 				amphib_count := len(opt.amphib_attackers)
 				bombard_count := len(opt.bombard_units)
-				
+
 				fmt.printf("    %v:\n", opt.territory)
-				
+
 				// Show ground/air attackers with source territories
 				if attacker_count > 0 {
 					fmt.printf("      Ground/Air attackers (%d units):\n", attacker_count)
@@ -394,14 +409,14 @@ debug_checks(gc)
 						}
 						delete(unit_type_counts)
 					}
-					
+
 					for unit in opt.attackers {
 						if unit.unit_type not_in unit_type_counts {
 							unit_type_counts[unit.unit_type] = make([dynamic]Land_ID)
 						}
 						append(&unit_type_counts[unit.unit_type], unit.from_territory)
 					}
-					
+
 					// Print grouped by type
 					for unit_type, sources in unit_type_counts {
 						fmt.printf("        - %d x %v from: ", len(sources), unit_type)
@@ -412,7 +427,7 @@ debug_checks(gc)
 						fmt.printf("\n")
 					}
 				}
-				
+
 				// Show amphibious attackers
 				if amphib_count > 0 {
 					fmt.printf("      Amphibious attackers (%d units):\n", amphib_count)
@@ -423,14 +438,14 @@ debug_checks(gc)
 						}
 						delete(unit_type_counts)
 					}
-					
+
 					for unit in opt.amphib_attackers {
 						if unit.unit_type not_in unit_type_counts {
 							unit_type_counts[unit.unit_type] = make([dynamic]Land_ID)
 						}
 						append(&unit_type_counts[unit.unit_type], unit.from_territory)
 					}
-					
+
 					for unit_type, sources in unit_type_counts {
 						fmt.printf("        - %d x %v from sea zones: ", len(sources), unit_type)
 						for source, i in sources {
@@ -440,24 +455,32 @@ debug_checks(gc)
 						fmt.printf("\n")
 					}
 				}
-				
+
 				// Show bombardment support
 				if bombard_count > 0 {
 					fmt.printf("      Bombardment support (%d units):\n", bombard_count)
 				}
-				
+
 				// Show attack vs defense strength
-				attack_power := calculate_total_attack_power(gc, opt.attackers, opt.amphib_attackers)
+				attack_power := calculate_total_attack_power(
+					gc,
+					opt.attackers,
+					opt.amphib_attackers,
+				)
 				defense_power := calculate_total_defense_power(gc, opt.defenders)
-				fmt.printf("      Total: %.1f attack vs %.1f defense\n", attack_power, defense_power)
+				fmt.printf(
+					"      Total: %.1f attack vs %.1f defense\n",
+					attack_power,
+					defense_power,
+				)
 			}
 		}
 	}
-	
+
 	when ODIN_DEBUG {
 		fmt.println(SEP_MED + "\n")
 	}
-	
+
 	// Step 11: Execute combat moves (doMove)
 	// Java Original: ProCombatMoveAi.doMove() (lines 153-167)
 	/*
@@ -481,14 +504,14 @@ debug_checks(gc)
 	    isBombing = false;
 	  }
 	*/
-	
+
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 11] Executing combat moves (doMove)")
 	}
-	
+
 	// Execute all planned attacks
 	execute_combat_moves_triplea(gc, &attack_options3) or_return
-	
+
 	return true
 }
 
@@ -521,17 +544,17 @@ Future Enhancement: Could add simple retreat logic like:
 proai_combat_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// Use standard OAAA combat resolution
 	// No special Pro AI tactical decisions (stubbed for future)
-	
+
 	// Resolve sea battles first (affects transports)
 	resolve_sea_battles(gc) or_return
-	
+
 	// Unload surviving transports
 	unload_transports(gc) or_return
-	
+
 	// Resolve land battles
 	debug_checks(gc)
 	resolve_land_battles(gc) or_return
-	
+
 	return true
 }
 
@@ -583,7 +606,7 @@ proai_end_turn_phase :: proc(gc: ^Game_Cache) {
 proai_move_air_to_combat :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// TODO: Implement smart fighter/bomber combat positioning
 	// Strategy: Move air to territories where they tip the battle odds favorably
-	
+
 	// Stub: For now, skip air combat moves for rapid rollout
 	return true
 }
@@ -609,23 +632,23 @@ proai_move_ships_to_combat :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	- Don't expose transports unnecessarily
 	- Maintain sea control near our territories
 	*/
-	
+
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Naval combat movement phase (simplified)")
 	}
-	
+
 	// Find target enemy sea zones to attack
 	for sea in Sea_ID {
 		// Skip if no enemy units
 		if gc.team_sea_units[sea][mm.enemy_team[gc.cur_player]] == 0 {
 			continue
 		}
-		
+
 		// Skip if we don't have ships nearby
 		if !has_friendly_ships_adjacent(gc, sea) {
 			continue
 		}
-		
+
 		// Simple heuristic: Only attack if enemy has no blockade ships
 		// (just transports or subs without destroyer protection)
 		if gc.enemy_blockade_total[sea] == 0 ||
@@ -638,18 +661,18 @@ proai_move_ships_to_combat :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			// For now, just note the opportunity
 		}
 	}
-	
+
 	// For rapid MCTS rollouts, we skip detailed naval combat for now
 	// Naval battles are secondary to land control in most scenarios
 	// Future: Implement targeted naval attacks using execute_sea_move
-	
+
 	return true
 }
 
 // Check if we have friendly combat ships adjacent to a sea zone
 has_friendly_ships_adjacent :: proc(gc: ^Game_Cache, target_sea: Sea_ID) -> bool {
 	canal_state := transmute(u8)gc.canals_open
-	
+
 	for adjacent_sea in mm.s2s_1away_via_sea[canal_state][target_sea] {
 		// Check for combat ships (not transports)
 		if gc.idle_ships[adjacent_sea][gc.cur_player][.SUB] > 0 do return true
@@ -658,14 +681,14 @@ has_friendly_ships_adjacent :: proc(gc: ^Game_Cache, target_sea: Sea_ID) -> bool
 		if gc.idle_ships[adjacent_sea][gc.cur_player][.BATTLESHIP] > 0 do return true
 		if gc.idle_ships[adjacent_sea][gc.cur_player][.BS_DAMAGED] > 0 do return true
 	}
-	
+
 	return false
 }
 
 proai_load_transports_for_combat :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// TODO: Implement smart transport loading for amphibious assaults
 	// Strategy: Load transports with units to capture valuable territories
-	
+
 	// Stub: For now, skip transport loading for rapid rollout
 	return true
 }
@@ -673,7 +696,7 @@ proai_load_transports_for_combat :: proc(gc: ^Game_Cache) -> (ok: bool) {
 proai_move_ground_to_combat :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// TODO: Implement smart ground unit combat positioning
 	// Strategy: Attack weak territories, consolidate forces for major attacks
-	
+
 	// Stub: For now, skip ground combat moves for rapid rollout
 	return true
 }
@@ -683,7 +706,7 @@ proai_move_ground_to_combat :: proc(gc: ^Game_Cache) -> (ok: bool) {
 proai_land_fighters_safe :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// TODO: Implement smart fighter landing
 	// Strategy: Land on carriers or friendly territories with defensive value
-	
+
 	// Stub: Use existing landing logic for now
 	land_remaining_fighters(gc) or_return
 	return true
@@ -692,7 +715,7 @@ proai_land_fighters_safe :: proc(gc: ^Game_Cache) -> (ok: bool) {
 proai_land_bombers_safe :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// TODO: Implement smart bomber landing
 	// Strategy: Land in territories that provide good offensive reach for next turn
-	
+
 	// Stub: Use existing landing logic for now
 	land_remaining_bombers(gc) or_return
 	return true
@@ -701,7 +724,7 @@ proai_land_bombers_safe :: proc(gc: ^Game_Cache) -> (ok: bool) {
 proai_move_ships_noncombat :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// TODO: Implement smart non-combat naval movement
 	// Strategy: Move ships to defensive positions or staging areas
-	
+
 	// Stub: For now, skip non-combat naval moves for rapid rollout
 	return true
 }
@@ -709,7 +732,7 @@ proai_move_ships_noncombat :: proc(gc: ^Game_Cache) -> (ok: bool) {
 proai_move_ground_noncombat :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// TODO: Implement smart non-combat ground movement
 	// Strategy: Consolidate forces, reinforce threatened territories
-	
+
 	// Stub: For now, skip non-combat ground moves for rapid rollout
 	return true
 }

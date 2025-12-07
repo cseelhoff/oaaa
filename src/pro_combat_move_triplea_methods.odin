@@ -474,78 +474,104 @@ determine_territories_that_can_be_held_triplea :: proc(gc: ^Game_Cache, options:
 			continue
 		}
 		
-		// Calculate potential attack power (ALL units that could attack)
-		// Java uses patd.getMaxUnits() and patd.getMaxAmphibUnits() here
-		// These are populated in Step 1, before unit assignment
-		attack_power := calculate_total_attack_power(gc, option.potential_attackers, option.potential_amphib_attackers)
+		// Check if avg_survivor_def_power was already computed in Step 2
+		// If so, use it directly instead of re-simulating
+		surviving_def_power := option.avg_survivor_def_power
 		
-		// Get actual defender strength
-		defender_power := calculate_total_defense_power(gc, option.defenders)
-		
-		// Simulate the attack battle to find survivors
-		// Java: calc.estimateAttackBattleResults() -> result.getAverageAttackersRemaining()
-		// 
-		// Simplified battle outcome estimation:
-		// - Need 1.2x advantage to expect survivors (not 1.5x - that's too conservative)
-		// - Casualties are roughly proportional to combat strength
-		// - Attackers take more casualties than defenders (worse odds per unit)
-		//
-		// Example: 12 attack vs 8 defense (1.5x ratio)
-		//   - Exchange is roughly 2 attacker hits for every 3 defender hits
-		//   - Attacker survives with ~40% of original force
-		surviving_power := f64(0.0)
-		if attack_power > defender_power * 1.2 {
-			// Estimate casualties: Higher ratio = more survivors
-			power_ratio := attack_power / defender_power
-			if power_ratio >= 2.0 {
-				// Overwhelming force: ~50% survivors
-				surviving_power = attack_power * 0.5
-			} else if power_ratio >= 1.5 {
-				// Strong advantage: ~40% survivors
-				surviving_power = attack_power * 0.4
-			} else {
-				// Modest advantage: ~25% survivors  
-				surviving_power = attack_power * 0.25
+		if surviving_def_power == 0 && (len(option.potential_attackers) > 0 || len(option.defenders) > 0) {
+			// Fallback: Build Land_Combatants from potential attackers and defenders for simulation
+			combatants := build_land_combatants_from_option(option)
+			
+			when ODIN_DEBUG {
+				fmt.printf("  Combatants for %s (from arrays):\n", t)
+				fmt.printf("    potential_attackers count: %d\n", len(option.potential_attackers))
+				fmt.printf("    potential_amphib_attackers count: %d\n", len(option.potential_amphib_attackers))
+				fmt.printf("    defenders count: %d\n", len(option.defenders))
+				fmt.printf("    Built attackers[0]: INF=%d, ARTY=%d, TANK=%d\n", 
+					combatants.attackers[0].Infantry, combatants.attackers[0].Artillery, combatants.attackers[0].Tanks)
+				fmt.printf("    Built attackers[1]: FIGH=%d\n", combatants.attackers[1].Fighters)
+				fmt.printf("    Built attackers[2]: BOMB=%d\n", combatants.attackers[2].Bombers)
+				fmt.printf("    Built defenders: INF=%d, ARTY=%d, TANK=%d, FIGH=%d, BOMB=%d, AA=%d\n",
+					combatants.defenders.Infantry, combatants.defenders.Artillery, combatants.defenders.Tanks,
+					combatants.defenders.Fighters, combatants.defenders.Bombers, combatants.defenders.AntiAir)
+			}
+			
+			// Use battle.odin's simulate_battle for accurate battle prediction
+			battle_result := simulate_battle(combatants)
+			surviving_def_power = battle_result.avg_survivor_def_power
+			option.avg_survivor_def_power = surviving_def_power
+			
+			when ODIN_DEBUG {
+				fmt.printf("  Battle sim for %s: win=%.1f%%, TUV=%.1f, survivor_def=%.1f\n",
+					t, battle_result.invaded_percent * 100, battle_result.avg_TUV_swing, 
+					battle_result.avg_survivor_def_power)
+			}
+		} else {
+			when ODIN_DEBUG {
+				fmt.printf("  %s: Using pre-computed survivor_def_power=%.1f from Step 2\n", t, surviving_def_power)
 			}
 		}
-		surviving_power = option.avg_survivor_def_power
-		// Calculate maximum enemy counter-attack power
-		enemy_counter_attack := calculate_enemy_counter_attack_power(gc, t)
 		
-		// Java logic (lines 497-499):
+		// Now simulate the enemy counter-attack against our survivors
+		// Build enemy counter-attack force from adjacent territories
+		counter_combatants := build_counter_attack_combatants(gc, t, surviving_def_power)
+		
+		when ODIN_DEBUG {
+			fmt.printf("    Counter-attack combatants:\n")
+			fmt.printf("      Our survivors (defenders):\n")
+			if counter_combatants.defenders.Infantry > 0 do fmt.printf("        Infantry: %d\n", counter_combatants.defenders.Infantry)
+			if counter_combatants.defenders.Artillery > 0 do fmt.printf("        Artillery: %d\n", counter_combatants.defenders.Artillery)
+			if counter_combatants.defenders.Tanks > 0 do fmt.printf("        Tank: %d\n", counter_combatants.defenders.Tanks)
+			if counter_combatants.defenders.Fighters > 0 do fmt.printf("        Fighter: %d\n", counter_combatants.defenders.Fighters)
+			if counter_combatants.defenders.Bombers > 0 do fmt.printf("        Bomber: %d\n", counter_combatants.defenders.Bombers)
+			if counter_combatants.defenders.AntiAir > 0 do fmt.printf("        AAGun: %d\n", counter_combatants.defenders.AntiAir)
+			
+			fmt.printf("      Enemy attackers:\n")
+			// Wave 0: Land units
+			if counter_combatants.attackers[0].Infantry > 0 do fmt.printf("        Infantry: %d\n", counter_combatants.attackers[0].Infantry)
+			if counter_combatants.attackers[0].Artillery > 0 do fmt.printf("        Artillery: %d\n", counter_combatants.attackers[0].Artillery)
+			if counter_combatants.attackers[0].Tanks > 0 do fmt.printf("        Tank: %d\n", counter_combatants.attackers[0].Tanks)
+			// Wave 1: Fighters
+			if counter_combatants.attackers[1].Fighters > 0 do fmt.printf("        Fighter: %d\n", counter_combatants.attackers[1].Fighters)
+			// Wave 2: Bombers
+			if counter_combatants.attackers[2].Bombers > 0 do fmt.printf("        Bomber: %d\n", counter_combatants.attackers[2].Bombers)
+		}
+		
+		// Simulate the counter-attack
+		counter_result := simulate_battle(counter_combatants)
+		
+		when ODIN_DEBUG {
+			fmt.printf("  Counter-attack sim: enemy_win=%.1f%%, TUV=%.1f\n",
+				counter_result.invaded_percent * 100, counter_result.avg_TUV_swing)
+		}
+		
+		// Java logic for can_hold (ProCombatMoveAi.java lines 497-499):
 		// canHold = (!result2.isHasLandUnitRemaining() && !t.isWater())
 		//        || (result2.getTuvSwing() < 0)
 		//        || (result2.getWinPercentage() < proData.getMinWinPercentage())
 		//
 		// Translation:
-		// - Enemy counter-attack fails to keep land units (we killed them all)
-		// - Enemy counter-attack has negative TUV swing (they lose more value)
 		// - Enemy counter-attack has low win percentage (<60%)
+		// - OR enemy counter-attack has negative TUV swing (they lose more value than us)
+		MIN_WIN_PERCENTAGE :: 0.6
 		
-		// Simulate enemy counter-attack (our survivors vs their counter-attack)
-		// Enemy needs ~1.2x advantage to win reliably
-		enemy_wins_counter := enemy_counter_attack > surviving_power * 1.2
-		enemy_win_percentage := f64(0.0)
-		if surviving_power > 0 {
-			// Rough win percentage calculation
-			power_ratio := enemy_counter_attack / surviving_power
-			if power_ratio > 2.0 {
-				enemy_win_percentage = 90.0
-			} else if power_ratio > 1.5 {
-				enemy_win_percentage = 75.0
-			} else if power_ratio > 1.0 {
-				enemy_win_percentage = 50.0
-			} else {
-				enemy_win_percentage = 25.0
+		enemy_win_pct := counter_result.invaded_percent
+		enemy_tuv_swing := counter_result.avg_TUV_swing
+		
+		// Can hold if:
+		// 1. Enemy has less than 60% chance to retake
+		// 2. OR enemy would lose more TUV than they gain (bad trade for them)
+		when ODIN_DEBUG {
+			if (enemy_win_pct < MIN_WIN_PERCENTAGE) {
+				fmt.printf("  Can hold because enemy win pct %.1f%% < %.1f%%\n",
+					enemy_win_pct * 100, MIN_WIN_PERCENTAGE * 100)
 			}
-		} else {
-			enemy_win_percentage = 100.0 // No survivors = enemy wins for free
+			if (enemy_tuv_swing < 0) {
+				fmt.printf("  Can hold because enemy TUV swing %.1f < 0\n", enemy_tuv_swing)
+			}
 		}
 		
-		// Can hold if enemy counter-attack fails (win% < 60%)
-		// Note: We do NOT give bonus for "high value" - that was the bug!
-		// If we can't defend it, we can't hold it, period.
-		option.can_hold = enemy_win_percentage < 60.0
+		option.can_hold = (enemy_win_pct < MIN_WIN_PERCENTAGE) || (enemy_tuv_swing < 0)
 		
 		when ODIN_DEBUG {
 			production, is_capital := get_production_and_is_capital_triplea(gc, t)
@@ -557,12 +583,123 @@ determine_territories_that_can_be_held_triplea :: proc(gc: ^Game_Cache, options:
 			} else {
 				fmt.printf(" CANNOT HOLD")
 			}
-			fmt.printf(" (%.1f attack vs %.1f defense, %.1f survivors vs %.1f enemy, enemy win %.0f%%", 
-				attack_power, defender_power, surviving_power, enemy_counter_attack, enemy_win_percentage)
+			fmt.printf(" (survivors=%.1f def power, enemy_win=%.1f%%, enemy_TUV=%.1f",
+				surviving_def_power, enemy_win_pct * 100, enemy_tuv_swing)
 			if is_high_value do fmt.printf(", HIGH VALUE")
 			fmt.printf(")\n")
 		}
 	}
+}
+
+// Helper: Build Land_Combatants from Attack_Option for battle simulation
+build_land_combatants_from_option :: proc(option: ^Attack_Option) -> Land_Combatants {
+	combatants := Land_Combatants{}
+	
+	// Count attackers by type (wave 0 = land units, wave 1 = fighters, wave 2 = bombers)
+	for unit in option.potential_attackers {
+		#partial switch unit.unit_type {
+		case .Infantry:
+			combatants.attackers[0].Infantry += 1
+		case .Artillery:
+			combatants.attackers[0].Artillery += 1
+		case .Tank:
+			combatants.attackers[0].Tanks += 1
+		case .Fighter:
+			combatants.attackers[1].Fighters += 1
+		case .Bomber:
+			combatants.attackers[2].Bombers += 1
+		}
+	}
+	
+	// Also count amphib attackers
+	for unit in option.potential_amphib_attackers {
+		#partial switch unit.unit_type {
+		case .Infantry:
+			combatants.attackers[0].Infantry += 1
+		case .Artillery:
+			combatants.attackers[0].Artillery += 1
+		case .Tank:
+			combatants.attackers[0].Tanks += 1
+		}
+	}
+	
+	// Count defenders
+	for unit in option.defenders {
+		#partial switch unit.unit_type {
+		case .Infantry:
+			combatants.defenders.Infantry += 1
+		case .Artillery:
+			combatants.defenders.Artillery += 1
+		case .Tank:
+			combatants.defenders.Tanks += 1
+		case .Fighter:
+			combatants.defenders.Fighters += 1
+		case .Bomber:
+			combatants.defenders.Bombers += 1
+		case .AAGun:
+			combatants.defenders.AntiAir += 1
+		}
+	}
+	
+	return combatants
+}
+
+// Helper: Build counter-attack combatants for enemy response simulation
+// surviving_def_power is the defense power of our surviving attackers
+build_counter_attack_combatants :: proc(gc: ^Game_Cache, target: Land_ID, surviving_def_power: f64) -> Land_Combatants {
+	combatants := Land_Combatants{}
+	
+	// Convert surviving defense power back to approximate unit counts
+	// Defense values: INF=2, ARTY=2, TANK=3
+	// Assume survivors are mostly infantry and tanks (common attack composition)
+	// Use weighted average: ~2.5 defense per land unit
+	if surviving_def_power > 0 {
+		// Rough conversion: survivors are ~60% inf, 40% tanks (by count)
+		// Average defense = 0.6*2 + 0.4*3 = 2.4
+		estimated_survivors := int(surviving_def_power / 2.4)
+		inf_count := int(f64(estimated_survivors) * 0.6)
+		tank_count := estimated_survivors - inf_count
+		
+		// Our survivors become defenders
+		combatants.defenders.Infantry = u8(min(inf_count, 255))
+		combatants.defenders.Tanks = u8(min(tank_count, 255))
+	}
+	
+	// Build enemy counter-attack force from adjacent territories
+	for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
+		// Check if enemy territory
+		if mm.team[gc.owner[adjacent]] == mm.team[gc.cur_player] {
+			continue // Skip friendly territories
+		}
+		
+		// Count enemy units that could counter-attack
+		for player in Player_ID {
+			if mm.team[player] != mm.team[gc.cur_player] {
+				combatants.attackers[0].Infantry += gc.idle_armies[adjacent][player][.INF]
+				combatants.attackers[0].Artillery += gc.idle_armies[adjacent][player][.ARTY]
+				combatants.attackers[0].Tanks += gc.idle_armies[adjacent][player][.TANK]
+				// Note: AA guns don't attack, they stay for defense
+			}
+		}
+	}
+	
+	// Also count enemy planes that could attack from 2 territories away
+	for land in Land_ID {
+		// Check if within fighter range (4 moves, so up to 2 territories for attack + return)
+		dist := calculate_distance(gc, land, target)
+		if dist > 2 {
+			continue
+		}
+		
+		for player in Player_ID {
+			if mm.team[player] != mm.team[gc.cur_player] {
+				combatants.attackers[1].Fighters += gc.idle_land_planes[land][player][.FIGHTER]
+				combatants.attackers[2].Bombers += gc.idle_land_planes[land][player][.BOMBER]
+			}
+		}
+	}
+	
+	return combatants
 }
 
 /*
@@ -1835,9 +1972,58 @@ try_to_attack_territories_triplea :: proc(
 			append(&assigned, unit)
 		}
 	}
-	fmt.println("Total assigned units: ", assigned)
+	
+	when ODIN_DEBUG {
+		fmt.println("Total assigned units:")
+		print_unit_info_summary(&assigned)
+	}
 	
 	return assigned
+}
+
+// Helper: Print unit info in a human-readable grouped format
+print_unit_info_summary :: proc(units: ^[dynamic]Unit_Info) {
+	// Group units by territory and type
+	Unit_Counts :: struct {
+		infantry:  int,
+		artillery: int,
+		tank:      int,
+		aagun:     int,
+		fighter:   int,
+		bomber:    int,
+	}
+	
+	territory_counts: map[Land_ID]Unit_Counts
+	defer delete(territory_counts)
+	
+	for unit in units {
+		counts := territory_counts[unit.from_territory]
+		#partial switch unit.unit_type {
+		case .Infantry:  counts.infantry += 1
+		case .Artillery: counts.artillery += 1
+		case .Tank:      counts.tank += 1
+		case .AAGun:     counts.aagun += 1
+		case .Fighter:   counts.fighter += 1
+		case .Bomber:    counts.bomber += 1
+		}
+		territory_counts[unit.from_territory] = counts
+	}
+	
+	if len(territory_counts) == 0 {
+		fmt.println("  (none)")
+		return
+	}
+	
+	// Print grouped by territory
+	for territory, counts in territory_counts {
+		fmt.printf("  %v:\n", territory)
+		if counts.infantry > 0  do fmt.printf("    Infantry: %d\n", counts.infantry)
+		if counts.artillery > 0 do fmt.printf("    Artillery: %d\n", counts.artillery)
+		if counts.tank > 0      do fmt.printf("    Tank: %d\n", counts.tank)
+		if counts.aagun > 0     do fmt.printf("    AAGun: %d\n", counts.aagun)
+		if counts.fighter > 0   do fmt.printf("    Fighter: %d\n", counts.fighter)
+		if counts.bomber > 0    do fmt.printf("    Bomber: %d\n", counts.bomber)
+	}
 }
 
 /*

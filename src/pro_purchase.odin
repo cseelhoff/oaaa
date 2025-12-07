@@ -68,6 +68,7 @@ proai_purchase_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		}
 		return false
 	}
+	debug_checks(gc)
 
 	when ODIN_DEBUG {
 		money_spent := starting_money - gc.money[gc.cur_player]
@@ -331,7 +332,9 @@ purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 	all_enemies := all_enemy_attack_options_init()
 	enemy_attack_options := pro_other_move_options_init()
 	generate_all_enemy_attack_options(gc, &all_enemies, &enemy_attack_options)
-	
+
+	debug_checks(gc)
+
 	// debug print each enemy's attack options (using per-enemy data)
 	fmt.println("Enemy Attack Options (per-enemy):")
 	for enemy in all_enemies.enemies_analyzed {
@@ -382,6 +385,7 @@ purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 	need_to_defend_land := prioritize_territories_to_defend_triplea(
 		gc,
 		true,
+		&all_enemies,
 		&enemy_attack_options,
 	)
 	purchase_defenders_triplea(gc, need_to_defend_land, true)
@@ -390,6 +394,7 @@ purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 	need_to_defend_sea := prioritize_territories_to_defend_triplea(
 		gc,
 		false,
+		&all_enemies,
 		&enemy_attack_options,
 	)
 	purchase_defenders_triplea(gc, need_to_defend_sea, false)
@@ -417,10 +422,13 @@ purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 	if gc.money[gc.cur_player] == 0 {
 		return true // All money spent on factory
 	}
+	debug_checks(gc)
 
 	// Step 8: Prioritize sea territories and purchase naval units
 	prioritized_sea := prioritize_sea_territories_triplea(gc)
+	debug_checks(gc)
 	should_save_for_fleet := purchase_sea_and_amphib_units_triplea(gc, prioritized_sea)
+	debug_checks(gc)
 
 	if should_save_for_fleet {
 		// Saving up for a fleet - don't spend remaining money
@@ -431,13 +439,16 @@ purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 		return true // All money spent
 	}
 
+	debug_checks(gc)
 	// Step 9: Use remaining production capacity
 	purchase_units_with_remaining_production_triplea(gc, prioritized_land)
 
+	debug_checks(gc)
 	// Step 10: Upgrade units with remaining PUs (if any)
 	if gc.money[gc.cur_player] >= 3 {
 		upgrade_units_with_remaining_pus_triplea(gc, prioritized_land)
 	}
+	debug_checks(gc)
 
 	// Step 11: Try factory purchase again with remaining PUs (if we have extra)
 	if gc.money[gc.cur_player] >= 15 {
@@ -739,11 +750,98 @@ Territory_Target :: struct {
 
 win_percentage_needed :: 0.95
 
+// Sequential battle result - tracks cumulative results across multiple enemy attacks
+Sequential_Battle_Result :: struct {
+	total_tuv_swing: f64,           // Accumulated TUV swing across all battles
+	final_invaded_percent: f64,     // Probability territory is taken after all attacks
+	surviving_defenders: Land_Defenders,  // Remaining defenders after all battles
+	num_battles: int,               // How many battles were simulated
+}
+
+// Simulate sequential battles where multiple enemies attack in turn order
+// Each enemy attacks separately, survivors defend against next attacker
+// Returns accumulated TUV swing and final invasion probability
+simulate_sequential_enemy_attacks :: proc(
+	gc: ^Game_Cache,
+	territory: Land_ID,
+	initial_defenders: Land_Defenders,
+	all_enemies: ^All_Enemy_Attack_Options,
+) -> Sequential_Battle_Result {
+	result := Sequential_Battle_Result{
+		surviving_defenders = initial_defenders,
+	}
+	
+	// Track probability that territory is still held after each battle
+	// Start with 100% chance we hold it
+	hold_probability: f64 = 1.0
+	
+	// Iterate through enemies in turn order (using enemies_analyzed which preserves order)
+	for enemy in all_enemies.enemies_analyzed {
+		threat := &all_enemies.per_enemy[enemy].land_threats[territory]
+		
+		// Skip enemies with no threat to this territory
+		if threat.max_infantry == 0 && threat.max_artillery == 0 && 
+		   threat.max_tanks == 0 && threat.max_fighters == 0 && 
+		   threat.max_bombers == 0 {
+			continue
+		}
+		
+		// Set up battle combatants for this enemy's attack
+		combatants := Land_Combatants{}
+		combatants.attackers[0].Infantry = threat.max_infantry
+		combatants.attackers[0].Artillery = threat.max_artillery
+		combatants.attackers[0].Tanks = threat.max_tanks
+		combatants.attackers[0].Fighters = threat.max_fighters
+		combatants.attackers[0].Bombers = threat.max_bombers
+		combatants.defenders = result.surviving_defenders
+		
+		// Simulate this battle
+		battle_result := simulate_battle(combatants)
+		result.num_battles += 1
+		
+		// Accumulate TUV swing
+		result.total_tuv_swing += battle_result.avg_TUV_swing
+		
+		// Update hold probability: we only hold if we held before AND we hold this battle
+		// invaded_percent is probability attacker wins, so (1 - invaded_percent) is hold probability
+		hold_probability *= (1.0 - battle_result.invaded_percent)
+		
+		// Estimate surviving defenders for next battle
+		// Use avg_survivor_def_power to estimate remaining units
+		// This is simplified - we assume proportional losses
+		if battle_result.avg_survivor_def_power > 0 && battle_result.invaded_percent < 1.0 {
+			// Calculate what fraction of defense power survives
+			initial_def_power := estimate_defense_power_triplea(result.surviving_defenders)
+			if initial_def_power > 0 {
+				survival_ratio := battle_result.avg_survivor_def_power / initial_def_power
+				survival_ratio = min(1.0, max(0.0, survival_ratio))
+				
+				// Apply survival ratio to each unit type (simplified)
+				result.surviving_defenders.Infantry = u8(f64(result.surviving_defenders.Infantry) * survival_ratio)
+				result.surviving_defenders.Artillery = u8(f64(result.surviving_defenders.Artillery) * survival_ratio)
+				result.surviving_defenders.Tanks = u8(f64(result.surviving_defenders.Tanks) * survival_ratio)
+				result.surviving_defenders.Fighters = u8(f64(result.surviving_defenders.Fighters) * survival_ratio)
+				result.surviving_defenders.Bombers = u8(f64(result.surviving_defenders.Bombers) * survival_ratio)
+				result.surviving_defenders.AntiAir = u8(f64(result.surviving_defenders.AntiAir) * survival_ratio)
+			}
+		} else if battle_result.invaded_percent >= 1.0 {
+			// Territory lost - no survivors
+			result.surviving_defenders = {}
+		}
+	}
+	
+	// Final invaded percent is probability we DON'T hold after all battles
+	result.final_invaded_percent = 1.0 - hold_probability
+	
+	return result
+}
+
 // Odin Implementation:
 prioritize_territories_to_defend_triplea :: proc(
 	gc: ^Game_Cache,
 	is_land: bool,
-	enemy_attack_options: ^Pro_Other_Move_Options,
+	all_enemies: ^All_Enemy_Attack_Options,
+	enemy_attack_options: ^Pro_Other_Move_Options,  // Still used for quick "has threat" check
 ) -> [dynamic]Place_Territory_Defense {
 	need_to_defend := make([dynamic]Place_Territory_Defense, context.temp_allocator)
 
@@ -772,38 +870,28 @@ prioritize_territories_to_defend_triplea :: proc(
 		// Check if there's any enemy threat to this territory
 		if !has_enemy_threat_land(enemy_attack_options, land_territory) do continue
 
-		land_combatants: Land_Combatants = {}
-
-		// Use aggregated max threat (simplified from per-enemy turn order)
-		// The aggregated totals represent the worst-case enemy attack
-		threat := get_max_land_threat(enemy_attack_options, land_territory)
-		land_combatants.attackers[0].Infantry = threat.max_infantry
-		land_combatants.attackers[0].Artillery = threat.max_artillery
-		land_combatants.attackers[0].Tanks = threat.max_tanks
-		land_combatants.attackers[0].Fighters = threat.max_fighters
-		land_combatants.attackers[0].Bombers = threat.max_bombers
-
 		fmt.println("    Possible Enemy Target Territory:", land_territory)
-		hold_value := 0.0
-		//calculate battle result
-		land_defenders: Land_Defenders = {}
+		
+		// Gather current defenders
+		initial_defenders: Land_Defenders = {}
 		for player in sa.slice(&mm.allies[gc.cur_player]) {
-			land_combatants.defenders.Infantry += gc.idle_armies[land_territory][player][.INF]
-			land_combatants.defenders.Artillery += gc.idle_armies[land_territory][player][.ARTY]
-			land_combatants.defenders.AntiAir += gc.idle_armies[land_territory][player][.AAGUN]
-			land_combatants.defenders.Tanks += gc.idle_armies[land_territory][player][.TANK]
-			land_combatants.defenders.Fighters +=
-				gc.idle_land_planes[land_territory][player][.FIGHTER]
-			land_combatants.defenders.Bombers +=
-				gc.idle_land_planes[land_territory][player][.BOMBER]
+			initial_defenders.Infantry += gc.idle_armies[land_territory][player][.INF]
+			initial_defenders.Artillery += gc.idle_armies[land_territory][player][.ARTY]
+			initial_defenders.AntiAir += gc.idle_armies[land_territory][player][.AAGUN]
+			initial_defenders.Tanks += gc.idle_armies[land_territory][player][.TANK]
+			initial_defenders.Fighters += gc.idle_land_planes[land_territory][player][.FIGHTER]
+			initial_defenders.Bombers += gc.idle_land_planes[land_territory][player][.BOMBER]
 		}
-		results: Battle_Results = simulate_battle(land_combatants)
-		fmt.println("    Battle Results (TUV, Invaded %): ", results.avg_TUV_swing, ", ", results.invaded_percent)
+		
+		// Simulate sequential battles - each enemy attacks in turn order
+		// Survivors from one battle defend against the next attacker
+		seq_result := simulate_sequential_enemy_attacks(gc, land_territory, initial_defenders, all_enemies)
+		
+		fmt.printf("    Sequential Battle Results: TUV=%.2f, Invaded%%=%.1f%%, Battles=%d\n", 
+		           seq_result.total_tuv_swing, seq_result.final_invaded_percent * 100, seq_result.num_battles)
 
 		// Skip territories that are not sufficiently threatened
-		if (results.invaded_percent < 1.0 - win_percentage_needed) do continue
-
-		//check if subsequent enemies could attack
+		if seq_result.final_invaded_percent < 1.0 - win_percentage_needed do continue
 
 		// Calculate defense value using TripleA formula:
 		// value = (2*production + 4*isFactory + 0.5*defenderValue) * (1+isFactory) * (1+10*isCapital)
@@ -817,12 +905,12 @@ prioritize_territories_to_defend_triplea :: proc(
 
 		// Calculate defending unit value (simplified TUV)
 		defender_value := f64(
-			land_combatants.defenders.Infantry * Cost_Buy[.BUY_INF_ACTION] +
-			land_combatants.defenders.Artillery * Cost_Buy[.BUY_ARTY_ACTION] +
-			land_combatants.defenders.AntiAir * Cost_Buy[.BUY_AAGUN_ACTION] +
-			land_combatants.defenders.Tanks * Cost_Buy[.BUY_TANK_ACTION] +
-			land_combatants.defenders.Fighters * Cost_Buy[.BUY_FIGHTER_ACTION] +
-			land_combatants.defenders.Bombers * Cost_Buy[.BUY_BOMBER_ACTION],
+			initial_defenders.Infantry * Cost_Buy[.BUY_INF_ACTION] +
+			initial_defenders.Artillery * Cost_Buy[.BUY_ARTY_ACTION] +
+			initial_defenders.AntiAir * Cost_Buy[.BUY_AAGUN_ACTION] +
+			initial_defenders.Tanks * Cost_Buy[.BUY_TANK_ACTION] +
+			initial_defenders.Fighters * Cost_Buy[.BUY_FIGHTER_ACTION] +
+			initial_defenders.Bombers * Cost_Buy[.BUY_BOMBER_ACTION],
 		)
 
 		defense_value :=
@@ -841,7 +929,7 @@ prioritize_territories_to_defend_triplea :: proc(
 			place_terr := Place_Territory_Defense {
 				territory       = land_territory,
 				defense_value   = defense_value,
-				defending_units = land_combatants.defenders,
+				defending_units = initial_defenders,
 				is_capital      = is_capital,
 				has_factory     = has_factory,
 			}
@@ -1059,6 +1147,7 @@ purchase_defenders_triplea :: proc(
 		inf_count := u8(0)
 		// Prefer infantry for defense (best efficiency)
 		// Respect both money AND production capacity limits
+		// TODO: AI Note... This is currently > 0, but this shouldmay need to be an adjustable value, perhaps this value comes from an model output
 		for defense_gap > 0 && gc.money[gc.cur_player] >= 3 && gc.builds_left[factory_loc] > 0 {
 			if gc.money[gc.cur_player] >= 3 {
 				// Buy infantry - store in g_purchased_units for placement phase
@@ -1434,41 +1523,86 @@ purchase_land_units_triplea :: proc(
 			)
 		}
 
-		// Purchase units using fodder percentage
-		// Buy mix of infantry (fodder) and tanks/artillery (attack)
+		// Purchase units using weighted deterministic selection
+		// Instead of random, we use unit counts and distance factor to create variety
+		//
+		// Key insight from Java:
+		// - Track attackAndDefenseDifference to balance purchases
+		// - Use distance factor to weight high-movement units (tanks)
+		// - Fodder % determines how many cheap units vs expensive units
 
 		units_bought := 0
+		attack_defense_diff: f64 = 0.0  // Positive = bought too much attack, need defense
+		
+		// Calculate distance factor for tanks (movement=2) vs infantry (movement=1)
+		// At distance 5: tank_factor ≈ 2.0, infantry_factor = 1.0
+		// At distance 10: tank_factor ≈ 4.0, infantry_factor = 1.0
+		tank_distance_factor := calculate_land_distance_factor(2, enemy_distance)
+		
 		for gc.money[gc.cur_player] >= 3 && units_bought < 10 {
-			// Decide: buy fodder or attack unit?
-			// Use random chance based on fodder_percent
-			rand_val := int(gc.seed % 100)
-			gc.seed = (gc.seed * 13 + 17) % 997
-
-			if rand_val < fodder_percent {
-				// Buy infantry (fodder)
-				if gc.money[gc.cur_player] >= 3 {
-					gc.money[gc.cur_player] -= 3
-					gc.idle_armies[territory][gc.cur_player][.INF] += 1
-					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
-					units_bought += 1
-					total_inf += 1
-				}
-			} else {
-				// Buy attack unit (prefer tank > artillery)
-				if gc.money[gc.cur_player] >= 6 {
-					// Buy tank
-					gc.money[gc.cur_player] -= 6
-					gc.idle_armies[territory][gc.cur_player][.TANK] += 1
-					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
-					units_bought += 1
-					total_tank += 1
-				} else if gc.money[gc.cur_player] >= 4 {
-					// Buy artillery
+			// Calculate current fodder ratio (what % of units bought so far are infantry)
+			current_fodder_ratio := units_bought > 0 ? (total_inf * 100) / (total_inf + total_arty + total_tank) : 100
+			
+			// Decide fodder vs attack based on current ratio vs target fodder_percent
+			buy_fodder := current_fodder_ratio < fodder_percent
+			
+			if buy_fodder {
+				// Fodder mode: prefer infantry, but consider artillery for support
+				// Buy artillery every 3rd infantry if we can afford it and have infantry to support
+				// Artillery gives +1 attack to paired infantry, so optimal ratio is ~2:1 inf:arty
+				should_buy_arty := (total_inf > 0) && 
+				                   (total_arty * 3 < total_inf) &&  // Maintain ~3:1 ratio
+				                   (gc.money[gc.cur_player] >= 4) &&
+				                   (attack_defense_diff <= 0)  // Don't buy if already attack-heavy
+				
+				if should_buy_arty {
 					gc.money[gc.cur_player] -= 4
 					gc.idle_armies[territory][gc.cur_player][.ARTY] += 1
 					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
 					units_bought += 1
 					total_arty += 1
+					attack_defense_diff += 0.0  // Artillery: 2 attack, 2 defense = neutral
+				} else if gc.money[gc.cur_player] >= 3 {
+					gc.money[gc.cur_player] -= 3
+					gc.idle_armies[territory][gc.cur_player][.INF] += 1
+					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+					units_bought += 1
+					total_inf += 1
+					attack_defense_diff -= 1.0  // Infantry: 1 attack, 2 defense = defense-heavy
+				}
+			} else {
+				// Attack mode: choose between tank and artillery based on distance factor
+				// Tanks are better when far from enemy (high distance factor)
+				// Artillery is better when close (supports infantry, cheaper)
+				
+				// Use distance factor to decide: if tank_factor > 1.5, prefer tanks
+				// Also consider attack/defense balance
+				prefer_tank := (tank_distance_factor > 1.5) || (attack_defense_diff < 0)
+				
+				if prefer_tank && gc.money[gc.cur_player] >= 6 {
+					// Buy tank - high mobility, good at distance
+					gc.money[gc.cur_player] -= 6
+					gc.idle_armies[territory][gc.cur_player][.TANK] += 1
+					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+					units_bought += 1
+					total_tank += 1
+					attack_defense_diff += 0.0  // Tank: 3 attack, 3 defense = neutral
+				} else if gc.money[gc.cur_player] >= 4 {
+					// Buy artillery - supports infantry
+					gc.money[gc.cur_player] -= 4
+					gc.idle_armies[territory][gc.cur_player][.ARTY] += 1
+					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+					units_bought += 1
+					total_arty += 1
+					attack_defense_diff += 0.0  // Artillery: 2 attack, 2 defense = neutral
+				} else if gc.money[gc.cur_player] >= 3 {
+					// Fallback to infantry if can't afford attack units
+					gc.money[gc.cur_player] -= 3
+					gc.idle_armies[territory][gc.cur_player][.INF] += 1
+					gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
+					units_bought += 1
+					total_inf += 1
+					attack_defense_diff -= 1.0
 				} else {
 					break
 				}
@@ -1492,35 +1626,57 @@ purchase_land_units_triplea :: proc(
 	}
 }
 
-// Helper: Estimate distance to nearest enemy territory
-estimate_enemy_distance_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> int {
+// Helper: Get distance to nearest enemy or neutral land territory
+// Uses O(1) bitset operations with precomputed distance data
+// Returns 1-5 (or 5 if no enemy found within 4 moves)
+get_closest_enemy_land_distance :: proc(gc: ^Game_Cache, territory: Land_ID) -> int {
 	/*
-	Java Original (from ProPurchaseUtils.java):
+	Java Original (from ProUtils.java):
 	
 	int enemyDistance = ProUtils.getClosestEnemyOrNeutralLandTerritoryDistance(
 		data, player, t, territoryValueMap);
+	
+	Returns distance to closest enemy/neutral land territory.
+	Uses precomputed bitsets for O(1) lookup:
+	- l2l_1away_via_land_bitset for distance 1
+	- l2l_2away_via_land_bitset for distance 2
+	- a2a_within_3_moves / a2a_within_4_moves for distance 3-4
 	*/
-
-	// Simplified: check adjacent territories
-	for adj_id in sa.slice(&mm.l2l_1away_via_land[territory]) {
-		if gc.owner[adj_id] != gc.cur_player {
-			// Check if enemy
-			is_ally := false
-			for ally_id in sa.slice(&mm.allies[gc.cur_player]) {
-				if gc.owner[adj_id] == ally_id {
-					is_ally = true
-					break
-				}
-			}
-			if !is_ally {
-				return 1 // Enemy adjacent
-			}
-		}
+	
+	// Enemy territories = all non-friendly territories
+	enemy_lands := ~gc.friendly_owner
+	
+	// Check distance 1 using land-to-land bitset (most common case, fastest)
+	if (mm.l2l_1away_via_land_bitset[territory] & enemy_lands) != {} {
+		return 1
 	}
-
-	// No enemy adjacent, estimate based on distance from capital
-	// (Simplified - proper implementation would use BFS)
+	
+	// Check distance 2 using land-to-land 2-away bitset
+	if (mm.l2l_2away_via_land_bitset[territory] & enemy_lands) != {} {
+		return 2
+	}
+	
+	// Check distance 3-4 using air-to-air bitsets (works for land since Land_ID ⊂ Air_ID)
+	air_id := to_air(territory)
+	enemy_air := to_air_bitset(enemy_lands)
+	
+	// Check distance 3
+	if !is_empty(mm.a2a_within_3_moves[air_id] & enemy_air) {
+		return 3
+	}
+	
+	// Check distance 4
+	if !is_empty(mm.a2a_within_4_moves[air_id] & enemy_air) {
+		return 4
+	}
+	
+	// No enemy within 4 moves - return 5 (far from front lines)
 	return 5
+}
+
+// Alias for backward compatibility
+estimate_enemy_distance_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> int {
+	return get_closest_enemy_land_distance(gc, territory)
 }
 
 /*
@@ -1969,11 +2125,13 @@ purchase_sea_and_amphib_units_triplea :: proc(
 
 	bought_units := false
 	wanted_to_buy_but_couldnt_defend := false
+	debug_checks(gc)
 
 	for place_sea in prioritized_sea {
 		if gc.money[gc.cur_player] < 6 do break // Cheapest ship is sub at 6
 
 		sea_id := place_sea.sea_zone
+		debug_checks(gc)
 
 		// Phase 1: Check if need destroyer (anti-sub)
 		need_destroyer := check_need_destroyer_triplea(gc, sea_id)
@@ -1981,16 +2139,20 @@ purchase_sea_and_amphib_units_triplea :: proc(
 			// Buy destroyer
 			gc.money[gc.cur_player] -= 8
 			gc.idle_ships[sea_id][gc.cur_player][.DESTROYER] += 1
+			gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += 1
 			bought_units = true
 		}
+		debug_checks(gc)
 
 		// Phase 2: Purchase sea defenders if needed
 		if place_sea.num_defenders < 2 && gc.money[gc.cur_player] >= 12 {
 			// Buy cruiser (good all-around ship)
 			gc.money[gc.cur_player] -= 12
 			gc.idle_ships[sea_id][gc.cur_player][.CRUISER] += 1
+			gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += 1
 			bought_units = true
 		}
+		debug_checks(gc)
 
 		// Phase 3: Purchase transports if strategic value is high
 		if place_sea.strategic_value >= 3.0 && gc.money[gc.cur_player] >= 7 {
@@ -1998,11 +2160,13 @@ purchase_sea_and_amphib_units_triplea :: proc(
 			if can_defend_new_transport_triplea(gc, sea_id) {
 				gc.money[gc.cur_player] -= 7
 				gc.idle_ships[sea_id][gc.cur_player][.TRANS_EMPTY] += 1
+				gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += 1
 				bought_units = true
 			} else {
 				wanted_to_buy_but_couldnt_defend = true
 			}
 		}
+		debug_checks(gc)
 
 		// Phase 4: Purchase attack ships (carriers for fighters)
 		if gc.money[gc.cur_player] >= 14 && place_sea.strategic_value >= 5.0 {
@@ -2010,12 +2174,14 @@ purchase_sea_and_amphib_units_triplea :: proc(
 			if can_defend_new_carrier_triplea(gc, sea_id) {
 				gc.money[gc.cur_player] -= 14
 				gc.idle_ships[sea_id][gc.cur_player][.CARRIER] += 1
+				gc.team_sea_units[sea_id][mm.team[gc.cur_player]] += 1
 				bought_units = true
 			} else {
 				wanted_to_buy_but_couldnt_defend = true
 			}
 		}
 	}
+	debug_checks(gc)
 
 	// Return whether we should save up for fleet
 	return !bought_units && wanted_to_buy_but_couldnt_defend
@@ -2230,16 +2396,20 @@ upgrade_units_with_remaining_pus_triplea :: proc(
 		if !place_terr.has_factory do continue
 
 		territory := place_terr.territory
+		
+		// Get enemy distance for this territory - key for movement factor calculation
+		enemy_distance := get_closest_enemy_land_distance(gc, territory)
 
 		// Try to upgrade infantry to artillery (if we have money)
 		if gc.idle_armies[territory][gc.cur_player][.INF] > 0 && gc.money[gc.cur_player] >= 4 {
-			// Check efficiency
+			// Check efficiency - artillery has movement 1, so distance factor won't help much
 			efficiency := find_upgrade_unit_efficiency_triplea(
 				4,
 				2.0,
 				2.0,
 				1,
 				place_terr.strategic_value,
+				enemy_distance,
 			)
 
 			if efficiency > 3.0 { 	// Worth upgrading
@@ -2258,13 +2428,15 @@ upgrade_units_with_remaining_pus_triplea :: proc(
 		}
 
 		// Try to upgrade infantry to tank (if we have lots of money)
+		// Tanks benefit greatly from the exponential distance factor!
 		if gc.idle_armies[territory][gc.cur_player][.INF] > 0 && gc.money[gc.cur_player] >= 6 {
 			efficiency := find_upgrade_unit_efficiency_triplea(
 				6,
 				3.0,
 				3.0,
-				2,
+				2,  // movement 2 gives exponential boost at distance
 				place_terr.strategic_value,
+				enemy_distance,
 			)
 
 			if efficiency > 5.0 { 	// Worth upgrading
@@ -2277,7 +2449,7 @@ upgrade_units_with_remaining_pus_triplea :: proc(
 				gc.team_land_units[territory][mm.team[gc.cur_player]] += 1
 				upgrades += 1
 				when ODIN_DEBUG {
-					fmt.printf("    Upgraded infantry -> tank at %v\n", territory)
+					fmt.printf("    Upgraded infantry -> tank at %v (dist=%d)\n", territory, enemy_distance)
 				}
 			}
 		}
@@ -2308,6 +2480,48 @@ Java Original (lines 2394-2403):
   }
 */
 
+// Helper: Calculate land distance factor with exponential movement bonus
+// This is the key formula that makes tanks more valuable at greater distances
+//
+// Java Original (ProPurchaseOption.java lines 263-275):
+//   private double calculateLandDistanceFactor(final int enemyDistance) {
+//     if (movement <= 0) return 0.1;
+//     final double distance = Math.max(0, enemyDistance - 1.5);
+//     final int moveValue = isLandTransport ? (movement + 1) : movement;
+//     final double moveFactor = 1.0 + 2.0 * (Math.pow(2, moveValue - 1.0) - 1.0) / Math.pow(2, moveValue - 1.0);
+//     return Math.pow(moveFactor, distance / 5);
+//   }
+//
+// Movement -> moveFactor mapping:
+//   0 -> 0.1 (stationary units heavily penalized)
+//   1 -> 1.0 (infantry baseline)
+//   2 -> 2.0 (tanks get 2x factor)
+//   3 -> 2.5, 4 -> 2.75, etc (diminishing returns)
+//
+// At distance 5:  tank factor = 2.0^1 = 2.0
+// At distance 10: tank factor = 2.0^2 = 4.0
+// At distance 15: tank factor = 2.0^3 = 8.0
+calculate_land_distance_factor :: proc(movement: int, enemy_distance: int) -> f64 {
+	if movement <= 0 {
+		return 0.1  // Stationary units are 10x less efficient
+	}
+	
+	// Adjusted distance: subtract 1.5 because nearby enemies don't need mobility
+	distance := max(0.0, f64(enemy_distance) - 1.5)
+	
+	// Calculate move factor: 1, 2, 2.5, 2.75, etc.
+	// Formula: 1.0 + 2.0 * (2^(move-1) - 1) / 2^(move-1)
+	// Which simplifies to: 1.0 + 2.0 * (1 - 1/2^(move-1))
+	move_value := f64(movement)
+	power_term := math.pow(2.0, move_value - 1.0)
+	move_factor := 1.0 + 2.0 * (power_term - 1.0) / power_term
+	
+	// Exponential boost based on distance: moveFactor^(distance/5)
+	// This means at distance 5, you get moveFactor^1
+	// At distance 10, you get moveFactor^2, etc.
+	return math.pow(move_factor, distance / 5.0)
+}
+
 // Odin Implementation:
 find_upgrade_unit_efficiency_triplea :: proc(
 	unit_cost: int,
@@ -2315,29 +2529,31 @@ find_upgrade_unit_efficiency_triplea :: proc(
 	defense: f64,
 	movement: int,
 	strategic_value: f64,
+	enemy_distance: int = 5,  // Default to mid-range distance
 ) -> f64 {
 	/*
 	TripleA algorithm:
 	- If territory has high strategic value (>= 1.0, near enemy): favor defense efficiency
-	- If territory has low strategic value (< 1.0, far from enemy): favor movement
-	- Return: attackEfficiency * multiplier * cost / quantity
+	- If territory has low strategic value (< 1.0, far from enemy): favor movement * distance factor
+	- The distance factor gives exponential boost to high-movement units at large distances
 	
 	This helps determine whether upgrading a unit is worthwhile:
 	- Infantry (3 cost, 1 attack, 2 defense, 1 movement)
 	- Artillery (4 cost, 2 attack, 2 defense, 1 movement)
 	- Tank (6 cost, 3 attack, 3 defense, 2 movement)
 	
-	Example:
-	- Upgrade Infantry -> Artillery near enemy (strategic_value = 2.0):
-	  multiplier = defense = 2.0
-	  efficiency = 2.0 * 2.0 * 4 / 1 = 16.0
+	Example at enemy_distance = 10:
+	- Infantry distance factor = 1.0^1 = 1.0
+	- Tank distance factor = 2.0^1.7 ≈ 3.25
 	
-	- Upgrade Infantry -> Tank far from enemy (strategic_value = 0.5):
-	  multiplier = movement = 2
-	  efficiency = 3.0 * 2.0 * 6 / 1 = 36.0 (tanks better for mobility)
+	So tanks become ~3.25x more efficient at distance 10 vs infantry!
 	*/
 
-	multiplier := strategic_value >= 1.0 ? defense : f64(movement)
+	// Calculate the exponential distance factor based on movement
+	distance_factor := calculate_land_distance_factor(movement, enemy_distance)
+	
+	// Multiplier: use defense near enemy, or distance_factor far from enemy
+	multiplier := strategic_value >= 1.0 ? defense : distance_factor
 
 	// Attack efficiency is attack power per cost
 	attack_efficiency := attack / f64(unit_cost)
