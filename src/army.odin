@@ -2,6 +2,7 @@ package oaaa
 
 import sa "core:container/small_array"
 import "core:fmt"
+import "base:intrinsics"
 
 Idle_Army :: enum {
 	INF,
@@ -395,4 +396,5 @@ load_available_transport :: proc(
     dst_sea := to_sea(dst_action)
 	
 	fmt.eprintln("Error: No large transport available to load")
+	intrinsics.debug_trap()
 }

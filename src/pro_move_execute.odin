@@ -27,6 +27,7 @@ Architecture:
 */
 
 import "core:fmt"
+import "base:intrinsics"
 import sa "core:container/small_array"
 
 // Moved_Units tracks which units have already moved this phase
@@ -233,6 +234,7 @@ execute_air_move :: proc(
 		when ODIN_DEBUG {
 			fmt.eprintfln("[PRO-MOVE] Not enough %v at air %v (available: %d, moved: %d, need: %d)",
 				plane_type, src, available, already_moved, count)
+			intrinsics.debug_trap()
 		}
 		return false
 	}
@@ -243,6 +245,7 @@ execute_air_move :: proc(
 		when ODIN_DEBUG {
 			fmt.eprintfln("[PRO-MOVE] Invalid air move: %v cannot reach %v from %v (max_range: %d)",
 				plane_type, dst, src, max_range)
+			intrinsics.debug_trap()
 		}
 		return false
 	}
@@ -333,6 +336,7 @@ execute_sea_move :: proc(
 		when ODIN_DEBUG {
 			fmt.eprintfln("[PRO-MOVE] Not enough %v at %v (available: %d, moved: %d, need: %d)",
 				ship_type, src, available, already_moved, count)
+			intrinsics.debug_trap()
 		}
 		return false
 	}
@@ -353,6 +357,7 @@ execute_sea_move :: proc(
 			when ODIN_DEBUG {
 				fmt.eprintfln("[PRO-MOVE] Invalid transport move: %v cannot reach %v from %v (escort/blockade)",
 					ship_type, dst, src)
+				intrinsics.debug_trap()
 			}
 			return false
 		}
@@ -361,6 +366,7 @@ execute_sea_move :: proc(
 			when ODIN_DEBUG {
 				fmt.eprintfln("[PRO-MOVE] Invalid sea move: %v cannot reach %v from %v",
 					ship_type, dst, src)
+				intrinsics.debug_trap()
 			}
 			return false
 		}

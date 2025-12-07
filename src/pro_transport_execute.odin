@@ -25,6 +25,7 @@ Architecture:
 
 import "core:fmt"
 import sa "core:container/small_array"
+import "base:intrinsics"
 
 // Execute a complete transport plan (load -> move -> unload)
 execute_transport_plan :: proc(
@@ -47,6 +48,7 @@ execute_transport_plan :: proc(
 	if !plan.is_feasible {
 		when ODIN_DEBUG {
 			fmt.eprintln("[PRO-TRANSPORT] Plan not feasible, skipping execution")
+			intrinsics.debug_trap()
 		}
 		return false
 	}
@@ -55,6 +57,7 @@ execute_transport_plan :: proc(
 	if !execute_transport_loading(gc, plan) {
 		when ODIN_DEBUG {
 			fmt.eprintln("[PRO-TRANSPORT] Failed to load units")
+			intrinsics.debug_trap()
 		}
 		return false
 	}
@@ -63,6 +66,7 @@ execute_transport_plan :: proc(
 	if !execute_transport_movement(gc, plan) {
 		when ODIN_DEBUG {
 			fmt.eprintln("[PRO-TRANSPORT] Failed to move transport")
+			intrinsics.debug_trap()
 		}
 		return false
 	}
@@ -71,6 +75,7 @@ execute_transport_plan :: proc(
 	if !execute_transport_unloading(gc, plan) {
 		when ODIN_DEBUG {
 			fmt.eprintln("[PRO-TRANSPORT] Failed to unload units")
+			intrinsics.debug_trap()
 		}
 		return false
 	}
@@ -112,6 +117,7 @@ execute_transport_loading :: proc(
 	if gc.idle_ships[transport_sea][gc.cur_player][.TRANS_EMPTY] == 0 {
 		when ODIN_DEBUG {
 			fmt.eprintln("[PRO-TRANSPORT] No empty transport available at", transport_sea)
+			intrinsics.debug_trap()
 		}
 		return false
 	}
@@ -132,6 +138,7 @@ execute_transport_loading :: proc(
 			when ODIN_DEBUG {
 				fmt.eprintfln("[PRO-TRANSPORT] Invalid loading: %v onto %v", 
 					unit_info.unit_type, current_transport_state)
+				intrinsics.debug_trap()
 			}
 			return false
 		}
@@ -142,6 +149,7 @@ execute_transport_loading :: proc(
 			when ODIN_DEBUG {
 				fmt.eprintfln("[PRO-TRANSPORT] No %v available at %v", 
 					unit_info.unit_type, src_land)
+				intrinsics.debug_trap()
 			}
 			return false
 		}
@@ -198,6 +206,7 @@ execute_transport_movement :: proc(
 	if !found {
 		when ODIN_DEBUG {
 			fmt.eprintln("[PRO-TRANSPORT] Could not find loaded transport")
+			intrinsics.debug_trap()
 		}
 		return false
 	}
@@ -210,6 +219,7 @@ execute_transport_movement :: proc(
 		if distance > MAX_TRANSPORT_MOVES {
 			when ODIN_DEBUG {
 				fmt.eprintfln("[PRO-TRANSPORT] Invalid move distance: %d", distance)
+				intrinsics.debug_trap()
 			}
 			return false
 		}
@@ -221,6 +231,7 @@ execute_transport_movement :: proc(
 			when ODIN_DEBUG {
 				fmt.eprintfln("[PRO-TRANSPORT] Invalid movement: %v by %d spaces", 
 					current_state, distance)
+				intrinsics.debug_trap()
 			}
 			return false
 		}
@@ -272,6 +283,7 @@ execute_transport_unloading :: proc(
 	if !found {
 		when ODIN_DEBUG {
 			fmt.eprintln("[PRO-TRANSPORT] Could not find transport at unload position")
+			intrinsics.debug_trap()
 		}
 		return false
 	}
@@ -281,6 +293,7 @@ execute_transport_unloading :: proc(
 		when ODIN_DEBUG {
 			fmt.eprintfln("[PRO-TRANSPORT] Transport %v not ready to unload (needs 0 moves)", 
 				transport_state)
+			intrinsics.debug_trap()
 		}
 		return false
 	}

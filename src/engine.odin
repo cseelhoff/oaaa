@@ -2,6 +2,7 @@ package oaaa
 import sa "core:container/small_array"
 import "core:fmt"
 import "core:time"
+import "base:intrinsics"
 
 GLOBAL_TICK := 0
 ACTUALLY_PRINT := true
@@ -22,6 +23,7 @@ when ODIN_DEBUG {//&& false {
 				ship := gc.active_ships[sea][active_ship]
 				if ship < 0 || ship > 200 {
 					fmt.eprintln("Negative active ships")
+					intrinsics.debug_trap()
 				}
 			}
 
@@ -30,6 +32,7 @@ when ODIN_DEBUG {//&& false {
 					ship := gc.idle_ships[sea][player][idle_ship]
 					if ship < 0 || ship > 200 {
 						fmt.eprintln("Negative idle ships")
+						intrinsics.debug_trap()
 					}
 					team_idles[mm.team[player]] += ship
 				}
@@ -37,25 +40,31 @@ when ODIN_DEBUG {//&& false {
 					planes := gc.idle_sea_planes[sea][player][idle_plane]
 					if planes < 0 || planes > 200 {
 						fmt.eprintln("Negative idle planes")
+						intrinsics.debug_trap()
 					} else if planes > 0 &&
 					   idle_plane == .BOMBER &&
 					   mm.team[player] != mm.team[gc.cur_player] {
 						fmt.eprintln("Enemy bombers at sea")
+						intrinsics.debug_trap()
 					}
 					team_idles[mm.team[player]] += planes
 				}
 			}
 			if gc.team_sea_units[sea][.Allies] != team_idles[.Allies] {
 				fmt.eprintln("Unequal team 0 units")
+				intrinsics.debug_trap()
 			}
 			if gc.team_sea_units[sea][.Axis] != team_idles[.Axis] {
 				fmt.eprintln("Unequal team 1 units")
+				intrinsics.debug_trap()
 			}
 			if gc.team_sea_units[sea][.Allies] < 0 {
 				fmt.eprintln("Negative team units")
+				intrinsics.debug_trap()
 			}
 			if gc.team_sea_units[sea][.Axis] < 0 {
 				fmt.eprintln("Negative team units")
+				intrinsics.debug_trap()
 			}
 		}
 		for land in Land_ID {
@@ -67,6 +76,7 @@ when ODIN_DEBUG {//&& false {
 				army := gc.active_armies[land][active_army]
 				if army < 0 || army > 200 {
 					fmt.eprintln("Negative active armies")
+					intrinsics.debug_trap()
 				}
 			}
 			for player in Player_ID {
@@ -74,6 +84,7 @@ when ODIN_DEBUG {//&& false {
 					army := gc.idle_armies[land][player][idle_army]
 					if army < 0 || army > 200 {
 						fmt.eprintln("Negative idle armies")
+						intrinsics.debug_trap()
 					}
 					team_idles[mm.team[player]] += army
 				}
@@ -82,6 +93,7 @@ when ODIN_DEBUG {//&& false {
 					plane := gc.idle_land_planes[land][player][idle_plane]
 					if plane < 0 || plane > 200 {
 						fmt.eprintln("Negative idle planes")
+						intrinsics.debug_trap()
 					}
 					team_idles[mm.team[player]] += plane
 
@@ -91,26 +103,32 @@ when ODIN_DEBUG {//&& false {
 					   mm.team[gc.owner[land]] != mm.team[player] {
 						print_game_state(gc)
 						fmt.eprintln("Enemy bombers at enemy land")
+						intrinsics.debug_trap()
 					}
 
 					if team_idles[mm.team[player]] > 0 &&
 					   mm.team[gc.owner[land]] == mm.team[gc.cur_player] &&
 					   mm.team[player] != mm.team[gc.cur_player] {
 						fmt.eprintln("Enemy units on land ", land)
+						intrinsics.debug_trap()
 					}
 				}
 			}
 			if gc.team_land_units[land][.Allies] != team_idles[.Allies] {
 				fmt.eprintln("Unequal team 0 units")
+				intrinsics.debug_trap()
 			}
 			if gc.team_land_units[land][.Axis] != team_idles[.Axis] {
 				fmt.eprintln("Unequal team 1 units")
+				intrinsics.debug_trap()
 			}
 			if gc.team_land_units[land][.Allies] < 0 {
 				fmt.eprintln("Negative team units")
+				intrinsics.debug_trap()
 			}
 			if gc.team_land_units[land][.Axis] < 0 {
 				fmt.eprintln("Negative team units")
+				intrinsics.debug_trap()
 			}
 		}
 	}

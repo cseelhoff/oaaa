@@ -3,12 +3,14 @@ package oaaa
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
+import "base:intrinsics"
 
 save_json :: proc(game_state: ^Game_State, path: string = "game_state.json") {
 	//fmt.printfln("%#v", game_state)
 	json_data, err := json.marshal(game_state^, {pretty = true, use_enum_names = false})
 	if err != nil {
 		fmt.eprintfln("Unable to marshal JSON: %v", err)
+		intrinsics.debug_trap()
 		os.exit(1)
 	}
 
@@ -17,6 +19,7 @@ save_json :: proc(game_state: ^Game_State, path: string = "game_state.json") {
 	success := os.write_entire_file(path, json_data)
 	if success != true {
 		fmt.eprintfln("Unable to write file: %v", success)
+		intrinsics.debug_trap()
 		os.exit(1)
 	}
 
@@ -28,6 +31,7 @@ load_game_data :: proc(game_state: ^Game_State, path: string = "game_state.json"
 	defer delete(data)
 	if !read_ok {
 		fmt.eprintln("Failed to load the file!")
+		intrinsics.debug_trap()
 		return false
 	}
 	// Parse the json file.
@@ -36,6 +40,7 @@ load_game_data :: proc(game_state: ^Game_State, path: string = "game_state.json"
 	if err != .None {
 		fmt.eprintln("Failed to parse the json file.")
 		fmt.eprintln("Error:", err)
+		intrinsics.debug_trap()
 		return false
 	}
 	// local_game_state := game_state

@@ -798,7 +798,7 @@ prioritize_territories_to_defend_triplea :: proc(
 				gc.idle_land_planes[land_territory][player][.BOMBER]
 		}
 		results: Battle_Results = simulate_battle(land_combatants)
-		fmt.println("    Battle Results: ", results.avg_TUV_swing, ", ", results.invaded_percent)
+		fmt.println("    Battle Results (TUV, Invaded %): ", results.avg_TUV_swing, ", ", results.invaded_percent)
 
 		// Skip territories that are not sufficiently threatened
 		if (results.invaded_percent < 1.0 - win_percentage_needed) do continue

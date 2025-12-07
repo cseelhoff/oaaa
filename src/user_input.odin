@@ -4,6 +4,7 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:slice"
+import "base:intrinsics"
 
 get_action_input:: proc(gc: ^Game_Cache) -> (action: Action_ID, ok: bool) {
 	debug_checks(gc)
@@ -74,6 +75,7 @@ get_ai_input :: proc(gc: ^Game_Cache) -> Action_ID {
 		}
 		fmt.println()
 		fmt.eprintln("Invalid input ", gc.selected_action)
+		intrinsics.debug_trap()
 		save_json(gc)
 	}
 	// assert(gc.selected_action in gc.valid_actions)

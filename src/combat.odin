@@ -1,6 +1,7 @@
 package oaaa
 import sa "core:container/small_array"
 import "core:fmt"
+import "base:intrinsics"
 /*
 AI NOTE: Ship Casualty Priority System
 Casualty orders optimize for preserving combat effectiveness by taking weaker units first.
@@ -727,6 +728,7 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 					combat_rounds_counter,
 				)
 				print_game_state(gc)
+				intrinsics.debug_trap()
 			}
 			if land in gc.land_combat_started {
 				gc.current_territory = to_air(land)

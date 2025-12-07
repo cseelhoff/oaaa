@@ -3,6 +3,7 @@ package oaaa
 import "core:fmt"
 import "core:os"
 import "core:strconv"
+import "base:intrinsics"
 
 is_human := [Player_ID]bool {
 	.Rus = false,
@@ -33,6 +34,7 @@ start :: proc() {
 	ok := initialize_map_constants(&game_cache)
 	if !ok {
 		fmt.eprintln("Error initializing map constants")
+		intrinsics.debug_trap()
 		return
 	}
 	
@@ -112,8 +114,8 @@ start :: proc() {
 
 	game_state = game_cache.state
 
-	fmt.println(game_cache.pro_value)
-	for round_num in 0..<102 {
+	// fmt.println(game_cache.pro_value)
+	for round_num in 0..<2 {
 		test_proai_single_turn(&game_state)
 		fmt.println(round_num)
 	}

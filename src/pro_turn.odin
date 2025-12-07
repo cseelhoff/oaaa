@@ -3,6 +3,7 @@ package oaaa
 import "core:fmt"
 import "core:math/rand"
 import sa "core:container/small_array"
+import "base:intrinsics"
 
 // Debug separators
 SEP_LONG :: "======================================================================"
@@ -106,6 +107,7 @@ test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
 		fmt.eprintln("\n" + SEP_LONG)
 		fmt.eprintln("*** PRO AI TURN FAILED! ***")
 		fmt.eprintln(SEP_LONG + "\n")
+		intrinsics.debug_trap()
 		return false
 	}
 	
