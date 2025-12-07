@@ -117,6 +117,19 @@ purchase_triplea_full :: proc(gc: ^Game_Cache) -> map[Land_ID]Pro_Purchase_Terri
 	//     purchaseAaUnits(
 	//         purchaseTerritories, prioritizedLandTerritories, purchaseOptions.getAaOptions());
 	purchase_aa_units_triplea(gc, prioritized_land_territories)
+	
+	// MODIFIED: Move sea purchase BEFORE land units to ensure ships can be bought
+	// In Java, land units spending all money prevents any sea purchases.
+	// By doing sea first after land defense, we can buy ships when under sea threat.
+	//     // Prioritize sea place options and purchase units
+	prioritized_sea_territories := prioritize_sea_territories_triplea(gc)
+	should_save_up_for_a_fleet := purchase_sea_and_amphib_units_triplea(
+		gc,
+		prioritized_sea_territories,
+		&all_enemies,
+		&enemy_attack_options,
+	)
+	
 	//     purchaseLandUnits(purchaseTerritories, prioritizedLandTerritories, purchaseOptions);
 	purchase_land_units_triplea(gc, prioritized_land_territories)
 
@@ -148,17 +161,6 @@ purchase_triplea_full :: proc(gc: ^Game_Cache) -> map[Land_ID]Pro_Purchase_Terri
 	//         purchaseOptions,
 	//         false);
 	purchase_factory_triplea(gc, false)
-
-	//     // Prioritize sea place options and purchase units
-	//     final List<ProPlaceTerritory> prioritizedSeaTerritories =
-	//         prioritizeSeaTerritories(purchaseTerritories);
-	prioritized_sea_territories := prioritize_sea_territories_triplea(gc)
-	//     final boolean shouldSaveUpForAFleet =
-	//         purchaseSeaAndAmphibUnits(purchaseTerritories, prioritizedSeaTerritories, purchaseOptions);
-	should_save_up_for_a_fleet := purchase_sea_and_amphib_units_triplea(
-		gc,
-		prioritized_sea_territories,
-	)
 
 	//     // Try to use any remaining PUs on high value units, except if we need to save up for a fleet.
 	//     if (!shouldSaveUpForAFleet) {

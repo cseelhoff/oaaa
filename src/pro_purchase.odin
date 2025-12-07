@@ -409,6 +409,14 @@ purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 	// Step 5: Purchase AA guns for territories with factories
 	purchase_aa_units_triplea(gc, prioritized_land)
 
+	// Step 5.5: MOVED HERE - Prioritize sea territories and purchase naval units 
+	// This is moved BEFORE offensive land purchases to ensure ships can be bought
+	// when under sea threat. Otherwise, land units spend all money first.
+	prioritized_sea := prioritize_sea_territories_triplea(gc)
+	debug_checks(gc)
+	should_save_for_fleet := purchase_sea_and_amphib_units_triplea(gc, prioritized_sea, &all_enemies, &enemy_attack_options)
+	debug_checks(gc)
+
 	// Step 6: Purchase offensive land units (infantry, tanks, artillery)
 	purchase_land_units_triplea(gc, prioritized_land)
 
@@ -422,12 +430,6 @@ purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 	if gc.money[gc.cur_player] == 0 {
 		return true // All money spent on factory
 	}
-	debug_checks(gc)
-
-	// Step 8: Prioritize sea territories and purchase naval units
-	prioritized_sea := prioritize_sea_territories_triplea(gc)
-	debug_checks(gc)
-	should_save_for_fleet := purchase_sea_and_amphib_units_triplea(gc, prioritized_sea)
 	debug_checks(gc)
 
 	if should_save_for_fleet {
@@ -2129,19 +2131,20 @@ Java Original (lines 1519-2096):
 purchase_sea_and_amphib_units_triplea :: proc(
 	gc: ^Game_Cache,
 	prioritized_sea: [dynamic]Place_Territory_Sea,
+	all_enemies: ^All_Enemy_Attack_Options,
+	enemy_attack_options: ^Pro_Other_Move_Options,
 ) -> (
 	should_save: bool,
 ) {
 	if gc.money[gc.cur_player] == 0 do return false
 
 	/*
-	TripleA logic (577 lines!):
-	1. Check if need destroyer (for enemy subs)
-	2. Purchase sea defense units
-	3. Purchase transports for amphibious assaults
-	4. Purchase attack ships (carriers, battleships, cruisers)
-	5. Verify can defend purchased units
-	6. Load transports with land units
+	TripleA logic (577 lines):
+	1. For each sea zone with enemy threats, run battle simulation
+	2. Purchase defenders until TUV swing < -1 OR win% < 5%
+	3. Then purchase for naval superiority
+	4. Then purchase transports + amphib units
+	5. If wanted to buy but couldn't defend, consider saving up
 	*/
 
 	bought_units := false
@@ -2173,49 +2176,118 @@ purchase_sea_and_amphib_units_triplea :: proc(
 		if factory_for_sea == nil do continue
 		factory_loc := factory_for_sea.?
 
-		// Phase 1: Check if need destroyer (anti-sub)
-		need_destroyer := check_need_destroyer_triplea(gc, sea_id)
-		if need_destroyer && gc.money[gc.cur_player] >= 8 && gc.builds_left[factory_loc] > 0 {
-			// Buy destroyer
-			gc.money[gc.cur_player] -= 8
-			gc.builds_left[factory_loc] -= 1
-			add_naval_units_to_place_triplea(factory_loc, .DESTROYER, 1)
-			bought_units = true
+		// Get enemy threat to this sea zone
+		threat := &enemy_attack_options.sea_max[sea_id]
+		has_threat := threat.max_fighters > 0 || threat.max_bombers > 0 ||
+		              threat.max_destroyers > 0 || threat.max_cruisers > 0 ||
+		              threat.max_battleships > 0 || threat.max_subs > 0 || threat.max_carriers > 0
+
+		when ODIN_DEBUG {
+			fmt.println("    [SEA ZONE]", sea_id, "factory:", factory_loc, "has_threat:", has_threat,
+			           "threat subs:", threat.max_subs, "destroyers:", threat.max_destroyers,
+			           "cruisers:", threat.max_cruisers, "BS:", threat.max_battleships,
+			           "fighters:", threat.max_fighters, "bombers:", threat.max_bombers)
+		}
+
+		// Check if need destroyer (for enemy subs)
+		need_destroyer := check_need_destroyer_triplea(gc, sea_id) && threat.max_subs > 0
+
+		// Phase 1: Purchase sea defenders if under threat
+		if has_threat {
+			// Run battle simulation to see if we can hold
+			result := simulate_sea_defense(gc, sea_id, threat, factory_loc)
+			
+			// Purchase defenders until we can hold (TUV swing < -1 OR win% < 5)
+			purchase_loop: for gc.money[gc.cur_player] >= 6 && gc.builds_left[factory_loc] > 0 {
+				// Check if we can already hold
+				if result.avg_TUV_swing < -1.0 || result.win_percent < 5.0 {
+					break
+				}
+				
+				// Select best unit to buy based on efficiency
+				best_unit: Maybe(Idle_Ship) = nil
+				best_efficiency := f64(0)
+				unused_carrier_cap := int(gc.idle_ships[sea_id][gc.cur_player][.CARRIER]) * 2 - 
+				                      int(gc.idle_sea_planes[sea_id][gc.cur_player][.FIGHTER])
+				
+				ships_to_consider := [?]Idle_Ship{.DESTROYER, .CRUISER, .SUB, .CARRIER, .BATTLESHIP}
+				for ship in ships_to_consider {
+					cost := int(COST_IDLE_SHIP[ship])
+					if gc.money[gc.cur_player] < u8(cost) do continue
+					
+					efficiency := get_sea_defense_efficiency(ship, need_destroyer, unused_carrier_cap)
+					if efficiency > best_efficiency {
+						best_efficiency = efficiency
+						best_unit = ship
+					}
+				}
+				
+				if best_unit == nil do break
+				ship := best_unit.?
+				cost := COST_IDLE_SHIP[ship]
+				
+				// Buy the unit
+				gc.money[gc.cur_player] -= cost
+				gc.builds_left[factory_loc] -= 1
+				add_naval_units_to_place_triplea(factory_loc, ship, 1)
+				bought_units = true
+				
+				if ship == .DESTROYER {
+					need_destroyer = false
+				}
+				
+				// Re-simulate to check if we can hold now
+				result = simulate_sea_defense(gc, sea_id, threat, factory_loc)
+				
+				when ODIN_DEBUG {
+					fmt.println("  [SEA PURCHASE] Bought", ship, "for", sea_id, 
+					           "TUV swing:", result.avg_TUV_swing, "Win%:", result.win_percent)
+				}
+			}
+			
+			// If we still can't hold, mark territory
+			result = simulate_sea_defense(gc, sea_id, threat, factory_loc)
+			if result.avg_TUV_swing >= -1.0 && result.win_percent >= 5.0 {
+				wanted_to_buy_but_couldnt_defend = true
+				continue // Skip to next sea zone
+			}
 		}
 		debug_checks(gc)
 
-		// Phase 2: Purchase sea defenders if needed
-		if place_sea.num_defenders < 2 && gc.money[gc.cur_player] >= 12 && gc.builds_left[factory_loc] > 0 {
-			// Buy cruiser (good all-around ship)
-			gc.money[gc.cur_player] -= 12
-			gc.builds_left[factory_loc] -= 1
-			add_naval_units_to_place_triplea(factory_loc, .CRUISER, 1)
-			bought_units = true
-		}
-		debug_checks(gc)
-
-		// Phase 3: Purchase transports if strategic value is high
+		// Phase 2: Purchase transports if strategic value is high and we can defend
 		if place_sea.strategic_value >= 3.0 && gc.money[gc.cur_player] >= 7 && gc.builds_left[factory_loc] > 0 {
-			// Buy transport for amphibious assault
-			if can_defend_new_transport_triplea(gc, sea_id) {
+			// Check if we have enough defense for a transport
+			defenders := count_sea_defenders_triplea(gc, sea_id)
+			if defenders >= 1 {
 				gc.money[gc.cur_player] -= 7
 				gc.builds_left[factory_loc] -= 1
 				add_naval_units_to_place_triplea(factory_loc, .TRANS_EMPTY, 1)
 				bought_units = true
+				
+				when ODIN_DEBUG {
+					fmt.println("  [SEA PURCHASE] Bought TRANSPORT for", sea_id)
+				}
 			} else {
 				wanted_to_buy_but_couldnt_defend = true
 			}
 		}
 		debug_checks(gc)
 
-		// Phase 4: Purchase attack ships (carriers for fighters)
-		if gc.money[gc.cur_player] >= 14 && place_sea.strategic_value >= 5.0 && gc.builds_left[factory_loc] > 0 {
-			// Buy carrier (can hold 2 fighters)
-			if can_defend_new_carrier_triplea(gc, sea_id) {
+		// Phase 3: Purchase carriers if we have fighters that need landing spots
+		unused_carrier_cap := int(gc.idle_ships[sea_id][gc.cur_player][.CARRIER]) * 2 - 
+		                      int(gc.idle_sea_planes[sea_id][gc.cur_player][.FIGHTER])
+		if unused_carrier_cap < 0 && gc.money[gc.cur_player] >= 14 && gc.builds_left[factory_loc] > 0 {
+			// Check if we can defend a carrier
+			defenders := count_sea_defenders_triplea(gc, sea_id)
+			if defenders >= 2 {
 				gc.money[gc.cur_player] -= 14
 				gc.builds_left[factory_loc] -= 1
 				add_naval_units_to_place_triplea(factory_loc, .CARRIER, 1)
 				bought_units = true
+				
+				when ODIN_DEBUG {
+					fmt.println("  [SEA PURCHASE] Bought CARRIER for", sea_id)
+				}
 			} else {
 				wanted_to_buy_but_couldnt_defend = true
 			}
@@ -2257,6 +2329,157 @@ can_defend_new_carrier_triplea :: proc(gc: ^Game_Cache, sea_id: Sea_ID) -> bool 
 	// Need at least 2 combat ships to protect carrier
 	defenders := count_sea_defenders_triplea(gc, sea_id)
 	return defenders >= 2
+}
+
+// =============================================================================
+// SEA BATTLE HELPER FUNCTIONS FOR PURCHASE DECISIONS
+// =============================================================================
+
+// Build Sea_Attackers structure from Enemy_Territory_Threat
+// Used to create battle simulation inputs from enemy attack analysis
+get_enemy_sea_attackers_from_threat :: proc(threat: ^Enemy_Territory_Threat) -> Sea_Attackers {
+	return Sea_Attackers{
+		Subs        = threat.max_subs,
+		Destroyers  = threat.max_destroyers,
+		Cruisers    = threat.max_cruisers,
+		Carriers    = threat.max_carriers,
+		Battleships = threat.max_battleships,
+		BS_Damaged  = 0,  // Threat analysis doesn't distinguish damaged
+		Fighters    = threat.max_fighters,
+		Bombers     = threat.max_bombers,
+	}
+}
+
+// Build Sea_Defenders from our current units in a sea zone
+// Includes both idle ships and pending purchases from the specified factory
+get_my_sea_defenders :: proc(
+	gc: ^Game_Cache, 
+	sea_id: Sea_ID,
+	factory_loc: Land_ID,  // Factory location to check for pending purchases
+) -> Sea_Defenders {
+	player := gc.cur_player
+	
+	def := Sea_Defenders{
+		Subs        = gc.idle_ships[sea_id][player][.SUB],
+		Destroyers  = gc.idle_ships[sea_id][player][.DESTROYER],
+		Cruisers    = gc.idle_ships[sea_id][player][.CRUISER],
+		Carriers    = gc.idle_ships[sea_id][player][.CARRIER],
+		Battleships = gc.idle_ships[sea_id][player][.BATTLESHIP],
+		BS_Damaged  = gc.idle_ships[sea_id][player][.BS_DAMAGED],
+		Fighters    = gc.idle_sea_planes[sea_id][player][.FIGHTER],
+		Transports  = count_all_transports_triplea(gc, sea_id),
+	}
+	
+	// Add pending purchases from the factory that builds to this sea zone
+	for &purchase in g_purchased_units {
+		if purchase.territory == factory_loc {
+			// Check if this factory can build to this sea zone
+			for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+				if adj_sea == sea_id {
+					def.Subs += purchase.sub
+					def.Destroyers += purchase.destroyer
+					def.Cruisers += purchase.cruiser
+					def.Carriers += purchase.carrier
+					def.Battleships += purchase.battleship
+					def.Transports += purchase.transport
+					break
+				}
+			}
+		}
+	}
+	
+	// Add allied ships
+	for ally in sa.slice(&mm.allies[player]) {
+		if ally == player do continue
+		def.Subs += gc.idle_ships[sea_id][ally][.SUB]
+		def.Destroyers += gc.idle_ships[sea_id][ally][.DESTROYER]
+		def.Cruisers += gc.idle_ships[sea_id][ally][.CRUISER]
+		def.Carriers += gc.idle_ships[sea_id][ally][.CARRIER]
+		def.Battleships += gc.idle_ships[sea_id][ally][.BATTLESHIP]
+		def.BS_Damaged += gc.idle_ships[sea_id][ally][.BS_DAMAGED]
+		def.Fighters += gc.idle_sea_planes[sea_id][ally][.FIGHTER]
+	}
+	
+	return def
+}
+
+// Simulate a sea battle and return results for purchase decision
+// This is the main entry point for AI purchase decisions
+simulate_sea_defense :: proc(
+	gc: ^Game_Cache,
+	sea_id: Sea_ID,
+	threat: ^Enemy_Territory_Threat,
+	factory_loc: Land_ID,
+) -> Sea_Battle_Results {
+	attackers := get_enemy_sea_attackers_from_threat(threat)
+	defenders := get_my_sea_defenders(gc, sea_id, factory_loc)
+	
+	combatants := Sea_Combatants{
+		defenders = defenders,
+		attackers = attackers,
+	}
+	
+	return simulate_sea_battle(combatants)
+}
+
+// Check if we can hold a sea zone against enemy attacks
+// Returns true if TUV swing is favorable OR win% is low enough
+can_hold_sea_zone :: proc(
+	gc: ^Game_Cache,
+	sea_id: Sea_ID,
+	threat: ^Enemy_Territory_Threat,
+	factory_loc: Land_ID,
+) -> bool {
+	result := simulate_sea_defense(gc, sea_id, threat, factory_loc)
+	
+	// Java logic: (result.getTuvSwing() < -1 || result.getWinPercentage() < (100.0 - 95))
+	// TUV swing < -1 means defender wins on TUV
+	// Win% < 5 means attacker only wins 5% of time
+	return result.avg_TUV_swing < -1.0 || result.win_percent < 5.0
+}
+
+// Calculate sea defense efficiency for a unit type
+// Based on Java's ProPurchaseOption.getSeaDefenseEfficiency()
+get_sea_defense_efficiency :: proc(
+	ship_type: Idle_Ship,
+	need_destroyer: bool,
+	unused_carrier_capacity: int,
+) -> f64 {
+	/*
+	Java logic (simplified):
+	- Destroyer: bonus if need_destroyer for anti-sub
+	- Carrier: bonus if we have fighters needing landing spots
+	- Otherwise: defense power / cost
+	*/
+	
+	cost := f64(COST_IDLE_SHIP[ship_type])
+	if cost == 0 do return 0.0
+	
+	#partial switch ship_type {
+	case .DESTROYER:
+		base := f64(DESTROYER_DEFENSE) / cost
+		if need_destroyer {
+			return base * 2.0  // Double value if we need anti-sub
+		}
+		return base
+	case .CRUISER:
+		return f64(CRUISER_DEFENSE) / cost
+	case .BATTLESHIP:
+		// Battleships are expensive but take 2 hits
+		return f64(BATTLESHIP_DEFENSE * 2) / cost
+	case .CARRIER:
+		base := f64(CARRIER_DEFENSE) / cost
+		if unused_carrier_capacity < 0 {
+			// We have fighters that need landing spots
+			return base * 1.5
+		}
+		return base
+	case .SUB:
+		// Subs are cheap but can be ignored if enemy has no destroyer
+		return f64(SUB_DEFENSE) / cost * 0.8
+	case:
+		return 0.0  // Transports have no defense
+	}
 }
 
 /*

@@ -2,6 +2,10 @@ package oaaa
 
 import "core:fmt"
 
+// =============================================================================
+// LAND BATTLE STRUCTURES
+// =============================================================================
+
 Land_Defenders :: struct {
 	Infantry:  u8,
 	Artillery: u8,
@@ -35,6 +39,47 @@ Land_Combatants_Counter :: struct {
 	attackers: Land_Attackers,
 	counter_attackers: Land_Attackers,
 }
+
+// =============================================================================
+// SEA BATTLE STRUCTURES
+// =============================================================================
+
+Sea_Defenders :: struct {
+	Subs:        u8,
+	Destroyers:  u8,
+	Cruisers:    u8,
+	Carriers:    u8,
+	Battleships: u8,
+	BS_Damaged:  u8,
+	Fighters:    u8,  // on carriers
+	Transports:  u8,  // fodder
+}
+
+Sea_Attackers :: struct {
+	Subs:        u8,
+	Destroyers:  u8,
+	Cruisers:    u8,
+	Carriers:    u8,
+	Battleships: u8,
+	BS_Damaged:  u8,
+	Fighters:    u8,
+	Bombers:     u8,
+}
+
+Sea_Combatants :: struct {
+	defenders: Sea_Defenders,
+	attackers: Sea_Attackers,
+}
+
+Sea_Battle_Results :: struct {
+	avg_TUV_swing:   f64,
+	win_percent:     f64,  // Probability attackers win (defenders destroyed)
+	avg_survivors:   f64,  // Average defending units remaining
+}
+
+// =============================================================================
+// LAND BATTLE FUNCTIONS
+// =============================================================================
 
 get_battle_results :: proc(combatants: Land_Combatants) -> Battle_Results {
 	if result, exists := mm.battle_results[combatants]; exists {
@@ -299,4 +344,273 @@ remove_defenders :: proc(defenders: ^Land_Defenders, total_hits: u8, tuv_swing: 
 	defenders.Fighters -= hits
 	tuv_swing^ += i32(hits) * i32(Cost_Buy[.BUY_FIGHTER_ACTION])
 	return
+}
+
+// =============================================================================
+// SEA BATTLE FUNCTIONS
+// =============================================================================
+
+/*
+Sea Battle Simulation for AI Purchase Decisions
+
+This simulates sea combat to predict outcomes, similar to land battle simulation.
+Used by purchase AI to decide if we can defend sea zones.
+
+Key differences from actual combat resolution (combat.odin resolve_sea_battles):
+1. No retreat decisions - simulates fight to the finish
+2. No transport unloading - pure combat simulation
+3. Simplified sub rules - subs always get sneak attack if no enemy destroyer
+4. No bombardment - that's land combat
+
+The simulation matches combat.odin logic for:
+- Submarine sneak attacks (attack first if no enemy destroyer)
+- Casualty selection order
+- Low-luck dice resolution
+*/
+
+// Get cached sea battle results or compute if not cached
+get_sea_battle_results :: proc(combatants: Sea_Combatants) -> Sea_Battle_Results {
+	// Note: We could add caching like land battles if needed
+	// For now, compute each time since sea battles are less common
+	return simulate_sea_battle(combatants)
+}
+
+// Monte Carlo simulation of sea battle
+// Returns: win_percent (attacker wins), tuv_swing, avg_survivors
+simulate_sea_battle :: proc(combatants: Sea_Combatants) -> Sea_Battle_Results {
+	simulations_count := 1000
+	attacker_wins := 0
+	tuv_swing: i32 = 0
+	total_survivors: i32 = 0
+	
+	for i in 0 ..< simulations_count {
+		def := combatants.defenders
+		att := combatants.attackers
+		
+		// Check if attackers have destroyer (affects sub sneak attack)
+		attacker_has_destroyer := att.Destroyers > 0
+		defender_has_destroyer := def.Destroyers > 0
+		
+		for combat_round in 0 ..< MAX_COMBAT_ROUNDS {
+			if sim_sea_no_defenders_remain(&def) || sim_sea_no_attackers_remain(&att) do break
+			
+			// Submarine sneak attack phase (if no enemy destroyer)
+			if !defender_has_destroyer && att.Subs > 0 {
+				sub_hits := sim_low_luck(u16(att.Subs) * SUB_ATTACK)
+				sim_remove_sea_defenders(&def, sub_hits, &tuv_swing, false) // subs can't hit air
+			}
+			if !attacker_has_destroyer && def.Subs > 0 {
+				sub_hits := sim_low_luck(u16(def.Subs) * SUB_DEFENSE)
+				sim_remove_sea_attackers(&att, sub_hits, &tuv_swing, false)
+			}
+			
+			// Main combat phase
+			attacker_hits := sim_sea_attacker_hits(&att, defender_has_destroyer)
+			defender_hits := sim_sea_defender_hits(&def, attacker_has_destroyer)
+			
+			// Apply hits
+			sim_remove_sea_attackers(&att, defender_hits, &tuv_swing, true)
+			sim_remove_sea_defenders(&def, attacker_hits, &tuv_swing, true)
+			
+			// Update destroyer status for next round
+			attacker_has_destroyer = att.Destroyers > 0
+			defender_has_destroyer = def.Destroyers > 0
+		}
+		
+		// Count outcome
+		if sim_sea_no_defenders_remain(&def) {
+			attacker_wins += 1
+		}
+		
+		// Count surviving defenders
+		total_survivors += i32(def.Subs + def.Destroyers + def.Cruisers + 
+		                       def.Carriers + def.Battleships + def.BS_Damaged + 
+		                       def.Fighters)
+	}
+	
+	result := Sea_Battle_Results {
+		avg_TUV_swing = f64(tuv_swing) / f64(simulations_count),
+		win_percent   = f64(attacker_wins) / f64(simulations_count) * 100.0,
+		avg_survivors = f64(total_survivors) / f64(simulations_count),
+	}
+	return result
+}
+
+// Check if all combat defenders are gone (transports don't count)
+sim_sea_no_defenders_remain :: #force_inline proc(def: ^Sea_Defenders) -> bool {
+	return def.Subs == 0 && 
+	       def.Destroyers == 0 && 
+	       def.Cruisers == 0 && 
+	       def.Carriers == 0 && 
+	       def.Battleships == 0 && 
+	       def.BS_Damaged == 0 &&
+	       def.Fighters == 0
+}
+
+sim_sea_no_attackers_remain :: #force_inline proc(att: ^Sea_Attackers) -> bool {
+	return att.Subs == 0 && 
+	       att.Destroyers == 0 && 
+	       att.Cruisers == 0 && 
+	       att.Carriers == 0 && 
+	       att.Battleships == 0 && 
+	       att.BS_Damaged == 0 &&
+	       att.Fighters == 0 &&
+	       att.Bombers == 0
+}
+
+// Calculate attacker hits (excluding sub hits which are handled separately)
+sim_sea_attacker_hits :: #force_inline proc(att: ^Sea_Attackers, enemy_has_destroyer: bool) -> u8 {
+	damage: u16 = 0
+	// Subs only included if enemy has destroyer (otherwise handled in sneak attack)
+	if enemy_has_destroyer {
+		damage += u16(att.Subs) * SUB_ATTACK
+	}
+	damage += u16(att.Destroyers) * DESTROYER_ATTACK
+	damage += u16(att.Cruisers) * CRUISER_ATTACK
+	damage += u16(att.Carriers) * CARRIER_ATTACK
+	damage += u16(att.Battleships) * BATTLESHIP_ATTACK
+	damage += u16(att.BS_Damaged) * BATTLESHIP_ATTACK
+	damage += u16(att.Fighters) * FIGHTER_ATTACK
+	damage += u16(att.Bombers) * BOMBER_ATTACK
+	return sim_low_luck(damage)
+}
+
+sim_sea_defender_hits :: #force_inline proc(def: ^Sea_Defenders, enemy_has_destroyer: bool) -> u8 {
+	damage: u16 = 0
+	// Subs only included if enemy has destroyer (otherwise handled in sneak attack)
+	if enemy_has_destroyer {
+		damage += u16(def.Subs) * SUB_DEFENSE
+	}
+	damage += u16(def.Destroyers) * DESTROYER_DEFENSE
+	damage += u16(def.Cruisers) * CRUISER_DEFENSE
+	damage += u16(def.Carriers) * CARRIER_DEFENSE
+	damage += u16(def.Battleships) * BATTLESHIP_DEFENSE
+	damage += u16(def.BS_Damaged) * BATTLESHIP_DEFENSE
+	damage += u16(def.Fighters) * FIGHTER_DEFENSE
+	return sim_low_luck(damage)
+}
+
+// Remove attacker casualties - cheapest first (opposite of land where attackers are valuable)
+sim_remove_sea_attackers :: proc(att: ^Sea_Attackers, total_hits: u8, tuv_swing: ^i32, can_hit_air: bool) {
+	hits := total_hits
+	
+	// Subs are cheap fodder (6 IPC)
+	if hits > 0 && att.Subs > 0 {
+		taken := min(hits, att.Subs)
+		att.Subs -= taken
+		hits -= taken
+		tuv_swing^ -= i32(taken) * 6  // SUB cost
+	}
+	// Destroyers (8 IPC)
+	if hits > 0 && att.Destroyers > 0 {
+		taken := min(hits, att.Destroyers)
+		att.Destroyers -= taken
+		hits -= taken
+		tuv_swing^ -= i32(taken) * 8
+	}
+	// Cruisers (12 IPC)
+	if hits > 0 && att.Cruisers > 0 {
+		taken := min(hits, att.Cruisers)
+		att.Cruisers -= taken
+		hits -= taken
+		tuv_swing^ -= i32(taken) * 12
+	}
+	// Carriers (14 IPC) - but air on them might die too
+	if hits > 0 && att.Carriers > 0 {
+		taken := min(hits, att.Carriers)
+		att.Carriers -= taken
+		hits -= taken
+		tuv_swing^ -= i32(taken) * 14
+	}
+	// Damaged battleships (20 IPC)
+	if hits > 0 && att.BS_Damaged > 0 {
+		taken := min(hits, att.BS_Damaged)
+		att.BS_Damaged -= taken
+		hits -= taken
+		tuv_swing^ -= i32(taken) * 20
+	}
+	// Fresh battleships take 2 hits - first hit damages
+	if hits > 0 && att.Battleships > 0 {
+		taken := min(hits, att.Battleships)
+		att.Battleships -= taken
+		att.BS_Damaged += taken  // Convert to damaged
+		hits -= taken
+		// No TUV loss yet - just damaged
+	}
+	// Fighters (10 IPC) - only if can_hit_air (subs can't hit air)
+	if can_hit_air && hits > 0 && att.Fighters > 0 {
+		taken := min(hits, att.Fighters)
+		att.Fighters -= taken
+		hits -= taken
+		tuv_swing^ -= i32(taken) * 10
+	}
+	// Bombers (12 IPC)
+	if can_hit_air && hits > 0 && att.Bombers > 0 {
+		taken := min(hits, att.Bombers)
+		att.Bombers -= taken
+		hits -= taken
+		tuv_swing^ -= i32(taken) * 12
+	}
+}
+
+// Remove defender casualties - cheapest first, transports last (they're defenseless)
+sim_remove_sea_defenders :: proc(def: ^Sea_Defenders, total_hits: u8, tuv_swing: ^i32, can_hit_air: bool) {
+	hits := total_hits
+	
+	// Subs are cheap fodder (6 IPC)
+	if hits > 0 && def.Subs > 0 {
+		taken := min(hits, def.Subs)
+		def.Subs -= taken
+		hits -= taken
+		tuv_swing^ += i32(taken) * 6  // Positive = good for attacker
+	}
+	// Destroyers (8 IPC)
+	if hits > 0 && def.Destroyers > 0 {
+		taken := min(hits, def.Destroyers)
+		def.Destroyers -= taken
+		hits -= taken
+		tuv_swing^ += i32(taken) * 8
+	}
+	// Cruisers (12 IPC)
+	if hits > 0 && def.Cruisers > 0 {
+		taken := min(hits, def.Cruisers)
+		def.Cruisers -= taken
+		hits -= taken
+		tuv_swing^ += i32(taken) * 12
+	}
+	// Carriers (14 IPC)
+	if hits > 0 && def.Carriers > 0 {
+		taken := min(hits, def.Carriers)
+		def.Carriers -= taken
+		hits -= taken
+		tuv_swing^ += i32(taken) * 14
+	}
+	// Damaged battleships (20 IPC)
+	if hits > 0 && def.BS_Damaged > 0 {
+		taken := min(hits, def.BS_Damaged)
+		def.BS_Damaged -= taken
+		hits -= taken
+		tuv_swing^ += i32(taken) * 20
+	}
+	// Fresh battleships take 2 hits - first hit damages
+	if hits > 0 && def.Battleships > 0 {
+		taken := min(hits, def.Battleships)
+		def.Battleships -= taken
+		def.BS_Damaged += taken
+		hits -= taken
+	}
+	// Fighters (10 IPC) - only if can_hit_air
+	if can_hit_air && hits > 0 && def.Fighters > 0 {
+		taken := min(hits, def.Fighters)
+		def.Fighters -= taken
+		hits -= taken
+		tuv_swing^ += i32(taken) * 10
+	}
+	// Transports are defenseless fodder (7 IPC) - taken last since they can't fight back
+	if hits > 0 && def.Transports > 0 {
+		taken := min(hits, def.Transports)
+		def.Transports -= taken
+		hits -= taken
+		tuv_swing^ += i32(taken) * 7
+	}
 }

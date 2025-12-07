@@ -98,7 +98,9 @@ is_land_worth_defending :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> bool {
 }
 
 // Check if we care about threats to this sea zone
-// (only care if we have ships there)
+// For purchasing decisions, we care about:
+// 1. Sea zones where we have ships
+// 2. Sea zones adjacent to our coastal factories (to inform ship purchase decisions)
 is_sea_worth_defending :: proc(gc: ^Game_Cache, dst_sea: Sea_ID) -> bool {
 	// Check if we have any ships there
 	if gc.active_ships[dst_sea][.TRANS_EMPTY_UNMOVED] > 0 ||
@@ -117,6 +119,20 @@ is_sea_worth_defending :: proc(gc: ^Game_Cache, dst_sea: Sea_ID) -> bool {
 	   gc.active_sea_planes[dst_sea][.FIGHTER_UNMOVED] > 0 {
 		return true
 	}
+	
+	// Check if this sea zone is adjacent to one of our coastal factories
+	// This is important for ship purchase decisions - we need to know threats
+	// to sea zones where we might want to build ships
+	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+		if gc.owner[factory_loc] != gc.cur_player do continue
+		// Check if factory is adjacent to this sea zone
+		for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+			if adj_sea == dst_sea {
+				return true
+			}
+		}
+	}
+	
 	return false
 }
 
