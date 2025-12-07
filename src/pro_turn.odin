@@ -83,13 +83,11 @@ test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
 	fmt.printf("Starting Player: %v\n", gs.cur_player)
 	fmt.printf("Starting Money: %d IPCs\n", gs.money[gs.cur_player])
 
-	// Count initial units
+	// Count initial units for current player only
 	total_units := 0
 	for land in Land_ID {
-		for player in Player_ID {
-			for army in Idle_Army {
-				total_units += int(gs.idle_armies[land][player][army])
-			}
+		for army in Idle_Army {
+			total_units += int(gs.idle_armies[land][gs.cur_player][army])
 		}
 	}
 	fmt.printf("Total units on board: %d\n", total_units)
@@ -111,13 +109,12 @@ test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
 		return false
 	}
 
-	// Count final units
+	// Count final units for the player who just played (gs.cur_player, not gc.cur_player which has advanced)
+	starting_player := gs.cur_player
 	final_units := 0
 	for land in Land_ID {
-		for player in Player_ID {
-			for army in Idle_Army {
-				final_units += int(gc.state.idle_armies[land][player][army])
-			}
+		for army in Idle_Army {
+			final_units += int(gc.state.idle_armies[land][starting_player][army])
 		}
 	}
 
@@ -125,7 +122,7 @@ test_proai_single_turn :: proc(gs: ^Game_State) -> bool {
 	fmt.println("PRO AI TURN COMPLETE")
 	fmt.println(SEP_LONG)
 	fmt.printf("Next Player: %v\n", gc.cur_player)
-	fmt.printf("Final Money: %d IPCs\n", gc.state.money[gs.cur_player])
+	fmt.printf("Final Money: %d IPCs\n", gc.state.money[starting_player])
 	fmt.printf("Units Added: %d\n", final_units - total_units)
 	fmt.printf("Game Score: %.1f\n", evaluate_cache(&gc))
 	fmt.println(SEP_LONG + "\n")
