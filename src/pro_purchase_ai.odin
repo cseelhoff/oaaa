@@ -51,15 +51,11 @@ purchase_triplea_full :: proc(gc: ^Game_Cache) -> map[Land_ID]Pro_Purchase_Terri
 	//     // Determine max enemy attack units and current allied defenders
 	//     territoryManager.populateEnemyAttackOptions(List.of(), placeTerritories);
 	territories_to_check: Land_Bitset = place_territories
-	cleared_territories: Land_Bitset = place_territories
-	enemy_attack_options: Pro_Other_Move_Options = {}
-	find_enemy_attack_options(
-		gc,
-		gc.cur_player,
-		cleared_territories,
-		territories_to_check,
-		&enemy_attack_options,
-	)
+	
+	// Use the new per-enemy + aggregated enemy attack options
+	all_enemies := all_enemy_attack_options_init()
+	enemy_attack_options := pro_other_move_options_init()
+	generate_all_enemy_attack_options(gc, &all_enemies, &enemy_attack_options)
 	//     findDefendersInPlaceTerritories(purchaseTerritories);
 	defenders_map := find_defenders_in_place_territories_triplea(gc)
 
@@ -91,7 +87,7 @@ purchase_triplea_full :: proc(gc: ^Game_Cache) -> map[Land_ID]Pro_Purchase_Terri
 	//         territoriesToCheck.add(ppt.getTerritory());
 	//       }
 	//     }
-	territories_to_check: Land_Bitset = {}
+	// territories_to_check: Land_Bitset = {}
 	for _, purchase_terr in purchase_territories {
 		territories_to_check += purchase_terr.can_place_territories
 	}
@@ -238,7 +234,4 @@ find_territory_values_triplea :: proc(
 	return territory_value_map
 }
 
-Pro_Other_Move_Options :: struct {
-	max_move_map: map[Air_ID]Pro_Territory,
-	move_maps:    map[Air_ID][dynamic]Pro_Territory,
-}
+// Note: Pro_Other_Move_Options has been moved to pro_data.odin

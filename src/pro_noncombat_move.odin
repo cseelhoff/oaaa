@@ -264,7 +264,7 @@ move_one_defender_to_land_territories_bordering_enemy :: proc(gc: ^Game_Cache) -
 
 				territories_to_defend_with_one_unit -= {t};
 				when ODIN_DEBUG {
-					fmt.println(t + ", added one land unit: " + idle_army);
+					fmt.printf("%v, added one land unit: %v\n", t, idle_army);
 				}
 				break;
 			}

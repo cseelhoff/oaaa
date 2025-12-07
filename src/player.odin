@@ -22,6 +22,9 @@ Player_ID :: enum {
 	USA,
 }
 
+// Bitset for tracking which players have been processed/analyzed
+Player_Bitset :: bit_set[Player_ID;u8]
+
 Team_ID :: enum {
 	Allies,
 	Axis,
