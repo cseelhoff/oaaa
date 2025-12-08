@@ -1946,6 +1946,10 @@ move_land_to_safest_territories :: proc(
 			best_territory:= src_land	
 			
 			for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
+				// CRITICAL: Only consider FRIENDLY territories for non-combat move!
+				if mm.team[gc.owner[dst_land]] != mm.team[gc.cur_player] {
+					continue
+				}
 				
 				// Calculate strength difference (attackers - defenders)
 				enemy_threat := calculate_enemy_threat(gc, to_air(dst_land), pro_data)

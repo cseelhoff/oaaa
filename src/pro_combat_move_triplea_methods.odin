@@ -2088,7 +2088,12 @@ try_to_attack_territories_triplea :: proc(
 	// Phase 1: Assign destroyers to sea zones with subs
 	assign_destroyers_vs_subs(gc, options, num_to_attack)
 	
-	// Phase 2: Set enough units for minimum win chance
+	// Phase 2: Iteratively add units until win% >= MIN_WIN_PERCENTAGE (75%)
+	// This is the key change: instead of using a simple power target (1.2x defense),
+	// we add units in batches and run battle simulation until win% is high enough.
+	// This matches Java's approach which adds units until minWinPercentage (75%) is reached.
+	MIN_WIN_PERCENTAGE :: 0.75
+	
 	// Track already assigned units to avoid double-counting
 	assigned_units := make([dynamic]Unit_Info)
 	defer delete(assigned_units)
@@ -2096,36 +2101,95 @@ try_to_attack_territories_triplea :: proc(
 	for i := 0; i < num_to_attack && i < len(options); i += 1 {
 		option := &options[i]
 		
-		// Calculate required power
-		defense_power := estimate_defense_power_total(&option.defenders)
-		target_power := defense_power * 1.2 // Need 20% more for decent odds
+		// Clear any previous assignment
+		clear(&option.attackers)
+		option.win_percentage = 0
 		
-		// Assign land units, passing already assigned units
-		assign_land_units_to_attack(gc, option, target_power, &assigned_units)
+		// Get available units from adjacent territories
+		available_inf := get_total_available_units(gc, option.territory, .Infantry, &assigned_units)
+		available_arty := get_total_available_units(gc, option.territory, .Artillery, &assigned_units)
+		available_tank := get_total_available_units(gc, option.territory, .Tank, &assigned_units)
+		available_ftr := get_total_available_air_units(gc, option.territory, .Fighter, &assigned_units)
+		available_bmb := get_total_available_air_units(gc, option.territory, .Bomber, &assigned_units)
+		
+		total_available := available_inf + available_arty + available_tank + available_ftr + available_bmb
+		
+		// If no defenders, just assign minimal forces
+		if len(option.defenders) == 0 {
+			// Assign 1 infantry if available
+			if available_inf > 0 {
+				add_unit_to_attack(gc, option, .Infantry, &assigned_units)
+			}
+			option.win_percentage = 1.0
+			continue
+		}
+		
+		// Iteratively add units until win% >= MIN_WIN_PERCENTAGE
+		// Start with a base allocation, then add more if needed
+		units_added := 0
+		max_iterations := total_available + 1
 		
 		when ODIN_DEBUG {
-			fmt.printf("  After land assignment: %v has %d attackers (target power: %.1f)\n",
-				option.territory, len(option.attackers), target_power)
+			fmt.printf("    [ITER] %v: available inf=%d arty=%d tank=%d ftr=%d bmb=%d (total=%d)\n",
+				option.territory, available_inf, available_arty, available_tank, available_ftr, available_bmb, total_available)
 		}
 		
-		// Add newly assigned units to the tracking list
-		for unit in option.attackers {
-			append(&assigned_units, unit)
-		}
-		
-		// Assign air units if needed
-		current_power := calculate_attack_power(&option.attackers)
-		if current_power < target_power {
-			assign_air_units_to_attack(gc, option, target_power - current_power, &assigned_units)
+		for iter := 0; iter < max_iterations && option.win_percentage < MIN_WIN_PERCENTAGE; iter += 1 {
+			// Add a batch of units (prioritize cheap infantry first)
+			added_this_round := 0
+			
+			// Add infantry (cheapest fodder) - add up to 3 per iteration
+			for j := 0; j < 3; j += 1 {
+				if add_unit_to_attack(gc, option, .Infantry, &assigned_units) {
+					added_this_round += 1
+					units_added += 1
+				}
+			}
+			
+			// Add artillery (for support bonus)
+			if add_unit_to_attack(gc, option, .Artillery, &assigned_units) {
+				added_this_round += 1
+				units_added += 1
+			}
+			
+			// Add tanks (for power)
+			if add_unit_to_attack(gc, option, .Tank, &assigned_units) {
+				added_this_round += 1
+				units_added += 1
+			}
+			
+			// Add fighters
+			if add_unit_to_attack(gc, option, .Fighter, &assigned_units) {
+				added_this_round += 1
+				units_added += 1
+			}
+			
+			// Add bombers
+			if add_unit_to_attack(gc, option, .Bomber, &assigned_units) {
+				added_this_round += 1
+				units_added += 1
+			}
+			
+			// If we couldn't add any units, break
+			if added_this_round == 0 {
+				when ODIN_DEBUG {
+					fmt.printf("    [ITER] %v: No units added in iteration %d, breaking\n", option.territory, iter)
+				}
+				break
+			}
+			
+			// Simulate battle to get win%
+			option.win_percentage = simulate_attack_win_percentage(option)
 			
 			when ODIN_DEBUG {
-				fmt.printf("  After air assignment: %v has %d attackers\n",
-					option.territory, len(option.attackers))
+				fmt.printf("    [ITER] %v: iter=%d added=%d total=%d win%%=%.1f%%\n",
+					option.territory, iter, added_this_round, len(option.attackers), option.win_percentage * 100)
 			}
-			// Add newly assigned air units to tracking list
-			for j := len(assigned_units); j < len(option.attackers); j += 1 {
-				// Only add units that weren't in assigned_units before
-			}
+		}
+		
+		when ODIN_DEBUG {
+			fmt.printf("  After land assignment: %v has %d attackers (win%%: %.1f%%, needed: %.1f%%)\n",
+				option.territory, len(option.attackers), option.win_percentage * 100, MIN_WIN_PERCENTAGE * 100)
 		}
 	}
 	
@@ -4842,4 +4906,305 @@ execute_amphibious_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Att
 	}
 	
 	return true
+}
+
+// =============================================================================
+// HELPER FUNCTIONS FOR ITERATIVE UNIT ASSIGNMENT
+// =============================================================================
+
+// Get total available units of a type from adjacent territories
+get_total_available_units :: proc(
+	gc: ^Game_Cache,
+	target: Land_ID,
+	unit_type: Unit_Type,
+	assigned_units: ^[dynamic]Unit_Info,
+) -> int {
+	total := 0
+	
+	for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
+		if gc.owner[adjacent] != gc.cur_player {
+			continue
+		}
+		
+		available := get_active_unit_count_for_combat(gc, adjacent, unit_type)
+		
+		// Subtract already assigned units
+		for unit in assigned_units {
+			if unit.from_territory == adjacent && unit.unit_type == unit_type {
+				available -= 1
+			}
+		}
+		
+		total += max(0, available)
+	}
+	
+	// Also check 2-away for tanks
+	if unit_type == .Tank {
+		for land_2away in mm.l2l_2away_via_land_bitset[target] {
+			if mm.team[gc.owner[land_2away]] != mm.team[gc.cur_player] {
+				continue
+			}
+			
+			// Use active_armies (tanks with 2 moves can blitz)
+			available := int(gc.active_armies[land_2away][.TANK_2_MOVES])
+			
+			for unit in assigned_units {
+				if unit.from_territory == land_2away && unit.unit_type == .Tank {
+					available -= 1
+				}
+			}
+			
+			total += max(0, available)
+		}
+	}
+	
+	return total
+}
+
+// Get total available air units that can reach the target
+// Uses the existing get_active_air_count_for_combat helper
+get_total_available_air_units :: proc(
+	gc: ^Game_Cache,
+	target: Land_ID,
+	unit_type: Unit_Type,
+	assigned_units: ^[dynamic]Unit_Info,
+) -> int {
+	total := 0
+	
+	// Check our owned territories for air units
+	for land_id in Land_ID {
+		if gc.owner[land_id] != gc.cur_player {
+			continue
+		}
+		
+		// Simplified range check: within 2 land distance or same territory
+		// (More accurate would check air movement, but this is good enough)
+		can_reach := false
+		if land_id == target {
+			can_reach = true
+		} else {
+			// Check 1-away via land (air can reach)
+			for adj in sa.slice(&mm.l2l_1away_via_land[target]) {
+				if adj == land_id {
+					can_reach = true
+					break
+				}
+			}
+			// Check 2-away
+			if !can_reach {
+				for adj in mm.l2l_2away_via_land_bitset[target] {
+					if adj == land_id {
+						can_reach = true
+						break
+					}
+				}
+			}
+		}
+		
+		if !can_reach {
+			continue
+		}
+		
+		// Use existing helper to count air units
+		available := get_active_air_count_for_combat(gc, land_id, unit_type)
+		
+		// Subtract already assigned
+		for unit in assigned_units {
+			if unit.from_territory == land_id && unit.unit_type == unit_type {
+				available -= 1
+			}
+		}
+		
+		total += max(0, available)
+	}
+	
+	return total
+}
+
+// Count units of a specific type in the attackers list
+count_units_of_type :: proc(attackers: ^[dynamic]Unit_Info, unit_type: Unit_Type) -> int {
+	count := 0
+	for unit in attackers {
+		if unit.unit_type == unit_type {
+			count += 1
+		}
+	}
+	return count
+}
+
+// Add a unit of the specified type to the attack from an adjacent territory
+add_unit_to_attack :: proc(
+	gc: ^Game_Cache,
+	option: ^Attack_Option,
+	unit_type: Unit_Type,
+	assigned_units: ^[dynamic]Unit_Info,
+) -> bool {
+	target := option.territory
+	
+	// For land units, check adjacent territories
+	if unit_type == .Infantry || unit_type == .Artillery || unit_type == .Tank {
+		for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
+			if gc.owner[adjacent] != gc.cur_player {
+				continue
+			}
+			
+			// Check available (total minus already assigned from this territory)
+			total := get_active_unit_count_for_combat(gc, adjacent, unit_type)
+			assigned_from_here := 0
+			for unit in assigned_units {
+				if unit.from_territory == adjacent && unit.unit_type == unit_type {
+					assigned_from_here += 1
+				}
+			}
+			
+			if total > assigned_from_here {
+				unit := Unit_Info{
+					unit_type = unit_type,
+					from_territory = adjacent,
+				}
+				append(&option.attackers, unit)
+				append(assigned_units, unit)
+				return true
+			}
+		}
+		
+		// For tanks, also check 2-away territories
+		if unit_type == .Tank {
+			for land_2away in mm.l2l_2away_via_land_bitset[target] {
+				if mm.team[gc.owner[land_2away]] != mm.team[gc.cur_player] {
+					continue
+				}
+				
+				// Use active_armies for tanks with 2 moves
+				total := int(gc.active_armies[land_2away][.TANK_2_MOVES])
+				
+				assigned_from_here := 0
+				for unit in assigned_units {
+					if unit.from_territory == land_2away && unit.unit_type == .Tank {
+						assigned_from_here += 1
+					}
+				}
+				
+				if total > assigned_from_here {
+					unit := Unit_Info{
+						unit_type = .Tank,
+						from_territory = land_2away,
+					}
+					append(&option.attackers, unit)
+					append(assigned_units, unit)
+					return true
+				}
+			}
+		}
+	}
+	
+	// For air units, check reachable territories using simplified distance
+	if unit_type == .Fighter || unit_type == .Bomber {
+		for land_id in Land_ID {
+			if gc.owner[land_id] != gc.cur_player {
+				continue
+			}
+			
+			// Simplified range check: within 2 land distance or same territory
+			can_reach := false
+			if land_id == target {
+				can_reach = true
+			} else {
+				// Check 1-away via land
+				for adj in sa.slice(&mm.l2l_1away_via_land[target]) {
+					if adj == land_id {
+						can_reach = true
+						break
+					}
+				}
+				// Check 2-away
+				if !can_reach {
+					for adj in mm.l2l_2away_via_land_bitset[target] {
+						if adj == land_id {
+							can_reach = true
+							break
+						}
+					}
+				}
+			}
+			
+			if !can_reach {
+				continue
+			}
+			
+			// Use existing helper to count air units
+			total := get_active_air_count_for_combat(gc, land_id, unit_type)
+			
+			assigned_from_here := 0
+			for unit in assigned_units {
+				if unit.from_territory == land_id && unit.unit_type == unit_type {
+					assigned_from_here += 1
+				}
+			}
+			
+			if total > assigned_from_here {
+				unit := Unit_Info{
+					unit_type = unit_type,
+					from_territory = land_id,
+				}
+				append(&option.attackers, unit)
+				append(assigned_units, unit)
+				return true
+			}
+		}
+	}
+	
+	return false
+}
+
+// Simulate battle and return win percentage
+simulate_attack_win_percentage :: proc(option: ^Attack_Option) -> f64 {
+	combatants := Land_Combatants{}
+	
+	// Count attackers
+	for attacker in option.attackers {
+		#partial switch attacker.unit_type {
+		case .Infantry:
+			combatants.attackers[0].Infantry += 1
+		case .Artillery:
+			combatants.attackers[0].Artillery += 1
+		case .Tank:
+			combatants.attackers[0].Tanks += 1
+		case .Fighter:
+			combatants.attackers[1].Fighters += 1
+		case .Bomber:
+			combatants.attackers[2].Bombers += 1
+		}
+	}
+	
+	// Count amphib attackers too
+	for attacker in option.amphib_attackers {
+		#partial switch attacker.unit_type {
+		case .Infantry:
+			combatants.attackers[0].Infantry += 1
+		case .Artillery:
+			combatants.attackers[0].Artillery += 1
+		case .Tank:
+			combatants.attackers[0].Tanks += 1
+		}
+	}
+	
+	// Count defenders
+	for defender in option.defenders {
+		#partial switch defender.unit_type {
+		case .Infantry:
+			combatants.defenders.Infantry += 1
+		case .Artillery:
+			combatants.defenders.Artillery += 1
+		case .Tank:
+			combatants.defenders.Tanks += 1
+		case .Fighter:
+			combatants.defenders.Fighters += 1
+		case .Bomber:
+			combatants.defenders.Bombers += 1
+		}
+	}
+	
+	results := simulate_battle(combatants)
+	return results.invaded_percent
 }
