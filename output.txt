@@ -1,0 +1,500 @@
+Starting CAAA
+Running  100000000000  iterations
+
+=== Pro AI Test Mode ===
+
+======================================================================
+PRO AI SINGLE TURN TEST (TripleA Purchase & Place)
+======================================================================
+Starting Player: Rus
+Starting Money: 24 IPCs
+Total units on board: 28
+======================================================================
+
+============================================================
+PURCHASE PHASE
+============================================================
+Player: Rus
+Starting Money: 24 IPCs
+
+Enemy Attack Options (per-enemy):
+Enemy: Ger
+  Land: Archangel Fighters: 1
+  Land: Archangel Bombers: 1
+  Land: Archangel Infantry: 3
+  Land: Archangel Artillery: 1
+  Land: Archangel Tanks: 1
+  Land: Caucasus Fighters: 3
+  Land: Caucasus Bombers: 1
+  Land: Caucasus Infantry: 6
+  Land: Caucasus Artillery: 2
+  Land: Caucasus Tanks: 2
+  Land: Karelia_SSR Fighters: 6
+  Land: Karelia_SSR Bombers: 1
+  Land: Karelia_SSR Infantry: 10
+  Land: Karelia_SSR Artillery: 1
+  Land: Karelia_SSR Tanks: 2
+  Land: Kazakh_SSR Fighters: 1
+  Land: Novosibirsk Fighters: 1
+  Land: Novosibirsk Bombers: 1
+  Land: Russia Fighters: 1
+  Land: Russia Bombers: 1
+  Land: Russia Infantry: 3
+  Land: Russia Artillery: 1
+  Land: Russia Tanks: 1
+  Sea: Sea_5 Fighters: 6 Subs: 0 Destroyers: 0
+Enemy: Jap
+  Land: Buryatia_SSR Fighters: 2
+  Land: Buryatia_SSR Bombers: 1
+  Land: Buryatia_SSR Infantry: 3
+  Land: Evenki_National_Okrug Fighters: 1
+  Land: Novosibirsk Fighters: 1
+  Land: Novosibirsk Bombers: 1
+  Land: Soviet_Far_East Fighters: 2
+  Land: Soviet_Far_East Bombers: 1
+  Land: Yakut_SSR Fighters: 1
+  Land: Yakut_SSR Bombers: 1
+Enemy Attack Options (aggregated max):
+  Land: Archangel Inf: 3 Art: 1 Tank: 1 Ftr: 1 Bmb: 1 Str: 15
+  Land: Buryatia_SSR Inf: 3 Art: 0 Tank: 0 Ftr: 2 Bmb: 1 Str: 13
+  Land: Caucasus Inf: 6 Art: 2 Tank: 2 Ftr: 3 Bmb: 1 Str: 29
+  Land: Evenki_National_Okrug Inf: 0 Art: 0 Tank: 0 Ftr: 1 Bmb: 0 Str: 3
+  Land: Karelia_SSR Inf: 10 Art: 1 Tank: 2 Ftr: 6 Bmb: 1 Str: 40
+  Land: Kazakh_SSR Inf: 0 Art: 0 Tank: 0 Ftr: 1 Bmb: 0 Str: 3
+  Land: Novosibirsk Inf: 0 Art: 0 Tank: 0 Ftr: 1 Bmb: 1 Str: 7
+  Land: Russia Inf: 3 Art: 1 Tank: 1 Ftr: 1 Bmb: 1 Str: 15
+  Land: Soviet_Far_East Inf: 0 Art: 0 Tank: 0 Ftr: 2 Bmb: 1 Str: 10
+  Land: Yakut_SSR Inf: 0 Art: 0 Tank: 0 Ftr: 1 Bmb: 1 Str: 7
+  [RATIONALE] Evaluating land territories for defensive needs...
+    Possible Enemy Target Territory: Archangel defense_value: 6.5
+      [THREATENED] Territory Archangel is not sufficiently threatened (invaded%=100.0% < needed=95.0%)
+    Possible Enemy Target Territory: Buryatia_SSR defense_value: 5.0
+      [THREATENED] Territory Buryatia_SSR is not sufficiently threatened (invaded%=100.0% < needed=95.0%)
+    Possible Enemy Target Territory: Caucasus defense_value: 43.0 [FACTORY]
+      [THREATENED] Territory Caucasus is not sufficiently threatened (invaded%=100.0% < needed=95.0%)
+    Possible Enemy Target Territory: Evenki_National_Okrug defense_value: 5.0
+      [SAFE] Sequential Battle Results: TUV=-6.86, Invaded%=0.0%, Battles=1
+    Possible Enemy Target Territory: Karelia_SSR defense_value: 42.0 [FACTORY]
+      [THREATENED] Territory Karelia_SSR is not sufficiently threatened (invaded%=100.0% < needed=95.0%)
+    Possible Enemy Target Territory: Kazakh_SSR defense_value: 5.5
+      [SAFE] Sequential Battle Results: TUV=-2.88, Invaded%=0.0%, Battles=1
+    Possible Enemy Target Territory: Novosibirsk defense_value: 3.5
+      [SAFE] Sequential Battle Results: TUV=-0.59, Invaded%=0.0%, Battles=2
+    Possible Enemy Target Territory: Russia defense_value: 858.0 [CAPITAL] [FACTORY]
+      [SAFE] Sequential Battle Results: TUV=-22.04, Invaded%=0.0%, Battles=1
+    Possible Enemy Target Territory: Soviet_Far_East defense_value: 5.0
+      [SAFE] Sequential Battle Results: TUV=-1.79, Invaded%=0.0%, Battles=1
+    Possible Enemy Target Territory: Yakut_SSR defense_value: 3.5
+      [SAFE] Sequential Battle Results: TUV=-0.26, Invaded%=0.0%, Battles=1
+  [RATIONALE] Found 4 threatened territories (sorted by priority)
+  [RATIONALE] Analyzing territories needing defense:
+    Territory: Caucasus
+      Nearest factory: Caucasus
+      Battle simulation: 100.0% chance of invasion, TUV swing: 11.9
+        Re-simulating battle:
+          Defenders: 3 Inf, 1 Art, 1 Tank
+          Attackers: 6 Inf, 2 Art, 2 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 11.9
+      Purchasing infantry, Money: 24, factory: Caucasus, capacity: 4
+        Re-simulating battle:
+          Defenders: 4 Inf, 1 Art, 1 Tank
+          Attackers: 6 Inf, 2 Art, 2 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 12.9
+      Purchasing infantry, Money: 21, factory: Caucasus, capacity: 3
+        Re-simulating battle:
+          Defenders: 5 Inf, 1 Art, 1 Tank
+          Attackers: 6 Inf, 2 Art, 2 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 14.0
+      Purchasing infantry, Money: 18, factory: Caucasus, capacity: 2
+        Re-simulating battle:
+          Defenders: 6 Inf, 1 Art, 1 Tank
+          Attackers: 6 Inf, 2 Art, 2 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 14.1
+      Purchasing infantry, Money: 15, factory: Caucasus, capacity: 1
+    Territory: Karelia_SSR
+      Nearest factory: Karelia_SSR
+      Battle simulation: 100.0% chance of invasion, TUV swing: 18.7
+        Re-simulating battle:
+          Defenders: 4 Inf, 1 Art, 1 Ftr
+          Attackers: 10 Inf, 1 Art, 2 Tank, 4 Ftr, 1 Bmb
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 18.7
+      Purchasing infantry, Money: 12, factory: Karelia_SSR, capacity: 2
+        Re-simulating battle:
+          Defenders: 5 Inf, 1 Art, 1 Ftr
+          Attackers: 10 Inf, 1 Art, 2 Tank, 4 Ftr, 1 Bmb
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 18.8
+      Purchasing infantry, Money: 9, factory: Karelia_SSR, capacity: 1
+    Territory: Archangel
+      Nearest factory: Russia
+      Battle simulation: 100.0% chance of invasion, TUV swing: 6.4
+        Re-simulating battle:
+          Defenders: 1 Inf, 1 Tank
+          Attackers: 3 Inf, 1 Art, 1 Tank, 1 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 6.4
+      Purchasing infantry, Money: 6, factory: Russia, capacity: 8
+        Re-simulating battle:
+          Defenders: 2 Inf, 1 Tank
+          Attackers: 3 Inf, 1 Art, 1 Tank, 1 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 7.0
+      Purchasing infantry, Money: 3, factory: Russia, capacity: 7
+    Territory: Buryatia_SSR
+      Nearest factory: Russia
+      Battle simulation: 58.5% chance of invasion, TUV swing: -1.5
+  [RATIONALE] Evaluating sea territories for defensive needs...
+    Evaluating sea zones for defensive needs...
+    Found 0 sea zones needing defense
+
+Remaining Money: 0 IPCs
+Money Spent: 24 IPCs
+============================================================
+
+
+============================================================
+COMBAT MOVE PHASE
+============================================================
+
+[STEP 1] Finding ALL units that can attack (populateAttackOptions)...
+
+[STEP 2] Prioritizing attack targets by strategic value...
+    Possible My Target Territory: Baltic_States_Air
+      Battle Results (TUV, Invaded %):  6.4619999999999997 ,  1
+      Attack Value:  6.4619999999999997
+    Possible My Target Territory: Belorussia_Air
+      Battle Results (TUV, Invaded %):  5.82 ,  1
+      Attack Value:  5.82
+    Possible My Target Territory: Bulgaria_Romania_Air
+      Battle Results (TUV, Invaded %):  -16.745 ,  0
+    Possible My Target Territory: Finland_Air
+      Battle Results (TUV, Invaded %):  5.823 ,  1
+      Attack Value:  5.823
+    Possible My Target Territory: France_Air
+      Battle Results (TUV, Invaded %):  -8.529999999999999 ,  0
+    Possible My Target Territory: Germany_Air
+      Battle Results (TUV, Invaded %):  -4.096 ,  0
+    Possible My Target Territory: Italy_Air
+      Battle Results (TUV, Invaded %):  -7.801 ,  0
+    Possible My Target Territory: Kwangtung_Air
+      Battle Results (TUV, Invaded %):  -6.8179999999999996 ,  0
+    Possible My Target Territory: Manchuria_Air
+      Battle Results (TUV, Invaded %):  -4.9829999999999997 ,  0
+    Possible My Target Territory: Northwestern_Europe_Air
+      Battle Results (TUV, Invaded %):  -8.488 ,  0
+    Possible My Target Territory: Norway_Air
+      Battle Results (TUV, Invaded %):  -8.488 ,  0
+    Possible My Target Territory: Poland_Air
+      Battle Results (TUV, Invaded %):  -16.748 ,  0
+    Possible My Target Territory: Ukraine_SSR_Air
+      Battle Results (TUV, Invaded %):  16.321999999999999 ,  1
+      Attack Value:  16.321999999999999
+    Possible My Target Territory: West_Russia_Air
+      Battle Results (TUV, Invaded %):  13.438 ,  1
+      Attack Value:  40.314
+  Attack priority order:
+    1. West_Russia (value: 40.3, production: 2)
+    2. Ukraine_SSR (value: 16.3, production: 2)
+    3. Baltic_States (value: 6.5, production: 2)
+    4. Finland (value: 5.8, production: 1)
+    5. Belorussia (value: 5.8, production: 2)
+
+[STEP 3] Checking which territories can be held after capture...
+Check if we should try to hold attack territories
+  West_Russia: Using pre-computed survivor_def_power=38.3 from Step 2
+    Our survivors (defenders):
+      Infantry: 9
+      Tank: 6
+    Enemy attackers:
+      Infantry: 6
+      Artillery: 1
+      Tank: 1
+      Fighter: 3
+    Enemy_win=0.0%, TUV=-45.0
+    Can hold because enemy win pct 0.0% < 60.0%
+    Can hold because enemy TUV swing -45.0 < 0
+    [CAN HOLD] (survivors=38.3 def power, enemy_win=0.0%, enemy_TUV=-45.0)
+  Ukraine_SSR: Using pre-computed survivor_def_power=9.2 from Step 2
+    Our survivors (defenders):
+      Infantry: 1
+      Tank: 2
+    Enemy attackers:
+      Infantry: 10
+      Artillery: 1
+      Tank: 3
+      Fighter: 4
+      Bomber: 1
+    Enemy_win=100.0%, TUV=11.0
+    [CANNOT HOLD] (survivors=9.2 def power, enemy_win=100.0%, enemy_TUV=11.0)
+  Baltic_States: Using pre-computed survivor_def_power=11.3 from Step 2
+    Our survivors (defenders):
+      Infantry: 2
+      Tank: 2
+    Enemy attackers:
+      Infantry: 8
+      Tank: 3
+      Fighter: 5
+      Bomber: 1
+    Enemy_win=100.0%, TUV=11.3
+    [CANNOT HOLD] (survivors=11.3 def power, enemy_win=100.0%, enemy_TUV=11.3)
+  Finland: Using pre-computed survivor_def_power=10.9 from Step 2
+    Our survivors (defenders):
+      Infantry: 2
+      Tank: 2
+    Enemy attackers:
+      Infantry: 2
+      Fighter: 1
+    Enemy_win=0.0%, TUV=-13.1
+    Can hold because enemy win pct 0.0% < 60.0%
+    Can hold because enemy TUV swing -13.1 < 0
+    [CAN HOLD] (survivors=10.9 def power, enemy_win=0.0%, enemy_TUV=-13.1)
+  Belorussia: Using pre-computed survivor_def_power=10.9 from Step 2
+    Our survivors (defenders):
+      Infantry: 2
+      Tank: 2
+    Enemy attackers:
+      Infantry: 9
+      Artillery: 2
+      Tank: 4
+      Fighter: 4
+      Bomber: 1
+    Enemy_win=100.0%, TUV=13.0
+    [CANNOT HOLD] (survivors=10.9 def power, enemy_win=100.0%, enemy_TUV=13.0)
+  -> 2 of 5 territories can be held
+    + West_Russia (can hold)
+    + Finland (can hold)
+
+[STEP 4] Filtering out low-value targets...
+Remove territories that aren't worth attacking
+  -> Removed 0 low-value targets, 5 remain
+  Targets worth attacking:
+    - West_Russia (value: 40.3, holdable: true)
+    - Ukraine_SSR (value: 16.3, holdable: false)
+    - Baltic_States (value: 6.5, holdable: false)
+    - Finland (value: 5.8, holdable: true)
+    - Belorussia (value: 5.8, holdable: false)
+  [populateAttackOptions] Iterating through all friendly units...
+  [Air] Karelia_SSR has 1 fighters
+  [Air] Fighter from Karelia_SSR can reach Baltic_States (1 move)
+  [Air] Fighter from Karelia_SSR can reach Belorussia (1 move)
+  [Air] Fighter from Karelia_SSR can reach Finland (1 move)
+  [Air] Fighter from Karelia_SSR can reach West_Russia (1 move)
+  [Air] Fighter from Karelia_SSR can reach West_Russia via Archangel (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Belorussia via Baltic_States (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Germany via Baltic_States (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Poland via Baltic_States (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Baltic_States via Belorussia (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Poland via Belorussia (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Ukraine_SSR via Belorussia (2 moves)
+  [Air] Fighter from Karelia_SSR can reach West_Russia via Belorussia (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Norway via Finland (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Belorussia via West_Russia (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Ukraine_SSR via West_Russia (2 moves)
+  [Air] Russia has 1 fighters
+  [Air] Fighter from Russia can reach West_Russia (1 move)
+  [Air] Fighter from Russia can reach West_Russia via Archangel (2 moves)
+  [Air] Fighter from Russia can reach Ukraine_SSR via Caucasus (2 moves)
+  [Air] Fighter from Russia can reach West_Russia via Caucasus (2 moves)
+  [Air] Fighter from Russia can reach Belorussia via West_Russia (2 moves)
+  [Air] Fighter from Russia can reach Ukraine_SSR via West_Russia (2 moves)
+  [populateAttackOptions] Found 9 potential attack targets
+Prioritizing territories to try to attack
+
+[STEP 4b] Evaluating amphibious attack requirements...
+
+[AMPHIB EVAL] Evaluating which territories need amphibious reinforcements...
+  West_Russia: No amphib units available
+  Belorussia: No amphib units available
+  Baltic_States: No amphib units available
+  Finland: No amphib units available
+  Ukraine_SSR: No amphib units available
+
+[STEP 5] Selecting territories to attack (iterative algorithm)...
+Determine which territories to attack
+Current number of territories: 1
+Try to attack territories with available units
+  After land assignment: West_Russia has 13 attackers (target power: 13.2)
+  Total assigned units:
+    Karelia_SSR:
+      Infantry: 4
+    Archangel:
+      Infantry: 1
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+    Russia:
+      Infantry: 4
+Trying  West_Russia
+Simulated battle results:  Battle_Results{avg_TUV_swing = 10.111, invaded_percent = 1, avg_survivor_def_power = 20.074}
+West_Russia: 100.0% win, attackers=13
+Current number of territories: 2
+Try to attack territories with available units
+  After land assignment: West_Russia has 13 attackers (target power: 13.2)
+  After land assignment: Belorussia has 3 attackers (target power: 7.2)
+  Total assigned units:
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Russia:
+      Infantry: 4
+Trying  West_Russia
+West_Russia: 100.0% win, attackers=13
+Trying  Belorussia
+Simulated battle results:  Battle_Results{avg_TUV_swing = -0.34599999999999997, invaded_percent = 0.805, avg_survivor_def_power = 3.5099999999999998}
+Belorussia: 80.5% win, attackers=3
+Current number of territories: 3
+Try to attack territories with available units
+  After land assignment: West_Russia has 13 attackers (target power: 13.2)
+  After land assignment: Belorussia has 3 attackers (target power: 7.2)
+  After land assignment: Baltic_States has 0 attackers (target power: 6.0)
+  After air assignment: Baltic_States has 2 attackers
+  Total assigned units:
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+      Fighter: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Russia:
+      Infantry: 4
+      Fighter: 1
+Trying  West_Russia
+West_Russia: 100.0% win, attackers=13
+Trying  Belorussia
+Belorussia: 80.5% win, attackers=3
+Trying  Baltic_States
+Simulated battle results:  Battle_Results{avg_TUV_swing = -7.174, invaded_percent = 0, avg_survivor_def_power = 0}
+Baltic_States: 0.0% win, attackers=2
+Removing territory: Baltic_States
+Current number of territories: 3
+Try to attack territories with available units
+  After land assignment: West_Russia has 13 attackers (target power: 13.2)
+  After land assignment: Belorussia has 3 attackers (target power: 7.2)
+  After land assignment: Ukraine_SSR has 2 attackers (target power: 18.0)
+  After air assignment: Ukraine_SSR has 4 attackers
+  Total assigned units:
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+      Fighter: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Russia:
+      Infantry: 4
+      Tank: 2
+      Fighter: 1
+Trying  West_Russia
+West_Russia: 100.0% win, attackers=13
+Trying  Belorussia
+Belorussia: 80.5% win, attackers=3
+Trying  Ukraine_SSR
+Simulated battle results:  Battle_Results{avg_TUV_swing = -26, invaded_percent = 0, avg_survivor_def_power = 0}
+Ukraine_SSR: 0.0% win, attackers=4
+Removing territory: Ukraine_SSR
+Current number of territories: 3
+Try to attack territories with available units
+  After land assignment: West_Russia has 13 attackers (target power: 13.2)
+  After land assignment: Belorussia has 3 attackers (target power: 7.2)
+  After land assignment: Finland has 0 attackers (target power: 7.2)
+  After air assignment: Finland has 2 attackers
+  Total assigned units:
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+      Fighter: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Russia:
+      Infantry: 4
+      Fighter: 1
+Trying  West_Russia
+West_Russia: 100.0% win, attackers=13
+Trying  Belorussia
+Belorussia: 80.5% win, attackers=3
+Trying  Finland
+Simulated battle results:  Battle_Results{avg_TUV_swing = -14.218999999999999, invaded_percent = 0, avg_survivor_def_power = 0}
+Finland: 0.0% win, attackers=2
+Removing territory: Finland
+Current number of territories: 2
+Try to attack territories with available units
+  After land assignment: West_Russia has 13 attackers (target power: 13.2)
+  After land assignment: Belorussia has 3 attackers (target power: 7.2)
+  Total assigned units:
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Russia:
+      Infantry: 4
+Trying  West_Russia
+West_Russia: 100.0% win, attackers=13
+Trying  Belorussia
+Belorussia: 80.5% win, attackers=3
+Final number of territories to attack: 2
+  -> Selected 2 territories for attack (removed 3 unsuccessful)
+  Final attack targets:
+    - West_Russia (value: 12.0)
+    - Belorussia (value: 8.0)
+
+[STEP 6] Re-calculating with final attack selection...
+Re-calculating enemy attack options after territory selection
+  Re-assigning attackers to selected territories...
+Try to attack territories with available units
+  After land assignment: West_Russia has 13 attackers (target power: 13.2)
+  After land assignment: Belorussia has 3 attackers (target power: 7.2)
+  Total assigned units:
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Russia:
+      Infantry: 4
+  Re-checking which territories can be held...
+Check if we should try to hold attack territories
+  Combatants for West_Russia (from arrays):
+    potential_attackers count: 29
+    potential_amphib_attackers count: 0
+    defenders count: 5
+    Built attackers[0]: INF=12, ARTY=3, TANK=12
+    Built attackers[1]: FIGH=2
+    Built attackers[2]: BOMB=0
+    Built defenders: INF=3, ARTY=1, TANK=1, FIGH=0, BOMB=0, AA=0
+  Battle sim for West_Russia: win=100.0%, TUV=13.5, survivor_def=62.3
+    Our survivors (defenders):
+      Infantry: 15
+      Tank: 10
+    Enemy attackers:
+      Infantry: 6
+      Artillery: 1
+      Tank: 1

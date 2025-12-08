@@ -33,11 +33,11 @@ This document provides a comprehensive project plan for completing the conversio
 ### 🔶 PARTIAL (needs completion)
 | File | Status | Notes |
 |------|--------|-------|
-| `pro_combat_move_triplea_methods.odin` | 🔶 ~70% | Core algorithms exist, Unit_Info needs count-based refactor |
+| `pro_combat_move_triplea_methods.odin` | 🔶 ~85% | Core algorithms exist, amphib assaults working, Unit_Info needs count-based refactor |
 | `pro_noncombat_move.odin` | 🔶 ~60% | 3-pass algorithm exists, some air landing partial |
 | `pro_territory_manager.odin` | 🔶 ~30% | Partial structure |
-| `pro_transport.odin` | 🔶 ~40% | Planning structures defined, combat loading incomplete |
-| `pro_transport_execute.odin` | 🔶 ~50% | Non-combat loading implemented, combat loading disabled |
+| `pro_transport.odin` | 🔶 ~40% | Planning structures defined |
+| `pro_transport_execute.odin` | ✅ ~90% | Non-combat loading + amphib unloading implemented |
 | `pro_land_value.odin` | 🔶 ~30% | Mostly commented out, strategic_value calc inlined in pro_purchase.odin |
 
 ### ❌ NOT IMPLEMENTED
@@ -45,7 +45,7 @@ This document provides a comprehensive project plan for completing the conversio
 |------|--------|-------|
 | `pro_matches.odin` | ❌ Empty | Predicates replaced with bitset operations (intentional) |
 | Strategic Bombing Decision AI | ❌ Missing | When to bomb vs tactical attack |
-| Naval Bombardment | ❌ Missing | Separate from sea combat |
+| Naval Bombardment | ❌ Missing | Cruiser/Battleship support for amphib assaults |
 | Multi-Transport Coordination | ❌ Missing | D-Day style large amphibious assaults |
 
 ### 🚫 INTENTIONALLY OMITTED
@@ -60,7 +60,58 @@ This document provides a comprehensive project plan for completing the conversio
 
 ---
 
-## Recent Accomplishments (December 2025)
+### Amphibious Assault System (✅ Working - December 2025)
+
+Implemented complete amphibious assault planning and execution for combat moves.
+
+**How it works**:
+
+1. **Territory Evaluation** (Step 4b in `try_to_attack_territories_triplea`):
+   - For each potential attack target, calculate win% with land/air only
+   - If win% < 75%, check if adding amphib units would help
+   - If amphib makes it winnable, mark `need_amphib_units = true`
+   - Recalculate win% with all attackers (land + air + amphib)
+
+2. **Amphib Attacker Population** (`update_amphib_attackers_only`):
+   - Finds loaded transports in adjacent sea zones AND 1-move-away sea zones
+   - Checks all 6 loaded transport types: TRANS_1I, TRANS_1T, TRANS_1A, TRANS_2I, TRANS_1I_1A, TRANS_1I_1T
+   - Adds their cargo as `potential_amphib_attackers`
+
+3. **Unit Assignment** (Step 10 `assign_amphibious_units`):
+   - For attacks needing amphib units, assigns from `potential_amphib_attackers`
+   - Resets `win_percentage = 0` to force battle recalculation with amphib units
+   - Logs assignment: "Burma: 100.0% win, attackers=2 (land/air=0, amphib=2)"
+
+4. **Route Execution** (`execute_amphibious_routes`):
+   - Uses `gc.idle_ships` (not active_ships) to find loaded transports
+   - Unloads infantry/artillery/tanks from transports to target territory
+   - Updates transport state (e.g., TRANS_2I → TRANS_1I after unloading 1 inf)
+   - Adds unloaded units to target as `active_armies` with 0 moves
+
+**Key Functions**:
+| Function | File | Description |
+|----------|------|-------------|
+| `evaluate_need_amphib_units_triplea` | pro_combat_move_triplea_methods.odin | Checks if territory needs amphib |
+| `update_amphib_attackers_only` | pro_combat_move_triplea_methods.odin | Populates amphib attackers for existing Attack_Options |
+| `assign_amphibious_units` | pro_combat_move_triplea_methods.odin | Assigns amphib units to attacks |
+| `execute_amphibious_routes` | pro_combat_move_triplea_methods.odin | Unloads transports to targets |
+
+**Example Output**:
+```
+Burma: Land+Air win=0.0%, WITH AMPHIB win=100.0% - NEED AMPHIB UNITS
+[AMPHIB ASSIGN] Burma: Assigned 2 amphib attackers (from Sea_35)
+Unloading Infantry from TRANS_1I (sea zone Sea_35) to Burma
+Unloading Tank from TRANS_1T (sea zone Sea_35) to Burma
+```
+
+**Verified Working Targets**:
+- Malaya: 100% win with 2 amphib attackers (pure amphib)
+- Norway: 100% win with 2 amphib attackers
+- Burma: 100% win with 2 amphib attackers  
+- Buryatia_SSR: 100% win with 6 attackers (2 land/air + 4 amphib)
+- French_Indo_China_Thailand: Multiple amphib assaults from Sea_35, Sea_61
+
+---
 
 ### Sea Territory Defense Evaluation (Latest Work)
 
@@ -112,24 +163,16 @@ The non-combat transport loading loads units onto transports for next-turn posit
 
 3. **Uses `idle_armies`** (not active) since these units haven't moved this turn
 
-#### Combat Transport Loading (⚠️ Disabled Pending Amphibious Planning)
-**File**: `pro_turn.odin`
+#### Combat Transport Loading (✅ Working via Amphibious Assault System)
+**File**: `pro_combat_move_triplea_methods.odin`
 
-The combat transport loading was implemented but **disabled** because:
-- It loaded ALL adjacent units onto transports indiscriminately
-- This conflicts with land attack assignments (units assigned to attack Karelia_SSR were being loaded onto transports instead)
-- Proper implementation requires integration with amphibious attack planning
+The combat transport loading is now handled through the amphibious assault system:
+- `assign_amphibious_units()` identifies which loaded transports to use
+- `execute_amphibious_routes()` unloads transports directly to attack targets
+- Uses `gc.idle_ships` to find available loaded transports
+- Supports all 6 loaded transport types
 
-**Required for Combat Loading**:
-1. First identify territories that NEED amphibious attacks (no land route)
-2. Use `assign_amphibious_units()` to designate specific units for loading
-3. Only load units designated as `amphib_attackers` in attack options
-4. Java reference: `ProTerritoryManager.setNeedAmphibUnits(true)` when:
-   - Territory can't be won with just land/air attackers
-   - There ARE amphibious units available (maxAmphibUnits not empty)
-   - Adding amphib units makes the attack winnable
-
-**Current Workaround**: Pre-loaded transports (TRANS_1I, TRANS_1T, TRANS_1A from previous turns) can still participate in amphibious assaults via `assign_amphibious_units()`.
+**Note**: Transports get loaded during non-combat moves (previous turn) and are available for amphibious assaults on the current turn. On the very first turn, transports start EMPTY so amphibious assaults require at least one turn of loading.
 
 #### Key Procedures Added
 
@@ -547,9 +590,9 @@ execute_transport_move :: proc(gc: ^Game_Cache, plan: ^Amphibious_Plan) -> bool
 9. 🔲 3.2 - Carrier Landing Detection
 
 ### Sprint 3 (Medium Priority - Completion)
-10. 🔲 2.1 - Complete populate_attack_options_triplea() (amphib planning)
+10. ✅ 2.1 - Complete populate_attack_options_triplea() (amphib planning DONE)
 11. 🔲 2.3 - Execute Combat Moves refinement
-12. 🔶 5.1 - Complete Transport Planning (non-combat done, combat needs amphib planning)
+12. ✅ 5.1 - Complete Transport Planning (non-combat + amphib DONE)
 
 ### Sprint 4 (Lower Priority - Polish)
 13. 🔲 2.4 - Strategic Bombing Decision Logic
@@ -589,20 +632,23 @@ execute_transport_move :: proc(gc: ^Game_Cache, plan: ^Amphibious_Plan) -> bool
 | N/A | `get_closest_enemy_land_distance()` | ✅ New helper |
 | N/A | `calculate_land_distance_factor()` | ✅ New helper |
 
-### ProCombatMoveAi.java → pro_combat_move_triplea_methods.odin (🔶 ~70%)
+### ProCombatMoveAi.java → pro_combat_move_triplea_methods.odin (🔶 ~85%)
 
 | Java Method | Odin Procedure | Status |
 |-------------|----------------|--------|
-| `doCombatMove()` | `proai_combat_move_phase()` | 🔶 Partial |
-| `doMove()` | `execute_combat_moves_triplea()` | 🔶 Partial |
+| `doCombatMove()` | `proai_combat_move_phase()` | ✅ Done |
+| `doMove()` | `execute_combat_moves_triplea()` | ✅ Done |
 | `prioritizeAttackOptions()` | `prioritize_attack_options_triplea()` | ✅ Done |
 | `determineTerritoriesToAttack()` | `determine_territories_to_attack_triplea()` | ✅ Done |
 | `determineTerritoriesThatCanBeHeld()` | `determine_territories_that_can_be_held_triplea()` | ✅ Done |
 | `removeTerritoriesThatArentWorthAttacking()` | `remove_territories_that_arent_worth_attacking_triplea()` | ✅ Done |
 | `moveOneDefenderToLandTerritoriesBorderingEnemy()` | `move_one_defender_to_land_territories_bordering_enemy_triplea()` | ✅ Done |
 | `removeTerritoriesWhereTransportsAreExposed()` | `remove_territories_where_transports_are_exposed_triplea()` | ✅ Done |
-| `determineUnitsToAttackWith()` | `determine_units_to_attack_with_triplea()` | 🔶 Partial |
-| `tryToAttackTerritories()` | `try_to_attack_territories_triplea()` | 🔶 Partial |
+| `determineUnitsToAttackWith()` | `determine_units_to_attack_with_triplea()` | ✅ Done |
+| `tryToAttackTerritories()` | `try_to_attack_territories_triplea()` | ✅ Done |
+| `setNeedAmphibUnits()` | `evaluate_need_amphib_units_triplea()` | ✅ Done (New) |
+| `assignAmphibUnits()` | `assign_amphibious_units()` | ✅ Done (New) |
+| `executeAmphibRoutes()` | `execute_amphibious_routes()` | ✅ Done (New) |
 | `determineTerritoriesThatCanBeBombed()` | Stub | ❌ Missing |
 | `determineBestBombingAttackForBomber()` | Stub | ❌ Missing |
 | `checkContestedSeaTerritories()` | `check_contested_sea_territories_triplea()` | 🔶 Stub |

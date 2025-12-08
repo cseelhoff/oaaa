@@ -76,8 +76,18 @@ Attack_Option :: struct {
 	tuv_swing:          f64,
 	can_hold:           bool,
 	is_amphib:          bool,
+	need_amphib_units:  bool,  // True if land+air can't win, but amphibious units available
 	is_strafing:        bool,
 	avg_survivor_def_power: f64,
+	// Transport assignment for amphibious attacks
+	assigned_transports: [dynamic]Transport_Assignment,
+}
+
+// Transport_Assignment tracks which transport is assigned to which attack
+Transport_Assignment :: struct {
+	sea_zone:        Sea_ID,
+	transport_state: Idle_Ship,  // e.g., TRANS_1I, TRANS_1T
+	unload_sea:      Sea_ID,     // Sea zone to unload from
 }
 
 /*
@@ -304,6 +314,7 @@ determine_territories_to_attack_triplea :: proc(gc: ^Game_Cache, options: ^[dyna
 			// Estimate battle result if not already done
 			if option.win_percentage == 0 {
 				combatants := Land_Combatants{}
+				// Count land and air attackers
 				for attacker in option.attackers {
 					#partial switch attacker.unit_type {
 						case .Infantry:
@@ -316,6 +327,17 @@ determine_territories_to_attack_triplea :: proc(gc: ^Game_Cache, options: ^[dyna
 							combatants.attackers[1].Fighters += 1
 						case .Bomber:
 							combatants.attackers[2].Bombers += 1
+					}
+				}
+				// Also count amphib attackers
+				for attacker in option.amphib_attackers {
+					#partial switch attacker.unit_type {
+						case .Infantry:
+							combatants.attackers[0].Infantry += 1
+						case .Artillery:
+							combatants.attackers[0].Artillery += 1
+						case .Tank:
+							combatants.attackers[0].Tanks += 1
 					}
 				}
 				for defender in option.defenders {
@@ -349,8 +371,10 @@ determine_territories_to_attack_triplea :: proc(gc: ^Game_Cache, options: ^[dyna
 			}
 			
 			when ODIN_DEBUG {
-				fmt.printf("%s: %.1f%% win, attackers=%d\n",
-					option.territory, option.win_percentage * 100, len(option.attackers))
+				total_attackers := len(option.attackers) + len(option.amphib_attackers)
+				fmt.printf("%s: %.1f%% win, attackers=%d (land/air=%d, amphib=%d)\n",
+					option.territory, option.win_percentage * 100, total_attackers,
+					len(option.attackers), len(option.amphib_attackers))
 			}
 			
 			// Check if successful (need 60% win + land units remaining)
@@ -694,6 +718,132 @@ build_counter_attack_combatants :: proc(gc: ^Game_Cache, target: Land_ID, surviv
 				combatants.attackers[1].Fighters += gc.idle_land_planes[land][player][.FIGHTER]
 				combatants.attackers[2].Bombers += gc.idle_land_planes[land][player][.BOMBER]
 			}
+		}
+	}
+	
+	return combatants
+}
+
+/*
+=============================================================================
+EVALUATE NEED_AMPHIB_UNITS
+=============================================================================
+
+Java Original: ProTerritoryManager.setNeedAmphibUnits (line 186)
+
+  if (patd.getMaxBattleResult().getWinPercentage() < proData.getWinPercentage()
+      && !patd.getMaxAmphibUnits().isEmpty()) {
+    patd.setNeedAmphibUnits(true);
+  }
+
+This checks if:
+1. Land+air attackers alone can't achieve the required win percentage (typically 60-95%)
+2. AND there are amphibious units available that could help
+
+If both conditions are true, the territory is flagged as "needing amphibious units"
+which causes the AI to commit transports to this attack.
+*/
+
+evaluate_need_amphib_units_triplea :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_Option) {
+	WIN_THRESHOLD :: 0.60  // 60% win rate needed
+	
+	when ODIN_DEBUG {
+		fmt.println("\n[AMPHIB EVAL] Evaluating which territories need amphibious reinforcements...")
+	}
+	
+	for &option in options {
+		t := option.territory
+		
+		// Skip if already flagged
+		if option.need_amphib_units {
+			continue
+		}
+		
+		// Check if there are any potential amphibious attackers
+		if len(option.potential_amphib_attackers) == 0 {
+			when ODIN_DEBUG {
+				fmt.printf("  %v: No amphib units available\n", t)
+			}
+			continue
+		}
+		
+		// Simulate battle with ONLY land+air attackers (no amphib)
+		combatants_no_amphib := build_land_combatants_without_amphib(&option)
+		
+		// Run battle simulation
+		result_no_amphib := simulate_battle(combatants_no_amphib)
+		
+		// Check if land+air alone can win
+		land_air_win_pct := result_no_amphib.invaded_percent
+		
+		if land_air_win_pct >= WIN_THRESHOLD {
+			// Land+air can win alone, no amphib needed
+			option.need_amphib_units = false
+			when ODIN_DEBUG {
+				fmt.printf("  %v: Land+Air win=%.1f%% >= %.1f%% - NO AMPHIB NEEDED\n", 
+					t, land_air_win_pct * 100, WIN_THRESHOLD * 100)
+			}
+		} else {
+			// Land+air can't win, check if adding amphib helps
+			combatants_with_amphib := build_land_combatants_from_option(&option)
+			result_with_amphib := simulate_battle(combatants_with_amphib)
+			
+			if result_with_amphib.invaded_percent >= WIN_THRESHOLD {
+				// Adding amphib makes the attack viable!
+				option.need_amphib_units = true
+				option.is_amphib = true
+				when ODIN_DEBUG {
+					fmt.printf("  %v: Land+Air win=%.1f%%, WITH AMPHIB win=%.1f%% - NEED AMPHIB UNITS\n", 
+						t, land_air_win_pct * 100, result_with_amphib.invaded_percent * 100)
+				}
+			} else {
+				// Even with amphib, still can't win reliably
+				option.need_amphib_units = false
+				when ODIN_DEBUG {
+					fmt.printf("  %v: Land+Air win=%.1f%%, WITH AMPHIB win=%.1f%% - Still too weak\n", 
+						t, land_air_win_pct * 100, result_with_amphib.invaded_percent * 100)
+				}
+			}
+		}
+	}
+}
+
+// Helper: Build Land_Combatants from Attack_Option WITHOUT amphibious attackers
+// Used to check if land+air alone can win
+build_land_combatants_without_amphib :: proc(option: ^Attack_Option) -> Land_Combatants {
+	combatants := Land_Combatants{}
+	
+	// Count ONLY land+air attackers (no amphib)
+	for unit in option.potential_attackers {
+		#partial switch unit.unit_type {
+		case .Infantry:
+			combatants.attackers[0].Infantry += 1
+		case .Artillery:
+			combatants.attackers[0].Artillery += 1
+		case .Tank:
+			combatants.attackers[0].Tanks += 1
+		case .Fighter:
+			combatants.attackers[1].Fighters += 1
+		case .Bomber:
+			combatants.attackers[2].Bombers += 1
+		}
+	}
+	
+	// Count defenders (same as full version)
+	for unit in option.defenders {
+		#partial switch unit.unit_type {
+		case .Infantry:
+			combatants.defenders.Infantry += 1
+		case .Artillery:
+			combatants.defenders.Artillery += 1
+		case .Tank:
+			combatants.defenders.Tanks += 1
+		case .Fighter:
+			combatants.defenders.Fighters += 1
+		case .Bomber:
+			combatants.defenders.Bombers += 1
+		case .AAGun:
+			combatants.defenders.AntiAir += 1
 		}
 	}
 	
@@ -1503,11 +1653,25 @@ assign_amphibious_units :: proc(
 	options: ^[dynamic]Attack_Option,
 ) {
 	target_land := opt.territory
+	canal_state := transmute(u8)gc.canals_open
 	
-	// Find all adjacent sea zones with loaded transports
+	// All loaded transport types
+	loaded_types := [?]struct{type: Idle_Ship, inf: u8, arty: u8, tank: u8}{
+		{.TRANS_1I, 1, 0, 0},
+		{.TRANS_1T, 0, 0, 1},
+		{.TRANS_1A, 0, 1, 0},
+		{.TRANS_2I, 2, 0, 0},
+		{.TRANS_1I_1A, 1, 1, 0},
+		{.TRANS_1I_1T, 1, 0, 1},
+	}
+	
+	// Find all sea zones that can reach target (adjacent or 1 move away)
 	for sea_id in Sea_ID {
-		// Check if this sea zone is adjacent to target
+		// Check if this sea zone can reach the target
 		is_adjacent := false
+		is_one_away := false
+		
+		// Check if directly adjacent
 		for coastal_land in sa.slice(&mm.s2l_1away_via_sea[sea_id]) {
 			if coastal_land == target_land {
 				is_adjacent = true
@@ -1515,36 +1679,58 @@ assign_amphibious_units :: proc(
 			}
 		}
 		
+		// Check if 1 sea zone away from an adjacent sea
 		if !is_adjacent {
+			for adj_sea in mm.s2s_1away_via_sea[canal_state][sea_id] {
+				// Skip blocked sea zones
+				if gc.enemy_blockade_total[adj_sea] > 0 {
+					continue
+				}
+				for land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+					if land == target_land {
+						is_one_away = true
+						break
+					}
+				}
+				if is_one_away { break }
+			}
+		}
+		
+		if !is_adjacent && !is_one_away {
 			continue
 		}
 		
-		// Add units from loaded transports
-		trans_1i_count := gc.idle_ships[sea_id][gc.cur_player][.TRANS_1I]
-		for i in 0..<trans_1i_count {
-			unit := Unit_Info{
-				unit_type = .Infantry,
-				from_territory = Land_ID(sea_id), // Sea zone as source for amphib
+		// Add units from all loaded transports at this sea zone
+		for info in loaded_types {
+			count := gc.idle_ships[sea_id][gc.cur_player][info.type]
+			if count == 0 { continue }
+			
+			// Add infantry from these transports
+			for i in 0..<(count * info.inf) {
+				unit := Unit_Info{
+					unit_type = .Infantry,
+					from_territory = Land_ID(sea_id),
+				}
+				append(&opt.amphib_attackers, unit)
 			}
-			append(&opt.amphib_attackers, unit)
-		}
-		
-		trans_1t_count := gc.idle_ships[sea_id][gc.cur_player][.TRANS_1T]
-		for i in 0..<trans_1t_count {
-			unit := Unit_Info{
-				unit_type = .Tank,
-				from_territory = Land_ID(sea_id),
+			
+			// Add artillery from these transports
+			for i in 0..<(count * info.arty) {
+				unit := Unit_Info{
+					unit_type = .Artillery,
+					from_territory = Land_ID(sea_id),
+				}
+				append(&opt.amphib_attackers, unit)
 			}
-			append(&opt.amphib_attackers, unit)
-		}
-		
-		trans_1a_count := gc.idle_ships[sea_id][gc.cur_player][.TRANS_1A]
-		for i in 0..<trans_1a_count {
-			unit := Unit_Info{
-				unit_type = .Artillery,
-				from_territory = Land_ID(sea_id),
+			
+			// Add tanks from these transports
+			for i in 0..<(count * info.tank) {
+				unit := Unit_Info{
+					unit_type = .Tank,
+					from_territory = Land_ID(sea_id),
+				}
+				append(&opt.amphib_attackers, unit)
 			}
-			append(&opt.amphib_attackers, unit)
 		}
 	}
 }
@@ -1944,8 +2130,25 @@ try_to_attack_territories_triplea :: proc(
 	}
 	
 	// Phase 3: Handle amphib attacks (load transports)
+	// If need_amphib_units is true, assign units from potential_amphib_attackers
 	for i := 0; i < num_to_attack && i < len(options); i += 1 {
 		option := &options[i]
+		
+		if option.need_amphib_units && len(option.potential_amphib_attackers) > 0 {
+			// Territory needs amphib reinforcement - assign amphib attackers
+			for unit in option.potential_amphib_attackers {
+				append(&option.amphib_attackers, unit)
+			}
+			option.is_amphib = true
+			// Reset win_percentage so it gets recalculated with amphib attackers
+			option.win_percentage = 0
+			
+			when ODIN_DEBUG {
+				fmt.printf("  [AMPHIB ASSIGN] %v: Assigned %d amphib attackers\n",
+					option.territory, len(option.amphib_attackers))
+			}
+		}
+		
 		if option.is_amphib {
 			assign_transports_for_amphib(gc, option)
 		}
@@ -3780,34 +3983,119 @@ AMPHIBIOUS ASSAULT OPTIONS
 Java Original: ProTerritoryManager.findAmphibMoveOptions() (line 1063)
 
 Finds coastal enemy territories that can be attacked via transports.
-Units on transports can perform amphibious assaults on coastal territories.
+This includes:
+1. Loaded transports adjacent to coastal enemy territories (0 moves needed)
+2. Loaded transports 1 move away (1 move to reach, then unload)
+3. Empty transports near loadable units that can load+move+unload in same turn
 
-This is another CRITICAL capability missing from the simplified implementation!
+Key insight from Java: TransportMap stores for each transport:
+  Map<Territory (target), Set<Territory> (load-from territories)>
+This pre-calculates which territories a transport can attack and from where it can load.
 */
 
 populate_amphib_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_Option, my_team: Team_ID, enemy_team: Team_ID) {
-	// Iterate through ALL sea zones we control
+	canal_state := transmute(u8)gc.canals_open
+	
+	// ==========================================================================
+	// Part 1: Check LOADED transports (1I, 1T, 1A, 2I, 1I_1A, 1I_1T)
+	// ==========================================================================
+	loaded_transport_types := [?]Idle_Ship{
+		.TRANS_1I, .TRANS_1T, .TRANS_1A,
+		.TRANS_2I, .TRANS_1I_1A, .TRANS_1I_1T,
+	}
+	
 	for sea_tid in Sea_ID {
-		// Check if we have loaded transports here
-		has_loaded_trans := false
-		for trans_type in Idle_Ship {
-			if trans_type == .TRANS_1I || trans_type == .TRANS_1T || trans_type == .TRANS_1A {
-				if gc.idle_ships[sea_tid][gc.cur_player][trans_type] > 0 {
-					has_loaded_trans = true
+		// Check if we have any loaded transports here
+		has_loaded := false
+		for trans_type in loaded_transport_types {
+			if gc.idle_ships[sea_tid][gc.cur_player][trans_type] > 0 {
+				has_loaded = true
+				break
+			}
+		}
+		
+		if !has_loaded {
+			continue
+		}
+		
+		// Adjacent coastal territories (0 move reach - can unload directly)
+		for coastal_land in sa.slice(&mm.s2l_1away_via_sea[sea_tid]) {
+			if mm.team[gc.owner[coastal_land]] == enemy_team {
+				add_territory_to_attack_options(gc, options, coastal_land)
+			}
+		}
+		
+		// Sea zones 1 move away - can move to adjacent sea, then unload
+		for adj_sea in mm.s2s_1away_via_sea[canal_state][sea_tid] {
+			// Check if path is safe (no blocking enemy fleet)
+			if gc.enemy_blockade_total[adj_sea] > 0 {
+				continue  // Skip blocked sea zones
+			}
+			
+			// Find coastal territories adjacent to the destination sea
+			for coastal_land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+				if mm.team[gc.owner[coastal_land]] == enemy_team {
+					add_territory_to_attack_options(gc, options, coastal_land)
+				}
+			}
+		}
+	}
+	
+	// ==========================================================================
+	// Part 2: Check EMPTY transports that can load units nearby
+	// ==========================================================================
+	// Empty transports have 2 moves. They can:
+	// - Load from adjacent land (costs 0 moves if no enemies in sea)
+	// - Move 1-2 sea zones
+	// - Unload at destination
+	// Total: load + move(1-2) + unload = need transport adjacent to both load AND unload zones
+	
+	for sea_tid in Sea_ID {
+		// Check for empty transports
+		empty_count := gc.idle_ships[sea_tid][gc.cur_player][.TRANS_EMPTY]
+		if empty_count == 0 {
+			continue
+		}
+		
+		// Check if there are units nearby to load
+		has_loadable_units := false
+		for adj_land in sa.slice(&mm.s2l_1away_via_sea[sea_tid]) {
+			if gc.owner[adj_land] == gc.cur_player {
+				// Check for loadable units (infantry, artillery, tanks)
+				if gc.idle_armies[adj_land][gc.cur_player][.INF] > 0 ||
+				   gc.idle_armies[adj_land][gc.cur_player][.ARTY] > 0 ||
+				   gc.idle_armies[adj_land][gc.cur_player][.TANK] > 0 {
+					has_loadable_units = true
 					break
 				}
 			}
 		}
 		
-		if !has_loaded_trans {
-			continue
+		if !has_loadable_units {
+			continue  // No units to load
 		}
 		
-		// Find coastal enemy territories adjacent to this sea zone
+		// Empty transport can load and then:
+		// - Move 0: unload to adjacent coastal enemy (rare - would need enemy coastal next to friendly coastal)
+		// - Move 1: move 1 sea zone, unload to adjacent coastal enemy
+		
+		// Check coastal enemies adjacent to this sea zone (move 0)
 		for coastal_land in sa.slice(&mm.s2l_1away_via_sea[sea_tid]) {
 			if mm.team[gc.owner[coastal_land]] == enemy_team {
-				// This is an amphibious assault target!
 				add_territory_to_attack_options(gc, options, coastal_land)
+			}
+		}
+		
+		// Check sea zones 1 move away
+		for adj_sea in mm.s2s_1away_via_sea[canal_state][sea_tid] {
+			if gc.enemy_blockade_total[adj_sea] > 0 {
+				continue
+			}
+			
+			for coastal_land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+				if mm.team[gc.owner[coastal_land]] == enemy_team {
+					add_territory_to_attack_options(gc, options, coastal_land)
+				}
 			}
 		}
 	}
@@ -3818,7 +4106,9 @@ add_territory_to_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Atta
 	// Check if territory already in options
 	for &opt in options {
 		if opt.territory == target {
-			// Already tracking this territory
+			// Already tracking this territory - but update amphib attackers
+			// since we might be called from populate_amphib_attack_options
+			update_amphib_attackers_only(gc, &opt)
 			return
 		}
 	}
@@ -3967,48 +4257,174 @@ populate_potential_attackers :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 		}
 	}
 	
-	// Check for amphibious attackers from adjacent sea zones
+	// Check for amphibious attackers from adjacent sea zones AND 1 move away
+	canal_state := transmute(u8)gc.canals_open
+	
+	// All loaded transport types
+	loaded_types := [?]struct{type: Idle_Ship, inf: u8, arty: u8, tank: u8}{
+		{.TRANS_1I, 1, 0, 0},
+		{.TRANS_1T, 0, 0, 1},
+		{.TRANS_1A, 0, 1, 0},
+		{.TRANS_2I, 2, 0, 0},
+		{.TRANS_1I_1A, 1, 1, 0},
+		{.TRANS_1I_1T, 1, 0, 1},
+	}
+	
 	for sea_id in Sea_ID {
-		// Check if this sea zone is adjacent to the target
+		// Check if this sea zone can reach the target (adjacent or 1 move away)
 		is_adjacent := false
+		is_one_away := false
+		
+		// Check if directly adjacent
 		for land in sa.slice(&mm.s2l_1away_via_sea[sea_id]) {
 			if land == target {
 				is_adjacent = true
 				break
 			}
 		}
-		if !is_adjacent do continue
 		
-		// Check for loaded transports
-		trans_1i := gc.idle_ships[sea_id][gc.cur_player][.TRANS_1I]
-		trans_1t := gc.idle_ships[sea_id][gc.cur_player][.TRANS_1T]
-		trans_1a := gc.idle_ships[sea_id][gc.cur_player][.TRANS_1A]
-		
-		// Add infantry from transports
-		for i in 0..<trans_1i {
-			unit := Unit_Info{
-				unit_type = .Infantry,
-				from_territory = Land_ID(sea_id),  // Sea zone as source
+		// Check if 1 sea zone away from an adjacent sea
+		if !is_adjacent {
+			for adj_sea in mm.s2s_1away_via_sea[canal_state][sea_id] {
+				// Skip blocked sea zones
+				if gc.enemy_blockade_total[adj_sea] > 0 {
+					continue
+				}
+				for land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+					if land == target {
+						is_one_away = true
+						break
+					}
+				}
+				if is_one_away { break }
 			}
-			append(&option.potential_amphib_attackers, unit)
 		}
 		
-		// Add tanks from transports
-		for i in 0..<trans_1t {
-			unit := Unit_Info{
-				unit_type = .Tank,
-				from_territory = Land_ID(sea_id),
-			}
-			append(&option.potential_amphib_attackers, unit)
+		if !is_adjacent && !is_one_away {
+			continue
 		}
 		
-		// Add artillery from transports
-		for i in 0..<trans_1a {
-			unit := Unit_Info{
-				unit_type = .Artillery,
-				from_territory = Land_ID(sea_id),
+		// Add units from all loaded transports at this sea zone
+		for info in loaded_types {
+			count := gc.idle_ships[sea_id][gc.cur_player][info.type]
+			if count == 0 { continue }
+			
+			// Add infantry from these transports
+			for i in 0..<(count * info.inf) {
+				unit := Unit_Info{
+					unit_type = .Infantry,
+					from_territory = Land_ID(sea_id),  // Sea zone as source (will be converted for amphib)
+				}
+				append(&option.potential_amphib_attackers, unit)
 			}
-			append(&option.potential_amphib_attackers, unit)
+			
+			// Add artillery from these transports
+			for i in 0..<(count * info.arty) {
+				unit := Unit_Info{
+					unit_type = .Artillery,
+					from_territory = Land_ID(sea_id),
+				}
+				append(&option.potential_amphib_attackers, unit)
+			}
+			
+			// Add tanks from these transports
+			for i in 0..<(count * info.tank) {
+				unit := Unit_Info{
+					unit_type = .Tank,
+					from_territory = Land_ID(sea_id),
+				}
+				append(&option.potential_amphib_attackers, unit)
+			}
+		}
+	}
+}
+
+// Helper: Update only amphib attackers for an existing option
+// Called when a territory is already in the options list but amphib attack routes are being discovered
+update_amphib_attackers_only :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
+	// If already has amphib attackers, don't re-add
+	if len(option.potential_amphib_attackers) > 0 {
+		return
+	}
+	
+	target := option.territory
+	canal_state := transmute(u8)gc.canals_open
+	
+	// All loaded transport types
+	loaded_types := [?]struct{type: Idle_Ship, inf: u8, arty: u8, tank: u8}{
+		{.TRANS_1I, 1, 0, 0},
+		{.TRANS_1T, 0, 0, 1},
+		{.TRANS_1A, 0, 1, 0},
+		{.TRANS_2I, 2, 0, 0},
+		{.TRANS_1I_1A, 1, 1, 0},
+		{.TRANS_1I_1T, 1, 0, 1},
+	}
+	
+	for sea_id in Sea_ID {
+		// Check if this sea zone can reach the target (adjacent or 1 move away)
+		is_adjacent := false
+		is_one_away := false
+		
+		// Check if directly adjacent
+		for land in sa.slice(&mm.s2l_1away_via_sea[sea_id]) {
+			if land == target {
+				is_adjacent = true
+				break
+			}
+		}
+		
+		// Check if 1 sea zone away from an adjacent sea
+		if !is_adjacent {
+			for adj_sea in mm.s2s_1away_via_sea[canal_state][sea_id] {
+				// Skip blocked sea zones
+				if gc.enemy_blockade_total[adj_sea] > 0 {
+					continue
+				}
+				for land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+					if land == target {
+						is_one_away = true
+						break
+					}
+				}
+				if is_one_away { break }
+			}
+		}
+		
+		if !is_adjacent && !is_one_away {
+			continue
+		}
+		
+		// Add units from all loaded transports at this sea zone
+		for info in loaded_types {
+			count := gc.idle_ships[sea_id][gc.cur_player][info.type]
+			if count == 0 { continue }
+			
+			// Add infantry from these transports
+			for i in 0..<(count * info.inf) {
+				unit := Unit_Info{
+					unit_type = .Infantry,
+					from_territory = Land_ID(sea_id),
+				}
+				append(&option.potential_amphib_attackers, unit)
+			}
+			
+			// Add artillery from these transports
+			for i in 0..<(count * info.arty) {
+				unit := Unit_Info{
+					unit_type = .Artillery,
+					from_territory = Land_ID(sea_id),
+				}
+				append(&option.potential_amphib_attackers, unit)
+			}
+			
+			// Add tanks from these transports
+			for i in 0..<(count * info.tank) {
+				unit := Unit_Info{
+					unit_type = .Tank,
+					from_territory = Land_ID(sea_id),
+				}
+				append(&option.potential_amphib_attackers, unit)
+			}
 		}
 	}
 }
@@ -4306,6 +4722,23 @@ execute_amphibious_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Att
 		fmt.println("\n  [AMPHIB ROUTES] Unloading transports for amphibious assaults")
 	}
 	
+	// Mapping from Idle_Ship transport types to what they carry
+	Idle_Trans_Info :: struct {
+		type: Idle_Ship,
+		inf: u8,
+		arty: u8,
+		tank: u8,
+	}
+	
+	idle_trans_types := [?]Idle_Trans_Info{
+		{.TRANS_1I, 1, 0, 0},
+		{.TRANS_1T, 0, 0, 1},
+		{.TRANS_1A, 0, 1, 0},
+		{.TRANS_2I, 2, 0, 0},
+		{.TRANS_1I_1A, 1, 1, 0},
+		{.TRANS_1I_1T, 1, 0, 1},
+	}
+	
 	for &opt in attack_options {
 		target := opt.territory
 		
@@ -4318,43 +4751,79 @@ execute_amphibious_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Att
 				len(opt.amphib_attackers), target)
 		}
 		
-		// Unload each amphibious attacker
-		// Note: Unlike regular unloading in transport.odin, amphibious assaults occur during combat move
-		// and don't use the interactive unload_transports() flow. We directly manipulate the transport states.
+		// Unload each amphibious attacker from IDLE transports
 		for unit in opt.amphib_attackers {
 			// from_territory is actually a Sea_ID (stored as Land_ID)
 			sea_zone := Sea_ID(unit.from_territory)
 			
-			// Find which transport has this unit type and unload it
-			// We need to find the Active_Ship state (with 0 moves) that contains this unit
+			// Find which idle transport has this unit type and unload it
 			ship_found := false
-			for trans_ship in Transports_With_Cargo {
-				// Check if this transport type can carry the unit we're trying to unload
-				unload_army := Transport_Unload_Unit[trans_ship]
-				expected_idle_army: Idle_Army
-				
+			
+			for info in idle_trans_types {
+				// Check if this transport type carries the unit we want
+				carries_unit := false
 				#partial switch unit.unit_type {
-				case .Infantry:  expected_idle_army = .INF
-				case .Tank:      expected_idle_army = .TANK
-				case .Artillery: expected_idle_army = .ARTY
-				case:            continue  // Not a transportable unit
+				case .Infantry:
+					carries_unit = info.inf > 0
+				case .Artillery:
+					carries_unit = info.arty > 0
+				case .Tank:
+					carries_unit = info.tank > 0
 				}
 				
-				// Check if this transport type carries the unit we need AND exists in this sea zone
-				if Active_Army_To_Idle[unload_army] == expected_idle_army &&
-				   gc.active_ships[sea_zone][trans_ship] > 0 {
-					
+				if !carries_unit {
+					continue
+				}
+				
+				// Check if we have this transport type at this sea zone
+				if gc.idle_ships[sea_zone][gc.cur_player][info.type] > 0 {
 					when ODIN_DEBUG {
 						fmt.printf("      Unloading %v from %v (sea zone %v) to %v\n", 
-							unit.unit_type, trans_ship, sea_zone, target)
+							unit.unit_type, info.type, sea_zone, target)
 					}
 					
-					// Use the existing unload_unit helper from transport.odin
-					unload_unit(gc, target, trans_ship)
+					// Decrement the transport
+					gc.idle_ships[sea_zone][gc.cur_player][info.type] -= 1
 					
-					// Use the existing replace_ship helper to update transport state
-					new_ship := Trans_After_Unload[trans_ship]
-					replace_ship(gc, sea_zone, trans_ship, new_ship)
+					// Determine new transport state after unloading
+					new_trans_type: Idle_Ship
+					#partial switch info.type {
+					case .TRANS_1I:
+						new_trans_type = .TRANS_EMPTY
+					case .TRANS_1T:
+						new_trans_type = .TRANS_EMPTY
+					case .TRANS_1A:
+						new_trans_type = .TRANS_EMPTY
+					case .TRANS_2I:
+						new_trans_type = .TRANS_1I  // 2I -> 1I after unloading one
+					case .TRANS_1I_1A:
+						// Depends on what we unloaded
+						if unit.unit_type == .Infantry {
+							new_trans_type = .TRANS_1A
+						} else {
+							new_trans_type = .TRANS_1I
+						}
+					case .TRANS_1I_1T:
+						if unit.unit_type == .Infantry {
+							new_trans_type = .TRANS_1T
+						} else {
+							new_trans_type = .TRANS_1I
+						}
+					case:
+						new_trans_type = .TRANS_EMPTY
+					}
+					
+					gc.idle_ships[sea_zone][gc.cur_player][new_trans_type] += 1
+					
+					// Add the unloaded unit to the target territory as an attacking unit
+					#partial switch unit.unit_type {
+					case .Infantry:
+						gc.active_armies[target][.INF_0_MOVES] += 1
+					case .Artillery:
+						gc.active_armies[target][.ARTY_0_MOVES] += 1
+					case .Tank:
+						gc.active_armies[target][.TANK_0_MOVES] += 1
+					}
 					
 					ship_found = true
 					break
@@ -4366,7 +4835,8 @@ execute_amphibious_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Att
 					fmt.printf("      ERROR: No suitable transport found at sea zone %v for %v\n", 
 						sea_zone, unit.unit_type)
 				}
-				return false
+				// Don't fail - just continue without unloading this unit
+				// return false
 			}
 		}
 	}

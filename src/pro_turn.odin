@@ -216,6 +216,10 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		}
 	}
 
+	// Step 3b: Evaluate which territories need amphibious reinforcements
+	// Note: This is done later on attack_options3 which has the amphib data populated
+	// (attack_options here uses old system without potential_amphib_attackers)
+
 	// Step 4: Remove territories not worth attacking
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 4] Filtering out low-value targets...")
@@ -266,6 +270,47 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				append(&attack_options3, attack_option2)
 				break
 			}
+		}
+	}
+	
+	// Also add territories that have amphibious attack potential 
+	// (from attack_options2) even if they weren't in the old system
+	for &attack_option2 in attack_options2 {
+		// Skip if already in attack_options3
+		already_added := false
+		for opt in attack_options3 {
+			if opt.territory == attack_option2.territory {
+				already_added = true
+				break
+			}
+		}
+		if already_added { continue }
+		
+		// Add if has potential amphibious attackers
+		if len(attack_option2.potential_amphib_attackers) > 0 {
+			append(&attack_options3, attack_option2)
+			when ODIN_DEBUG {
+				fmt.printf("  Added amphib-reachable target: %v (amphib attackers: %d)\n", 
+					attack_option2.territory, len(attack_option2.potential_amphib_attackers))
+			}
+		}
+	}
+
+	// Step 4b: Evaluate which territories need amphibious reinforcements
+	// This checks if land+air alone can win, or if transports are needed
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 4b] Evaluating amphibious attack requirements...")
+	}
+	debug_checks(gc)
+	evaluate_need_amphib_units_triplea(gc, &attack_options3)
+
+	when ODIN_DEBUG {
+		amphib_count := 0
+		for opt in attack_options3 {
+			if opt.need_amphib_units do amphib_count += 1
+		}
+		if amphib_count > 0 {
+			fmt.printf("  -> %d territories need amphibious reinforcements\n", amphib_count)
 		}
 	}
 
