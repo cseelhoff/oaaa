@@ -300,7 +300,7 @@ determine_territories_to_attack_triplea :: proc(gc: ^Game_Cache, options: ^[dyna
 		are_successful := true
 		for i := 0; i < num_to_attack && i < len(options); i += 1 {
 			option := &options[i]
-			fmt.println("         Trying ", option.territory)
+			fmt.println("Trying ", option.territory)
 			// Estimate battle result if not already done
 			if option.win_percentage == 0 {
 				combatants := Land_Combatants{}
@@ -517,31 +517,30 @@ determine_territories_that_can_be_held_triplea :: proc(gc: ^Game_Cache, options:
 		counter_combatants := build_counter_attack_combatants(gc, t, surviving_def_power)
 		
 		when ODIN_DEBUG {
-			fmt.printf("    Counter-attack combatants:\n")
-			fmt.printf("      Our survivors (defenders):\n")
-			if counter_combatants.defenders.Infantry > 0 do fmt.printf("        Infantry: %d\n", counter_combatants.defenders.Infantry)
-			if counter_combatants.defenders.Artillery > 0 do fmt.printf("        Artillery: %d\n", counter_combatants.defenders.Artillery)
-			if counter_combatants.defenders.Tanks > 0 do fmt.printf("        Tank: %d\n", counter_combatants.defenders.Tanks)
-			if counter_combatants.defenders.Fighters > 0 do fmt.printf("        Fighter: %d\n", counter_combatants.defenders.Fighters)
-			if counter_combatants.defenders.Bombers > 0 do fmt.printf("        Bomber: %d\n", counter_combatants.defenders.Bombers)
-			if counter_combatants.defenders.AntiAir > 0 do fmt.printf("        AAGun: %d\n", counter_combatants.defenders.AntiAir)
+			fmt.printf("    Our survivors (defenders):\n")
+			if counter_combatants.defenders.Infantry > 0 do fmt.printf("      Infantry: %d\n", counter_combatants.defenders.Infantry)
+			if counter_combatants.defenders.Artillery > 0 do fmt.printf("      Artillery: %d\n", counter_combatants.defenders.Artillery)
+			if counter_combatants.defenders.Tanks > 0 do fmt.printf("      Tank: %d\n", counter_combatants.defenders.Tanks)
+			if counter_combatants.defenders.Fighters > 0 do fmt.printf("      Fighter: %d\n", counter_combatants.defenders.Fighters)
+			if counter_combatants.defenders.Bombers > 0 do fmt.printf("      Bomber: %d\n", counter_combatants.defenders.Bombers)
+			if counter_combatants.defenders.AntiAir > 0 do fmt.printf("      AAGun: %d\n", counter_combatants.defenders.AntiAir)
 			
-			fmt.printf("      Enemy attackers:\n")
+			fmt.printf("    Enemy attackers:\n")
 			// Wave 0: Land units
-			if counter_combatants.attackers[0].Infantry > 0 do fmt.printf("        Infantry: %d\n", counter_combatants.attackers[0].Infantry)
-			if counter_combatants.attackers[0].Artillery > 0 do fmt.printf("        Artillery: %d\n", counter_combatants.attackers[0].Artillery)
-			if counter_combatants.attackers[0].Tanks > 0 do fmt.printf("        Tank: %d\n", counter_combatants.attackers[0].Tanks)
+			if counter_combatants.attackers[0].Infantry > 0 do fmt.printf("      Infantry: %d\n", counter_combatants.attackers[0].Infantry)
+			if counter_combatants.attackers[0].Artillery > 0 do fmt.printf("      Artillery: %d\n", counter_combatants.attackers[0].Artillery)
+			if counter_combatants.attackers[0].Tanks > 0 do fmt.printf("      Tank: %d\n", counter_combatants.attackers[0].Tanks)
 			// Wave 1: Fighters
-			if counter_combatants.attackers[1].Fighters > 0 do fmt.printf("        Fighter: %d\n", counter_combatants.attackers[1].Fighters)
+			if counter_combatants.attackers[1].Fighters > 0 do fmt.printf("      Fighter: %d\n", counter_combatants.attackers[1].Fighters)
 			// Wave 2: Bombers
-			if counter_combatants.attackers[2].Bombers > 0 do fmt.printf("        Bomber: %d\n", counter_combatants.attackers[2].Bombers)
+			if counter_combatants.attackers[2].Bombers > 0 do fmt.printf("      Bomber: %d\n", counter_combatants.attackers[2].Bombers)
 		}
 		
 		// Simulate the counter-attack
 		counter_result := simulate_battle(counter_combatants)
 		
 		when ODIN_DEBUG {
-			fmt.printf("  Counter-attack sim: enemy_win=%.1f%%, TUV=%.1f\n",
+			fmt.printf("    Enemy_win=%.1f%%, TUV=%.1f\n",
 				counter_result.invaded_percent * 100, counter_result.avg_TUV_swing)
 		}
 		
@@ -563,11 +562,11 @@ determine_territories_that_can_be_held_triplea :: proc(gc: ^Game_Cache, options:
 		// 2. OR enemy would lose more TUV than they gain (bad trade for them)
 		when ODIN_DEBUG {
 			if (enemy_win_pct < MIN_WIN_PERCENTAGE) {
-				fmt.printf("  Can hold because enemy win pct %.1f%% < %.1f%%\n",
+				fmt.printf("    Can hold because enemy win pct %.1f%% < %.1f%%\n",
 					enemy_win_pct * 100, MIN_WIN_PERCENTAGE * 100)
 			}
 			if (enemy_tuv_swing < 0) {
-				fmt.printf("  Can hold because enemy TUV swing %.1f < 0\n", enemy_tuv_swing)
+				fmt.printf("    Can hold because enemy TUV swing %.1f < 0\n", enemy_tuv_swing)
 			}
 		}
 		
@@ -577,11 +576,10 @@ determine_territories_that_can_be_held_triplea :: proc(gc: ^Game_Cache, options:
 			production, is_capital := get_production_and_is_capital_triplea(gc, t)
 			is_high_value := is_capital || production >= 5
 			
-			fmt.printf("%s:", t)
 			if option.can_hold {
-				fmt.printf(" CAN HOLD")
+				fmt.printf("    [CAN HOLD]")
 			} else {
-				fmt.printf(" CANNOT HOLD")
+				fmt.printf("    [CANNOT HOLD]")
 			}
 			fmt.printf(" (survivors=%.1f def power, enemy_win=%.1f%%, enemy_TUV=%.1f",
 				surviving_def_power, enemy_win_pct * 100, enemy_tuv_swing)
@@ -1920,7 +1918,7 @@ try_to_attack_territories_triplea :: proc(
 		assign_land_units_to_attack(gc, option, target_power, &assigned_units)
 		
 		when ODIN_DEBUG {
-			fmt.printf("    After land assignment: %v has %d attackers (target power: %.1f)\n",
+			fmt.printf("  After land assignment: %v has %d attackers (target power: %.1f)\n",
 				option.territory, len(option.attackers), target_power)
 		}
 		
@@ -1935,7 +1933,7 @@ try_to_attack_territories_triplea :: proc(
 			assign_air_units_to_attack(gc, option, target_power - current_power, &assigned_units)
 			
 			when ODIN_DEBUG {
-				fmt.printf("    After air assignment: %v has %d attackers\n",
+				fmt.printf("  After air assignment: %v has %d attackers\n",
 					option.territory, len(option.attackers))
 			}
 			// Add newly assigned air units to tracking list
@@ -1974,7 +1972,7 @@ try_to_attack_territories_triplea :: proc(
 	}
 	
 	when ODIN_DEBUG {
-		fmt.println("Total assigned units:")
+		fmt.println("  Total assigned units:")
 		print_unit_info_summary(&assigned)
 	}
 	
@@ -2016,13 +2014,13 @@ print_unit_info_summary :: proc(units: ^[dynamic]Unit_Info) {
 	
 	// Print grouped by territory
 	for territory, counts in territory_counts {
-		fmt.printf("  %v:\n", territory)
-		if counts.infantry > 0  do fmt.printf("    Infantry: %d\n", counts.infantry)
-		if counts.artillery > 0 do fmt.printf("    Artillery: %d\n", counts.artillery)
-		if counts.tank > 0      do fmt.printf("    Tank: %d\n", counts.tank)
-		if counts.aagun > 0     do fmt.printf("    AAGun: %d\n", counts.aagun)
-		if counts.fighter > 0   do fmt.printf("    Fighter: %d\n", counts.fighter)
-		if counts.bomber > 0    do fmt.printf("    Bomber: %d\n", counts.bomber)
+		fmt.printf("    %v:\n", territory)
+		if counts.infantry > 0  do fmt.printf("      Infantry: %d\n", counts.infantry)
+		if counts.artillery > 0 do fmt.printf("      Artillery: %d\n", counts.artillery)
+		if counts.tank > 0      do fmt.printf("      Tank: %d\n", counts.tank)
+		if counts.aagun > 0     do fmt.printf("      AAGun: %d\n", counts.aagun)
+		if counts.fighter > 0   do fmt.printf("      Fighter: %d\n", counts.fighter)
+		if counts.bomber > 0    do fmt.printf("      Bomber: %d\n", counts.bomber)
 	}
 }
 

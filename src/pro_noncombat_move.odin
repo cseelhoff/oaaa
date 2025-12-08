@@ -341,6 +341,10 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 	// Step 7: Move remaining land units to consolidate
 	move_land_units_noncombat(gc, &pro_data)
+	
+	// Step 8: Load transports with units for next turn's attacks
+	load_transports_noncombat(gc, &pro_data)
+	
 	debug_checks(gc)
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Completed non-combat move phase")
@@ -2134,4 +2138,403 @@ find_best_noncombat_move :: proc(
 // Cleanup
 pro_noncombat_move_cleanup :: proc(targets: ^[dynamic]Defense_Target) {
 	delete(targets^)
+}
+
+// Load transports during non-combat move phase
+load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
+	/*
+	From Java ProNonCombatMoveAi.java (lines 920-1010):
+	
+	Transport loading during non-combat move is similar to combat move but:
+	1. Units are loaded for DEFENSIVE purposes (reinforce threatened territories)
+	2. Units are loaded for POSITIONING (move to high-value territories for next turn)
+	3. Units DON'T need to attack this turn
+	
+	The algorithm:
+	1. For each transport, check if territory needs amphib reinforcements
+	2. If defense is needed, find units to load from adjacent territories
+	3. Load units and plan transport movement to the threatened territory
+	
+	For now, we use the same loading logic as combat phase since:
+	- Loading units onto transports positions them for next turn
+	- The transport can move to better positions during stage_transports
+	- Units loaded will be able to attack next turn from the transport's destination
+	*/
+	
+	when ODIN_DEBUG {
+		fmt.println("  [NONCOMBAT] Loading transports for next turn positioning...")
+	}
+	
+	// Find all sea zones with our transports
+	player := gc.cur_player
+	transports_loaded := 0
+	
+	for sea in Sea_ID {
+		// Count available transports at this sea zone
+		empty_transports := gc.idle_ships[sea][player][.TRANS_EMPTY]
+		partial_1i := gc.idle_ships[sea][player][.TRANS_1I]
+		partial_1a := gc.idle_ships[sea][player][.TRANS_1A]
+		partial_1t := gc.idle_ships[sea][player][.TRANS_1T]
+		
+		if empty_transports == 0 && partial_1i == 0 && partial_1a == 0 && partial_1t == 0 {
+			continue
+		}
+		
+		// Get adjacent lands
+		adjacent_lands := &mm.s2l_1away_via_sea[sea]
+		
+		// Check if any adjacent land has units we could load
+		has_loadable_units := false
+		for land in sa.slice(adjacent_lands) {
+			if mm.team[gc.owner[land]] != mm.team[player] {
+				continue
+			}
+			
+			// Check for unmoved units (units that still have movement)
+			// In noncombat, units with 0 moves can still board transports
+			if gc.idle_armies[land][player][.INF] > 0 ||
+			   gc.idle_armies[land][player][.ARTY] > 0 ||
+			   gc.idle_armies[land][player][.TANK] > 0 {
+				has_loadable_units = true
+				break
+			}
+		}
+		
+		if !has_loadable_units {
+			continue
+		}
+		
+		// Load transports using same logic as combat phase
+		// But use idle armies directly since we're in noncombat
+		loaded := load_transports_at_sea_noncombat(gc, sea)
+		if loaded > 0 {
+			transports_loaded += loaded
+			
+			when ODIN_DEBUG {
+				fmt.printf("    Loaded %d units onto transports at sea %v\n", loaded, sea)
+			}
+		}
+	}
+	
+	when ODIN_DEBUG {
+		if transports_loaded > 0 {
+			fmt.printf("  [NONCOMBAT] Total units loaded onto transports: %d\n", transports_loaded)
+		} else {
+			fmt.println("  [NONCOMBAT] No units loaded onto transports")
+		}
+	}
+}
+
+// Load transports at a specific sea zone during noncombat (uses idle armies)
+load_transports_at_sea_noncombat :: proc(gc: ^Game_Cache, sea: Sea_ID) -> int {
+	/*
+	During non-combat phase:
+	- Units don't have "active" movement states - they're just idle
+	- We load from idle_armies directly
+	- The transport becomes loaded and ready for next turn
+	*/
+	
+	player := gc.cur_player
+	adjacent_lands := &mm.s2l_1away_via_sea[sea]
+	units_loaded := 0
+	
+	// Load empty transports first (best capacity)
+	for gc.idle_ships[sea][player][.TRANS_EMPTY] > 0 {
+		loaded := load_noncombat_onto_empty_transport(gc, sea, adjacent_lands)
+		if !loaded {
+			break
+		}
+		units_loaded += 1
+	}
+	
+	// Fill 1I transports (can add tank, arty, or infantry)
+	for gc.idle_ships[sea][player][.TRANS_1I] > 0 {
+		loaded := load_noncombat_second_unit_onto_1i(gc, sea, adjacent_lands)
+		if !loaded {
+			break
+		}
+		units_loaded += 1
+	}
+	
+	// Fill 1A transports (can only add infantry)
+	for gc.idle_ships[sea][player][.TRANS_1A] > 0 {
+		loaded := load_noncombat_infantry_onto_partial(gc, sea, adjacent_lands, .TRANS_1A)
+		if !loaded {
+			break
+		}
+		units_loaded += 1
+	}
+	
+	// Fill 1T transports (can only add infantry)
+	for gc.idle_ships[sea][player][.TRANS_1T] > 0 {
+		loaded := load_noncombat_infantry_onto_partial(gc, sea, adjacent_lands, .TRANS_1T)
+		if !loaded {
+			break
+		}
+		units_loaded += 1
+	}
+	
+	return units_loaded
+}
+
+// Load best unit onto empty transport during noncombat
+load_noncombat_onto_empty_transport :: proc(
+	gc: ^Game_Cache,
+	sea: Sea_ID,
+	adjacent_lands: ^SA_S2L,
+) -> bool {
+	player := gc.cur_player
+	
+	// Priority: Tank > Artillery > Infantry (for attack power)
+	
+	// Try tank first
+	for land in sa.slice(adjacent_lands) {
+		if mm.team[gc.owner[land]] != mm.team[player] {
+			continue
+		}
+		
+		if gc.idle_armies[land][player][.TANK] > 0 {
+			// Load tank
+			gc.idle_armies[land][player][.TANK] -= 1
+			gc.team_land_units[land][mm.team[player]] -= 1
+			
+			// Update transport
+			gc.idle_ships[sea][player][.TRANS_EMPTY] -= 1
+			gc.idle_ships[sea][player][.TRANS_1T] += 1
+			gc.active_ships[sea][.TRANS_1T_UNMOVED] += 1
+			
+			// Try to add infantry too
+			for inf_land in sa.slice(adjacent_lands) {
+				if mm.team[gc.owner[inf_land]] != mm.team[player] {
+					continue
+				}
+				if gc.idle_armies[inf_land][player][.INF] > 0 {
+					gc.idle_armies[inf_land][player][.INF] -= 1
+					gc.team_land_units[inf_land][mm.team[player]] -= 1
+					
+					// Transform 1T to 1I_1T
+					gc.idle_ships[sea][player][.TRANS_1T] -= 1
+					gc.idle_ships[sea][player][.TRANS_1I_1T] += 1
+					gc.active_ships[sea][.TRANS_1T_UNMOVED] -= 1
+					gc.active_ships[sea][.TRANS_1I_1T_2_MOVES] += 1
+					break
+				}
+			}
+			
+			return true
+		}
+	}
+	
+	// Try artillery
+	for land in sa.slice(adjacent_lands) {
+		if mm.team[gc.owner[land]] != mm.team[player] {
+			continue
+		}
+		
+		if gc.idle_armies[land][player][.ARTY] > 0 {
+			gc.idle_armies[land][player][.ARTY] -= 1
+			gc.team_land_units[land][mm.team[player]] -= 1
+			
+			gc.idle_ships[sea][player][.TRANS_EMPTY] -= 1
+			gc.idle_ships[sea][player][.TRANS_1A] += 1
+			gc.active_ships[sea][.TRANS_1A_UNMOVED] += 1
+			
+			// Try to add infantry
+			for inf_land in sa.slice(adjacent_lands) {
+				if mm.team[gc.owner[inf_land]] != mm.team[player] {
+					continue
+				}
+				if gc.idle_armies[inf_land][player][.INF] > 0 {
+					gc.idle_armies[inf_land][player][.INF] -= 1
+					gc.team_land_units[inf_land][mm.team[player]] -= 1
+					
+					gc.idle_ships[sea][player][.TRANS_1A] -= 1
+					gc.idle_ships[sea][player][.TRANS_1I_1A] += 1
+					gc.active_ships[sea][.TRANS_1A_UNMOVED] -= 1
+					gc.active_ships[sea][.TRANS_1I_1A_2_MOVES] += 1
+					break
+				}
+			}
+			
+			return true
+		}
+	}
+	
+	// Try 2 infantry
+	infantry_loaded := 0
+	for land in sa.slice(adjacent_lands) {
+		if mm.team[gc.owner[land]] != mm.team[player] {
+			continue
+		}
+		
+		for gc.idle_armies[land][player][.INF] > 0 && infantry_loaded < 2 {
+			gc.idle_armies[land][player][.INF] -= 1
+			gc.team_land_units[land][mm.team[player]] -= 1
+			
+			if infantry_loaded == 0 {
+				gc.idle_ships[sea][player][.TRANS_EMPTY] -= 1
+				gc.idle_ships[sea][player][.TRANS_1I] += 1
+				gc.active_ships[sea][.TRANS_1I_UNMOVED] += 1
+			} else {
+				gc.idle_ships[sea][player][.TRANS_1I] -= 1
+				gc.idle_ships[sea][player][.TRANS_2I] += 1
+				gc.active_ships[sea][.TRANS_1I_UNMOVED] -= 1
+				gc.active_ships[sea][.TRANS_2I_2_MOVES] += 1
+			}
+			
+			infantry_loaded += 1
+		}
+		
+		if infantry_loaded >= 2 {
+			break
+		}
+	}
+	
+	return infantry_loaded > 0
+}
+
+// Load second unit onto 1I transport during noncombat
+load_noncombat_second_unit_onto_1i :: proc(
+	gc: ^Game_Cache,
+	sea: Sea_ID,
+	adjacent_lands: ^SA_S2L,
+) -> bool {
+	player := gc.cur_player
+	
+	// Prefer tank or artillery
+	for land in sa.slice(adjacent_lands) {
+		if mm.team[gc.owner[land]] != mm.team[player] {
+			continue
+		}
+		
+		// Tank
+		if gc.idle_armies[land][player][.TANK] > 0 {
+			gc.idle_armies[land][player][.TANK] -= 1
+			gc.team_land_units[land][mm.team[player]] -= 1
+			
+			gc.idle_ships[sea][player][.TRANS_1I] -= 1
+			gc.idle_ships[sea][player][.TRANS_1I_1T] += 1
+			
+			// Find and update active state
+			if gc.active_ships[sea][.TRANS_1I_UNMOVED] > 0 {
+				gc.active_ships[sea][.TRANS_1I_UNMOVED] -= 1
+			} else if gc.active_ships[sea][.TRANS_1I_2_MOVES] > 0 {
+				gc.active_ships[sea][.TRANS_1I_2_MOVES] -= 1
+			} else if gc.active_ships[sea][.TRANS_1I_1_MOVES] > 0 {
+				gc.active_ships[sea][.TRANS_1I_1_MOVES] -= 1
+			} else if gc.active_ships[sea][.TRANS_1I_0_MOVES] > 0 {
+				gc.active_ships[sea][.TRANS_1I_0_MOVES] -= 1
+			}
+			gc.active_ships[sea][.TRANS_1I_1T_2_MOVES] += 1
+			
+			return true
+		}
+		
+		// Artillery
+		if gc.idle_armies[land][player][.ARTY] > 0 {
+			gc.idle_armies[land][player][.ARTY] -= 1
+			gc.team_land_units[land][mm.team[player]] -= 1
+			
+			gc.idle_ships[sea][player][.TRANS_1I] -= 1
+			gc.idle_ships[sea][player][.TRANS_1I_1A] += 1
+			
+			if gc.active_ships[sea][.TRANS_1I_UNMOVED] > 0 {
+				gc.active_ships[sea][.TRANS_1I_UNMOVED] -= 1
+			} else if gc.active_ships[sea][.TRANS_1I_2_MOVES] > 0 {
+				gc.active_ships[sea][.TRANS_1I_2_MOVES] -= 1
+			} else if gc.active_ships[sea][.TRANS_1I_1_MOVES] > 0 {
+				gc.active_ships[sea][.TRANS_1I_1_MOVES] -= 1
+			} else if gc.active_ships[sea][.TRANS_1I_0_MOVES] > 0 {
+				gc.active_ships[sea][.TRANS_1I_0_MOVES] -= 1
+			}
+			gc.active_ships[sea][.TRANS_1I_1A_2_MOVES] += 1
+			
+			return true
+		}
+	}
+	
+	// Fallback to infantry
+	for land in sa.slice(adjacent_lands) {
+		if mm.team[gc.owner[land]] != mm.team[player] {
+			continue
+		}
+		
+		if gc.idle_armies[land][player][.INF] > 0 {
+			gc.idle_armies[land][player][.INF] -= 1
+			gc.team_land_units[land][mm.team[player]] -= 1
+			
+			gc.idle_ships[sea][player][.TRANS_1I] -= 1
+			gc.idle_ships[sea][player][.TRANS_2I] += 1
+			
+			if gc.active_ships[sea][.TRANS_1I_UNMOVED] > 0 {
+				gc.active_ships[sea][.TRANS_1I_UNMOVED] -= 1
+			} else if gc.active_ships[sea][.TRANS_1I_2_MOVES] > 0 {
+				gc.active_ships[sea][.TRANS_1I_2_MOVES] -= 1
+			} else if gc.active_ships[sea][.TRANS_1I_1_MOVES] > 0 {
+				gc.active_ships[sea][.TRANS_1I_1_MOVES] -= 1
+			} else if gc.active_ships[sea][.TRANS_1I_0_MOVES] > 0 {
+				gc.active_ships[sea][.TRANS_1I_0_MOVES] -= 1
+			}
+			gc.active_ships[sea][.TRANS_2I_2_MOVES] += 1
+			
+			return true
+		}
+	}
+	
+	return false
+}
+
+// Load infantry onto partial transport (1A or 1T) during noncombat
+load_noncombat_infantry_onto_partial :: proc(
+	gc: ^Game_Cache,
+	sea: Sea_ID,
+	adjacent_lands: ^SA_S2L,
+	transport_type: Idle_Ship,
+) -> bool {
+	player := gc.cur_player
+	
+	for land in sa.slice(adjacent_lands) {
+		if mm.team[gc.owner[land]] != mm.team[player] {
+			continue
+		}
+		
+		if gc.idle_armies[land][player][.INF] > 0 {
+			gc.idle_armies[land][player][.INF] -= 1
+			gc.team_land_units[land][mm.team[player]] -= 1
+			
+			if transport_type == .TRANS_1A {
+				gc.idle_ships[sea][player][.TRANS_1A] -= 1
+				gc.idle_ships[sea][player][.TRANS_1I_1A] += 1
+				
+				if gc.active_ships[sea][.TRANS_1A_UNMOVED] > 0 {
+					gc.active_ships[sea][.TRANS_1A_UNMOVED] -= 1
+				} else if gc.active_ships[sea][.TRANS_1A_2_MOVES] > 0 {
+					gc.active_ships[sea][.TRANS_1A_2_MOVES] -= 1
+				} else if gc.active_ships[sea][.TRANS_1A_1_MOVES] > 0 {
+					gc.active_ships[sea][.TRANS_1A_1_MOVES] -= 1
+				} else if gc.active_ships[sea][.TRANS_1A_0_MOVES] > 0 {
+					gc.active_ships[sea][.TRANS_1A_0_MOVES] -= 1
+				}
+				gc.active_ships[sea][.TRANS_1I_1A_2_MOVES] += 1
+			} else {  // TRANS_1T
+				gc.idle_ships[sea][player][.TRANS_1T] -= 1
+				gc.idle_ships[sea][player][.TRANS_1I_1T] += 1
+				
+				if gc.active_ships[sea][.TRANS_1T_UNMOVED] > 0 {
+					gc.active_ships[sea][.TRANS_1T_UNMOVED] -= 1
+				} else if gc.active_ships[sea][.TRANS_1T_2_MOVES] > 0 {
+					gc.active_ships[sea][.TRANS_1T_2_MOVES] -= 1
+				} else if gc.active_ships[sea][.TRANS_1T_1_MOVES] > 0 {
+					gc.active_ships[sea][.TRANS_1T_1_MOVES] -= 1
+				} else if gc.active_ships[sea][.TRANS_1T_0_MOVES] > 0 {
+					gc.active_ships[sea][.TRANS_1T_0_MOVES] -= 1
+				}
+				gc.active_ships[sea][.TRANS_1I_1T_2_MOVES] += 1
+			}
+			
+			return true
+		}
+	}
+	
+	return false
 }

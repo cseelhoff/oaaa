@@ -125,7 +125,7 @@ prioritize_my_attack_options :: proc(
 			land_combatants.defenders.Bombers += gc.idle_land_planes[land_territory][enemy][.BOMBER]
 		}
 		results: Battle_Results = simulate_battle(land_combatants)
-		fmt.println("    Battle Results (TUV, Invaded %): ", results.avg_TUV_swing, ", ", results.invaded_percent)
+		fmt.println("      Battle Results (TUV, Invaded %): ", results.avg_TUV_swing, ", ", results.invaded_percent)
 
 		// Skip territories that are not sufficiently threatened
 		if(results.invaded_percent < 1.0 - win_percentage_needed) do continue
@@ -181,7 +181,7 @@ prioritize_my_attack_options :: proc(
         
         // Remove negative value territories
         option.attack_value = attack_value
-        fmt.println("    Attack Value: ", attack_value)
+        fmt.println("      Attack Value: ", attack_value)
 
         if attack_value <= 0 {
             continue

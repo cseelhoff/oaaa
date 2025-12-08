@@ -20,7 +20,7 @@ This document provides a comprehensive project plan for completing the conversio
 | File | Status | Notes |
 |------|--------|-------|
 | `pro_turn.odin` | ✅ Complete | Turn orchestration working, proper unit counting |
-| `pro_purchase.odin` | ✅ ~98% | 25+ methods, deferred placement, sequential battle sim, sea battle sim |
+| `pro_purchase.odin` | ✅ ~99% | 25+ methods, deferred placement, sequential battle sim, sea defense eval |
 | `pro_purchase_ai.odin` | ✅ Complete | Alternative purchase flow entry point |
 | `pro_my_attacks.odin` | ✅ Complete | Attack option generation |
 | `pro_enemy_attacks.odin` | ✅ Complete | Per-enemy attack analysis with aggregation |
@@ -36,7 +36,8 @@ This document provides a comprehensive project plan for completing the conversio
 | `pro_combat_move_triplea_methods.odin` | 🔶 ~70% | Core algorithms exist, Unit_Info needs count-based refactor |
 | `pro_noncombat_move.odin` | 🔶 ~60% | 3-pass algorithm exists, some air landing partial |
 | `pro_territory_manager.odin` | 🔶 ~30% | Partial structure |
-| `pro_transport.odin` | 🔶 ~40% | Planning structures defined, execution incomplete |
+| `pro_transport.odin` | 🔶 ~40% | Planning structures defined, combat loading incomplete |
+| `pro_transport_execute.odin` | 🔶 ~50% | Non-combat loading implemented, combat loading disabled |
 | `pro_land_value.odin` | 🔶 ~30% | Mostly commented out, strategic_value calc inlined in pro_purchase.odin |
 
 ### ❌ NOT IMPLEMENTED
@@ -60,6 +61,90 @@ This document provides a comprehensive project plan for completing the conversio
 ---
 
 ## Recent Accomplishments (December 2025)
+
+### Sea Territory Defense Evaluation (Latest Work)
+
+Implemented sea zone defense evaluation in `prioritize_territories_to_defend_triplea()`.
+
+**How it works**:
+1. For each sea zone, count our ships and calculate TUV (Total Unit Value) at risk
+2. Check for enemy threat using `has_enemy_threat_sea()`
+3. Calculate `hold_value = TUV / 8` (from Java ProPurchaseAi)
+4. Run Monte Carlo sea battle simulation using `get_sea_battle_results()`
+5. If `TUV_swing > hold_value`, mark zone as needing defense
+6. Find adjacent coastal factory for purchasing naval defenders
+
+**Helper functions added**:
+- `Ship_Counts` struct - Quick ship counting with totals
+- `count_our_ships()` - Count all allied ships in a sea zone
+- `gather_sea_defenders()` - Build Sea_Defenders struct for battle sim
+- `calculate_sea_tuv()` - Calculate total unit value of fleet
+- `find_factory_for_sea_defense()` - Find coastal factory for purchases
+- `Place_Sea_Territory_Defense` struct - Sea zone defense data
+
+**Example output**:
+```
+Sea_4: TUV=31.0, holdValue=3.9, TUV_swing=21.6, win%=100.0%
+  [SKIP] No adjacent factory for Sea_4
+Sea_8: TUV=12.0, holdValue=1.5, TUV_swing=8.5, win%=100.0%
+  [SKIP] No adjacent factory for Sea_8
+```
+
+---
+
+### Transport Loading System
+
+Transport loading has been implemented for non-combat moves, with combat loading identified as needing amphibious attack planning integration.
+
+#### Non-Combat Transport Loading (✅ Working)
+**Files**: `pro_turn.odin`, `pro_noncombat_move.odin`
+
+The non-combat transport loading loads units onto transports for next-turn positioning:
+
+1. **Entry Point**: `load_transports_noncombat()` in `pro_noncombat_move.odin`
+   - Called after `move_land_units_noncombat()` in Step 8
+   - Iterates through all sea zones looking for idle transports
+
+2. **Loading Priority** (tank > artillery > infantry):
+   - `load_noncombat_onto_empty_transport()` - Loads tank+inf or arty+inf or 2×inf
+   - `load_noncombat_second_unit_onto_1i()` - Fills TRANS_1I with tank/arty/inf
+   - `load_noncombat_infantry_onto_partial()` - Fills TRANS_1A/TRANS_1T with infantry
+
+3. **Uses `idle_armies`** (not active) since these units haven't moved this turn
+
+#### Combat Transport Loading (⚠️ Disabled Pending Amphibious Planning)
+**File**: `pro_turn.odin`
+
+The combat transport loading was implemented but **disabled** because:
+- It loaded ALL adjacent units onto transports indiscriminately
+- This conflicts with land attack assignments (units assigned to attack Karelia_SSR were being loaded onto transports instead)
+- Proper implementation requires integration with amphibious attack planning
+
+**Required for Combat Loading**:
+1. First identify territories that NEED amphibious attacks (no land route)
+2. Use `assign_amphibious_units()` to designate specific units for loading
+3. Only load units designated as `amphib_attackers` in attack options
+4. Java reference: `ProTerritoryManager.setNeedAmphibUnits(true)` when:
+   - Territory can't be won with just land/air attackers
+   - There ARE amphibious units available (maxAmphibUnits not empty)
+   - Adding amphib units makes the attack winnable
+
+**Current Workaround**: Pre-loaded transports (TRANS_1I, TRANS_1T, TRANS_1A from previous turns) can still participate in amphibious assaults via `assign_amphibious_units()`.
+
+#### Key Procedures Added
+
+| Procedure | File | Description |
+|-----------|------|-------------|
+| `load_transports_noncombat` | pro_noncombat_move.odin | Entry point for noncombat loading |
+| `load_transports_at_sea_noncombat` | pro_noncombat_move.odin | Loads transports at a sea zone |
+| `load_noncombat_onto_empty_transport` | pro_noncombat_move.odin | Prioritized loading for empty |
+| `load_noncombat_second_unit_onto_1i` | pro_noncombat_move.odin | Fill 1I transports |
+| `load_noncombat_infantry_onto_partial` | pro_noncombat_move.odin | Fill 1A/1T transports |
+| `proai_load_transports_for_combat` | pro_turn.odin | Combat loading (currently disabled) |
+| `load_transports_at_sea` | pro_turn.odin | Combat loading helper |
+| `load_best_units_onto_empty_transport` | pro_turn.odin | Combat loading helper |
+
+---
 
 ### Purchase System Overhaul
 The purchase system has been significantly improved with the following changes:
@@ -458,13 +543,13 @@ execute_transport_move :: proc(gc: ^Game_Cache, plan: ^Amphibious_Plan) -> bool
 
 ### Sprint 2 (High Priority - Core Functionality)
 7. 🔲 2.2 - Complete determine_units_to_attack_with_triplea()
-8. 🔲 3.1 - Complete proai_noncombat_move_phase()
+8. ✅ 3.1 - Complete proai_noncombat_move_phase() (non-combat loading done)
 9. 🔲 3.2 - Carrier Landing Detection
 
 ### Sprint 3 (Medium Priority - Completion)
-10. 🔲 2.1 - Complete populate_attack_options_triplea() (amphib)
+10. 🔲 2.1 - Complete populate_attack_options_triplea() (amphib planning)
 11. 🔲 2.3 - Execute Combat Moves refinement
-12. 🔲 5.1 - Complete Transport Planning
+12. 🔶 5.1 - Complete Transport Planning (non-combat done, combat needs amphib planning)
 
 ### Sprint 4 (Lower Priority - Polish)
 13. 🔲 2.4 - Strategic Bombing Decision Logic

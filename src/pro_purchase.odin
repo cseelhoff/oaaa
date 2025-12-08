@@ -854,12 +854,106 @@ prioritize_territories_to_defend_triplea :: proc(
 		)
 	}
 
-	// Sea territories not implemented yet - return empty list: TODO
+	// Sea territories - calculate defense needs based on TUV at risk
 	if !is_land {
 		when ODIN_DEBUG {
-			fmt.println("    (Sea territory defense not yet implemented - skipping)")
+			fmt.println("    Evaluating sea zones for defensive needs...")
 		}
-		return make([dynamic]Place_Territory_Defense)
+		
+		for sea in Sea_ID {
+			// Check if we have any units in this sea zone
+			our_units := count_our_ships(gc, sea)
+			if our_units.total == 0 do continue
+			
+			// Check if there's enemy threat
+			if !has_enemy_threat_sea(enemy_attack_options, sea) do continue
+			
+			// Get enemy threat
+			threat := get_max_sea_threat(enemy_attack_options, sea)
+			
+			// Gather our defending ships
+			defenders := gather_sea_defenders(gc, sea)
+			
+			// Calculate TUV at risk (value of our ships)
+			tuv_at_risk := calculate_sea_tuv(our_units)
+			hold_value := tuv_at_risk / 8.0  // Java uses unitValue / 8
+			
+			// Gather enemy attackers
+			attackers := Sea_Attackers{
+				Subs = threat.max_subs,
+				Destroyers = threat.max_destroyers,
+				Cruisers = threat.max_cruisers,
+				Battleships = threat.max_battleships,
+				Carriers = threat.max_carriers,
+				Fighters = threat.max_fighters,
+				Bombers = threat.max_bombers,
+			}
+			
+			// Simulate battle
+			combatants := Sea_Combatants{
+				defenders = defenders,
+				attackers = attackers,
+			}
+			result := get_sea_battle_results(combatants)
+			
+			when ODIN_DEBUG {
+				fmt.printf("    Sea_%d: TUV=%.1f, holdValue=%.1f, TUV_swing=%.1f, win%%=%.1f%%\n",
+					int(sea), tuv_at_risk, hold_value, result.avg_TUV_swing, result.win_percent)
+			}
+			
+			// If TUV swing > hold value, we need defense
+			// (TUV swing is negative when we lose, so check if loss > acceptable)
+			if result.avg_TUV_swing <= hold_value {
+				when ODIN_DEBUG {
+					fmt.printf("      [SAFE] TUV swing %.1f <= hold value %.1f\n", 
+						result.avg_TUV_swing, hold_value)
+				}
+				continue
+			}
+			
+			// This sea zone needs defense - but we return Land_ID based structs
+			// For now, find adjacent coastal factory to purchase from
+			adjacent_factory := find_factory_for_sea_defense(gc, sea)
+			if adjacent_factory == nil {
+				when ODIN_DEBUG {
+					fmt.printf("      [SKIP] No adjacent factory for Sea_%d\n", int(sea))
+				}
+				continue
+			}
+			
+			factory_loc := adjacent_factory.?
+			
+			when ODIN_DEBUG {
+				fmt.printf("      [THREATENED] Sea_%d needs defense, factory at %v\n", 
+					int(sea), factory_loc)
+			}
+			
+			// Create a Place_Territory_Defense using factory location as territory
+			// This is a workaround - ideally we'd have a separate sea structure
+			place_terr := Place_Territory_Defense{
+				territory = factory_loc,
+				defense_value = tuv_at_risk,  // Use TUV as priority
+				defending_units = {},  // Empty for sea - not used
+				is_capital = false,
+				has_factory = true,
+			}
+			append(&need_to_defend, place_terr)
+		}
+		
+		// Sort by defense value (highest TUV at risk first)
+		for i := 0; i < len(need_to_defend) - 1; i += 1 {
+			for j := i + 1; j < len(need_to_defend); j += 1 {
+				if need_to_defend[j].defense_value > need_to_defend[i].defense_value {
+					need_to_defend[i], need_to_defend[j] = need_to_defend[j], need_to_defend[i]
+				}
+			}
+		}
+		
+		when ODIN_DEBUG {
+			fmt.printf("    Found %d sea zones needing defense\n", len(need_to_defend))
+		}
+		
+		return need_to_defend
 	}
 
 	for land_territory in Land_ID {
@@ -872,29 +966,7 @@ prioritize_territories_to_defend_triplea :: proc(
 		// Check if there's any enemy threat to this territory
 		if !has_enemy_threat_land(enemy_attack_options, land_territory) do continue
 
-		fmt.println("    Possible Enemy Target Territory:", land_territory)
 		
-		// Gather current defenders
-		initial_defenders: Land_Defenders = {}
-		for player in sa.slice(&mm.allies[gc.cur_player]) {
-			initial_defenders.Infantry += gc.idle_armies[land_territory][player][.INF]
-			initial_defenders.Artillery += gc.idle_armies[land_territory][player][.ARTY]
-			initial_defenders.AntiAir += gc.idle_armies[land_territory][player][.AAGUN]
-			initial_defenders.Tanks += gc.idle_armies[land_territory][player][.TANK]
-			initial_defenders.Fighters += gc.idle_land_planes[land_territory][player][.FIGHTER]
-			initial_defenders.Bombers += gc.idle_land_planes[land_territory][player][.BOMBER]
-		}
-		
-		// Simulate sequential battles - each enemy attacks in turn order
-		// Survivors from one battle defend against the next attacker
-		seq_result := simulate_sequential_enemy_attacks(gc, land_territory, initial_defenders, all_enemies)
-		
-		fmt.printf("    Sequential Battle Results: TUV=%.2f, Invaded%%=%.1f%%, Battles=%d\n", 
-		           seq_result.total_tuv_swing, seq_result.final_invaded_percent * 100, seq_result.num_battles)
-
-		// Skip territories that are not sufficiently threatened
-		if seq_result.final_invaded_percent < 1.0 - win_percentage_needed do continue
-
 		// Calculate defense value using TripleA formula:
 		// value = (2*production + 4*isFactory + 0.5*defenderValue) * (1+isFactory) * (1+10*isCapital)
 
@@ -905,6 +977,16 @@ prioritize_territories_to_defend_triplea :: proc(
 		is_factory_mult := has_factory ? 1.0 : 0.0
 		is_capital_mult := is_capital ? 1.0 : 0.0
 
+		// Gather current defenders
+		initial_defenders: Land_Defenders = {}
+		for player in sa.slice(&mm.allies[gc.cur_player]) {
+			initial_defenders.Infantry += gc.idle_armies[land_territory][player][.INF]
+			initial_defenders.Artillery += gc.idle_armies[land_territory][player][.ARTY]
+			initial_defenders.AntiAir += gc.idle_armies[land_territory][player][.AAGUN]
+			initial_defenders.Tanks += gc.idle_armies[land_territory][player][.TANK]
+			initial_defenders.Fighters += gc.idle_land_planes[land_territory][player][.FIGHTER]
+			initial_defenders.Bombers += gc.idle_land_planes[land_territory][player][.BOMBER]
+		}
 		// Calculate defending unit value (simplified TUV)
 		defender_value := f64(
 			initial_defenders.Infantry * Cost_Buy[.BUY_INF_ACTION] +
@@ -919,24 +1001,41 @@ prioritize_territories_to_defend_triplea :: proc(
 			(2.0 * production + 4.0 * is_factory_mult + 0.5 * defender_value) *
 			(1.0 + is_factory_mult) *
 			(1.0 + 10.0 * is_capital_mult)
-
 		when ODIN_DEBUG {
-			fmt.printf("    %v: value=%.1f", land_territory, defense_value)
+			fmt.printf("    Possible Enemy Target Territory: %v defense_value: %.1f", land_territory, defense_value)
 			if is_capital do fmt.printf(" [CAPITAL]")
 			if has_factory do fmt.printf(" [FACTORY]")
 			fmt.println()
 		}
 
-		if defense_value > 0 {
-			place_terr := Place_Territory_Defense {
-				territory       = land_territory,
-				defense_value   = defense_value,
-				defending_units = initial_defenders,
-				is_capital      = is_capital,
-				has_factory     = has_factory,
-			}
-			append(&need_to_defend, place_terr)
+		if defense_value == 0 do continue
+		
+		// Simulate sequential battles - each enemy attacks in turn order
+		// Survivors from one battle defend against the next attacker
+		seq_result := simulate_sequential_enemy_attacks(gc, land_territory, initial_defenders, all_enemies)
+		
+
+
+		// Skip territories that are not sufficiently threatened
+		if seq_result.final_invaded_percent < 1.0 - win_percentage_needed {
+			fmt.printf("      [SAFE] Sequential Battle Results: TUV=%.2f, Invaded%%=%.1f%%, Battles=%d\n", 
+		           seq_result.total_tuv_swing, seq_result.final_invaded_percent * 100, seq_result.num_battles)
+			continue
 		}
+		when ODIN_DEBUG {
+			fmt.printf(
+				"      [THREATENED] Territory %v is not sufficiently threatened (invaded%%=%.1f%% < needed=%.1f%%)\n",
+				land_territory, seq_result.final_invaded_percent * 100, win_percentage_needed * 100,
+			)
+		}
+		place_terr := Place_Territory_Defense {
+			territory       = land_territory,
+			defense_value   = defense_value,
+			defending_units = initial_defenders,
+			is_capital      = is_capital,
+			has_factory     = has_factory,
+		}
+		append(&need_to_defend, place_terr)
 	}
 
 	// Sort by defense value (highest first)
@@ -969,6 +1068,14 @@ Place_Territory_Defense :: struct {
 	defending_units: Land_Defenders,
 	is_capital:      bool,
 	has_factory:     bool,
+}
+
+// Sea territory defense structure
+Place_Sea_Territory_Defense :: struct {
+	sea_zone:        Sea_ID,
+	defense_value:   f64,
+	defending_units: Sea_Defenders,
+	tuv_at_risk:     f64,  // Value of our ships that could be lost
 }
 
 /*
@@ -1057,20 +1164,27 @@ purchase_defenders_triplea :: proc(
 
 		factory_loc := factory.?
 
-		// Calculate defense gap
-		current_defense := estimate_defense_power_triplea(place_terr.defending_units)
+		// Gather enemy attackers from adjacent territories
+		enemy_attackers := gather_enemy_attackers_from_adjacent(gc, place_terr.territory)
 
-		// Calculate enemy threat from adjacent territories
-		// This counts all enemy units in territories adjacent to this one
-		enemy_threat := calculate_enemy_counter_attack_power(gc, place_terr.territory)
+		// Use battle simulation for accurate defense assessment
+		combatants := Land_Combatants {
+			defenders = place_terr.defending_units,
+			attackers = [3]Land_Attackers{enemy_attackers, {}, {}},
+		}
+		battle_result := get_battle_results(combatants)
+
+		// Also keep simple power estimates for debug output
+		// current_defense := estimate_defense_power_triplea(place_terr.defending_units)
+		// enemy_threat := estimate_attack_power_triplea(enemy_attackers)
 
 		when ODIN_DEBUG {
 			fmt.printf("    Territory: %v\n", place_terr.territory)
-			fmt.printf("      Current defense power: %.1f\n", current_defense)
-			fmt.printf(
-				"      Enemy threat estimate: %.1f (from adjacent territories)\n",
-				enemy_threat,
-			)
+			// fmt.printf("      Current defense power: %.1f\n", current_defense)
+			// fmt.printf(
+			// 	"      Enemy threat estimate: %.1f (from adjacent territories)\n",
+			// 	enemy_threat,
+			// )
 
 			// Show breakdown of threats
 			threat_details := make([dynamic]string)
@@ -1107,26 +1221,32 @@ purchase_defenders_triplea :: proc(
 			}
 
 			if len(threat_details) > 0 {
-				fmt.println("      Threats from adjacent territories:")
-				for detail in threat_details {
-					fmt.println(detail)
-				}
+				// fmt.println("      Threats from adjacent territories:")
+				// for detail in threat_details {
+				// 	fmt.println(detail)
+				// }
 			} else {
 				fmt.println("      No adjacent enemy threats detected")
 			}
 
-			fmt.printf("      Defense gap: %.1f\n", enemy_threat - current_defense)
+			// fmt.printf("      Defense gap: %.1f\n", enemy_threat - current_defense)
 			fmt.printf("      Nearest factory: %v\n", factory_loc)
+			fmt.printf("      Battle simulation: %.1f%% chance of invasion, TUV swing: %.1f\n", 
+				battle_result.invaded_percent * 100.0, battle_result.avg_TUV_swing)
 		}
 
-		if current_defense >= enemy_threat {
+		// Use battle simulation: skip if less than 15% chance of being invaded
+		// This is more accurate than simple power comparison
+		INVASION_THRESHOLD :: 0.15
+		if battle_result.invaded_percent < INVASION_THRESHOLD {
 			when ODIN_DEBUG {
-				fmt.println("      Decision: Already adequately defended - skipping")
+				fmt.printf("      Decision: Already adequately defended (%.1f%% invasion chance < %.0f%% threshold) - skipping\n",
+					battle_result.invaded_percent * 100.0, INVASION_THRESHOLD * 100.0)
 			}
 			continue
 		}
 
-		defense_gap := enemy_threat - current_defense
+		// defense_gap := enemy_threat - current_defense
 
 		// Purchase defenders until gap is closed or we run out of money
 		// Use defensive efficiency: defense_power / cost
@@ -1135,43 +1255,54 @@ purchase_defenders_triplea :: proc(
 		// Tank: defense 3, cost 6 -> efficiency 0.5
 		// Fighter: defense 4, cost 10 -> efficiency 0.4
 
-		when ODIN_DEBUG {
-			fmt.printf(
-				"      Decision: Purchasing infantry (best defensive efficiency: 2 def / 3 cost)\n",
-			)
-			fmt.printf("      Available money: %d IPCs\n", gc.money[gc.cur_player])
-			fmt.printf(
-				"      Factory production remaining: %d units\n",
-				gc.builds_left[factory_loc],
-			)
-		}
 
 		inf_count := u8(0)
 		// Prefer infantry for defense (best efficiency)
 		// Respect both money AND production capacity limits
-		// TODO: AI Note... This is currently > 0, but this shouldmay need to be an adjustable value, perhaps this value comes from an model output
-		for defense_gap > 0 && gc.money[gc.cur_player] >= 3 && gc.builds_left[factory_loc] > 0 {
-			if gc.money[gc.cur_player] >= 3 {
-				// Buy infantry - store in g_purchased_units for placement phase
-				gc.money[gc.cur_player] -= 3
-				gc.builds_left[factory_loc] -= 1 // Decrement production capacity
-				add_units_to_place_triplea(factory_loc, .Infantry, 1)
-				inf_count += 1
-				defense_gap -= 2.0 // Infantry has defense 2
-			} else {
+		// Use battle simulation to determine when we've purchased enough
+		current_defenders := place_terr.defending_units
+		for gc.money[gc.cur_player] >= 3 && gc.builds_left[factory_loc] > 0 {
+			// Re-simulate battle with current defenders to check if we need more
+			test_combatants := Land_Combatants {
+				defenders = current_defenders,
+				attackers = [3]Land_Attackers{enemy_attackers, {}, {}},
+			}
+			when ODIN_DEBUG {
+				fmt.println("        Re-simulating battle:")
+				fmt.printf("          Defenders: %s\n", format_land_defenders(current_defenders))
+				fmt.printf("          Attackers: %s\n", format_land_attackers(enemy_attackers))
+			}
+
+			test_result := get_battle_results(test_combatants)
+
+			when ODIN_DEBUG {
+				fmt.printf(
+					"        Re-simulated battle: invasion chance: %.1f%%, TUV swing: %.1f\n",
+					test_result.invaded_percent * 100.0,
+					test_result.avg_TUV_swing,
+				)
+			}
+			
+			// Stop purchasing if invasion chance is below threshold
+			if test_result.invaded_percent < INVASION_THRESHOLD {
 				break
 			}
-		}; when ODIN_DEBUG {
-			if inf_count > 0 {
+			
+			when ODIN_DEBUG {
 				fmt.printf(
-					"      Purchased: %d infantry (defense power +%.1f)\n",
-					inf_count,
-					f64(inf_count) * 2.0,
+					"      Purchasing infantry, Money: %d, factory: %v, capacity: %d\n",
+					gc.money[gc.cur_player],
+					factory_loc,
+					gc.builds_left[factory_loc],
 				)
-				fmt.printf("      Money remaining: %d IPCs\n", gc.money[gc.cur_player])
-			} else {
-				fmt.println("      Purchased: 0 (insufficient funds)")
 			}
+			// Buy infantry - store in g_purchased_units for placement phase
+			gc.money[gc.cur_player] -= 3
+			gc.builds_left[factory_loc] -= 1 // Decrement production capacity
+			add_units_to_place_triplea(factory_loc, .Infantry, 1)
+			inf_count += 1
+			current_defenders.Infantry += 1  // Track added infantry for next simulation
+			// defense_gap -= 2.0 // Infantry has defense 2
 		}
 	}
 }
@@ -1227,6 +1358,195 @@ estimate_defense_power_triplea :: proc(units: Land_Defenders) -> f64 {
 	power += f64(units.Fighters) * FIGHTER_DEFENSE
 	power += f64(units.Bombers) * BOMBER_DEFENSE
 	return power
+}
+
+// Helper: Estimate attack power of units (for debug output)
+estimate_attack_power_triplea :: proc(units: Land_Attackers) -> f64 {
+	power := f64(0)
+	power += f64(units.Infantry) * INFANTRY_ATTACK
+	// Artillery boosts paired infantry
+	power += f64(min(units.Infantry, units.Artillery)) * INFANTRY_ATTACK
+	power += f64(units.Artillery) * ARTILLERY_ATTACK
+	power += f64(units.Tanks) * TANK_ATTACK
+	power += f64(units.Fighters) * FIGHTER_ATTACK
+	power += f64(units.Bombers) * BOMBER_ATTACK
+	return power
+}
+
+// Helper: Gather enemy attackers from adjacent territories for battle simulation
+gather_enemy_attackers_from_adjacent :: proc(gc: ^Game_Cache, t: Land_ID) -> Land_Attackers {
+	attackers := Land_Attackers{}
+	
+	// Check adjacent territories for enemy units
+	for adjacent in sa.slice(&mm.l2l_1away_via_land[t]) {
+		// Count enemy units that could attack from this adjacent territory
+		for player in Player_ID {
+			if mm.team[player] != mm.team[gc.cur_player] {
+				attackers.Infantry += gc.idle_armies[adjacent][player][.INF]
+				attackers.Artillery += gc.idle_armies[adjacent][player][.ARTY]
+				attackers.Tanks += gc.idle_armies[adjacent][player][.TANK]
+			}
+		}
+	}
+	
+	// Also check for enemy fighters/bombers that could reach this territory
+	// Fighters have range 4, bombers have range 6
+	// For simplicity, check territories within fighter range (2 moves for attack)
+	for adjacent in mm.l2l_2away_via_land_bitset[t] {
+		for player in Player_ID {
+			if mm.team[player] != mm.team[gc.cur_player] {
+				attackers.Fighters += gc.idle_land_planes[adjacent][player][.FIGHTER]
+				attackers.Bombers += gc.idle_land_planes[adjacent][player][.BOMBER]
+			}
+		}
+	}
+	
+	return attackers
+}
+
+// =============================================================================
+// SEA DEFENSE HELPER FUNCTIONS
+// =============================================================================
+
+// Ship count structure for quick totals
+Ship_Counts :: struct {
+	subs:        u8,
+	destroyers:  u8,
+	cruisers:    u8,
+	carriers:    u8,
+	battleships: u8,
+	bs_damaged:  u8,
+	transports:  u8,
+	fighters:    u8,  // On carriers
+	total:       u8,
+}
+
+// Count our ships in a sea zone
+count_our_ships :: proc(gc: ^Game_Cache, sea: Sea_ID) -> Ship_Counts {
+	counts := Ship_Counts{}
+	
+	for player in sa.slice(&mm.allies[gc.cur_player]) {
+		counts.subs += gc.idle_ships[sea][player][.SUB]
+		counts.destroyers += gc.idle_ships[sea][player][.DESTROYER]
+		counts.cruisers += gc.idle_ships[sea][player][.CRUISER]
+		counts.carriers += gc.idle_ships[sea][player][.CARRIER]
+		counts.battleships += gc.idle_ships[sea][player][.BATTLESHIP]
+		counts.bs_damaged += gc.idle_ships[sea][player][.BS_DAMAGED]
+		
+		// Count transports
+		counts.transports += gc.idle_ships[sea][player][.TRANS_EMPTY]
+		counts.transports += gc.idle_ships[sea][player][.TRANS_1I]
+		counts.transports += gc.idle_ships[sea][player][.TRANS_1A]
+		counts.transports += gc.idle_ships[sea][player][.TRANS_1T]
+		counts.transports += gc.idle_ships[sea][player][.TRANS_2I]
+		counts.transports += gc.idle_ships[sea][player][.TRANS_1I_1A]
+		counts.transports += gc.idle_ships[sea][player][.TRANS_1I_1T]
+		
+		// Fighters on carriers
+		counts.fighters += gc.idle_sea_planes[sea][player][.FIGHTER]
+	}
+	
+	counts.total = counts.subs + counts.destroyers + counts.cruisers + 
+	               counts.carriers + counts.battleships + counts.bs_damaged + 
+	               counts.transports + counts.fighters
+	
+	return counts
+}
+
+// Gather sea defenders from a sea zone
+gather_sea_defenders :: proc(gc: ^Game_Cache, sea: Sea_ID) -> Sea_Defenders {
+	defenders := Sea_Defenders{}
+	
+	for player in sa.slice(&mm.allies[gc.cur_player]) {
+		defenders.Subs += gc.idle_ships[sea][player][.SUB]
+		defenders.Destroyers += gc.idle_ships[sea][player][.DESTROYER]
+		defenders.Cruisers += gc.idle_ships[sea][player][.CRUISER]
+		defenders.Carriers += gc.idle_ships[sea][player][.CARRIER]
+		defenders.Battleships += gc.idle_ships[sea][player][.BATTLESHIP]
+		defenders.BS_Damaged += gc.idle_ships[sea][player][.BS_DAMAGED]
+		defenders.Fighters += gc.idle_sea_planes[sea][player][.FIGHTER]
+		
+		// Count transports as fodder
+		defenders.Transports += gc.idle_ships[sea][player][.TRANS_EMPTY]
+		defenders.Transports += gc.idle_ships[sea][player][.TRANS_1I]
+		defenders.Transports += gc.idle_ships[sea][player][.TRANS_1A]
+		defenders.Transports += gc.idle_ships[sea][player][.TRANS_1T]
+		defenders.Transports += gc.idle_ships[sea][player][.TRANS_2I]
+		defenders.Transports += gc.idle_ships[sea][player][.TRANS_1I_1A]
+		defenders.Transports += gc.idle_ships[sea][player][.TRANS_1I_1T]
+	}
+	
+	return defenders
+}
+
+// Calculate TUV (Total Unit Value) for ships
+calculate_sea_tuv :: proc(ships: Ship_Counts) -> f64 {
+	tuv := f64(0)
+	tuv += f64(ships.subs) * 6.0       // Submarine cost
+	tuv += f64(ships.destroyers) * 8.0  // Destroyer cost
+	tuv += f64(ships.cruisers) * 12.0   // Cruiser cost
+	tuv += f64(ships.carriers) * 14.0   // Carrier cost
+	tuv += f64(ships.battleships) * 20.0 // Battleship cost
+	tuv += f64(ships.bs_damaged) * 20.0  // Damaged BB still worth full
+	tuv += f64(ships.transports) * 7.0   // Transport cost
+	tuv += f64(ships.fighters) * 10.0    // Fighters on carriers
+	return tuv
+}
+
+// Find a factory adjacent to a sea zone for naval purchases
+find_factory_for_sea_defense :: proc(gc: ^Game_Cache, sea: Sea_ID) -> Maybe(Land_ID) {
+	// Check all coastal territories adjacent to this sea zone
+	for land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
+		// Must be our territory with a factory
+		if gc.owner[land] != gc.cur_player do continue
+		if gc.factory_prod[land] == 0 do continue
+		if gc.builds_left[land] == 0 do continue
+		
+		return land
+	}
+	
+	return nil
+}
+
+// Helper: Format Land_Defenders for human-readable debug output (hides 0-count units)
+format_land_defenders :: proc(units: Land_Defenders) -> string {
+	parts := make([dynamic]string, context.temp_allocator)
+	
+	if units.Infantry > 0 do append(&parts, fmt.tprintf("%d Inf", units.Infantry))
+	if units.Artillery > 0 do append(&parts, fmt.tprintf("%d Art", units.Artillery))
+	if units.Tanks > 0 do append(&parts, fmt.tprintf("%d Tank", units.Tanks))
+	if units.Fighters > 0 do append(&parts, fmt.tprintf("%d Ftr", units.Fighters))
+	if units.Bombers > 0 do append(&parts, fmt.tprintf("%d Bmb", units.Bombers))
+	if units.AntiAir > 0 do append(&parts, fmt.tprintf("%d AA", units.AntiAir))
+	
+	if len(parts) == 0 do return "(none)"
+	
+	// Join with ", "
+	result := parts[0]
+	for i in 1..<len(parts) {
+		result = fmt.tprintf("%s, %s", result, parts[i])
+	}
+	return result
+}
+
+// Helper: Format Land_Attackers for human-readable debug output (hides 0-count units)
+format_land_attackers :: proc(units: Land_Attackers) -> string {
+	parts := make([dynamic]string, context.temp_allocator)
+	
+	if units.Infantry > 0 do append(&parts, fmt.tprintf("%d Inf", units.Infantry))
+	if units.Artillery > 0 do append(&parts, fmt.tprintf("%d Art", units.Artillery))
+	if units.Tanks > 0 do append(&parts, fmt.tprintf("%d Tank", units.Tanks))
+	if units.Fighters > 0 do append(&parts, fmt.tprintf("%d Ftr", units.Fighters))
+	if units.Bombers > 0 do append(&parts, fmt.tprintf("%d Bmb", units.Bombers))
+	
+	if len(parts) == 0 do return "(none)"
+	
+	// Join with ", "
+	result := parts[0]
+	for i in 1..<len(parts) {
+		result = fmt.tprintf("%s, %s", result, parts[i])
+	}
+	return result
 }
 
 /*
