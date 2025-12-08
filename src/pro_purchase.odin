@@ -1024,7 +1024,7 @@ prioritize_territories_to_defend_triplea :: proc(
 		}
 		when ODIN_DEBUG {
 			fmt.printf(
-				"      [THREATENED] Territory %v is not sufficiently threatened (invaded%%=%.1f%% < needed=%.1f%%)\n",
+				"      [THREATENED] Territory %v is not sufficiently protected (invaded%%=%.1f%% < needed=%.1f%%)\n",
 				land_territory, seq_result.final_invaded_percent * 100, win_percentage_needed * 100,
 			)
 		}
@@ -2513,12 +2513,18 @@ purchase_sea_and_amphib_units_triplea :: proc(
 		need_destroyer := check_need_destroyer_triplea(gc, sea_id) && threat.max_subs > 0
 
 		// Phase 1: Purchase sea defenders if under threat
+		// LIMIT: Don't spend more than 50% of remaining money on naval defense per sea zone
+		// This ensures we have money left for transports and land units
+		max_defense_spend := gc.money[gc.cur_player] / 2
+		defense_spent: u8 = 0
+		
 		if has_threat {
 			// Run battle simulation to see if we can hold
 			result := simulate_sea_defense(gc, sea_id, threat, factory_loc)
 			
 			// Purchase defenders until we can hold (TUV swing < -1 OR win% < 5)
-			purchase_loop: for gc.money[gc.cur_player] >= 6 && gc.builds_left[factory_loc] > 0 {
+			// OR until we've spent our defense budget
+			purchase_loop: for gc.money[gc.cur_player] >= 6 && gc.builds_left[factory_loc] > 0 && defense_spent < max_defense_spend {
 				// Check if we can already hold
 				if result.avg_TUV_swing < -1.0 || result.win_percent < 5.0 {
 					break
@@ -2549,6 +2555,7 @@ purchase_sea_and_amphib_units_triplea :: proc(
 				// Buy the unit
 				gc.money[gc.cur_player] -= cost
 				gc.builds_left[factory_loc] -= 1
+				defense_spent += cost
 				add_naval_units_to_place_triplea(factory_loc, ship, 1)
 				bought_units = true
 				
@@ -2565,18 +2572,16 @@ purchase_sea_and_amphib_units_triplea :: proc(
 				}
 			}
 			
-			// If we still can't hold, mark territory
-			result = simulate_sea_defense(gc, sea_id, threat, factory_loc)
-			if result.avg_TUV_swing >= -1.0 && result.win_percent >= 5.0 {
-				wanted_to_buy_but_couldnt_defend = true
-				continue // Skip to next sea zone
-			}
+			// Note: We no longer skip to next sea zone if we can't hold
+			// Instead, we still try to buy transports (they're valuable for offense)
 		}
 		debug_checks(gc)
 
-		// Phase 2: Purchase transports if strategic value is high and we can defend
+		// Phase 2: Purchase transports if strategic value is high
+		// CHANGED: Buy transports even if we can't perfectly defend the sea zone
+		// Having transports enables attacks; losing them is worth the strategic value
 		if place_sea.strategic_value >= 3.0 && gc.money[gc.cur_player] >= 7 && gc.builds_left[factory_loc] > 0 {
-			// Check if we have enough defense for a transport
+			// Check if we have at least some defense (don't buy naked transports)
 			defenders := count_sea_defenders_triplea(gc, sea_id)
 			if defenders >= 1 {
 				gc.money[gc.cur_player] -= 7
@@ -2733,6 +2738,13 @@ simulate_sea_defense :: proc(
 ) -> Sea_Battle_Results {
 	attackers := get_enemy_sea_attackers_from_threat(threat)
 	defenders := get_my_sea_defenders(gc, sea_id, factory_loc)
+	
+	when ODIN_DEBUG {
+		fmt.printf("    [SIM] %v: Def(subs=%d,DD=%d,CA=%d,CV=%d,BS=%d,ftr=%d) vs Att(subs=%d,DD=%d,CA=%d,CV=%d,BS=%d,ftr=%d,bmb=%d)\n",
+			sea_id,
+			defenders.Subs, defenders.Destroyers, defenders.Cruisers, defenders.Carriers, defenders.Battleships, defenders.Fighters,
+			attackers.Subs, attackers.Destroyers, attackers.Cruisers, attackers.Carriers, attackers.Battleships, attackers.Fighters, attackers.Bombers)
+	}
 	
 	combatants := Sea_Combatants{
 		defenders = defenders,
