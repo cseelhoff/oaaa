@@ -422,6 +422,10 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// This implements the missing NCM-030 to NCM-045 blocks from Java
 	stage_and_unload_transports_noncombat(gc, &pro_data)
 
+	// Step 6c: Move empty transports toward best loading territories
+	// This implements NCM-038 to NCM-041 (Block 3 from Java moveUnitsToBestTerritories)
+	move_empty_transports_to_loading(gc, &pro_data)
+
 	// Step 7: Move remaining sea units to safe positions
 	move_sea_units_noncombat(gc, &pro_data)
 
@@ -1631,6 +1635,313 @@ move_sea_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	}
 }
 
+// NCM-038 to NCM-041: Block 3 - Move empty transports toward best loading territory
+// From ProNonCombatMoveAi.java lines 1397-1510
+move_empty_transports_to_loading :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
+	/*
+	Java Algorithm (moveUnitsToBestTerritories, Block 3):
+	
+	For each empty transport that hasn't moved:
+	1. Skip if already carrying units or has no moves left
+	2. Calculate loadValue for each land territory with:
+	   - Has a sea neighbor (coastal)
+	   - Has transportable units OR has a factory
+	   - Is reachable from current position
+	   loadValue = territoryValue + 0.5*numTurnsAway - 0.1*numUnitsToLoad - 0.1*factoryProduction
+	   Lower loadValue = better destination (factories and units reduce value)
+	3. Sort territories by loadValue (ascending)
+	4. Move transport toward territory with lowest loadValue if route is safe
+	*/
+	
+	when ODIN_DEBUG {
+		fmt.println("[PRO-AI] Moving empty transports toward loading positions")
+	}
+	
+	player := gc.cur_player
+	my_team := mm.team[player]
+	transports_moved := 0
+	
+	// Build territory value map for loadValue calculation
+	territories_cant_hold := find_territories_that_cant_be_held(gc, pro_data)
+	territories_cant_hold_bitset: Land_Bitset = {}
+	for land in territories_cant_hold[:] {
+		territories_cant_hold_bitset += {land}
+	}
+	delete(territories_cant_hold)
+	
+	territory_value_map := find_territory_values_triplea(
+		gc,
+		gc.cur_player,
+		territories_cant_hold_bitset,
+		{},
+		gc.friendly_owner,
+	)
+	defer delete(territory_value_map)
+	
+	// Process empty transports with moves remaining
+	// TRANS_EMPTY_UNMOVED (2 moves) and TRANS_EMPTY_2_MOVES (loaded then unloaded)
+	Empty_Trans_Types := [?]Active_Ship{.TRANS_EMPTY_UNMOVED, .TRANS_EMPTY_2_MOVES}
+	
+	for trans_type in Empty_Trans_Types {
+		for src_sea in Sea_ID {
+			// Process each empty transport at this location
+			for gc.active_ships[src_sea][trans_type] > 0 {
+				moved := move_one_empty_transport_to_loading(
+					gc, pro_data, src_sea, trans_type, &territory_value_map, territories_cant_hold_bitset)
+				
+				if moved {
+					transports_moved += 1
+				} else {
+					// Can't move this transport to any loading position
+					// Skip it to 0 moves so we don't process forever
+					gc.active_ships[src_sea][trans_type] -= 1
+					gc.active_ships[src_sea][.TRANS_EMPTY_0_MOVES] += 1
+				}
+			}
+		}
+	}
+	
+	when ODIN_DEBUG {
+		fmt.printf("[PRO-AI] Moved %d empty transports toward loading positions\n", transports_moved)
+	}
+}
+
+// Calculate loadValue for a territory (lower = better for loading)
+calculate_load_value :: proc(
+	gc: ^Game_Cache,
+	land: Land_ID,
+	src_sea: Sea_ID,
+	distance: u8,
+	territory_value_map: ^map[Land_ID]f64,
+) -> f64 {
+	player := gc.cur_player
+	
+	// Base territory value (from enemy-focused calculation)
+	territory_value := territory_value_map[land] or_else 0.0
+	
+	// Calculate number of turns away (2 movement per turn for transports)
+	max_moves_per_turn: u8 = 2
+	num_turns_away: f64 = 0
+	if distance > max_moves_per_turn {
+		num_turns_away = f64((distance - 1) / max_moves_per_turn)
+	}
+	
+	// Count transportable units at this territory (inf, arty, tanks)
+	num_units_to_load: u8 = 0
+	num_units_to_load += gc.idle_armies[land][player][.INF]
+	num_units_to_load += gc.idle_armies[land][player][.ARTY]
+	num_units_to_load += gc.idle_armies[land][player][.TANK]
+	
+	// Get factory production (if we own it and it wasn't conquered this turn)
+	factory_production: u8 = 0
+	if gc.owner[land] == player {
+		factory_production = gc.factory_prod[land]
+	}
+	
+	// Java formula: value = territoryValue + 0.5*numTurnsAway - 0.1*numUnitsToLoad - 0.1*factoryProduction
+	// Lower value = better destination (factories and units make it more attractive)
+	load_value := territory_value + 
+		0.5 * num_turns_away - 
+		0.1 * f64(num_units_to_load) - 
+		0.1 * f64(factory_production)
+	
+	return load_value
+}
+
+// Move one empty transport toward the best loading territory
+move_one_empty_transport_to_loading :: proc(
+	gc: ^Game_Cache,
+	pro_data: ^Pro_Data,
+	src_sea: Sea_ID,
+	trans_type: Active_Ship,
+	territory_value_map: ^map[Land_ID]f64,
+	territories_cant_hold: Land_Bitset,
+) -> bool {
+	player := gc.cur_player
+	my_team := mm.team[player]
+	
+	// Structure to hold candidate loading territories
+	Load_Candidate :: struct {
+		land: Land_ID,
+		sea_neighbor: Sea_ID, // Sea adjacent to this land
+		load_value: f64,
+		distance: u8, // Sea distance from src_sea
+	}
+	
+	candidates: [dynamic]Load_Candidate
+	defer delete(candidates)
+	
+	// Find all valid loading territories (friendly lands with sea access)
+	for land in Land_ID {
+		// Must be friendly
+		if mm.team[gc.owner[land]] != my_team {
+			continue
+		}
+		
+		// Must have sea neighbor (coastal territory)
+		if sa.len(mm.l2s_1away_via_land[land]) == 0 {
+			continue
+		}
+		
+		// Check if territory has units to load OR has a factory
+		has_units := gc.idle_armies[land][player][.INF] > 0 ||
+		             gc.idle_armies[land][player][.ARTY] > 0 ||
+		             gc.idle_armies[land][player][.TANK] > 0
+		has_factory := gc.factory_prod[land] > 0
+		
+		// Skip if no units and no factory (nothing to load now or in future)
+		if !has_units && !has_factory {
+			continue
+		}
+		
+		// Find the closest sea neighbor we can reach
+		best_sea_neighbor: Maybe(Sea_ID) = nil
+		best_distance: u8 = 255
+		
+		for adj_sea in sa.slice(&mm.l2s_1away_via_land[land]) {
+			// Calculate distance from src_sea to this adjacent sea
+			distance := mm.sea_distances[transmute(u8)gc.canals_open][src_sea][adj_sea]
+			
+			// Skip if unreachable or if we're already there with units to load
+			// (Java: distance > 0 && !(distance == 1 && hasUnits && !hasFactory))
+			if distance == 255 {
+				continue // Unreachable
+			}
+			if distance == 0 && has_units && !has_factory {
+				continue // Already adjacent with units but no factory
+			}
+			
+			if distance < best_distance {
+				best_distance = distance
+				best_sea_neighbor = adj_sea
+			}
+		}
+		
+		// If we found a reachable sea neighbor
+		if sea_n, ok := best_sea_neighbor.?; ok {
+			load_value := calculate_load_value(gc, land, src_sea, best_distance, territory_value_map)
+			append(&candidates, Load_Candidate{
+				land = land,
+				sea_neighbor = sea_n,
+				load_value = load_value,
+				distance = best_distance,
+			})
+		}
+	}
+	
+	if len(candidates) == 0 {
+		return false
+	}
+	
+	// Sort by load_value (ascending - lower is better)
+	slice.sort_by(candidates[:], proc(a, b: Load_Candidate) -> bool {
+		return a.load_value < b.load_value
+	})
+	
+	// Try to move toward best loading territory
+	for candidate in candidates {
+		// Find path from src_sea to candidate.sea_neighbor
+		target_sea := candidate.sea_neighbor
+		
+		if target_sea == src_sea {
+			// Already at destination, no need to move
+			// Just mark as 0 moves
+			gc.active_ships[src_sea][trans_type] -= 1
+			gc.active_ships[src_sea][.TRANS_EMPTY_0_MOVES] += 1
+			return true
+		}
+		
+		// Find next step toward target (up to 2 moves)
+		// Check if we can reach in 1 move
+		move_dst: Maybe(Sea_ID) = nil
+		
+		// 1 move away?
+		if target_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
+			// Check safety (no enemy blockade without escort)
+			if is_sea_safe_for_transport(gc, target_sea) {
+				move_dst = target_sea
+			}
+		} else {
+			// Check 2 moves away - need intermediate step
+			for mid_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
+				if target_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][mid_sea] {
+					// Can reach target via mid_sea - check if mid is safe
+					if is_sea_safe_for_transport(gc, mid_sea) {
+						// Move to mid_sea (1 step toward target)
+						move_dst = mid_sea
+						break
+					}
+				}
+			}
+			
+			// If no path via mid, just try moving 1 step closer
+			if move_dst == nil {
+				for mid_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
+					mid_dist := mm.sea_distances[transmute(u8)gc.canals_open][mid_sea][target_sea]
+					src_dist := mm.sea_distances[transmute(u8)gc.canals_open][src_sea][target_sea]
+					if mid_dist < src_dist && is_sea_safe_for_transport(gc, mid_sea) {
+						move_dst = mid_sea
+						break
+					}
+				}
+			}
+		}
+		
+		// Execute movement if we found a destination
+		if dst, ok := move_dst.?; ok {
+			// Safety check - make sure we actually have this transport
+			if gc.active_ships[src_sea][trans_type] == 0 {
+				return false
+			}
+			if gc.idle_ships[src_sea][player][.TRANS_EMPTY] == 0 {
+				return false
+			}
+			
+			// Move transport from src_sea to dst
+			// Update active state
+			gc.active_ships[src_sea][trans_type] -= 1
+			gc.active_ships[dst][.TRANS_EMPTY_0_MOVES] += 1  // Used all moves
+			
+			// Update idle tracking
+			gc.idle_ships[src_sea][player][.TRANS_EMPTY] -= 1
+			gc.idle_ships[dst][player][.TRANS_EMPTY] += 1
+			
+			// Update team totals
+			gc.team_sea_units[src_sea][mm.team[player]] -= 1
+			gc.team_sea_units[dst][mm.team[player]] += 1
+			
+			when ODIN_DEBUG {
+				fmt.printf("  Empty transport moved from %v to %v (toward %v for loading)\n",
+					src_sea, dst, candidate.land)
+			}
+			
+			return true
+		}
+	}
+	
+	return false
+}
+
+// Check if a sea zone is safe for transport movement (no enemy without escort)
+is_sea_safe_for_transport :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	player := gc.cur_player
+	my_team := mm.team[player]
+	enemy_team := mm.enemy_team[player]
+	
+	// If no enemy presence, it's safe
+	if gc.team_sea_units[sea][enemy_team] == 0 {
+		return true
+	}
+	
+	// If we have allied combat ships, it's safe (escorted)
+	if gc.allied_sea_combatants_total[sea] > 0 {
+		return true
+	}
+	
+	// Enemy presence without escort - not safe
+	return false
+}
+
 // Move land units to consolidate positions
 move_land_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	/*
@@ -2321,49 +2632,27 @@ pro_noncombat_move_cleanup :: proc(targets: ^[dynamic]Defense_Target) {
 // NCM-030 to NCM-045: Transport positioning blocks (Block 1-4)
 // Load transports during non-combat move phase
 load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
-	// TODO REVIEW: Java moveUnitsToBestTerritories transport loops (lines 985-1400):
-	//
-	// Missing Block 1 (985-1100): Transport amphib to best LAND territory
-	//   - Iterates transportMapList for transports with land destinations
-	//   - Calculates best land territory by value using ProTerritoryValueUtils
-	//   - Finds units to load from adjacent territories with value-based selection
-	//   - Calculates safest unload sea zone
-	//
-	// Missing Block 2 (1100-1180): Transport amphib to best SEA territory
-	//   - For transports with sea destinations (not land)
-	//   - Find best sea value territory
-	//   - Calculate unload-to-land options from that sea
-	//
-	// Missing Block 3 (1185-1280): Empty transport to loading position
-	//   - For empty transports
-	//   - Calculate load territory priorities (factories adjacent to sea)
-	//   - Move towards best loading position
-	//   - Check route safety along the way
-	//
-	// Missing Block 4 (1285-1400): Remaining transports to safety
-	//   - For transports still unmoved
-	//   - Find safest sea zone considering enemy attack potential
-	//   - If carrying units, try to unload safely first
-	//
-	// Current implementation: Simple "load anything nearby" approach
-	// Java approach: Value-based territory selection for unloading position
 	/*
-	From Java ProNonCombatMoveAi.java (lines 920-1010):
+	From Java ProTerritoryManager.java (lines 1129-1139):
 	
-	Transport loading during non-combat move is similar to combat move but:
-	1. Units are loaded for DEFENSIVE purposes (reinforce threatened territories)
-	2. Units are loaded for POSITIONING (move to high-value territories for next turn)
-	3. Units DON'T need to attack this turn
+	// Remove any territories from transport map that I can move to on land and transports with no
+	// amphib options
+	for (final ProTransport proTransportData : transportMapList) {
+	  final Map<Territory, Set<Territory>> transportMap = proTransportData.getTransportMap();
+	  for (final Territory t : transportMap.keySet()) {
+	    final Set<Territory> landMoveTerritories = landRoutesMap.get(t);
+	    if (landMoveTerritories != null) {
+	      transportMap.get(t).removeAll(landMoveTerritories);
+	    }
+	  }
+	  transportMap.values().removeIf(Collection::isEmpty);
+	}
 	
-	The algorithm:
-	1. For each transport, check if territory needs amphib reinforcements
-	2. If defense is needed, find units to load from adjacent territories
-	3. Load units and plan transport movement to the threatened territory
+	This removes loading sources that can be reached by land from the unload destination.
+	Key insight: Don't load units from territories that can walk to the destination!
 	
-	For now, we use the same loading logic as combat phase since:
-	- Loading units onto transports positions them for next turn
-	- The transport can move to better positions during stage_transports
-	- Units loaded will be able to attack next turn from the transport's destination
+	For example: If unloading to India, and Sea_35 is adjacent to India only,
+	we should NOT load from India since units there are already at the destination.
 	*/
 	
 	when ODIN_DEBUG {
@@ -2373,6 +2662,23 @@ load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	// Find all sea zones with our transports
 	player := gc.cur_player
 	transports_loaded := 0
+	
+	// Pre-calculate territory values to determine best unload destinations
+	territories_cant_hold := find_territories_that_cant_be_held(gc, pro_data)
+	territories_cant_hold_bitset: Land_Bitset = {}
+	for land in territories_cant_hold[:] {
+		territories_cant_hold_bitset += {land}
+	}
+	delete(territories_cant_hold)
+	
+	territory_value_map := find_territory_values_triplea(
+		gc,
+		gc.cur_player,
+		territories_cant_hold_bitset,
+		{},
+		gc.friendly_owner,
+	)
+	defer delete(territory_value_map)
 	
 	for sea in Sea_ID {
 		// Count available transports at this sea zone
@@ -2388,11 +2694,56 @@ load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 		// Get adjacent lands
 		adjacent_lands := &mm.s2l_1away_via_sea[sea]
 		
+		// Find the best unload destination for this sea zone
+		// (highest value friendly land reachable from this sea)
+		best_unload_dest: Maybe(Land_ID) = nil
+		best_unload_value: f64 = -999.0
+		
+		// Check adjacent lands (1 sea move)
+		for land in sa.slice(adjacent_lands) {
+			if mm.team[gc.owner[land]] != mm.team[player] {
+				continue
+			}
+			value := territory_value_map[land] or_else 0.0
+			if value > best_unload_value {
+				best_unload_value = value
+				best_unload_dest = land
+			}
+		}
+		
+		// Check 2 sea moves away
+		for sea_1 in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea] {
+			for land in sa.slice(&mm.s2l_1away_via_sea[sea_1]) {
+				if mm.team[gc.owner[land]] != mm.team[player] {
+					continue
+				}
+				value := territory_value_map[land] or_else 0.0
+				if value > best_unload_value {
+					best_unload_value = value
+					best_unload_dest = land
+				}
+			}
+		}
+		
+		// Build set of territories that should NOT be loading sources
+		// Only exclude the destination itself (to prevent loading from India to unload back to India)
+		// Java's landRoutesMap is more sophisticated but for our case, just exclude the destination
+		lands_that_can_walk_to_dest: Land_Bitset = {}
+		if dest, ok := best_unload_dest.?; ok {
+			// The destination itself - units already there don't need transport
+			lands_that_can_walk_to_dest += {dest}
+		}
+		
 		// Check if any adjacent land has units we could load
-		// Must check both idle_armies AND active_armies (units with moves remaining)
+		// But EXCLUDE lands that can walk to the unload destination (Java landRoutesMap filtering)
 		has_loadable_units := false
 		for land in sa.slice(adjacent_lands) {
 			if mm.team[gc.owner[land]] != mm.team[player] {
+				continue
+			}
+			
+			// Skip this land if units there can walk to the destination
+			if land in lands_that_can_walk_to_dest {
 				continue
 			}
 			
@@ -2422,9 +2773,8 @@ load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 			continue
 		}
 		
-		// Load transports using same logic as combat phase
-		// But use idle armies directly since we're in noncombat
-		loaded := load_transports_at_sea_noncombat(gc, sea)
+		// Load transports, but only from territories that can't walk to destination
+		loaded := load_transports_at_sea_noncombat(gc, sea, lands_that_can_walk_to_dest)
 		if loaded > 0 {
 			transports_loaded += loaded
 			
@@ -2444,12 +2794,16 @@ load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 }
 
 // Load transports at a specific sea zone during noncombat (uses idle armies)
-load_transports_at_sea_noncombat :: proc(gc: ^Game_Cache, sea: Sea_ID) -> int {
+// lands_to_exclude: territories where units can walk to the destination - don't load from these
+load_transports_at_sea_noncombat :: proc(gc: ^Game_Cache, sea: Sea_ID, lands_to_exclude: Land_Bitset) -> int {
 	/*
 	During non-combat phase:
 	- Units don't have "active" movement states - they're just idle
 	- We load from idle_armies directly
 	- The transport becomes loaded and ready for next turn
+	
+	From Java ProTerritoryManager.java (lines 1129-1139):
+	Don't load from territories that can walk to the unload destination!
 	*/
 	
 	player := gc.cur_player
@@ -2458,7 +2812,7 @@ load_transports_at_sea_noncombat :: proc(gc: ^Game_Cache, sea: Sea_ID) -> int {
 	
 	// Load empty transports first (best capacity)
 	for gc.idle_ships[sea][player][.TRANS_EMPTY] > 0 {
-		loaded := load_noncombat_onto_empty_transport(gc, sea, adjacent_lands)
+		loaded := load_noncombat_onto_empty_transport(gc, sea, adjacent_lands, lands_to_exclude)
 		if !loaded {
 			break
 		}
@@ -2467,7 +2821,7 @@ load_transports_at_sea_noncombat :: proc(gc: ^Game_Cache, sea: Sea_ID) -> int {
 	
 	// Fill 1I transports (can add tank, arty, or infantry)
 	for gc.idle_ships[sea][player][.TRANS_1I] > 0 {
-		loaded := load_noncombat_second_unit_onto_1i(gc, sea, adjacent_lands)
+		loaded := load_noncombat_second_unit_onto_1i(gc, sea, adjacent_lands, lands_to_exclude)
 		if !loaded {
 			break
 		}
@@ -2476,7 +2830,7 @@ load_transports_at_sea_noncombat :: proc(gc: ^Game_Cache, sea: Sea_ID) -> int {
 	
 	// Fill 1A transports (can only add infantry)
 	for gc.idle_ships[sea][player][.TRANS_1A] > 0 {
-		loaded := load_noncombat_infantry_onto_partial(gc, sea, adjacent_lands, .TRANS_1A)
+		loaded := load_noncombat_infantry_onto_partial(gc, sea, adjacent_lands, lands_to_exclude, .TRANS_1A)
 		if !loaded {
 			break
 		}
@@ -2485,7 +2839,7 @@ load_transports_at_sea_noncombat :: proc(gc: ^Game_Cache, sea: Sea_ID) -> int {
 	
 	// Fill 1T transports (can only add infantry)
 	for gc.idle_ships[sea][player][.TRANS_1T] > 0 {
-		loaded := load_noncombat_infantry_onto_partial(gc, sea, adjacent_lands, .TRANS_1T)
+		loaded := load_noncombat_infantry_onto_partial(gc, sea, adjacent_lands, lands_to_exclude, .TRANS_1T)
 		if !loaded {
 			break
 		}
@@ -2500,6 +2854,7 @@ load_noncombat_onto_empty_transport :: proc(
 	gc: ^Game_Cache,
 	sea: Sea_ID,
 	adjacent_lands: ^SA_S2L,
+	lands_to_exclude: Land_Bitset,
 ) -> bool {
 	player := gc.cur_player
 	
@@ -2508,6 +2863,10 @@ load_noncombat_onto_empty_transport :: proc(
 	// Try tank first
 	for land in sa.slice(adjacent_lands) {
 		if mm.team[gc.owner[land]] != mm.team[player] {
+			continue
+		}
+		// Don't load from territories that can walk to the destination (Java landRoutesMap)
+		if land in lands_to_exclude {
 			continue
 		}
 		
@@ -2523,6 +2882,9 @@ load_noncombat_onto_empty_transport :: proc(
 			// Try to add infantry too
 			for inf_land in sa.slice(adjacent_lands) {
 				if mm.team[gc.owner[inf_land]] != mm.team[player] {
+					continue
+				}
+				if inf_land in lands_to_exclude {
 					continue
 				}
 				if get_available_army_count(gc, inf_land, .INF) > 0 {
@@ -2546,6 +2908,9 @@ load_noncombat_onto_empty_transport :: proc(
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}
+		if land in lands_to_exclude {
+			continue
+		}
 		
 		if get_available_army_count(gc, land, .ARTY) > 0 {
 			remove_army_for_transport(gc, land, .ARTY)
@@ -2557,6 +2922,9 @@ load_noncombat_onto_empty_transport :: proc(
 			// Try to add infantry
 			for inf_land in sa.slice(adjacent_lands) {
 				if mm.team[gc.owner[inf_land]] != mm.team[player] {
+					continue
+				}
+				if inf_land in lands_to_exclude {
 					continue
 				}
 				if get_available_army_count(gc, inf_land, .INF) > 0 {
@@ -2578,6 +2946,9 @@ load_noncombat_onto_empty_transport :: proc(
 	infantry_loaded := 0
 	for land in sa.slice(adjacent_lands) {
 		if mm.team[gc.owner[land]] != mm.team[player] {
+			continue
+		}
+		if land in lands_to_exclude {
 			continue
 		}
 		
@@ -2611,12 +2982,16 @@ load_noncombat_second_unit_onto_1i :: proc(
 	gc: ^Game_Cache,
 	sea: Sea_ID,
 	adjacent_lands: ^SA_S2L,
+	lands_to_exclude: Land_Bitset,
 ) -> bool {
 	player := gc.cur_player
 	
 	// Prefer tank or artillery
 	for land in sa.slice(adjacent_lands) {
 		if mm.team[gc.owner[land]] != mm.team[player] {
+			continue
+		}
+		if land in lands_to_exclude {
 			continue
 		}
 		
@@ -2699,12 +3074,16 @@ load_noncombat_infantry_onto_partial :: proc(
 	gc: ^Game_Cache,
 	sea: Sea_ID,
 	adjacent_lands: ^SA_S2L,
+	lands_to_exclude: Land_Bitset,
 	transport_type: Idle_Ship,
 ) -> bool {
 	player := gc.cur_player
 	
 	for land in sa.slice(adjacent_lands) {
 		if mm.team[gc.owner[land]] != mm.team[player] {
+			continue
+		}
+		if land in lands_to_exclude {
 			continue
 		}
 		
