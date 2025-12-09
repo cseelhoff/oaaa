@@ -1385,6 +1385,13 @@ find_nearest_factory_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> May
 		getPurchaseTerritories(placeTerritory, purchaseTerritories);
 	
 	This finds factories that can reach the territory (considering movement)
+	
+	CRITICAL FIX: Only consider factories that can actually reinforce the territory:
+	1. The territory itself (if it has a factory)
+	2. Factories connected by land within infantry movement range
+	
+	Factories across the ocean (like Eastern_United_States for Szechwan) should NOT
+	be considered for defensive purchases since units won't arrive this turn.
 	*/
 
 	// First check if the territory itself is a factory with capacity
@@ -1397,18 +1404,30 @@ find_nearest_factory_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> May
 		}
 	}
 
-	// Find factory with remaining production capacity
-	// Prefer factories with more capacity available
+	// Find nearest factory that can actually reach this territory by land
+	// Infantry moves 1, so we need factories within land distance 1
+	// (placed units can move in NCM to reinforce adjacent territory)
 	best_factory: Maybe(Land_ID) = nil
-	max_capacity := u8(0)
-
+	best_distance: u8 = 255  // Use high value for "no path"
+	
 	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
 		if gc.owner[factory_loc] != gc.cur_player do continue
 		if gc.builds_left[factory_loc] == 0 do continue // Skip exhausted factories
-
-		// Prefer factory with most remaining capacity
-		if gc.builds_left[factory_loc] > max_capacity {
-			max_capacity = gc.builds_left[factory_loc]
+		
+		// Check land distance - units placed at factory can reinforce if adjacent
+		land_dist := mm.land_distances[factory_loc][territory]
+		
+		// Only consider factories within reasonable land range (1-2 moves for infantry)
+		// Distance 0 = same territory (handled above)
+		// Distance 1 = adjacent, can reinforce in NCM
+		// Distance 2+ = too far for immediate defense
+		if land_dist == 0 || land_dist > 2 || land_dist == 127 { // 127 = no land path
+			continue
+		}
+		
+		// Prefer closer factories, or factories with more capacity if same distance
+		if land_dist < best_distance || (land_dist == best_distance && (best_factory == nil || gc.builds_left[factory_loc] > gc.builds_left[best_factory.?])) {
+			best_distance = land_dist
 			best_factory = factory_loc
 		}
 	}
@@ -2114,43 +2133,38 @@ get_closest_enemy_land_distance :: proc(gc: ^Game_Cache, territory: Land_ID) -> 
 	
 	int enemyDistance = ProUtils.getClosestEnemyOrNeutralLandTerritoryDistance(
 		data, player, t, territoryValueMap);
+	if (enemyDistance <= 0) {
+		enemyDistance = 10;  // No land path to enemy = isolated, treat as very far
+	}
 	
-	Returns distance to closest enemy/neutral land territory.
-	Uses precomputed bitsets for O(1) lookup:
-	- l2l_1away_via_land_bitset for distance 1
-	- l2l_2away_via_land_bitset for distance 2
-	- a2a_within_3_moves / a2a_within_4_moves for distance 3-4
+	Returns distance to closest enemy/neutral land territory via LAND path only.
+	Returns 10 if no land path exists (island nations like UK, USA, Japan).
+	
+	CRITICAL: This uses land_distances matrix which only includes land connections,
+	NOT air connections. The a2a_within_X_moves bitsets include air routes over water
+	and should NOT be used here.
 	*/
 	
-	// Enemy territories = all non-friendly territories
-	enemy_lands := ~gc.friendly_owner
+	// Find closest enemy using land_distances matrix
+	closest_distance: u8 = 127
 	
-	// Check distance 1 using land-to-land bitset (most common case, fastest)
-	if (mm.l2l_1away_via_land_bitset[territory] & enemy_lands) != {} {
-		return 1
+	for land in Land_ID {
+		// Check if this is an enemy territory
+		if land in gc.friendly_owner do continue  // Skip friendly territories
+		
+		dist := mm.land_distances[territory][land]
+		if dist > 0 && dist < closest_distance {
+			closest_distance = dist
+		}
 	}
 	
-	// Check distance 2 using land-to-land 2-away bitset
-	if (mm.l2l_2away_via_land_bitset[territory] & enemy_lands) != {} {
-		return 2
+	// If no land path found, return 10 (isolated like Java does)
+	if closest_distance == 127 {
+		return 10
 	}
 	
-	// Check distance 3-4 using air-to-air bitsets (works for land since Land_ID ⊂ Air_ID)
-	air_id := to_air(territory)
-	enemy_air := to_air_bitset(enemy_lands)
-	
-	// Check distance 3
-	if !is_empty(mm.a2a_within_3_moves[air_id] & enemy_air) {
-		return 3
-	}
-	
-	// Check distance 4
-	if !is_empty(mm.a2a_within_4_moves[air_id] & enemy_air) {
-		return 4
-	}
-	
-	// No enemy within 4 moves - return 5 (far from front lines)
-	return 5
+	// Cap at 10 like Java
+	return min(int(closest_distance), 10)
 }
 
 // Alias for backward compatibility
