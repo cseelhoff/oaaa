@@ -37,341 +37,350 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | ⏭️ SKIP | Intentionally omitted (N/A for A&A 1942 SE) |
 | 🔄 STUB | Placeholder exists, needs implementation |
 
+### Equivalency Score Guide
+| Score | Meaning |
+|-------|---------|
+| 100% | Semantically identical - all logic paths match Java |
+| 75-99% | Minor differences - core algorithm matches, small edge cases differ |
+| 50-74% | Partial match - main concept implemented but significant logic missing |
+| 25-49% | Basic structure only - entry point exists but internals differ substantially |
+| 0-24% | Minimal/none - stub or completely different approach |
+
 ---
 
 ### AbstractProAi.java - Turn Orchestration (541 lines)
 
-| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Notes |
-|----|------------------|-------|-------------|-----------------|--------|-------|
-| ABST-001 | `purchase()` main entry | 148-260 | Main purchase phase entry point. Orchestrates factory repair, pre-purchase simulation, and unit purchasing. | [`proai_purchase_phase()`](src/pro_purchase.odin) | ✅ DONE | |
-| ABST-002 | └─ `for (GameStep step : gameSteps)` simulation loop | 203-252 | Simulates combat moves, battles, and non-combat moves BEFORE purchasing to predict board state at placement time. Critical for informed purchase decisions. | N/A | ⏭️ SKIP | Pre-purchase simulation omitted |
-| ABST-003 | `move()` main entry | 109-142 | Main movement phase entry point. Dispatches to combat or non-combat move based on phase. Handles maps with only combat move phase. | [`proai_combat_move_phase()`](src/pro_turn.odin) / [`proai_noncombat_move_phase()`](src/pro_noncombat_move.odin) | ✅ DONE | |
-| ABST-004 | `place()` main entry | 284-295 | Main placement phase entry point. Places units purchased during purchase phase at factories. | [`proai_place_units_phase()`](src/pro_place.odin) | ✅ DONE | |
-| ABST-005 | `tech()` | 297-300 | Technology research phase. Decides whether to spend IPCs on tech dice. | [`proai_tech_phase()`](src/pro_turn.odin) | ⏭️ SKIP | N/A for A&A 1942 SE |
-| ABST-006 | `retreatQuery()` | 302-348 | Called during battles to decide whether to retreat. Considers strength difference, strafing status, and battle type (land vs sea). | N/A | ❌ MISSING | Retreat AI not implemented |
-| ABST-007 | `selectCasualties()` | 371-410 | Called during battles to choose which units die first. Optimizes casualty selection based on unit value and situation. | N/A | ❌ MISSING | Uses default casualty selection |
-| ABST-008 | `getGameStepsForPlayer()` loop | 270-280 | Iterates through game sequence to find all steps belonging to current player. Used for simulation planning. | N/A | ⏭️ SKIP | Part of simulation |
+| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
+|----|------------------|-------|-------------|-----------------|--------|-------|-------|
+| ABST-001 | `purchase()` main entry | 148-260 | Main purchase phase entry point. Orchestrates factory repair, pre-purchase simulation, and unit purchasing. | [`proai_purchase_phase()`](src/pro_purchase.odin) | ✅ DONE | 85% | Missing pre-purchase simulation |
+| ABST-002 | └─ `for (GameStep step : gameSteps)` simulation loop | 203-252 | Simulates combat moves, battles, and non-combat moves BEFORE purchasing to predict board state at placement time. Critical for informed purchase decisions. | N/A | ⏭️ SKIP | 0% | Pre-purchase simulation omitted |
+| ABST-003 | `move()` main entry | 109-142 | Main movement phase entry point. Dispatches to combat or non-combat move based on phase. Handles maps with only combat move phase. | [`proai_combat_move_phase()`](src/pro_turn.odin) / [`proai_noncombat_move_phase()`](src/pro_noncombat_move.odin) | ✅ DONE | 90% | |
+| ABST-004 | `place()` main entry | 284-295 | Main placement phase entry point. Places units purchased during purchase phase at factories. | [`proai_place_units_phase()`](src/pro_place.odin) | ✅ DONE | 95% | |
+| ABST-005 | `tech()` | 297-300 | Technology research phase. Decides whether to spend IPCs on tech dice. | [`proai_tech_phase()`](src/pro_turn.odin) | ⏭️ SKIP | N/A | N/A for A&A 1942 SE |
+| ABST-006 | `retreatQuery()` | 302-348 | Called during battles to decide whether to retreat. Considers strength difference, strafing status, and battle type (land vs sea). | N/A | ❌ MISSING | 0% | Retreat AI not implemented |
+| ABST-007 | `selectCasualties()` | 371-410 | Called during battles to choose which units die first. Optimizes casualty selection based on unit value and situation. | N/A | ❌ MISSING | 0% | Uses default casualty selection |
+| ABST-008 | `getGameStepsForPlayer()` loop | 270-280 | Iterates through game sequence to find all steps belonging to current player. Used for simulation planning. | N/A | ⏭️ SKIP | N/A | Part of simulation |
 
 ---
 
 ### ProPurchaseAi.java - Purchase Logic (2,645 lines)
 
-| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Notes |
-|----|------------------|-------|-------------|-----------------|--------|-------|
-| PUR-001 | `repair()` | 68-130 | Repairs damaged factories using available PUs. Prioritizes factories by damage amount and strategic value. | [`repair_factories_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-002 | └─ `for (RepairRule : rules)` | 104-127 | Iterates through available repair rules to find matching repair options for each damaged factory. | Inline in repair | ✅ DONE | |
-| PUR-003 | └─ └─ `for (Unit fixUnit : needingRepair)` | 105-126 | For each factory needing repair, calculates repair cost and applies repair if affordable. | Inline | ✅ DONE | |
-| PUR-004 | `bid()` | 138-175 | Handles bid placement at game start. Places bid units in territories where player started with units. | N/A | ⏭️ SKIP | Bidding not used |
-| PUR-005 | └─ `while (true)` bid loop | 170-270 | Iteratively places bid units one at a time, prioritizing threatened territories and strategic value. | N/A | ⏭️ SKIP | |
-| PUR-006 | `purchase()` main entry | 277-380 | Main purchase logic coordinator. Calls defenders, land units, AA, factories, sea/amphib, and remaining production purchases in sequence. | [`purchase_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-007 | └─ `shouldSaveUpForAFleet()` | 381-443 | Checks if player is landlocked and needs to save PUs for a fleet. Returns true if enemy is only reachable by sea and we can't afford ships yet. | `#region PUR-007` | 🔶 PARTIAL | Simplified |
-| PUR-008 | `place()` | 445-575 | Places all purchased units at factories. Land units placed first (reduces failed placements), then sea units. Handles remaining unplaced units. | [`place_defenders_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-009 | └─ `for (ProPurchaseTerritory t)` land placement | 461-480 | Iterates through purchase territories to place land units at each factory location. | [`place_units_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-010 | └─ └─ `for (ProPlaceTerritory ppt)` | 462-479 | For each place territory under a purchase territory, collects units to place. | Inline | ✅ DONE | |
-| PUR-011 | └─ └─ └─ `for (Unit placeUnit)` match loop | 466-474 | Matches purchased unit types with actual unit instances in player's unit collection. | Inline | ✅ DONE | |
-| PUR-012 | └─ `for (ProPurchaseTerritory t)` sea placement | 482-502 | Same as land placement loop but for sea zones adjacent to coastal factories. | [`place_units_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-013 | └─ └─ (same nested structure) | 483-501 | Nested loops for sea unit placement matching. | `#region PUR-013` | ✅ DONE | |
-| PUR-014 | `findDefendersInPlaceTerritories()` | 577-588 | Counts current allied defenders in each place territory. Used to calculate how many additional defenders needed. | Inline | ✅ DONE | |
-| PUR-015 | └─ `for (ProPurchaseTerritory ppt)` | 578-587 | Iterates through purchase territories and their place territories to count defenders. | Inline | ✅ DONE | |
-| PUR-016 | `prioritizeTerritoriesToDefend()` | 590-700 | Identifies territories that can't be held against max enemy attack. Calculates defense priority based on production, capital status, and strategic value. | [`prioritize_territories_to_defend_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-017 | └─ `for (ProPurchaseTerritory ppt)` find needy | 601-660 | Checks each territory to see if current defenders can hold against max enemy attack using battle simulation. | Inline | ✅ DONE | |
-| PUR-018 | └─ └─ `for (ProPlaceTerritory place)` | 604-658 | For each place territory, simulates battle and marks as needing defense if TUV swing is negative. | Inline | ✅ DONE | |
-| PUR-019 | └─ Sort + filter loop | 662-698 | Sorts territories by defense priority (capital first, then production value, then TUV swing). Filters out territories that can't be held. | `slice.sort_by` | ✅ DONE | |
-| PUR-020 | `purchaseDefenders()` | 700-900 | Main defensive purchasing loop. Buys units until each threatened territory can be held or no more money/production. | [`purchase_defenders_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-021 | └─ `for (ProPlaceTerritory place)` | 712-898 | Iterates through prioritized territories that need defense. | `#region PUR-021` | ✅ DONE | |
-| PUR-022 | └─ └─ `while (true)` purchase until can hold | 750-870 | Inner loop that keeps buying defenders until battle simulation shows territory can be held (TUV swing ≤ 0). | `#region PUR-015` | ✅ DONE | |
-| PUR-023 | └─ └─ └─ `removeInvalidPurchaseOptions()` | 760 | Filters out purchase options that exceed budget, production capacity, or max unit limits. | Inline checks | ✅ DONE | |
-| PUR-024 | └─ └─ └─ `for (ppo)` calc defenseEfficiencies | 765-790 | Calculates defense efficiency (defense power / cost) for each purchasable unit type. Considers destroyer need and carrier capacity. | Inline | ✅ DONE | |
-| PUR-025 | └─ └─ └─ `randomizePurchaseOption()` | 795 | Selects purchase option with some randomization weighted by efficiency. Prevents always buying same unit. | Simplified selection | 🔶 PARTIAL | No randomization |
-| PUR-026 | └─ └─ └─ `calculateBattleResults()` | 830 | Simulates battle with current defenders + pending purchases vs max enemy attackers. Returns win%, TUV swing. | [`simulate_sequential_enemy_attacks()`](src/pro_purchase.odin) | ✅ DONE | Improved |
-| PUR-027 | `prioritizeLandTerritories()` | 902-960 | Ranks land territories for offensive unit placement. Considers enemy neighbors, strategic value, and local land superiority. | [`prioritize_land_territories_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-028 | └─ `for (ProPurchaseTerritory ppt)` | 908-935 | Iterates through purchase territories to find those needing offensive units. | Inline | ✅ DONE | |
-| PUR-029 | └─ └─ `for (ProPlaceTerritory place)` | 909-934 | Checks each place territory for enemy neighbors and strategic value thresholds. | Inline | ✅ DONE | |
-| PUR-030 | └─ Sort by strategic value | 938-945 | Sorts territories by strategic value descending. Higher value territories get offensive units first. | `slice.sort_by` | ✅ DONE | |
-| PUR-031 | `purchaseAaUnits()` | 962-1080 | Purchases AA guns for territories with factories that can be strategically bombed by enemy bombers. | [`purchase_aa_units_triplea()`](src/pro_purchase.odin) | 🔶 PARTIAL | |
-| PUR-032 | └─ `for (ProPlaceTerritory place)` | 972-1078 | Iterates through territories checking if they have bombable factories and lack AA defense. | Outer loop | 🔶 PARTIAL | |
-| PUR-033 | └─ └─ `while (true)` AA purchase | 1020-1070 | Continues buying AA until factory is adequately protected or budget exhausted. Java can buy multiple AA. | Inner while | ❌ MISSING | Only buys 1 AA max |
-| PUR-034 | └─ └─ └─ efficiency calculation | 1025-1040 | Calculates AA purchase efficiency based on expected bombing damage reduction vs AA cost. | Simplified | 🔶 PARTIAL | |
-| PUR-035 | `purchaseLandUnits()` | 1082-1350 | Main offensive land unit purchasing. Buys attack units (tanks, artillery) balanced with fodder (infantry) based on distance to enemy. | [`purchase_land_units_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-036 | └─ `for (ProPlaceTerritory place)` | 1095-1348 | Iterates through prioritized land territories that should receive offensive units. | `#region PUR-029` | ✅ DONE | |
-| PUR-037 | └─ └─ `while (true)` land purchase | 1150-1340 | Keeps buying land units until production capacity or budget exhausted. Balances attack power vs fodder. | `#region PUR-030` | ✅ DONE | |
-| PUR-038 | └─ └─ └─ `for (ppo)` calc attackEfficiency | 1180-1220 | Calculates attack efficiency (attack power / cost) for each unit. Weights infantry vs attack units based on enemy distance. | Fodder % calc | ✅ DONE | Different algorithm |
-| PUR-039 | └─ └─ └─ `randomizePurchaseOption()` | 1225 | Weighted random selection of unit type to purchase. | Best option selection | 🔶 PARTIAL | No randomization |
-| PUR-040 | `purchaseFactory()` | 1352-1517 | Decides where to build new factories. Considers production value, enemy distance, defensibility, and existing factories. | [`purchase_factory_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-041 | └─ `for (Territory t)` find factory locations | 1365-1440 | Scans all owned territories without factories to find potential factory locations. | Loop | ✅ DONE | |
-| PUR-042 | └─ └─ Factory value calculation | 1380-1430 | Calculates factory value based on territory production, neighbor production, and distance from enemy. | Inline | ✅ DONE | |
-| PUR-043 | └─ Sort by factory value | 1445 | Sorts potential factory locations by value descending. | `slice.sort_by` | ✅ DONE | |
-| PUR-044 | └─ `for (Territory t)` place factories | 1450-1515 | Purchases factories at best locations until budget or need exhausted. | Loop | ✅ DONE | |
-| PUR-045 | `prioritizeSeaTerritories()` | 1519-1620 | Ranks sea zones for naval purchases. Prioritizes zones with existing fleet, near enemy, and with transport capacity. | [`prioritize_sea_territories_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-046 | └─ `for (ProPurchaseTerritory ppt)` | 1530-1580 | Iterates through purchase territories with coastal factories. | Outer loop | ✅ DONE | |
-| PUR-047 | └─ └─ `for (ProPlaceTerritory place)` | 1535-1575 | For each sea zone adjacent to factory, calculates naval strategic value. | Inner loop | ✅ DONE | |
-| PUR-048 | └─ Sort by strategic value | 1585-1610 | Sorts sea zones by strategic value for naval purchases. | `slice.sort_by` | ✅ DONE | |
-| PUR-049 | **`purchaseSeaAndAmphibUnits()`** | 1622-2091 | **CRITICAL**: Main naval and amphibious unit purchasing. Three phases: sea defense, naval superiority, and transport/amphib units. | [`purchase_sea_and_amphib_units_triplea()`](src/pro_purchase.odin) | 🔶 PARTIAL | **CRITICAL** |
-| PUR-050 | └─ `for (ProPlaceTerritory place)` outer | 1640-2089 | Iterates through prioritized sea territories for naval purchases. | `#region PUR-062` | 🔶 PARTIAL | |
-| PUR-051 | └─ └─ **Phase 1: Sea Defense** `while(true)` | 1680-1755 | Buys naval defenders until sea zone can be held against enemy naval attack. Similar to land defense purchasing. | `#region PUR-063` | ✅ DONE | |
-| PUR-052 | └─ └─ └─ `removeInvalidPurchaseOptions()` | 1690 | Filters invalid naval purchase options by budget and production. | Inline | ✅ DONE | |
-| PUR-053 | └─ └─ └─ `for (ppo)` defenseEfficiencies | 1695-1720 | Calculates naval defense efficiency. Considers destroyer need for sub defense and carrier capacity for fighters. | Inline | ✅ DONE | |
-| PUR-054 | └─ └─ └─ `randomizePurchaseOption()` | 1725 | Weighted selection of naval unit to purchase. | Selection | 🔶 PARTIAL | |
-| PUR-055 | └─ └─ └─ `calculateBattleResults()` | 1740 | Simulates naval battle with current + pending ships vs enemy fleet. | Battle sim | ✅ DONE | |
-| PUR-056 | └─ └─ **Phase 2: Naval Superiority** `while(true)` | 1760-1885 | **MISSING**: Buys ships until achieving local naval superiority considering enemy air from adjacent land territories. | ❌ MISSING | **MISSING** | |
-| PUR-057 | └─ └─ └─ Collect enemyUnitsInLandTerritories | 1770-1790 | Gathers enemy air units from land territories within striking distance of sea zone. Critical for accurate threat assessment. | ❌ MISSING | Enemy air threat |
-| PUR-058 | └─ └─ └─ Collect enemyUnitsInSeaTerritories | 1792-1810 | Gathers enemy naval units from nearby sea zones that could attack. | ❌ MISSING | Enemy naval |
-| PUR-059 | └─ └─ └─ `estimateBattleResults()` | 1820 | Estimates battle outcome with allied fleet vs combined enemy naval + air threat. | ❌ MISSING | |
-| PUR-060 | └─ └─ └─ `for (ppo)` superiority efficiencies | 1840-1870 | Calculates ship purchase efficiency for achieving naval superiority. | ❌ MISSING | |
-| PUR-061 | └─ └─ **Phase 3: Transport/Amphib** `while(true)` | 1891-2085 | **ROOT CAUSE UK PILEUP**: Buys transports and amphib units to evacuate stranded units from low-value territories. | ❌ MISSING | **ROOT CAUSE UK PILEUP** |
-| PUR-062 | └─ └─ └─ Find transportsThatNeedUnits | 1900-1940 | Identifies existing transports that have capacity for more units. Tracks which transports need loading. | ❌ MISSING | |
-| PUR-063 | └─ └─ └─ `for (Territory sea)` transports loop | 1905-1930 | Scans sea zones within transport range to find available transports. | ❌ MISSING | |
-| PUR-064 | └─ └─ └─ └─ `for (Unit transport)` | 1910-1928 | For each transport, calculates remaining capacity and adds to transportsThatNeedUnits if has space. | ❌ MISSING | |
-| PUR-065 | └─ └─ └─ Find potentialUnitsToLoad (value<=0.25) | 1945-1980 | **KEY INSIGHT**: Finds land units in territories with strategic value ≤ 0.25 (isolated islands like UK). These units should be transported out. | ❌ MISSING | **KEY INSIGHT** |
-| PUR-066 | └─ └─ └─ `for (Territory neighbor)` low-value | 1950-1975 | Iterates through land neighbors of sea zones to find units stranded on islands needing evacuation. | ❌ MISSING | Islands like UK |
-| PUR-067 | └─ └─ └─ **Branch A**: Fill existing transport | 1990-2040 | If transports need units, fills them with available amphib units before buying new transports. | ❌ MISSING | |
-| PUR-068 | └─ └─ └─ └─ `selectUnitsToTransportFromList()` | 1995 | Selects best units to load onto transport from available units (prefers tanks > artillery > infantry). | ❌ MISSING | |
-| PUR-069 | └─ └─ └─ └─ `while (transportCapacity > 0)` | 2000-2035 | Keeps loading/purchasing amphib units until transport is full. | ❌ MISSING | |
-| PUR-070 | └─ └─ └─ └─ └─ Calc amphibEfficiencies | 2005-2020 | Calculates efficiency of purchasing amphib units (attack power for amphib assault / cost). | ❌ MISSING | |
-| PUR-071 | └─ └─ └─ **Branch B**: Buy new transport | 2045-2080 | If no transports need units but potentialUnitsToLoad exists, buys new transport. | ❌ MISSING | |
-| PUR-072 | └─ └─ └─ └─ Calc transportEfficiencies | 2050-2070 | Calculates transport purchase efficiency based on units waiting to be transported. | ❌ MISSING | |
-| PUR-073 | `purchaseUnitsWithRemainingProduction()` | 2093-2250 | Uses remaining factory production capacity to buy additional units. Called after main purchase phases. | [`purchase_units_with_remaining_production_triplea()`](src/pro_purchase.odin) | 🔶 PARTIAL | |
-| PUR-074 | └─ `for (ProPurchaseTerritory ppt)` | 2105-2248 | Iterates through territories with remaining production. | Outer loop | 🔶 PARTIAL | |
-| PUR-075 | └─ └─ `for (ProPlaceTerritory place)` | 2110-2245 | For each place territory, checks remaining production capacity. | Inner loop | 🔶 PARTIAL | |
-| PUR-076 | └─ └─ └─ `while (true)` fill production | 2150-2240 | Continues purchasing until production capacity filled or budget exhausted. | While loop | 🔶 PARTIAL | |
-| PUR-077 | └─ └─ └─ └─ `for (ppo)` efficiencies | 2160-2200 | Calculates general unit efficiency for filling remaining capacity. | Inline | 🔶 PARTIAL | |
-| PUR-078 | `upgradeUnitsWithRemainingPUs()` | 2252-2450 | Uses remaining PUs to upgrade placed infantry to artillery or tanks if efficient. | [`upgrade_units_with_remaining_pus_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-079 | └─ `for (ProPurchaseTerritory ppt)` | 2265-2448 | Iterates through territories where units were placed. | Outer loop | ✅ DONE | |
-| PUR-080 | └─ └─ `for (ProPlaceTerritory place)` | 2270-2445 | For each place territory with placed units. | Inner loop | ✅ DONE | |
-| PUR-081 | └─ └─ └─ `while (true)` upgrade loop | 2310-2440 | Keeps upgrading units while profitable and funds available. | While loop | ✅ DONE | |
-| PUR-082 | └─ └─ └─ └─ `for (unit)` find upgradeable | 2315-2350 | Finds infantry that could be upgraded to artillery or tanks. | Inline | ✅ DONE | |
-| PUR-083 | └─ └─ └─ └─ `findUpgradeUnitEfficiency()` | 2360 | Calculates efficiency of upgrading (attack gain / additional cost). | [`find_upgrade_unit_efficiency_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-084 | `findUpgradeUnitEfficiency()` | 2452-2520 | Helper function calculating upgrade value. Considers attack power increase vs cost difference. | [`find_upgrade_unit_efficiency_triplea()`](src/pro_purchase.odin) | ✅ DONE | |
-| PUR-085 | `findFactoryDefenseValue()` | 2522-2570 | Calculates how valuable a factory is to defend. Higher for capitals and high-production territories. | Inline | 🔶 PARTIAL | |
-| PUR-086 | `selectPurchaseTerritoriesWithRemainingProduction()` | 2572-2645 | Finds territories that still have unused production capacity for additional purchases. | Inline | 🔶 PARTIAL | |
+| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
+|----|------------------|-------|-------------|-----------------|--------|-------|-------|
+| PUR-001 | `repair()` | 68-130 | Repairs damaged factories using available PUs. Prioritizes factories by damage amount and strategic value. | [`repair_factories_triplea()`](src/pro_purchase.odin) | ✅ DONE | 80% | |
+| PUR-002 | └─ `for (RepairRule : rules)` | 104-127 | Iterates through available repair rules to find matching repair options for each damaged factory. | Inline in repair | ✅ DONE | 75% | |
+| PUR-003 | └─ └─ `for (Unit fixUnit : needingRepair)` | 105-126 | For each factory needing repair, calculates repair cost and applies repair if affordable. | Inline | ✅ DONE | 75% | |
+| PUR-004 | `bid()` | 138-175 | Handles bid placement at game start. Places bid units in territories where player started with units. | N/A | ⏭️ SKIP | N/A | Bidding not used |
+| PUR-005 | └─ `while (true)` bid loop | 170-270 | Iteratively places bid units one at a time, prioritizing threatened territories and strategic value. | N/A | ⏭️ SKIP | N/A | |
+| PUR-006 | `purchase()` main entry | 277-380 | Main purchase logic coordinator. Calls defenders, land units, AA, factories, sea/amphib, and remaining production purchases in sequence. | [`purchase_triplea()`](src/pro_purchase.odin) | ✅ DONE | 90% | |
+| PUR-007 | └─ `shouldSaveUpForAFleet()` | 381-443 | Checks if player is landlocked and needs to save PUs for a fleet. Returns true if enemy is only reachable by sea and we can't afford ships yet. | `#region PUR-007` | 🔶 PARTIAL | 40% | Simplified |
+| PUR-008 | `place()` | 445-575 | Places all purchased units at factories. Land units placed first (reduces failed placements), then sea units. Handles remaining unplaced units. | [`place_defenders_triplea()`](src/pro_purchase.odin) | ✅ DONE | 85% | |
+| PUR-009 | └─ `for (ProPurchaseTerritory t)` land placement | 461-480 | Iterates through purchase territories to place land units at each factory location. | [`place_units_triplea()`](src/pro_purchase.odin) | ✅ DONE | 85% | |
+| PUR-010 | └─ └─ `for (ProPlaceTerritory ppt)` | 462-479 | For each place territory under a purchase territory, collects units to place. | Inline | ✅ DONE | 85% | |
+| PUR-011 | └─ └─ └─ `for (Unit placeUnit)` match loop | 466-474 | Matches purchased unit types with actual unit instances in player's unit collection. | Inline | ✅ DONE | 80% | Count-based vs instance |
+| PUR-012 | └─ `for (ProPurchaseTerritory t)` sea placement | 482-502 | Same as land placement loop but for sea zones adjacent to coastal factories. | [`place_units_triplea()`](src/pro_purchase.odin) | ✅ DONE | 85% | |
+| PUR-013 | └─ └─ (same nested structure) | 483-501 | Nested loops for sea unit placement matching. | `#region PUR-013` | ✅ DONE | 85% | |
+| PUR-014 | `findDefendersInPlaceTerritories()` | 577-588 | Counts current allied defenders in each place territory. Used to calculate how many additional defenders needed. | Inline | ✅ DONE | 90% | |
+| PUR-015 | └─ `for (ProPurchaseTerritory ppt)` | 578-587 | Iterates through purchase territories and their place territories to count defenders. | Inline | ✅ DONE | 90% | |
+| PUR-016 | `prioritizeTerritoriesToDefend()` | 590-700 | Identifies territories that can't be held against max enemy attack. Calculates defense priority based on production, capital status, and strategic value. | [`prioritize_territories_to_defend_triplea()`](src/pro_purchase.odin) | ✅ DONE | 85% | |
+| PUR-017 | └─ `for (ProPurchaseTerritory ppt)` find needy | 601-660 | Checks each territory to see if current defenders can hold against max enemy attack using battle simulation. | Inline | ✅ DONE | 85% | |
+| PUR-018 | └─ └─ `for (ProPlaceTerritory place)` | 604-658 | For each place territory, simulates battle and marks as needing defense if TUV swing is negative. | Inline | ✅ DONE | 85% | |
+| PUR-019 | └─ Sort + filter loop | 662-698 | Sorts territories by defense priority (capital first, then production value, then TUV swing). Filters out territories that can't be held. | `slice.sort_by` | ✅ DONE | 90% | |
+| PUR-020 | `purchaseDefenders()` | 700-900 | Main defensive purchasing loop. Buys units until each threatened territory can be held or no more money/production. | [`purchase_defenders_triplea()`](src/pro_purchase.odin) | ✅ DONE | 75% | Infantry only, missing randomization |
+| PUR-021 | └─ `for (ProPlaceTerritory place)` | 712-898 | Iterates through prioritized territories that need defense. | `#region PUR-021` | ✅ DONE | 75% | |
+| PUR-022 | └─ └─ `while (true)` purchase until can hold | 750-870 | Inner loop that keeps buying defenders until battle simulation shows territory can be held (TUV swing ≤ 0). | `#region PUR-015` | ✅ DONE | 80% | |
+| PUR-023 | └─ └─ └─ `removeInvalidPurchaseOptions()` | 760 | Filters out purchase options that exceed budget, production capacity, or max unit limits. | Inline checks | ✅ DONE | 70% | Simplified |
+| PUR-024 | └─ └─ └─ `for (ppo)` calc defenseEfficiencies | 765-790 | Calculates defense efficiency (defense power / cost) for each purchasable unit type. Considers destroyer need and carrier capacity. | Inline | ✅ DONE | 60% | Infantry only |
+| PUR-025 | └─ └─ └─ `randomizePurchaseOption()` | 795 | Selects purchase option with some randomization weighted by efficiency. Prevents always buying same unit. | Simplified selection | 🔶 PARTIAL | 30% | No randomization |
+| PUR-026 | └─ └─ └─ `calculateBattleResults()` | 830 | Simulates battle with current defenders + pending purchases vs max enemy attackers. Returns win%, TUV swing. | [`simulate_sequential_enemy_attacks()`](src/pro_purchase.odin) | ✅ DONE | 95% | Improved |
+| PUR-027 | `prioritizeLandTerritories()` | 902-960 | Ranks land territories for offensive unit placement. Considers enemy neighbors, strategic value, and local land superiority. | [`prioritize_land_territories_triplea()`](src/pro_purchase.odin) | ✅ DONE | 70% | Simplified formula |
+| PUR-028 | └─ `for (ProPurchaseTerritory ppt)` | 908-935 | Iterates through purchase territories to find those needing offensive units. | Inline | ✅ DONE | 70% | |
+| PUR-029 | └─ └─ `for (ProPlaceTerritory place)` | 909-934 | Checks each place territory for enemy neighbors and strategic value thresholds. | Inline | ✅ DONE | 70% | |
+| PUR-030 | └─ Sort by strategic value | 938-945 | Sorts territories by strategic value descending. Higher value territories get offensive units first. | `slice.sort_by` | ✅ DONE | 90% | |
+| PUR-031 | `purchaseAaUnits()` | 962-1080 | Purchases AA guns for territories with factories that can be strategically bombed by enemy bombers. | [`purchase_aa_units_triplea()`](src/pro_purchase.odin) | 🔶 PARTIAL | 50% | |
+| PUR-032 | └─ `for (ProPlaceTerritory place)` | 972-1078 | Iterates through territories checking if they have bombable factories and lack AA defense. | Outer loop | 🔶 PARTIAL | 50% | |
+| PUR-033 | └─ └─ `while (true)` AA purchase | 1020-1070 | Continues buying AA until factory is adequately protected or budget exhausted. Java can buy multiple AA. | Inner while | ❌ MISSING | 20% | Only buys 1 AA max |
+| PUR-034 | └─ └─ └─ efficiency calculation | 1025-1040 | Calculates AA purchase efficiency based on expected bombing damage reduction vs AA cost. | Simplified | 🔶 PARTIAL | 30% | |
+| PUR-035 | `purchaseLandUnits()` | 1082-1350 | Main offensive land unit purchasing. Buys attack units (tanks, artillery) balanced with fodder (infantry) based on distance to enemy. | [`purchase_land_units_triplea()`](src/pro_purchase.odin) | ✅ DONE | 80% | |
+| PUR-036 | └─ `for (ProPlaceTerritory place)` | 1095-1348 | Iterates through prioritized land territories that should receive offensive units. | `#region PUR-029` | ✅ DONE | 80% | |
+| PUR-037 | └─ └─ `while (true)` land purchase | 1150-1340 | Keeps buying land units until production capacity or budget exhausted. Balances attack power vs fodder. | `#region PUR-030` | ✅ DONE | 75% | |
+| PUR-038 | └─ └─ └─ `for (ppo)` calc attackEfficiency | 1180-1220 | Calculates attack efficiency (attack power / cost) for each unit. Weights infantry vs attack units based on enemy distance. | Fodder % calc | ✅ DONE | 85% | Different algorithm |
+| PUR-039 | └─ └─ └─ `randomizePurchaseOption()` | 1225 | Weighted random selection of unit type to purchase. | Best option selection | 🔶 PARTIAL | 40% | No randomization |
+| PUR-040 | `purchaseFactory()` | 1352-1517 | Decides where to build new factories. Considers production value, enemy distance, defensibility, and existing factories. | [`purchase_factory_triplea()`](src/pro_purchase.odin) | ✅ DONE | 70% | |
+| PUR-041 | └─ `for (Territory t)` find factory locations | 1365-1440 | Scans all owned territories without factories to find potential factory locations. | Loop | ✅ DONE | 70% | |
+| PUR-042 | └─ └─ Factory value calculation | 1380-1430 | Calculates factory value based on territory production, neighbor production, and distance from enemy. | Inline | ✅ DONE | 65% | |
+| PUR-043 | └─ Sort by factory value | 1445 | Sorts potential factory locations by value descending. | `slice.sort_by` | ✅ DONE | 90% | |
+| PUR-044 | └─ `for (Territory t)` place factories | 1450-1515 | Purchases factories at best locations until budget or need exhausted. | Loop | ✅ DONE | 70% | |
+| PUR-045 | `prioritizeSeaTerritories()` | 1519-1620 | Ranks sea zones for naval purchases. Prioritizes zones with existing fleet, near enemy, and with transport capacity. | [`prioritize_sea_territories_triplea()`](src/pro_purchase.odin) | ✅ DONE | 65% | |
+| PUR-046 | └─ `for (ProPurchaseTerritory ppt)` | 1530-1580 | Iterates through purchase territories with coastal factories. | Outer loop | ✅ DONE | 65% | |
+| PUR-047 | └─ └─ `for (ProPlaceTerritory place)` | 1535-1575 | For each sea zone adjacent to factory, calculates naval strategic value. | Inner loop | ✅ DONE | 65% | |
+| PUR-048 | └─ Sort by strategic value | 1585-1610 | Sorts sea zones by strategic value for naval purchases. | `slice.sort_by` | ✅ DONE | 90% | |
+| PUR-049 | **`purchaseSeaAndAmphibUnits()`** | 1622-2091 | **CRITICAL**: Main naval and amphibious unit purchasing. Three phases: sea defense, naval superiority, and transport/amphib units. | [`purchase_sea_and_amphib_units_triplea()`](src/pro_purchase.odin) | 🔶 PARTIAL | 55% | **Phase 2 missing** |
+| PUR-050 | └─ `for (ProPlaceTerritory place)` outer | 1640-2089 | Iterates through prioritized sea territories for naval purchases. | `#region PUR-062` | 🔶 PARTIAL | 60% | |
+| PUR-051 | └─ └─ **Phase 1: Sea Defense** `while(true)` | 1680-1755 | Buys naval defenders until sea zone can be held against enemy naval attack. Similar to land defense purchasing. | `#region PUR-063` | ✅ DONE | 75% | |
+| PUR-052 | └─ └─ └─ `removeInvalidPurchaseOptions()` | 1690 | Filters invalid naval purchase options by budget and production. | Inline | ✅ DONE | 70% | |
+| PUR-053 | └─ └─ └─ `for (ppo)` defenseEfficiencies | 1695-1720 | Calculates naval defense efficiency. Considers destroyer need for sub defense and carrier capacity for fighters. | Inline | ✅ DONE | 65% | |
+| PUR-054 | └─ └─ └─ `randomizePurchaseOption()` | 1725 | Weighted selection of naval unit to purchase. | Selection | 🔶 PARTIAL | 40% | |
+| PUR-055 | └─ └─ └─ `calculateBattleResults()` | 1740 | Simulates naval battle with current + pending ships vs enemy fleet. | Battle sim | ✅ DONE | 90% | |
+| PUR-056 | └─ └─ **Phase 2: Naval Superiority** `while(true)` | 1760-1885 | **MISSING**: Buys ships until achieving local naval superiority considering enemy air from adjacent land territories. | ❌ MISSING | 0% | **MISSING** |
+| PUR-057 | └─ └─ └─ Collect enemyUnitsInLandTerritories | 1770-1790 | Gathers enemy air units from land territories within striking distance of sea zone. Critical for accurate threat assessment. | ❌ MISSING | 0% | Enemy air threat |
+| PUR-058 | └─ └─ └─ Collect enemyUnitsInSeaTerritories | 1792-1810 | Gathers enemy naval units from nearby sea zones that could attack. | ❌ MISSING | 0% | Enemy naval |
+| PUR-059 | └─ └─ └─ `estimateBattleResults()` | 1820 | Estimates battle outcome with allied fleet vs combined enemy naval + air threat. | ❌ MISSING | 0% | |
+| PUR-060 | └─ └─ └─ `for (ppo)` superiority efficiencies | 1840-1870 | Calculates ship purchase efficiency for achieving naval superiority. | ❌ MISSING | 0% | |
+| PUR-061 | └─ └─ **Phase 3: Transport/Amphib** `while(true)` | 1891-2085 | Buys transports and amphib units to evacuate stranded units from low-value territories. | `#region PUR-065` | 🔶 PARTIAL | 70% | Recently improved |
+| PUR-062 | └─ └─ └─ Find transportsThatNeedUnits | 1900-1940 | Identifies existing transports that have capacity for more units. Tracks which transports need loading. | `count_empty_transports` | 🔶 PARTIAL | 60% | |
+| PUR-063 | └─ └─ └─ `for (Territory sea)` transports loop | 1905-1930 | Scans sea zones within transport range to find available transports. | Inline | 🔶 PARTIAL | 60% | |
+| PUR-064 | └─ └─ └─ └─ `for (Unit transport)` | 1910-1928 | For each transport, calculates remaining capacity and adds to transportsThatNeedUnits if has space. | Inline | 🔶 PARTIAL | 55% | |
+| PUR-065 | └─ └─ └─ Find potentialUnitsToLoad (value<=0.25) | 1945-1980 | **KEY INSIGHT**: Finds land units in territories with strategic value ≤ 0.25 (isolated islands like UK). These units should be transported out. | `count_stranded_units` | ✅ DONE | 80% | Recently fixed |
+| PUR-066 | └─ └─ └─ `for (Territory neighbor)` low-value | 1950-1975 | Iterates through land neighbors of sea zones to find units stranded on islands needing evacuation. | Inline | ✅ DONE | 75% | |
+| PUR-067 | └─ └─ └─ **Branch A**: Fill existing transport | 1990-2040 | If transports need units, fills them with available amphib units before buying new transports. | `#region PUR-066` | ✅ DONE | 75% | Recently fixed |
+| PUR-068 | └─ └─ └─ └─ `selectUnitsToTransportFromList()` | 1995 | Selects best units to load onto transport from available units (prefers tanks > artillery > infantry). | Inline | 🔶 PARTIAL | 60% | Simplified |
+| PUR-069 | └─ └─ └─ └─ `while (transportCapacity > 0)` | 2000-2035 | Keeps loading/purchasing amphib units until transport is full. | Fill loop | ✅ DONE | 80% | |
+| PUR-070 | └─ └─ └─ └─ └─ Calc amphibEfficiencies | 2005-2020 | Calculates efficiency of purchasing amphib units (attack power for amphib assault / cost). | Inline | 🔶 PARTIAL | 60% | |
+| PUR-071 | └─ └─ └─ **Branch B**: Buy new transport | 2045-2080 | If no transports need units but potentialUnitsToLoad exists, buys new transport. | Branch B | ✅ DONE | 75% | |
+| PUR-072 | └─ └─ └─ └─ Calc transportEfficiencies | 2050-2070 | Calculates transport purchase efficiency based on units waiting to be transported. | Inline | 🔶 PARTIAL | 50% | |
+| PUR-073 | `purchaseUnitsWithRemainingProduction()` | 2093-2250 | Uses remaining factory production capacity to buy additional units. Called after main purchase phases. | [`purchase_units_with_remaining_production_triplea()`](src/pro_purchase.odin) | 🔶 PARTIAL | 55% | |
+| PUR-074 | └─ `for (ProPurchaseTerritory ppt)` | 2105-2248 | Iterates through territories with remaining production. | Outer loop | 🔶 PARTIAL | 55% | |
+| PUR-075 | └─ └─ `for (ProPlaceTerritory place)` | 2110-2245 | For each place territory, checks remaining production capacity. | Inner loop | 🔶 PARTIAL | 55% | |
+| PUR-076 | └─ └─ └─ `while (true)` fill production | 2150-2240 | Continues purchasing until production capacity filled or budget exhausted. | While loop | 🔶 PARTIAL | 50% | |
+| PUR-077 | └─ └─ └─ └─ `for (ppo)` efficiencies | 2160-2200 | Calculates general unit efficiency for filling remaining capacity. | Inline | 🔶 PARTIAL | 45% | |
+| PUR-078 | `upgradeUnitsWithRemainingPUs()` | 2252-2450 | Uses remaining PUs to upgrade placed infantry to artillery or tanks if efficient. | [`upgrade_units_with_remaining_pus_triplea()`](src/pro_purchase.odin) | ✅ DONE | 75% | |
+| PUR-079 | └─ `for (ProPurchaseTerritory ppt)` | 2265-2448 | Iterates through territories where units were placed. | Outer loop | ✅ DONE | 75% | |
+| PUR-080 | └─ └─ `for (ProPlaceTerritory place)` | 2270-2445 | For each place territory with placed units. | Inner loop | ✅ DONE | 75% | |
+| PUR-081 | └─ └─ └─ `while (true)` upgrade loop | 2310-2440 | Keeps upgrading units while profitable and funds available. | While loop | ✅ DONE | 70% | |
+| PUR-082 | └─ └─ └─ └─ `for (unit)` find upgradeable | 2315-2350 | Finds infantry that could be upgraded to artillery or tanks. | Inline | ✅ DONE | 70% | |
+| PUR-083 | └─ └─ └─ └─ `findUpgradeUnitEfficiency()` | 2360 | Calculates efficiency of upgrading (attack gain / additional cost). | [`find_upgrade_unit_efficiency_triplea()`](src/pro_purchase.odin) | ✅ DONE | 80% | |
+| PUR-084 | `findUpgradeUnitEfficiency()` | 2452-2520 | Helper function calculating upgrade value. Considers attack power increase vs cost difference. | [`find_upgrade_unit_efficiency_triplea()`](src/pro_purchase.odin) | ✅ DONE | 80% | |
+| PUR-085 | `findFactoryDefenseValue()` | 2522-2570 | Calculates how valuable a factory is to defend. Higher for capitals and high-production territories. | Inline | 🔶 PARTIAL | 50% | |
+| PUR-086 | `selectPurchaseTerritoriesWithRemainingProduction()` | 2572-2645 | Finds territories that still have unused production capacity for additional purchases. | Inline | 🔶 PARTIAL | 55% | |
 
 ---
 
 ### ProCombatMoveAi.java - Combat Move Logic (2,031 lines)
 
-| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Notes |
-|----|------------------|-------|-------------|-----------------|--------|-------|
-| CMB-001 | `doCombatMove()` main entry | 76-175 | Main combat move phase entry point. Orchestrates attack option generation, prioritization, territory selection, and move execution. | [`proai_combat_move_phase()`](src/pro_turn.odin) | ✅ DONE | |
-| CMB-002 | `determineTerritoriesThatCanBeBombed()` | 1780-1875 | Identifies enemy factories that can be strategically bombed. Calculates expected bombing damage vs risk of losing bombers. | 🔄 STUB | 🔄 STUB | |
-| CMB-003 | └─ `for (Unit bomber)` | 1790-1870 | For each bomber, finds all reachable enemy factories within range. | ❌ MISSING | |
-| CMB-004 | └─ └─ `for (Territory target)` | 1800-1865 | Calculates bombing value for each target (damage potential vs AA defense risk). | ❌ MISSING | |
-| CMB-005 | `prioritizeAttackOptions()` | 192-299 | Calculates attack priority value for each potential target. Considers production, capital status, defensibility, and strategic position. | [`prioritize_attack_options_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | |
-| CMB-006 | └─ `for (Iterator<ProTerritory> it)` | 200-295 | Iterates through all attack options, calculating value and removing invalid ones. | Loop | ✅ DONE | |
-| CMB-007 | └─ └─ Attack value calculation | 210-280 | Complex formula considering: isLand, isNeutral, isCanHold, isAmphib, hasFactory, nearCapital, production value. | Inline | ✅ DONE | |
-| CMB-008 | `determineTerritoriesThatCanBeHeld()` | 301-430 | For each attackable territory, determines if it can be held after conquest against enemy counter-attack. | [`determine_territories_that_can_be_held_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | |
-| CMB-009 | └─ `for (ProTerritory patd)` | 315-425 | Iterates through attack options to simulate post-conquest defense. | Loop | ✅ DONE | |
-| CMB-010 | └─ └─ Battle simulation | 340-400 | Simulates enemy counter-attack against our remaining forces. Sets canHold flag based on win%. | [`calculate_battle_results()`](src/battle.odin) | ✅ DONE | |
-| CMB-011 | `removeTerritoriesThatArentWorthAttacking()` | 432-490 | Filters out attack options with negative expected value (TUV loss exceeds strategic gain). | [`remove_territories_that_arent_worth_attacking_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | |
-| CMB-012 | └─ Filter loop | 445-485 | Removes territories where expected TUV swing is too negative or win% is too low. | Loop | ✅ DONE | |
-| CMB-013 | `determineTerritoriesToAttack()` | 492-620 | Greedily selects which territories to actually attack from available options, avoiding overcommitment. | [`determine_territories_to_attack_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | |
-| CMB-014 | └─ `while (true)` selection loop | 510-615 | Iteratively selects highest-value attack, marks units as used, recalculates remaining options. | While loop | ✅ DONE | |
-| CMB-015 | └─ └─ Find highest priority | 520-540 | Sorts remaining options by attack value and selects best one. | Sort + select | ✅ DONE | |
-| CMB-016 | └─ └─ TUV swing check | 550-570 | Stops selecting attacks when expected TUV swing becomes too negative (diminishing returns). | Check | ✅ DONE | |
-| CMB-017 | `moveOneDefenderToLandTerritoriesBorderingEnemy()` | 622-720 | Ensures empty friendly territories bordering enemies have at least one defender to prevent free captures. | [`move_one_defender_to_land_territories_bordering_enemy_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | |
-| CMB-018 | └─ `for (Territory t)` border territories | 635-715 | Finds empty friendly territories adjacent to enemy and moves cheapest available unit there. | Loop | ✅ DONE | |
-| CMB-019 | └─ └─ Find cheapest defender | 650-700 | Searches adjacent friendly territories for cheapest unit (infantry preferred) to move. | Inline | ✅ DONE | |
-| CMB-020 | `removeTerritoriesWhereTransportsAreExposed()` | 722-820 | Removes attack options that would leave transports undefended and vulnerable to enemy counter-attack. | [`remove_territories_where_transports_are_exposed_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | |
-| CMB-021 | └─ `for (Territory t)` | 735-815 | Checks each attack to see if committed units would leave nearby transports exposed. | Loop | ✅ DONE | |
-| CMB-022 | `determineUnitsToAttackWith()` | 822-896 | Assigns specific units to each selected attack. Balances unit usage across multiple attacks. | [`determine_units_to_attack_with_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | |
-| CMB-023 | └─ `for (ProTerritory patd)` | 835-892 | For each territory to attack, assigns units from potential attackers pool. | Outer loop | ✅ DONE | |
-| CMB-024 | └─ └─ Sort by attack options | 845-860 | Sorts units by number of attack options (units with fewer options assigned first). | Sort | ✅ DONE | |
-| CMB-025 | └─ └─ `for (Unit unit)` assignment | 865-890 | Assigns each unit to the attack, tracking used units to avoid double-assignment. | Inner loop | ✅ DONE | |
-| CMB-026 | `tryToAttackTerritories()` | 1245-1778 | Main attack execution logic with 6 phases: trivial wins, fill attacks, destroyers, limit units, excess attackers, validation. | [`try_to_attack_territories_triplea()`](src/pro_combat_move_triplea_methods.odin) | 🔶 PARTIAL | 4 phases vs 6 |
-| CMB-027 | └─ **Phase 1: Trivial wins** | 1257-1320 | First pass: assigns minimum units needed for guaranteed wins (≥99% probability). Handles easy captures efficiently. | Phase 1 | ✅ DONE | |
-| CMB-028 | └─ └─ `for (ProTerritory patd)` sorted by value | 1265-1315 | Iterates through territories sorted by attack value, handling easiest wins first. | `#region CMB-028` | ✅ DONE | |
-| CMB-029 | └─ └─ └─ Find necessary units | 1275-1295 | Calculates minimum units needed to achieve 99%+ win probability. | Inline | ✅ DONE | |
-| CMB-030 | └─ └─ └─ Check win ≥99% | 1300-1310 | Verifies attack is essentially guaranteed before committing units. | Check | ✅ DONE | |
-| CMB-031 | └─ **Phase 2: Fill non-trivial** | 1322-1400 | Second pass: adds units to attacks that need more forces to reach acceptable win%. | Phase 2 | ✅ DONE | |
-| CMB-032 | └─ └─ `for (ProTerritory patd)` remaining | 1330-1395 | Iterates through attacks still needing units. | `#region CMB-032` | ✅ DONE | |
-| CMB-033 | └─ └─ └─ `for (Unit unit)` sorted by options | 1340-1385 | Adds units one at a time, preferring units with fewer alternative attack options. | Inner loop | ✅ DONE | |
-| CMB-034 | └─ └─ └─ └─ Add if improves win% | 1350-1380 | Only adds unit if it meaningfully improves win probability without wasting value. | Check | ✅ DONE | |
-| CMB-035 | └─ **Phase 3: Add destroyers for subs** | 1402-1478 | Ensures attacks against submarines include at least one destroyer to enable sub hits. | Phase 3 | ✅ DONE | |
-| CMB-036 | └─ └─ `for (ProTerritory patd)` missing destroyers | 1410-1470 | Finds sea attacks with subs but no destroyer assigned. | Loop | ✅ DONE | |
-| CMB-037 | └─ └─ └─ `for (Unit destroyer)` multi-options | 1420-1465 | Assigns destroyers from available pool, preferring ones with multiple attack options. | Inner loop | ✅ DONE | |
-| CMB-038 | └─ **Phase 4: Limit if can't hold** | 1480-1512 | For territories that can't be held post-conquest, reduces attacking force to minimize losses. | Phase 4 | ✅ DONE | |
-| CMB-039 | └─ └─ `for (ProTerritory patd)` !canHold | 1485-1508 | Iterates through attacks where we'll lose the territory after. | Loop | ✅ DONE | |
-| CMB-040 | └─ └─ └─ Check 1 less unit still wins | 1490-1505 | Removes units one at a time while still maintaining victory, saving TUV. | Check | ✅ DONE | |
-| CMB-041 | └─ **Phase 5: Use excess attackers** | 1514-1560 | Redistributes excess units (>150% needed) from over-committed attacks to under-committed ones. | ❌ MISSING | Not implemented |
-| CMB-042 | └─ └─ `for (ProTerritory patd)` strafing | 1520-1555 | Finds attacks with significant excess force that could be used elsewhere. | ❌ MISSING | |
-| CMB-043 | └─ └─ └─ `for (Unit unit)` excess (>150%) | 1530-1550 | Moves excess units to attacks that need reinforcement. | ❌ MISSING | |
-| CMB-044 | └─ **Phase 6: Validate & Log** | 1562-1778 | Final validation of all attacks. Checks transport restrictions, sub retreat rules, and logs summary. | 🔶 PARTIAL | |
-| CMB-045 | └─ └─ Transport casualty restriction check | 1580-1610 | Verifies attacks don't violate transport casualty restriction rules (some maps require transports to be taken as casualties last). | ❌ MISSING | |
-| CMB-046 | └─ └─ Sub retreat before battle calc | 1620-1650 | Calculates whether enemy subs should retreat before battle based on destroyer presence. | ❌ MISSING | |
-| CMB-047 | └─ └─ Log attack summary | 1700-1770 | Outputs detailed log of all planned attacks for debugging. | [`log_attack_moves()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | |
-| CMB-048 | `checkContestedSeaTerritories()` | 1875-1945 | Handles contested sea zones where both sides have units. May need to clear with subs or avoid. | [`check_contested_sea_territories_triplea()`](src/pro_combat_move_triplea_methods.odin) | 🔄 STUB | |
-| CMB-049 | └─ `for (Territory t)` contested sea | 1885-1940 | Iterates through sea zones with both friendly and enemy units. | Loop | 🔄 STUB | |
-| CMB-050 | `doMove()` execute moves | 176-190 | Executes all planned combat moves by calling move delegate. Handles move failures gracefully. | [`execute_combat_moves_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | |
+| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
+|----|------------------|-------|-------------|-----------------|--------|-------|-------|
+| CMB-001 | `doCombatMove()` main entry | 76-175 | Main combat move phase entry point. Orchestrates attack option generation, prioritization, territory selection, and move execution. | [`proai_combat_move_phase()`](src/pro_turn.odin) | ✅ DONE | 90% | |
+| CMB-002 | `determineTerritoriesThatCanBeBombed()` | 1780-1875 | Identifies enemy factories that can be strategically bombed. Calculates expected bombing damage vs risk of losing bombers. | 🔄 STUB | 🔄 STUB | 5% | |
+| CMB-003 | └─ `for (Unit bomber)` | 1790-1870 | For each bomber, finds all reachable enemy factories within range. | ❌ MISSING | ❌ MISSING | 0% | |
+| CMB-004 | └─ └─ `for (Territory target)` | 1800-1865 | Calculates bombing value for each target (damage potential vs AA defense risk). | ❌ MISSING | ❌ MISSING | 0% | |
+| CMB-005 | `prioritizeAttackOptions()` | 192-299 | Calculates attack priority value for each potential target. Considers production, capital status, defensibility, and strategic position. | [`prioritize_attack_options_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 85% | |
+| CMB-006 | └─ `for (Iterator<ProTerritory> it)` | 200-295 | Iterates through all attack options, calculating value and removing invalid ones. | Loop | ✅ DONE | 85% | |
+| CMB-007 | └─ └─ Attack value calculation | 210-280 | Complex formula considering: isLand, isNeutral, isCanHold, isAmphib, hasFactory, nearCapital, production value. | Inline | ✅ DONE | 80% | |
+| CMB-008 | `determineTerritoriesThatCanBeHeld()` | 301-430 | For each attackable territory, determines if it can be held after conquest against enemy counter-attack. | [`determine_territories_that_can_be_held_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 85% | |
+| CMB-009 | └─ `for (ProTerritory patd)` | 315-425 | Iterates through attack options to simulate post-conquest defense. | Loop | ✅ DONE | 85% | |
+| CMB-010 | └─ └─ Battle simulation | 340-400 | Simulates enemy counter-attack against our remaining forces. Sets canHold flag based on win%. | [`calculate_battle_results()`](src/battle.odin) | ✅ DONE | 95% | |
+| CMB-011 | `removeTerritoriesThatArentWorthAttacking()` | 432-490 | Filters out attack options with negative expected value (TUV loss exceeds strategic gain). | [`remove_territories_that_arent_worth_attacking_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 85% | |
+| CMB-012 | └─ Filter loop | 445-485 | Removes territories where expected TUV swing is too negative or win% is too low. | Loop | ✅ DONE | 85% | |
+| CMB-013 | `determineTerritoriesToAttack()` | 492-620 | Greedily selects which territories to actually attack from available options, avoiding overcommitment. | [`determine_territories_to_attack_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 80% | |
+| CMB-014 | └─ `while (true)` selection loop | 510-615 | Iteratively selects highest-value attack, marks units as used, recalculates remaining options. | While loop | ✅ DONE | 80% | |
+| CMB-015 | └─ └─ Find highest priority | 520-540 | Sorts remaining options by attack value and selects best one. | Sort + select | ✅ DONE | 85% | |
+| CMB-016 | └─ └─ TUV swing check | 550-570 | Stops selecting attacks when expected TUV swing becomes too negative (diminishing returns). | Check | ✅ DONE | 80% | |
+| CMB-017 | `moveOneDefenderToLandTerritoriesBorderingEnemy()` | 622-720 | Ensures empty friendly territories bordering enemies have at least one defender to prevent free captures. | [`move_one_defender_to_land_territories_bordering_enemy_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 85% | |
+| CMB-018 | └─ `for (Territory t)` border territories | 635-715 | Finds empty friendly territories adjacent to enemy and moves cheapest available unit there. | Loop | ✅ DONE | 85% | |
+| CMB-019 | └─ └─ Find cheapest defender | 650-700 | Searches adjacent friendly territories for cheapest unit (infantry preferred) to move. | Inline | ✅ DONE | 80% | |
+| CMB-020 | `removeTerritoriesWhereTransportsAreExposed()` | 722-820 | Removes attack options that would leave transports undefended and vulnerable to enemy counter-attack. | [`remove_territories_where_transports_are_exposed_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 75% | |
+| CMB-021 | └─ `for (Territory t)` | 735-815 | Checks each attack to see if committed units would leave nearby transports exposed. | Loop | ✅ DONE | 75% | |
+| CMB-022 | `determineUnitsToAttackWith()` | 822-896 | Assigns specific units to each selected attack. Balances unit usage across multiple attacks. | [`determine_units_to_attack_with_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 80% | |
+| CMB-023 | └─ `for (ProTerritory patd)` | 835-892 | For each territory to attack, assigns units from potential attackers pool. | Outer loop | ✅ DONE | 80% | |
+| CMB-024 | └─ └─ Sort by attack options | 845-860 | Sorts units by number of attack options (units with fewer options assigned first). | Sort | ✅ DONE | 75% | |
+| CMB-025 | └─ └─ `for (Unit unit)` assignment | 865-890 | Assigns each unit to the attack, tracking used units to avoid double-assignment. | Inner loop | ✅ DONE | 80% | |
+| CMB-026 | `tryToAttackTerritories()` | 1245-1778 | Main attack execution logic with 6 phases: trivial wins, fill attacks, destroyers, limit units, excess attackers, validation. | [`try_to_attack_territories_triplea()`](src/pro_combat_move_triplea_methods.odin) | 🔶 PARTIAL | 65% | 4 phases vs 6 |
+| CMB-027 | └─ **Phase 1: Trivial wins** | 1257-1320 | First pass: assigns minimum units needed for guaranteed wins (≥99% probability). Handles easy captures efficiently. | Phase 1 | ✅ DONE | 85% | |
+| CMB-028 | └─ └─ `for (ProTerritory patd)` sorted by value | 1265-1315 | Iterates through territories sorted by attack value, handling easiest wins first. | `#region CMB-028` | ✅ DONE | 85% | |
+| CMB-029 | └─ └─ └─ Find necessary units | 1275-1295 | Calculates minimum units needed to achieve 99%+ win probability. | Inline | ✅ DONE | 80% | |
+| CMB-030 | └─ └─ └─ Check win ≥99% | 1300-1310 | Verifies attack is essentially guaranteed before committing units. | Check | ✅ DONE | 85% | |
+| CMB-031 | └─ **Phase 2: Fill non-trivial** | 1322-1400 | Second pass: adds units to attacks that need more forces to reach acceptable win%. | Phase 2 | ✅ DONE | 80% | |
+| CMB-032 | └─ └─ `for (ProTerritory patd)` remaining | 1330-1395 | Iterates through attacks still needing units. | `#region CMB-032` | ✅ DONE | 80% | |
+| CMB-033 | └─ └─ └─ `for (Unit unit)` sorted by options | 1340-1385 | Adds units one at a time, preferring units with fewer alternative attack options. | Inner loop | ✅ DONE | 75% | |
+| CMB-034 | └─ └─ └─ └─ Add if improves win% | 1350-1380 | Only adds unit if it meaningfully improves win probability without wasting value. | Check | ✅ DONE | 80% | |
+| CMB-035 | └─ **Phase 3: Add destroyers for subs** | 1402-1478 | Ensures attacks against submarines include at least one destroyer to enable sub hits. | Phase 3 | ✅ DONE | 85% | |
+| CMB-036 | └─ └─ `for (ProTerritory patd)` missing destroyers | 1410-1470 | Finds sea attacks with subs but no destroyer assigned. | Loop | ✅ DONE | 85% | |
+| CMB-037 | └─ └─ └─ `for (Unit destroyer)` multi-options | 1420-1465 | Assigns destroyers from available pool, preferring ones with multiple attack options. | Inner loop | ✅ DONE | 80% | |
+| CMB-038 | └─ **Phase 4: Limit if can't hold** | 1480-1512 | For territories that can't be held post-conquest, reduces attacking force to minimize losses. | Phase 4 | ✅ DONE | 80% | |
+| CMB-039 | └─ └─ `for (ProTerritory patd)` !canHold | 1485-1508 | Iterates through attacks where we'll lose the territory after. | Loop | ✅ DONE | 80% | |
+| CMB-040 | └─ └─ └─ Check 1 less unit still wins | 1490-1505 | Removes units one at a time while still maintaining victory, saving TUV. | Check | ✅ DONE | 80% | |
+| CMB-041 | └─ **Phase 5: Use excess attackers** | 1514-1560 | Redistributes excess units (>150% needed) from over-committed attacks to under-committed ones. | ❌ MISSING | ❌ MISSING | 0% | Not implemented |
+| CMB-042 | └─ └─ `for (ProTerritory patd)` strafing | 1520-1555 | Finds attacks with significant excess force that could be used elsewhere. | ❌ MISSING | ❌ MISSING | 0% | |
+| CMB-043 | └─ └─ └─ `for (Unit unit)` excess (>150%) | 1530-1550 | Moves excess units to attacks that need reinforcement. | ❌ MISSING | ❌ MISSING | 0% | |
+| CMB-044 | └─ **Phase 6: Validate & Log** | 1562-1778 | Final validation of all attacks. Checks transport restrictions, sub retreat rules, and logs summary. | 🔶 PARTIAL | 🔶 PARTIAL | 50% | |
+| CMB-045 | └─ └─ Transport casualty restriction check | 1580-1610 | Verifies attacks don't violate transport casualty restriction rules (some maps require transports to be taken as casualties last). | ❌ MISSING | ❌ MISSING | 0% | |
+| CMB-046 | └─ └─ Sub retreat before battle calc | 1620-1650 | Calculates whether enemy subs should retreat before battle based on destroyer presence. | ❌ MISSING | ❌ MISSING | 0% | |
+| CMB-047 | └─ └─ Log attack summary | 1700-1770 | Outputs detailed log of all planned attacks for debugging. | [`log_attack_moves()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 90% | |
+| CMB-048 | `checkContestedSeaTerritories()` | 1875-1945 | Handles contested sea zones where both sides have units. May need to clear with subs or avoid. | [`check_contested_sea_territories_triplea()`](src/pro_combat_move_triplea_methods.odin) | 🔄 STUB | 10% | |
+| CMB-049 | └─ `for (Territory t)` contested sea | 1885-1940 | Iterates through sea zones with both friendly and enemy units. | Loop | 🔄 STUB | 10% | |
+| CMB-050 | `doMove()` execute moves | 176-190 | Executes all planned combat moves by calling move delegate. Handles move failures gracefully. | [`execute_combat_moves_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 90% | |
 
 ---
 
 ### ProNonCombatMoveAi.java - Non-Combat Move Logic (2,541 lines)
 
-| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Notes |
-|----|------------------|-------|-------------|-----------------|--------|-------|
-| NCM-001 | `doNonCombatMove()` main entry | 76-198 | Main non-combat move phase entry point. Orchestrates defensive positioning, air landing, transport loading, and infrastructure movement. | [`proai_noncombat_move_phase()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | |
-| NCM-002 | `findUnitsThatCantMove()` | 200-255 | Identifies units that cannot move this turn: consumed units, allied defenders, zero-movement units, newly placed units. | ❌ MISSING | Not implemented |
-| NCM-003 | └─ `for (Unit unit)` consumed units | 210-250 | Iterates through units being consumed for production or other purposes. | ❌ MISSING | |
-| NCM-004 | `findInfraUnitsThatCanMove()` | 257-275 | Identifies infrastructure units (AA guns, mobile factories) that can be moved during non-combat. | ❌ MISSING | Not implemented |
-| NCM-005 | └─ `for (Territory t)` | 262-272 | Scans territories for moveable infrastructure. | ❌ MISSING | |
-| NCM-006 | `moveOneDefenderToLandTerritoriesBorderingEnemy()` | 277-360 | Same as combat move version - ensures border territories have at least one defender. | [`move_one_defender_noncombat()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | |
-| NCM-007 | └─ `for (Territory t)` empty borders | 290-355 | Finds empty territories adjacent to enemy and assigns defenders. | Loop | 🔶 PARTIAL | |
-| NCM-008 | └─ └─ Find cheapest adjacent unit | 305-340 | Searches for cheapest unit to move as defender. | Inline | 🔶 PARTIAL | |
-| NCM-009 | `determineIfMoveTerritoriesCanBeHeld()` | 362-440 | Calculates whether each territory can be held against enemy attack with current + potential defenders. | [`determine_if_territories_can_be_held()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | |
-| NCM-010 | └─ `for (ProTerritory t)` | 375-435 | Iterates through territories running battle simulations. | Loop | 🔶 PARTIAL | |
-| NCM-011 | └─ └─ Battle simulation | 390-420 | Simulates enemy attack to determine if territory is defensible. | Sim | 🔶 PARTIAL | |
-| NCM-012 | `prioritizeDefendOptions()` | 442-510 | Ranks territories by defense priority based on production, capital proximity, and strategic value. | [`prioritize_defend_options()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | |
-| NCM-013 | └─ `for (ProTerritory t)` calc priority | 455-505 | Calculates defense priority score for each territory. | Loop | 🔶 PARTIAL | |
-| NCM-014 | **Capital Defense Loop** | 130-165 | **CRITICAL**: Outer loop that repeatedly adjusts defense until capital has local superiority. May increase defense range multiple times. | ❌ MISSING | **CRITICAL** |
-| NCM-015 | └─ `while (true)` | 130-165 | Keeps iterating until capital is adequately defended or no more options. | ❌ MISSING | |
-| NCM-016 | └─ └─ `for (ProTerritory t)` adjust values | 140-150 | Adjusts territory values based on distance to capital to prioritize capital defense. | ❌ MISSING | |
-| NCM-017 | └─ └─ `moveUnitsToBestTerritories()` | 152 | Moves units to defensive positions. | Partial | 🔶 PARTIAL | |
-| NCM-018 | └─ └─ Check capital local superiority | 155-160 | Checks if capital now has enough defenders. If not, increases defense range and repeats. | ❌ MISSING | |
-| NCM-019 | └─ └─ Reset + increase defenseRange | 162-164 | Increases search range for defenders and resets move data for another pass. | ❌ MISSING | |
-| NCM-020 | `moveUnitsToDefendTerritories()` | 630-960 | Assigns units to defend threatened territories. Uses greedy assignment with battle simulation validation. | [`move_units_to_defend_territories()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | |
-| NCM-021 | └─ `while` decreasing territories loop | 650-955 | Outer loop that reduces number of defended territories if not enough units to defend all. | Outer while | 🔶 PARTIAL | |
-| NCM-022 | └─ └─ `for (ProTerritory t)` to defend | 665-850 | Iterates through territories needing defense. | Loop | 🔶 PARTIAL | |
-| NCM-023 | └─ └─ └─ `for (Unit unit)` with move options | 680-830 | For each unit that can reach, considers adding to defense. | Inner loop | 🔶 PARTIAL | |
-| NCM-024 | └─ └─ └─ └─ Add if improves defense | 700-810 | Adds unit if battle simulation shows improved defense without wasting TUV. | Check | 🔶 PARTIAL | |
-| NCM-025 | └─ └─ **Amphib defense options** | 860-950 | Considers using transports to bring defenders via amphibious movement. | ❌ MISSING | |
-| NCM-026 | └─ └─ └─ `for (transport)` in transportMapList | 870-940 | Iterates through available transports for amphibious reinforcement. | ❌ MISSING | |
-| NCM-027 | └─ └─ └─ └─ Find units to load | 880-910 | Identifies units that could be loaded onto transport for defensive movement. | ❌ MISSING | |
-| NCM-028 | └─ └─ └─ └─ Find safest unload zone | 915-935 | Finds safest sea zone to unload defenders at destination. | ❌ MISSING | |
-| NCM-029 | `moveUnitsToBestTerritories()` | 962-1840 | Large method with 12 blocks moving different unit types to optimal positions. Handles transports, sea units, land units, and air. | [`move_units_to_best_territories()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | ~45% |
-| NCM-030 | └─ **Block 1: Transport amphib to land** | 985-1100 | Moves loaded transports to unload at high-value land territories. Key for offensive positioning. | ❌ MISSING | |
-| NCM-031 | └─ └─ `for (proTransportData)` transportMapList | 995-1095 | Iterates through transport movement data structures. | ❌ MISSING | |
-| NCM-032 | └─ └─ └─ `for (transport)` in transportMap | 1000-1090 | For each transport, finds best destination. | ❌ MISSING | |
-| NCM-033 | └─ └─ └─ └─ Find best land by value | 1010-1040 | Evaluates reachable land territories by strategic value for unloading. | ❌ MISSING | |
-| NCM-034 | └─ └─ └─ └─ `for` find units to load | 1045-1065 | If transport not full, finds additional units to load from adjacent land. | ❌ MISSING | |
-| NCM-035 | └─ └─ └─ └─ `for` find safest unload sea | 1070-1085 | Selects safest sea zone for the unload operation. | ❌ MISSING | |
-| NCM-036 | └─ **Block 2: Transport amphib to sea** | 1100-1180 | Moves transports to strategic sea positions even if not unloading. For future turn positioning. | ❌ MISSING | |
-| NCM-037 | └─ └─ Similar structure | 1105-1175 | Same pattern as Block 1 but for sea-only destinations. | ❌ MISSING | |
-| NCM-038 | └─ **Block 3: Empty transports to loading** | 1185-1280 | Moves empty transports towards territories with units waiting to be loaded (near factories). | ❌ MISSING | |
-| NCM-039 | └─ └─ `for (transport)` empty | 1195-1275 | Iterates through empty transports. | ❌ MISSING | |
-| NCM-040 | └─ └─ └─ Calc load territory priorities | 1205-1240 | Calculates which territories have units that should be transported. | ❌ MISSING | |
-| NCM-041 | └─ └─ └─ Move to factory-adjacent sea | 1250-1270 | Moves transport to sea zone adjacent to factory for next-turn loading. | ❌ MISSING | |
-| NCM-042 | └─ **Block 4: Remaining transports to safety** | 1285-1400 | Moves transports that couldn't find good destinations to safest available sea zone. | ❌ MISSING | |
-| NCM-043 | └─ └─ `for (transport)` remaining | 1295-1395 | Iterates through transports not yet moved. | ❌ MISSING | |
-| NCM-044 | └─ └─ └─ Find safest sea zone | 1305-1350 | Evaluates sea zones by enemy threat to find safest destination. | ❌ MISSING | |
-| NCM-045 | └─ └─ └─ Try unload if carrying | 1355-1390 | If transport is carrying units, tries to unload at safe location rather than risk losing cargo. | ❌ MISSING | |
-| NCM-046 | └─ **Block 5: Sea units defend transports** | 1500-1560 | Moves warships to protect vulnerable transports from enemy attack. | ❌ MISSING | |
-| NCM-047 | └─ └─ `for (Unit sea)` | 1510-1555 | Iterates through available warships. | ❌ MISSING | |
-| NCM-048 | └─ └─ └─ Check transport needs escort | 1520-1545 | Identifies transports that lack adequate protection. | ❌ MISSING | |
-| NCM-049 | └─ **Block 6: Air units defend transports** | 1560-1600 | Moves fighters to carriers to provide air cover for transport fleets. | ❌ MISSING | |
-| NCM-050 | └─ └─ `for (fighter)` | 1570-1595 | Iterates through fighters that could land on carriers. | ❌ MISSING | |
-| NCM-051 | └─ **Block 7: Sea units to best location** | 1600-1730 | Moves remaining warships to strategically valuable sea zones. | [`move_sea_units_noncombat()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | |
-| NCM-052 | └─ └─ `for (Unit sea)` remaining | 1610-1725 | Iterates through warships not assigned to escort duty. | Loop | 🔶 PARTIAL | |
-| NCM-053 | └─ └─ └─ Calc sea value + transport presence | 1620-1700 | Calculates sea zone value considering strategic importance and transport presence. | Simplified | 🔶 PARTIAL | |
-| NCM-054 | └─ **Block 8: Land units to high value** | 1842-1904 | Moves land units towards high strategic value territories (production centers, enemy borders). | [`move_land_units_noncombat()`](src/pro_noncombat_move.odin) | ✅ DONE | |
-| NCM-055 | └─ └─ `for (Unit land)` | 1850-1900 | Iterates through land units to find optimal destinations. | `#region NCM-055` | ✅ DONE | |
-| NCM-056 | └─ **Block 9: Land to coastal factories** | 1910-1944 | Moves land units to coastal factories for potential transport loading next turn. | Inline | ✅ DONE | |
-| NCM-057 | └─ └─ `for (Unit land)` | 1918-1940 | Moves units towards coasts for amphib operations. | `#region NCM-057` | ✅ DONE | |
-| NCM-058 | └─ **Block 10: Land to safest** | 1950-1989 | Moves remaining land units to safest available territory (away from enemy threat). | Inline | ✅ DONE | |
-| NCM-059 | └─ └─ `for (Unit land)` | 1958-1985 | Final pass for land units without good offensive destination. | `#region NCM-059` | ✅ DONE | |
-| NCM-060 | └─ **Block 11: Air to safe with attack options** | 2000-2110 | Lands air units at territories that are safe AND provide good attack options for next turn. | [`land_fighters_noncombat()`](src/pro_noncombat_move.odin) | ✅ DONE | |
-| NCM-061 | └─ └─ `for (Unit air)` | 2010-2105 | Iterates through air units needing landing locations. | `#region NCM-061` | ✅ DONE | |
-| NCM-062 | └─ **Block 12: Air to safest** | 2115-2160 | Lands remaining air units at safest available territory (carriers or defended land). | Inline | ✅ DONE | |
-| NCM-063 | └─ └─ `for (Unit air)` | 2125-2155 | Final pass ensuring all air units have legal landing spots. | `#region NCM-063` | ✅ DONE | |
-| NCM-064 | `moveCarrierFighters()` | 2165-2175 | Special handling for fighters on carriers - ensures carrier moves with its fighters. | ❌ MISSING | |
-| NCM-065 | └─ `for (fighter)` on carriers | 2168-2173 | Coordinates carrier and fighter movement. | ❌ MISSING | |
-| NCM-066 | `moveInfraUnits()` | 2177-2475 | Moves infrastructure units (AA guns, mobile factories) to optimal locations. | ❌ MISSING | Infrastructure |
-| NCM-067 | └─ `moveInfrastructure()` AA guns | 2185-2300 | Moves AA guns to protect valuable factories from strategic bombing. | ❌ MISSING | |
-| NCM-068 | └─ └─ `for (Unit aa)` | 2195-2295 | Iterates through AA guns to find best destinations. | ❌ MISSING | |
-| NCM-069 | └─ └─ └─ Find best factory to protect | 2210-2280 | Evaluates factories by bombing vulnerability and current AA coverage. | ❌ MISSING | |
-| NCM-070 | └─ `moveFactoriesIfMobile()` | 2305-2400 | For maps with mobile factories, moves them to optimal production locations. | ❌ MISSING | |
-| NCM-071 | └─ └─ `for (Unit factory)` mobile | 2315-2395 | Iterates through mobile factories. | ❌ MISSING | |
-| NCM-072 | └─ `checkNeedToConsumeUnits()` | 2405-2440 | Checks if any units need to be consumed for production (some map mechanics). | ❌ MISSING | |
-| NCM-073 | └─ `findBestPathToTerritoryUsingLandRoutes()` BFS | 2445-2475 | Multi-turn pathfinding using BFS to find optimal route to distant territories. | ❌ MISSING | |
-| NCM-074 | └─ └─ BFS loop with distance tracking | 2450-2470 | Breadth-first search through land connections with movement cost tracking. | ❌ MISSING | |
-| NCM-075 | `doMove()` execute moves | 195-198 | Executes all planned non-combat moves via move delegate. | [`execute_noncombat_moves()`](src/pro_noncombat_move.odin) | ✅ DONE | |
+| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
+|----|------------------|-------|-------------|-----------------|--------|-------|-------|
+| NCM-001 | `doNonCombatMove()` main entry | 76-198 | Main non-combat move phase entry point. Orchestrates defensive positioning, air landing, transport loading, and infrastructure movement. | [`proai_noncombat_move_phase()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 55% | |
+| NCM-002 | `findUnitsThatCantMove()` | 200-255 | Identifies units that cannot move this turn: consumed units, allied defenders, zero-movement units, newly placed units. | ❌ MISSING | ❌ MISSING | 0% | Not implemented |
+| NCM-003 | └─ `for (Unit unit)` consumed units | 210-250 | Iterates through units being consumed for production or other purposes. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-004 | `findInfraUnitsThatCanMove()` | 257-275 | Identifies infrastructure units (AA guns, mobile factories) that can be moved during non-combat. | ❌ MISSING | ❌ MISSING | 0% | Not implemented |
+| NCM-005 | └─ `for (Territory t)` | 262-272 | Scans territories for moveable infrastructure. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-006 | `moveOneDefenderToLandTerritoriesBorderingEnemy()` | 277-360 | Same as combat move version - ensures border territories have at least one defender. | [`move_one_defender_noncombat()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 60% | |
+| NCM-007 | └─ `for (Territory t)` empty borders | 290-355 | Finds empty territories adjacent to enemy and assigns defenders. | Loop | 🔶 PARTIAL | 60% | |
+| NCM-008 | └─ └─ Find cheapest adjacent unit | 305-340 | Searches for cheapest unit to move as defender. | Inline | 🔶 PARTIAL | 55% | |
+| NCM-009 | `determineIfMoveTerritoriesCanBeHeld()` | 362-440 | Calculates whether each territory can be held against enemy attack with current + potential defenders. | [`determine_if_territories_can_be_held()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 60% | |
+| NCM-010 | └─ `for (ProTerritory t)` | 375-435 | Iterates through territories running battle simulations. | Loop | 🔶 PARTIAL | 60% | |
+| NCM-011 | └─ └─ Battle simulation | 390-420 | Simulates enemy attack to determine if territory is defensible. | Sim | 🔶 PARTIAL | 70% | |
+| NCM-012 | `prioritizeDefendOptions()` | 442-510 | Ranks territories by defense priority based on production, capital proximity, and strategic value. | [`prioritize_defend_options()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 55% | |
+| NCM-013 | └─ `for (ProTerritory t)` calc priority | 455-505 | Calculates defense priority score for each territory. | Loop | 🔶 PARTIAL | 55% | |
+| NCM-014 | **Capital Defense Loop** | 130-165 | **CRITICAL**: Outer loop that repeatedly adjusts defense until capital has local superiority. May increase defense range multiple times. | ❌ MISSING | ❌ MISSING | 0% | **CRITICAL** |
+| NCM-015 | └─ `while (true)` | 130-165 | Keeps iterating until capital is adequately defended or no more options. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-016 | └─ └─ `for (ProTerritory t)` adjust values | 140-150 | Adjusts territory values based on distance to capital to prioritize capital defense. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-017 | └─ └─ `moveUnitsToBestTerritories()` | 152 | Moves units to defensive positions. | Partial | 🔶 PARTIAL | 45% | |
+| NCM-018 | └─ └─ Check capital local superiority | 155-160 | Checks if capital now has enough defenders. If not, increases defense range and repeats. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-019 | └─ └─ Reset + increase defenseRange | 162-164 | Increases search range for defenders and resets move data for another pass. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-020 | `moveUnitsToDefendTerritories()` | 630-960 | Assigns units to defend threatened territories. Uses greedy assignment with battle simulation validation. | [`move_units_to_defend_territories()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 50% | |
+| NCM-021 | └─ `while` decreasing territories loop | 650-955 | Outer loop that reduces number of defended territories if not enough units to defend all. | Outer while | 🔶 PARTIAL | 45% | |
+| NCM-022 | └─ └─ `for (ProTerritory t)` to defend | 665-850 | Iterates through territories needing defense. | Loop | 🔶 PARTIAL | 50% | |
+| NCM-023 | └─ └─ └─ `for (Unit unit)` with move options | 680-830 | For each unit that can reach, considers adding to defense. | Inner loop | 🔶 PARTIAL | 50% | |
+| NCM-024 | └─ └─ └─ └─ Add if improves defense | 700-810 | Adds unit if battle simulation shows improved defense without wasting TUV. | Check | 🔶 PARTIAL | 55% | |
+| NCM-025 | └─ └─ **Amphib defense options** | 860-950 | Considers using transports to bring defenders via amphibious movement. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-026 | └─ └─ └─ `for (transport)` in transportMapList | 870-940 | Iterates through available transports for amphibious reinforcement. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-027 | └─ └─ └─ └─ Find units to load | 880-910 | Identifies units that could be loaded onto transport for defensive movement. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-028 | └─ └─ └─ └─ Find safest unload zone | 915-935 | Finds safest sea zone to unload defenders at destination. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-029 | `moveUnitsToBestTerritories()` | 962-1840 | Large method with 12 blocks moving different unit types to optimal positions. Handles transports, sea units, land units, and air. | [`move_units_to_best_territories()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 45% | ~45% |
+| NCM-030 | └─ **Block 1: Transport amphib to land** | 985-1100 | Moves loaded transports to unload at high-value land territories. Key for offensive positioning. | ❌ MISSING | ❌ MISSING | 0% | **KEY MISSING** |
+| NCM-031 | └─ └─ `for (proTransportData)` transportMapList | 995-1095 | Iterates through transport movement data structures. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-032 | └─ └─ └─ `for (transport)` in transportMap | 1000-1090 | For each transport, finds best destination. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-033 | └─ └─ └─ └─ Find best land by value | 1010-1040 | Evaluates reachable land territories by strategic value for unloading. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-034 | └─ └─ └─ └─ `for` find units to load | 1045-1065 | If transport not full, finds additional units to load from adjacent land. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-035 | └─ └─ └─ └─ `for` find safest unload sea | 1070-1085 | Selects safest sea zone for the unload operation. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-036 | └─ **Block 2: Transport amphib to sea** | 1100-1180 | Moves transports to strategic sea positions even if not unloading. For future turn positioning. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-037 | └─ └─ Similar structure | 1105-1175 | Same pattern as Block 1 but for sea-only destinations. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-038 | └─ **Block 3: Empty transports to loading** | 1185-1280 | Moves empty transports towards territories with units waiting to be loaded (near factories). | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-039 | └─ └─ `for (transport)` empty | 1195-1275 | Iterates through empty transports. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-040 | └─ └─ └─ Calc load territory priorities | 1205-1240 | Calculates which territories have units that should be transported. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-041 | └─ └─ └─ Move to factory-adjacent sea | 1250-1270 | Moves transport to sea zone adjacent to factory for next-turn loading. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-042 | └─ **Block 4: Remaining transports to safety** | 1285-1400 | Moves transports that couldn't find good destinations to safest available sea zone. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-043 | └─ └─ `for (transport)` remaining | 1295-1395 | Iterates through transports not yet moved. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-044 | └─ └─ └─ Find safest sea zone | 1305-1350 | Evaluates sea zones by enemy threat to find safest destination. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-045 | └─ └─ └─ Try unload if carrying | 1355-1390 | If transport is carrying units, tries to unload at safe location rather than risk losing cargo. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-046 | └─ **Block 5: Sea units defend transports** | 1500-1560 | Moves warships to protect vulnerable transports from enemy attack. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-047 | └─ └─ `for (Unit sea)` | 1510-1555 | Iterates through available warships. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-048 | └─ └─ └─ Check transport needs escort | 1520-1545 | Identifies transports that lack adequate protection. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-049 | └─ **Block 6: Air units defend transports** | 1560-1600 | Moves fighters to carriers to provide air cover for transport fleets. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-050 | └─ └─ `for (fighter)` | 1570-1595 | Iterates through fighters that could land on carriers. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-051 | └─ **Block 7: Sea units to best location** | 1600-1730 | Moves remaining warships to strategically valuable sea zones. | [`move_sea_units_noncombat()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 55% | |
+| NCM-052 | └─ └─ `for (Unit sea)` remaining | 1610-1725 | Iterates through warships not assigned to escort duty. | Loop | 🔶 PARTIAL | 55% | |
+| NCM-053 | └─ └─ └─ Calc sea value + transport presence | 1620-1700 | Calculates sea zone value considering strategic importance and transport presence. | Simplified | 🔶 PARTIAL | 45% | |
+| NCM-054 | └─ **Block 8: Land units to high value** | 1842-1904 | Moves land units towards high strategic value territories (production centers, enemy borders). | [`move_land_units_noncombat()`](src/pro_noncombat_move.odin) | ✅ DONE | 85% | |
+| NCM-055 | └─ └─ `for (Unit land)` | 1850-1900 | Iterates through land units to find optimal destinations. | `#region NCM-055` | ✅ DONE | 85% | |
+| NCM-056 | └─ **Block 9: Land to coastal factories** | 1910-1944 | Moves land units to coastal factories for potential transport loading next turn. | Inline | ✅ DONE | 80% | |
+| NCM-057 | └─ └─ `for (Unit land)` | 1918-1940 | Moves units towards coasts for amphib operations. | `#region NCM-057` | ✅ DONE | 80% | |
+| NCM-058 | └─ **Block 10: Land to safest** | 1950-1989 | Moves remaining land units to safest available territory (away from enemy threat). | Inline | ✅ DONE | 80% | |
+| NCM-059 | └─ └─ `for (Unit land)` | 1958-1985 | Final pass for land units without good offensive destination. | `#region NCM-059` | ✅ DONE | 80% | |
+| NCM-060 | └─ **Block 11: Air to safe with attack options** | 2000-2110 | Lands air units at territories that are safe AND provide good attack options for next turn. | [`land_fighters_noncombat()`](src/pro_noncombat_move.odin) | ✅ DONE | 85% | |
+| NCM-061 | └─ └─ `for (Unit air)` | 2010-2105 | Iterates through air units needing landing locations. | `#region NCM-061` | ✅ DONE | 85% | |
+| NCM-062 | └─ **Block 12: Air to safest** | 2115-2160 | Lands remaining air units at safest available territory (carriers or defended land). | Inline | ✅ DONE | 80% | |
+| NCM-063 | └─ └─ `for (Unit air)` | 2125-2155 | Final pass ensuring all air units have legal landing spots. | `#region NCM-063` | ✅ DONE | 80% | |
+| NCM-064 | `moveCarrierFighters()` | 2165-2175 | Special handling for fighters on carriers - ensures carrier moves with its fighters. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-065 | └─ `for (fighter)` on carriers | 2168-2173 | Coordinates carrier and fighter movement. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-066 | `moveInfraUnits()` | 2177-2475 | Moves infrastructure units (AA guns, mobile factories) to optimal locations. | ❌ MISSING | ❌ MISSING | 0% | Infrastructure |
+| NCM-067 | └─ `moveInfrastructure()` AA guns | 2185-2300 | Moves AA guns to protect valuable factories from strategic bombing. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-068 | └─ └─ `for (Unit aa)` | 2195-2295 | Iterates through AA guns to find best destinations. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-069 | └─ └─ └─ Find best factory to protect | 2210-2280 | Evaluates factories by bombing vulnerability and current AA coverage. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-070 | └─ `moveFactoriesIfMobile()` | 2305-2400 | For maps with mobile factories, moves them to optimal production locations. | ❌ MISSING | ❌ MISSING | N/A | Mobile factories N/A |
+| NCM-071 | └─ └─ `for (Unit factory)` mobile | 2315-2395 | Iterates through mobile factories. | ❌ MISSING | ❌ MISSING | N/A | |
+| NCM-072 | └─ `checkNeedToConsumeUnits()` | 2405-2440 | Checks if any units need to be consumed for production (some map mechanics). | ❌ MISSING | ❌ MISSING | N/A | N/A for 1942 SE |
+| NCM-073 | └─ `findBestPathToTerritoryUsingLandRoutes()` BFS | 2445-2475 | Multi-turn pathfinding using BFS to find optimal route to distant territories. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-074 | └─ └─ BFS loop with distance tracking | 2450-2470 | Breadth-first search through land connections with movement cost tracking. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-075 | `doMove()` execute moves | 195-198 | Executes all planned non-combat moves via move delegate. | [`execute_noncombat_moves()`](src/pro_noncombat_move.odin) | ✅ DONE | 90% | |
 
 ---
 
 ### ProTerritoryManager.java - Territory Analysis (1,277 lines)
 
-| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Notes |
-|----|------------------|-------|-------------|-----------------|--------|-------|
-| TM-001 | `populateAttackOptions()` | 50-85 | Entry point that calls findAttackOptions() to populate the attack map with all possible attack destinations and available attackers. | [`populate_attack_options()`](src/pro_territory_manager.odin) | ✅ DONE | |
-| TM-002 | └─ `findAttackOptions()` | 600-900 | Core method that iterates through all friendly units and identifies which enemy territories each can reach and attack. | Called | ✅ DONE | |
-| TM-003 | └─ └─ `for (Unit land)` with movement | 620-700 | For each land unit, finds all enemy territories within movement range and adds unit as potential attacker. | Loop | ✅ DONE | |
-| TM-004 | └─ └─ `for (Unit air)` | 710-780 | For each air unit, finds all enemy territories within flight range (considering return path) and adds as attacker. | Loop | ✅ DONE | |
-| TM-005 | └─ └─ `for (Unit transport)` amphib | 790-860 | For each loaded transport, finds coastal territories it can reach and adds cargo as potential amphibious attackers. | Loop | 🔶 PARTIAL | |
-| TM-006 | └─ └─ `for (Unit naval)` | 870-900 | For each warship, identifies enemy sea zones it can attack plus bombardment opportunities for coastal territories. | Loop | 🔶 PARTIAL | |
-| TM-007 | `populateDefendOptions()` | 86-120 | Entry point for defense analysis. Identifies which friendly units can reach each threatened territory as defenders. | [`populate_defend_options()`](src/pro_territory_manager.odin) | ✅ DONE | |
-| TM-008 | └─ `findDefendOptions()` | 400-580 | Core defense method - finds all units that could potentially move to defend each territory. | Called | 🔶 PARTIAL | |
-| TM-009 | └─ └─ `for (Unit land)` friendly | 420-480 | For each land unit, calculates which friendly territories it can reach to provide defense. | Loop | ✅ DONE | |
-| TM-010 | └─ └─ `for (Unit air)` | 490-540 | For each fighter/bomber, identifies territories within range that could use air defense. | Loop | ✅ DONE | |
-| TM-011 | └─ └─ `for (transport)` reinforcement | 550-575 | Identifies transports that could bring amphibious reinforcements to threatened coastal territories. | Loop | 🔶 PARTIAL | |
-| TM-012 | `populateEnemyAttackOptions()` | 125-131 | Entry for enemy threat analysis. Generates attack options for each enemy player separately for accurate threat assessment. | [`generate_all_enemy_attack_options()`](src/pro_enemy_attacks.odin) | ✅ DONE | |
-| TM-013 | └─ `findEnemyAttackOptions()` | 300-400 | Per-enemy version of findAttackOptions. Tracks what each enemy can attack independently. | [`generate_single_enemy_attack_options()`](src/pro_enemy_attacks.odin) | ✅ DONE | |
-| TM-014 | └─ └─ `for (enemy player)` | 310-395 | Iterates through each enemy player to generate separate attack option sets. | `#region TM-014` | ✅ DONE | |
-| TM-015 | └─ └─ └─ `for (Unit land)` | 320-350 | For each enemy land unit, calculates territories it threatens. | Loop | ✅ DONE | |
-| TM-016 | └─ └─ └─ `for (Unit air)` | 355-380 | For each enemy air unit, calculates territories within strike range. | Loop | ✅ DONE | |
-| TM-017 | └─ └─ └─ `for (Unit naval)` | 385-395 | For each enemy ship, identifies sea zones and bombardment targets it threatens. | Loop | ✅ DONE | |
-| TM-018 | `populateEnemyDefenseOptions()` | 132-135 | Analyzes enemy defensive capabilities including scramble-capable airbases and reserve forces. | ❌ MISSING | |
-| TM-019 | └─ `findScrambleOptions()` | 500-580 | Identifies airbases that can scramble fighters to defend adjacent sea zones (map-specific rule). | ❌ MISSING | Scramble N/A |
-| TM-020 | └─ └─ `for (airbase)` | 510-575 | Checks each airbase for scramble capability and available fighters. | ❌ MISSING | |
-| TM-021 | └─ `findEnemyDefendOptions()` | 580-600 | Finds enemy units that could reinforce threatened territories on enemy's turn. | ❌ MISSING | |
-| TM-022 | `removeTerritoriesThatCantBeConquered()` | 140-300 | Filters attack options by running battle simulations and removing attacks that can't win. | 🔶 PARTIAL | |
-| TM-023 | └─ `for (Territory t)` in attackMap | 155-295 | Iterates through each attack option and runs simulation to check win probability. | Loop | 🔶 PARTIAL | |
-| TM-024 | └─ └─ Battle simulation | 170-200 | Runs Monte Carlo battle sim to determine attack success probability. | Sim | ✅ DONE | |
-| TM-025 | └─ └─ Strafing check for allies | 210-280 | For allies, checks if strafing attack (attack and retreat) is worthwhile when conquest isn't possible. | ❌ MISSING | |
+| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
+|----|------------------|-------|-------------|-----------------|--------|-------|-------|
+| TM-001 | `populateAttackOptions()` | 50-85 | Entry point that calls findAttackOptions() to populate the attack map with all possible attack destinations and available attackers. | [`populate_attack_options()`](src/pro_territory_manager.odin) | ✅ DONE | 85% | |
+| TM-002 | └─ `findAttackOptions()` | 600-900 | Core method that iterates through all friendly units and identifies which enemy territories each can reach and attack. | Called | ✅ DONE | 85% | |
+| TM-003 | └─ └─ `for (Unit land)` with movement | 620-700 | For each land unit, finds all enemy territories within movement range and adds unit as potential attacker. | Loop | ✅ DONE | 90% | |
+| TM-004 | └─ └─ `for (Unit air)` | 710-780 | For each air unit, finds all enemy territories within flight range (considering return path) and adds as attacker. | Loop | ✅ DONE | 85% | |
+| TM-005 | └─ └─ `for (Unit transport)` amphib | 790-860 | For each loaded transport, finds coastal territories it can reach and adds cargo as potential amphibious attackers. | Loop | 🔶 PARTIAL | 70% | |
+| TM-006 | └─ └─ `for (Unit naval)` | 870-900 | For each warship, identifies enemy sea zones it can attack plus bombardment opportunities for coastal territories. | Loop | 🔶 PARTIAL | 65% | |
+| TM-007 | `populateDefendOptions()` | 86-120 | Entry point for defense analysis. Identifies which friendly units can reach each threatened territory as defenders. | [`populate_defend_options()`](src/pro_territory_manager.odin) | ✅ DONE | 80% | |
+| TM-008 | └─ `findDefendOptions()` | 400-580 | Core defense method - finds all units that could potentially move to defend each territory. | Called | 🔶 PARTIAL | 65% | |
+| TM-009 | └─ └─ `for (Unit land)` friendly | 420-480 | For each land unit, calculates which friendly territories it can reach to provide defense. | Loop | ✅ DONE | 80% | |
+| TM-010 | └─ └─ `for (Unit air)` | 490-540 | For each fighter/bomber, identifies territories within range that could use air defense. | Loop | ✅ DONE | 80% | |
+| TM-011 | └─ └─ `for (transport)` reinforcement | 550-575 | Identifies transports that could bring amphibious reinforcements to threatened coastal territories. | Loop | 🔶 PARTIAL | 40% | |
+| TM-012 | `populateEnemyAttackOptions()` | 125-131 | Entry for enemy threat analysis. Generates attack options for each enemy player separately for accurate threat assessment. | [`generate_all_enemy_attack_options()`](src/pro_enemy_attacks.odin) | ✅ DONE | 90% | |
+| TM-013 | └─ `findEnemyAttackOptions()` | 300-400 | Per-enemy version of findAttackOptions. Tracks what each enemy can attack independently. | [`generate_single_enemy_attack_options()`](src/pro_enemy_attacks.odin) | ✅ DONE | 90% | |
+| TM-014 | └─ └─ `for (enemy player)` | 310-395 | Iterates through each enemy player to generate separate attack option sets. | `#region TM-014` | ✅ DONE | 90% | |
+| TM-015 | └─ └─ └─ `for (Unit land)` | 320-350 | For each enemy land unit, calculates territories it threatens. | Loop | ✅ DONE | 90% | |
+| TM-016 | └─ └─ └─ `for (Unit air)` | 355-380 | For each enemy air unit, calculates territories within strike range. | Loop | ✅ DONE | 90% | |
+| TM-017 | └─ └─ └─ `for (Unit naval)` | 385-395 | For each enemy ship, identifies sea zones and bombardment targets it threatens. | Loop | ✅ DONE | 85% | |
+| TM-018 | `populateEnemyDefenseOptions()` | 132-135 | Analyzes enemy defensive capabilities including scramble-capable airbases and reserve forces. | ❌ MISSING | ❌ MISSING | 0% | |
+| TM-019 | └─ `findScrambleOptions()` | 500-580 | Identifies airbases that can scramble fighters to defend adjacent sea zones (map-specific rule). | ❌ MISSING | ❌ MISSING | N/A | Scramble N/A |
+| TM-020 | └─ └─ `for (airbase)` | 510-575 | Checks each airbase for scramble capability and available fighters. | ❌ MISSING | ❌ MISSING | N/A | |
+| TM-021 | └─ `findEnemyDefendOptions()` | 580-600 | Finds enemy units that could reinforce threatened territories on enemy's turn. | ❌ MISSING | ❌ MISSING | 0% | |
+| TM-022 | `removeTerritoriesThatCantBeConquered()` | 140-300 | Filters attack options by running battle simulations and removing attacks that can't win. | 🔶 PARTIAL | 🔶 PARTIAL | 60% | |
+| TM-023 | └─ `for (Territory t)` in attackMap | 155-295 | Iterates through each attack option and runs simulation to check win probability. | Loop | 🔶 PARTIAL | 60% | |
+| TM-024 | └─ └─ Battle simulation | 170-200 | Runs Monte Carlo battle sim to determine attack success probability. | Sim | ✅ DONE | 95% | |
+| TM-025 | └─ └─ Strafing check for allies | 210-280 | For allies, checks if strafing attack (attack and retreat) is worthwhile when conquest isn't possible. | ❌ MISSING | ❌ MISSING | 0% | |
 
 ---
 
 ### ProTransportUtils.java - Transport Utilities (521 lines)
 
-| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Notes |
-|----|------------------|-------|-------------|-----------------|--------|-------|
-| TRN-001 | `getUnusedCarrierCapacity()` | 45-80 | Returns total available fighter slots across all carriers in a sea zone (2 per carrier minus loaded fighters). | ❌ MISSING | |
-| TRN-002 | └─ `for (Unit carrier)` | 55-75 | Iterates through carriers counting capacity and subtracting already-landed fighters. | ❌ MISSING | |
-| TRN-003 | `getUnusedLocalCarrierCapacity()` | 82-120 | Similar to above but only counts carriers that haven't moved yet (can still pick up fighters). | ❌ MISSING | |
-| TRN-004 | └─ `for (Unit carrier)` local | 92-115 | Checks carrier movement status before counting capacity. | ❌ MISSING | |
-| TRN-005 | `getUnitsToTransportThatCantMoveToHigherValue()` | 122-200 | **CRITICAL**: Finds units stranded on low-value territories (islands) that need transport evacuation. Key for UK infantry pileup fix. | ❌ MISSING | **CRITICAL** |
-| TRN-006 | └─ `for (Territory neighbor)` | 135-195 | Checks if any adjacent land has higher strategic value - if not, units are "stranded". | ❌ MISSING | Low-value check |
-| TRN-007 | └─ └─ `for (Unit unit)` | 145-190 | Identifies specific units that should be transported out due to lack of land route to battle. | ❌ MISSING | |
-| TRN-008 | `getUnitsToTransportFromTerritories()` | 202-280 | Gets list of units to load from a set of territories, prioritizing attack units over infantry. | ❌ MISSING | |
-| TRN-009 | └─ `for (Territory t)` | 215-275 | Iterates through source territories for loading. | ❌ MISSING | |
-| TRN-010 | └─ └─ `for (Unit unit)` | 225-270 | Filters units suitable for transport loading (land units with sufficient movement). | ❌ MISSING | |
-| TRN-011 | `selectUnitsToTransportFromList()` | 282-340 | Given excess units, selects optimal subset to fill transport capacity (tanks first, then artillery, then infantry). | ❌ MISSING | |
-| TRN-012 | └─ `while (capacity > 0)` | 295-335 | Greedy loop filling transport capacity with highest-value units first. | ❌ MISSING | |
-| TRN-013 | └─ └─ `for (Unit unit)` best to load | 300-330 | Selects best available unit type to fill remaining capacity. | ❌ MISSING | |
-| TRN-014 | `interleaveUnitsCarriersAndPlanes()` | 342-455 | Complex movement ordering for carrier+fighter fleets. Ensures fighters don't move before their carrier, and carriers don't strand fighters. | ❌ MISSING | 115 lines |
-| TRN-015 | └─ `while (carriers.hasNext())` | 360-450 | Pairs carriers with fighters for coordinated movement. | ❌ MISSING | |
-| TRN-016 | └─ └─ `for (fighter)` per carrier | 375-440 | Assigns fighters to specific carriers and orders movement appropriately. | ❌ MISSING | |
-| TRN-017 | `validateCarrierCapacity()` | 457-490 | Validation check ensuring no carrier is overloaded (max 2 fighters per carrier). | ❌ MISSING | |
-| TRN-018 | └─ `for (Unit carrier)` | 465-485 | Checks each carrier's fighter count doesn't exceed capacity. | ❌ MISSING | |
-| TRN-019 | `getTransportsThatCanTransport()` | 492-521 | Filters transports to only those with available capacity and movement remaining. | 🔶 PARTIAL | |
-| TRN-020 | └─ `for (Unit transport)` | 500-518 | Checks each transport for capacity and movement status. | Loop | 🔶 PARTIAL | |
+| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
+|----|------------------|-------|-------------|-----------------|--------|-------|-------|
+| TRN-001 | `getUnusedCarrierCapacity()` | 45-80 | Returns total available fighter slots across all carriers in a sea zone (2 per carrier minus loaded fighters). | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-002 | └─ `for (Unit carrier)` | 55-75 | Iterates through carriers counting capacity and subtracting already-landed fighters. | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-003 | `getUnusedLocalCarrierCapacity()` | 82-120 | Similar to above but only counts carriers that haven't moved yet (can still pick up fighters). | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-004 | └─ `for (Unit carrier)` local | 92-115 | Checks carrier movement status before counting capacity. | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-005 | `getUnitsToTransportThatCantMoveToHigherValue()` | 122-200 | **KEY**: Finds units stranded on low-value territories (islands) that need transport evacuation. | `count_stranded_units` | 🔶 PARTIAL | 70% | Recently improved |
+| TRN-006 | └─ `for (Territory neighbor)` | 135-195 | Checks if any adjacent land has higher strategic value - if not, units are "stranded". | Inline | 🔶 PARTIAL | 65% | Low-value check |
+| TRN-007 | └─ └─ `for (Unit unit)` | 145-190 | Identifies specific units that should be transported out due to lack of land route to battle. | Inline | 🔶 PARTIAL | 60% | |
+| TRN-008 | `getUnitsToTransportFromTerritories()` | 202-280 | Gets list of units to load from a set of territories, prioritizing attack units over infantry. | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-009 | └─ `for (Territory t)` | 215-275 | Iterates through source territories for loading. | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-010 | └─ └─ `for (Unit unit)` | 225-270 | Filters units suitable for transport loading (land units with sufficient movement). | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-011 | `selectUnitsToTransportFromList()` | 282-340 | Given excess units, selects optimal subset to fill transport capacity (tanks first, then artillery, then infantry). | Inline loading | 🔶 PARTIAL | 55% | Simplified |
+| TRN-012 | └─ `while (capacity > 0)` | 295-335 | Greedy loop filling transport capacity with highest-value units first. | Loop | 🔶 PARTIAL | 55% | |
+| TRN-013 | └─ └─ `for (Unit unit)` best to load | 300-330 | Selects best available unit type to fill remaining capacity. | Inline | 🔶 PARTIAL | 50% | |
+| TRN-014 | `interleaveUnitsCarriersAndPlanes()` | 342-455 | Complex movement ordering for carrier+fighter fleets. Ensures fighters don't move before their carrier, and carriers don't strand fighters. | ❌ MISSING | ❌ MISSING | 0% | 115 lines |
+| TRN-015 | └─ `while (carriers.hasNext())` | 360-450 | Pairs carriers with fighters for coordinated movement. | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-016 | └─ └─ `for (fighter)` per carrier | 375-440 | Assigns fighters to specific carriers and orders movement appropriately. | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-017 | `validateCarrierCapacity()` | 457-490 | Validation check ensuring no carrier is overloaded (max 2 fighters per carrier). | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-018 | └─ `for (Unit carrier)` | 465-485 | Checks each carrier's fighter count doesn't exceed capacity. | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-019 | `getTransportsThatCanTransport()` | 492-521 | Filters transports to only those with available capacity and movement remaining. | 🔶 PARTIAL | 🔶 PARTIAL | 50% | |
+| TRN-020 | └─ `for (Unit transport)` | 500-518 | Checks each transport for capacity and movement status. | Loop | 🔶 PARTIAL | 50% | |
 
 ---
 
 ### ProTerritoryValueUtils.java - Territory Valuation (721 lines)
 
-| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Notes |
-|----|------------------|-------|-------------|-----------------|--------|-------|
-| VAL-001 | `findTerritoryValues()` | 40-180 | Main entry for strategic territory valuation. Combines production, position, and accessibility into single value score. | [`get_pro_value()`](src/pro_land_value.odin) | 🔶 PARTIAL | |
-| VAL-002 | └─ `for (Territory t)` | 55-175 | Iterates all territories calculating composite strategic value. | Loop | 🔶 PARTIAL | |
-| VAL-003 | └─ └─ Production value calc | 65-90 | Base value from IPC production (factories worth more in contested areas). | Inline | ✅ DONE | |
-| VAL-004 | └─ └─ Neighbor bonus calc | 95-120 | Adds bonus based on adjacent territory values (positions near good territories are worth more). | Inline | ✅ DONE | |
-| VAL-005 | └─ └─ Enemy factory/capital distance | 125-150 | Territories closer to enemy capitals/factories worth more for offensive staging. | ❌ MISSING | |
-| VAL-006 | └─ └─ Sea zone accessibility | 155-170 | Coastal territories worth more for transport loading/unloading potential. | ❌ MISSING | |
-| VAL-007 | `findSeaValue()` | 182-280 | Calculates strategic value of sea zones for naval positioning decisions. | ❌ MISSING | |
-| VAL-008 | └─ `for (Sea zone)` | 195-275 | Iterates all sea zones calculating naval strategic value. | ❌ MISSING | |
-| VAL-009 | └─ └─ Adjacent land value sum | 205-230 | Sea zones adjacent to valuable land are worth controlling. | ❌ MISSING | |
-| VAL-010 | └─ └─ Transport route value | 235-260 | Sea zones on key transport routes (factory to front line) are valuable. | ❌ MISSING | |
-| VAL-011 | └─ └─ Naval choke point | 265-275 | Narrow passages or canal-adjacent zones get bonus value. | ❌ MISSING | |
-| VAL-012 | `findLandValue()` | 282-400 | Detailed land territory valuation using BFS from production centers. | 🔶 PARTIAL | |
-| VAL-013 | └─ BFS from production centers | 295-395 | Breadth-first search radiating value outward from factories, decaying with distance. | Simplified | 🔶 PARTIAL | |
-| VAL-014 | `findAttackValue()` | 402-520 | Evaluates territories from offensive perspective - how valuable to capture. | ❌ MISSING | |
-| VAL-015 | └─ `for (Territory t)` | 415-515 | Iterates enemy territories calculating attack priority. | ❌ MISSING | |
-| VAL-016 | └─ └─ TUV swing calc | 430-480 | Expected TUV gain from successful attack (enemy losses minus our losses). | ❌ MISSING | |
-| VAL-017 | └─ └─ Post-conquest defensibility | 485-510 | Can we hold territory after capture? Factors in enemy counter-attack potential. | ❌ MISSING | |
-| VAL-018 | `findDefenseValue()` | 522-640 | Evaluates territories from defensive perspective - how important to hold. | ❌ MISSING | |
-| VAL-019 | └─ `for (Territory t)` | 535-635 | Iterates friendly territories calculating defense priority. | ❌ MISSING | |
-| VAL-020 | └─ └─ Capital proximity | 550-580 | Territories closer to capital are more critical to defend. | ❌ MISSING | |
-| VAL-021 | └─ └─ Factory presence | 585-620 | Territories with factories are high defense priority. | ❌ MISSING | |
-| VAL-022 | `findUnitValue()` | 642-721 | Returns combat efficiency value for each unit type (attack/defense power relative to cost). | Hardcoded values | 🔶 PARTIAL | |
-| VAL-023 | └─ `for (UnitType type)` | 655-715 | Iterates unit types calculating value ratios. | N/A | 🔶 PARTIAL | |
+| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
+|----|------------------|-------|-------------|-----------------|--------|-------|-------|
+| VAL-001 | `findTerritoryValues()` | 40-180 | Main entry for strategic territory valuation. Combines production, position, and accessibility into single value score. | [`get_pro_value()`](src/pro_land_value.odin) | 🔶 PARTIAL | 55% | |
+| VAL-002 | └─ `for (Territory t)` | 55-175 | Iterates all territories calculating composite strategic value. | Loop | 🔶 PARTIAL | 55% | |
+| VAL-003 | └─ └─ Production value calc | 65-90 | Base value from IPC production (factories worth more in contested areas). | Inline | ✅ DONE | 85% | |
+| VAL-004 | └─ └─ Neighbor bonus calc | 95-120 | Adds bonus based on adjacent territory values (positions near good territories are worth more). | Inline | ✅ DONE | 80% | |
+| VAL-005 | └─ └─ Enemy factory/capital distance | 125-150 | Territories closer to enemy capitals/factories worth more for offensive staging. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-006 | └─ └─ Sea zone accessibility | 155-170 | Coastal territories worth more for transport loading/unloading potential. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-007 | `findSeaValue()` | 182-280 | Calculates strategic value of sea zones for naval positioning decisions. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-008 | └─ `for (Sea zone)` | 195-275 | Iterates all sea zones calculating naval strategic value. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-009 | └─ └─ Adjacent land value sum | 205-230 | Sea zones adjacent to valuable land are worth controlling. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-010 | └─ └─ Transport route value | 235-260 | Sea zones on key transport routes (factory to front line) are valuable. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-011 | └─ └─ Naval choke point | 265-275 | Narrow passages or canal-adjacent zones get bonus value. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-012 | `findLandValue()` | 282-400 | Detailed land territory valuation using BFS from production centers. | 🔶 PARTIAL | 🔶 PARTIAL | 45% | |
+| VAL-013 | └─ BFS from production centers | 295-395 | Breadth-first search radiating value outward from factories, decaying with distance. | Simplified | 🔶 PARTIAL | 40% | |
+| VAL-014 | `findAttackValue()` | 402-520 | Evaluates territories from offensive perspective - how valuable to capture. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-015 | └─ `for (Territory t)` | 415-515 | Iterates enemy territories calculating attack priority. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-016 | └─ └─ TUV swing calc | 430-480 | Expected TUV gain from successful attack (enemy losses minus our losses). | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-017 | └─ └─ Post-conquest defensibility | 485-510 | Can we hold territory after capture? Factors in enemy counter-attack potential. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-018 | `findDefenseValue()` | 522-640 | Evaluates territories from defensive perspective - how important to hold. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-019 | └─ `for (Territory t)` | 535-635 | Iterates friendly territories calculating defense priority. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-020 | └─ └─ Capital proximity | 550-580 | Territories closer to capital are more critical to defend. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-021 | └─ └─ Factory presence | 585-620 | Territories with factories are high defense priority. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-022 | `findUnitValue()` | 642-721 | Returns combat efficiency value for each unit type (attack/defense power relative to cost). | Hardcoded values | 🔶 PARTIAL | 60% | |
+| VAL-023 | └─ `for (UnitType type)` | 655-715 | Iterates unit types calculating value ratios. | N/A | 🔶 PARTIAL | 60% | Hardcoded |
 
 ---
 
