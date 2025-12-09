@@ -152,11 +152,9 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 
 	// Phase 4: Non-Combat Move Phase
 	// Move remaining units to defensive/strategic positions
+	// This includes loading, staging, and unloading transports via stage_and_unload_transports_noncombat()
 	proai_noncombat_move_phase(gc) or_return
 	debug_checks(gc)
-
-	// land your planes!
-
 
 	// Phase 5: Place Units Phase
 	// Place purchased units at factories

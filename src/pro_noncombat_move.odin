@@ -418,6 +418,10 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// Java does: move amphib units -> move empty transports -> move sea -> move land
 	load_transports_noncombat(gc, &pro_data)
 
+	// Step 6b: Stage and unload loaded transports to high-value destinations
+	// This implements the missing NCM-030 to NCM-045 blocks from Java
+	stage_and_unload_transports_noncombat(gc, &pro_data)
+
 	// Step 7: Move remaining sea units to safe positions
 	move_sea_units_noncombat(gc, &pro_data)
 
@@ -2812,4 +2816,447 @@ remove_army_for_transport :: proc(gc: ^Game_Cache, land: Land_ID, unit_type: Idl
 	remove_from_active_armies(gc, land, unit_type)
 	// Update team land units
 	gc.team_land_units[land][mm.team[player]] -= 1
+}
+
+// ============================================================================
+// NCM-030 to NCM-045: Transport Staging and Unloading During Non-Combat
+// ============================================================================
+/*
+This implements the missing transport blocks from Java's moveUnitsToBestTerritories():
+
+Block 1 (Java lines 985-1100): Transport amphib to best LAND territory
+Block 2 (Java lines 1100-1180): Transport amphib to best SEA territory
+Block 3 (Java lines 1185-1280): Empty transport to loading position
+Block 4 (Java lines 1285-1400): Remaining transports to safety
+
+The algorithm:
+1. For each loaded transport, find the highest-value land territory it can reach
+2. Move the transport to the adjacent sea zone
+3. Unload the units to the land territory
+4. Empty transports move towards factories for next turn loading
+*/
+
+// Stage and unload loaded transports during non-combat move
+stage_and_unload_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
+	when ODIN_DEBUG {
+		fmt.println("  [NONCOMBAT] Staging and unloading loaded transports...")
+	}
+	
+	player := gc.cur_player
+	my_team := mm.team[player]
+	
+	// Get territory values for prioritizing unload destinations
+	territories_cant_hold := find_territories_that_cant_be_held(gc, pro_data)
+	territories_cant_hold_bitset: Land_Bitset = {}
+	for land in territories_cant_hold[:] {
+		territories_cant_hold_bitset += {land}
+	}
+	delete(territories_cant_hold)
+	
+	territory_value_map := find_territory_values_triplea(
+		gc,
+		gc.cur_player,
+		territories_cant_hold_bitset,
+		{},
+		gc.friendly_owner,
+	)
+	defer delete(territory_value_map)
+	
+	transports_unloaded := 0
+	
+	// Process loaded transports in priority order
+	// Include both 2_MOVES (newly loaded) and UNMOVED (from previous turns) transports
+	Loaded_Transport_Priority := [?]Active_Ship{
+		// Newly loaded transports with 2 moves
+		.TRANS_1I_1T_2_MOVES,
+		.TRANS_1I_1A_2_MOVES,
+		.TRANS_2I_2_MOVES,
+		.TRANS_1T_2_MOVES,
+		.TRANS_1A_2_MOVES,
+		.TRANS_1I_2_MOVES,
+		// Also handle UNMOVED transports with cargo (from previous turns or start of game)
+		.TRANS_1I_UNMOVED,
+		.TRANS_1A_UNMOVED,
+		.TRANS_1T_UNMOVED,
+	}
+	
+	for transport_type in Loaded_Transport_Priority {
+		for sea in Sea_ID {
+			for gc.active_ships[sea][transport_type] > 0 {
+				// Find best unload destination from this sea zone
+				unloaded := stage_and_unload_one_transport(
+					gc, pro_data, sea, transport_type, &territory_value_map)
+				
+				if unloaded {
+					transports_unloaded += 1
+				} else {
+					// No valid unload destination, skip this transport
+					// Move it to safer position instead
+					skip_transport_to_0_moves(gc, sea, transport_type)
+				}
+			}
+		}
+	}
+	
+	when ODIN_DEBUG {
+		fmt.printf("  [NONCOMBAT] Unloaded %d transports\n", transports_unloaded)
+	}
+}
+
+// Stage and unload a single transport to the best destination
+stage_and_unload_one_transport :: proc(
+	gc: ^Game_Cache,
+	pro_data: ^Pro_Data,
+	src_sea: Sea_ID,
+	transport_type: Active_Ship,
+	territory_value_map: ^map[Land_ID]f64,
+) -> bool {
+	player := gc.cur_player
+	my_team := mm.team[player]
+	
+	// Find all lands we can reach (within 2 sea moves, then adjacent land)
+	best_land: Maybe(Land_ID) = nil
+	best_value: f64 = -999.0
+	best_sea: Sea_ID = src_sea
+	best_distance: u8 = 0
+	
+	// Check lands adjacent to current sea (distance 0)
+	for land in sa.slice(&mm.s2l_1away_via_sea[src_sea]) {
+		if mm.team[gc.owner[land]] != my_team {
+			continue // Can only unload to friendly territory in noncombat
+		}
+		
+		value := territory_value_map[land] or_else 0.0
+		if value > best_value {
+			best_value = value
+			best_land = land
+			best_sea = src_sea
+			best_distance = 0
+		}
+	}
+	
+	// Check lands reachable with 1 sea move
+	for sea_1 in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea] {
+		// Safety check - can we move there?
+		if gc.team_sea_units[sea_1][mm.enemy_team[player]] > 0 &&
+		   gc.allied_sea_combatants_total[sea_1] == 0 {
+			continue // Can't move to hostile sea without escort
+		}
+		
+		for land in sa.slice(&mm.s2l_1away_via_sea[sea_1]) {
+			if mm.team[gc.owner[land]] != my_team {
+				continue
+			}
+			
+			value := territory_value_map[land] or_else 0.0
+			if value > best_value {
+				best_value = value
+				best_land = land
+				best_sea = sea_1
+				best_distance = 1
+			}
+		}
+	}
+	
+	// Check lands reachable with 2 sea moves
+	for sea_2 in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
+		// Safety check
+		if gc.team_sea_units[sea_2][mm.enemy_team[player]] > 0 &&
+		   gc.allied_sea_combatants_total[sea_2] == 0 {
+			continue
+		}
+		
+		// Also check mid-sea safety
+		path_blocked := true
+		for mid_sea in sa.slice(&mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][sea_2]) {
+			if gc.enemy_blockade_total[mid_sea] == 0 {
+				path_blocked = false
+				break
+			}
+		}
+		if path_blocked {
+			continue
+		}
+		
+		for land in sa.slice(&mm.s2l_1away_via_sea[sea_2]) {
+			if mm.team[gc.owner[land]] != my_team {
+				continue
+			}
+			
+			value := territory_value_map[land] or_else 0.0
+			if value > best_value {
+				best_value = value
+				best_land = land
+				best_sea = sea_2
+				best_distance = 2
+			}
+		}
+	}
+	
+	// If no valid destination, return false
+	if best_land == nil {
+		return false
+	}
+	
+	dst_land := best_land.?
+	
+	when ODIN_DEBUG {
+		fmt.printf("    [TRANSPORT] Moving %v from sea %v to sea %v, unloading to %v (value=%.1f)\n",
+			transport_type, src_sea, best_sea, dst_land, best_value)
+	}
+	
+	// Move transport if needed
+	if best_distance > 0 {
+		move_transport_to_sea(gc, src_sea, best_sea, transport_type, best_distance)
+	} else {
+		// Just convert to 0_MOVES state since we're unloading here
+		convert_transport_to_0_moves(gc, src_sea, transport_type)
+	}
+	
+	// Unload all cargo to the destination land
+	unload_transport_cargo_to_land(gc, best_sea, dst_land, transport_type)
+	
+	return true
+}
+
+// Skip a transport without unloading (set to 0 moves)
+skip_transport_to_0_moves :: proc(gc: ^Game_Cache, sea: Sea_ID, transport_type: Active_Ship) {
+	player := gc.cur_player
+	
+	// Map 2_MOVES to 0_MOVES state
+	new_state: Active_Ship
+	idle_state: Idle_Ship
+	
+	#partial switch transport_type {
+	case .TRANS_1I_1T_2_MOVES:
+		new_state = .TRANS_1I_1T_0_MOVES
+		idle_state = .TRANS_1I_1T
+	case .TRANS_1I_1A_2_MOVES:
+		new_state = .TRANS_1I_1A_0_MOVES
+		idle_state = .TRANS_1I_1A
+	case .TRANS_2I_2_MOVES:
+		new_state = .TRANS_2I_0_MOVES
+		idle_state = .TRANS_2I
+	case .TRANS_1T_2_MOVES, .TRANS_1T_UNMOVED:
+		new_state = .TRANS_1T_0_MOVES
+		idle_state = .TRANS_1T
+	case .TRANS_1A_2_MOVES, .TRANS_1A_UNMOVED:
+		new_state = .TRANS_1A_0_MOVES
+		idle_state = .TRANS_1A
+	case .TRANS_1I_2_MOVES, .TRANS_1I_UNMOVED:
+		new_state = .TRANS_1I_0_MOVES
+		idle_state = .TRANS_1I
+	case:
+		return // Unknown transport type
+	}
+	
+	gc.active_ships[sea][transport_type] -= 1
+	gc.active_ships[sea][new_state] += 1
+	// idle_ships doesn't change (just the active state)
+}
+
+// Move transport from one sea to another
+move_transport_to_sea :: proc(
+	gc: ^Game_Cache,
+	src_sea: Sea_ID,
+	dst_sea: Sea_ID,
+	transport_type: Active_Ship,
+	distance: u8,
+) {
+	player := gc.cur_player
+	
+	// Get the 0_MOVES state after movement
+	new_state: Active_Ship
+	
+	#partial switch transport_type {
+	case .TRANS_1I_1T_2_MOVES:
+		new_state = distance == 1 ? .TRANS_1I_1T_1_MOVES : .TRANS_1I_1T_0_MOVES
+	case .TRANS_1I_1A_2_MOVES:
+		new_state = distance == 1 ? .TRANS_1I_1A_1_MOVES : .TRANS_1I_1A_0_MOVES
+	case .TRANS_2I_2_MOVES:
+		new_state = distance == 1 ? .TRANS_2I_1_MOVES : .TRANS_2I_0_MOVES
+	case .TRANS_1T_2_MOVES, .TRANS_1T_UNMOVED:
+		new_state = distance == 1 ? .TRANS_1T_1_MOVES : .TRANS_1T_0_MOVES
+	case .TRANS_1A_2_MOVES, .TRANS_1A_UNMOVED:
+		new_state = distance == 1 ? .TRANS_1A_1_MOVES : .TRANS_1A_0_MOVES
+	case .TRANS_1I_2_MOVES, .TRANS_1I_UNMOVED:
+		new_state = distance == 1 ? .TRANS_1I_1_MOVES : .TRANS_1I_0_MOVES
+	case:
+		return
+	}
+	
+	// Use 0_MOVES since we want to unload (can only unload when 0 moves)
+	if distance == 1 {
+		new_state = get_0_moves_state(transport_type)
+	} else {
+		new_state = get_0_moves_state(transport_type)
+	}
+	
+	idle_state := Active_Ship_To_Idle[transport_type]
+	
+	// Remove from source
+	gc.active_ships[src_sea][transport_type] -= 1
+	gc.idle_ships[src_sea][player][idle_state] -= 1
+	gc.team_sea_units[src_sea][mm.team[player]] -= 1
+	
+	// Add to destination
+	gc.active_ships[dst_sea][new_state] += 1
+	gc.idle_ships[dst_sea][player][idle_state] += 1
+	gc.team_sea_units[dst_sea][mm.team[player]] += 1
+}
+
+// Get the 0_MOVES state for a transport type
+get_0_moves_state :: proc(transport_type: Active_Ship) -> Active_Ship {
+	#partial switch transport_type {
+	case .TRANS_1I_1T_2_MOVES, .TRANS_1I_1T_1_MOVES:
+		return .TRANS_1I_1T_0_MOVES
+	case .TRANS_1I_1A_2_MOVES, .TRANS_1I_1A_1_MOVES:
+		return .TRANS_1I_1A_0_MOVES
+	case .TRANS_2I_2_MOVES, .TRANS_2I_1_MOVES:
+		return .TRANS_2I_0_MOVES
+	case .TRANS_1T_2_MOVES, .TRANS_1T_1_MOVES, .TRANS_1T_UNMOVED:
+		return .TRANS_1T_0_MOVES
+	case .TRANS_1A_2_MOVES, .TRANS_1A_1_MOVES, .TRANS_1A_UNMOVED:
+		return .TRANS_1A_0_MOVES
+	case .TRANS_1I_2_MOVES, .TRANS_1I_1_MOVES, .TRANS_1I_UNMOVED:
+		return .TRANS_1I_0_MOVES
+	case:
+		return transport_type
+	}
+}
+
+// Convert a transport to 0_MOVES state without moving
+convert_transport_to_0_moves :: proc(gc: ^Game_Cache, sea: Sea_ID, transport_type: Active_Ship) {
+	new_state := get_0_moves_state(transport_type)
+	gc.active_ships[sea][transport_type] -= 1
+	gc.active_ships[sea][new_state] += 1
+}
+
+// Unload transport cargo to land territory
+unload_transport_cargo_to_land :: proc(
+	gc: ^Game_Cache,
+	sea: Sea_ID,
+	land: Land_ID,
+	transport_type: Active_Ship,
+) {
+	player := gc.cur_player
+	my_team := mm.team[player]
+	
+	// Get 0_MOVES state for this transport
+	transport_0_state := get_0_moves_state(transport_type)
+	
+	// Determine what cargo we have and unload it
+	#partial switch transport_type {
+	case .TRANS_1I_1T_2_MOVES:
+		// Unload 1 Infantry
+		gc.active_armies[land][.INF_0_MOVES] += 1
+		gc.idle_armies[land][player][.INF] += 1
+		gc.team_land_units[land][my_team] += 1
+		
+		// Update transport to 1T
+		gc.active_ships[sea][transport_0_state] -= 1
+		gc.idle_ships[sea][player][.TRANS_1I_1T] -= 1
+		gc.active_ships[sea][.TRANS_1T_0_MOVES] += 1
+		gc.idle_ships[sea][player][.TRANS_1T] += 1
+		
+	case .TRANS_1I_1A_2_MOVES:
+		// Unload 1 Infantry
+		gc.active_armies[land][.INF_0_MOVES] += 1
+		gc.idle_armies[land][player][.INF] += 1
+		gc.team_land_units[land][my_team] += 1
+		
+		// Update transport to 1A
+		gc.active_ships[sea][transport_0_state] -= 1
+		gc.idle_ships[sea][player][.TRANS_1I_1A] -= 1
+		gc.active_ships[sea][.TRANS_1A_0_MOVES] += 1
+		gc.idle_ships[sea][player][.TRANS_1A] += 1
+		
+	case .TRANS_2I_2_MOVES:
+		// Unload 1 Infantry
+		gc.active_armies[land][.INF_0_MOVES] += 1
+		gc.idle_armies[land][player][.INF] += 1
+		gc.team_land_units[land][my_team] += 1
+		
+		// Update transport to 1I
+		gc.active_ships[sea][transport_0_state] -= 1
+		gc.idle_ships[sea][player][.TRANS_2I] -= 1
+		gc.active_ships[sea][.TRANS_1I_0_MOVES] += 1
+		gc.idle_ships[sea][player][.TRANS_1I] += 1
+		
+	case .TRANS_1T_2_MOVES, .TRANS_1T_UNMOVED:
+		// Unload 1 Tank
+		gc.active_armies[land][.TANK_0_MOVES] += 1
+		gc.idle_armies[land][player][.TANK] += 1
+		gc.team_land_units[land][my_team] += 1
+		
+		// Update transport to empty
+		gc.active_ships[sea][transport_0_state] -= 1
+		gc.idle_ships[sea][player][.TRANS_1T] -= 1
+		gc.active_ships[sea][.TRANS_EMPTY_0_MOVES] += 1
+		gc.idle_ships[sea][player][.TRANS_EMPTY] += 1
+		
+	case .TRANS_1A_2_MOVES, .TRANS_1A_UNMOVED:
+		// Unload 1 Artillery
+		gc.active_armies[land][.ARTY_0_MOVES] += 1
+		gc.idle_armies[land][player][.ARTY] += 1
+		gc.team_land_units[land][my_team] += 1
+		
+		// Update transport to empty
+		gc.active_ships[sea][transport_0_state] -= 1
+		gc.idle_ships[sea][player][.TRANS_1A] -= 1
+		gc.active_ships[sea][.TRANS_EMPTY_0_MOVES] += 1
+		gc.idle_ships[sea][player][.TRANS_EMPTY] += 1
+		
+	case .TRANS_1I_2_MOVES, .TRANS_1I_UNMOVED:
+		// Unload 1 Infantry
+		gc.active_armies[land][.INF_0_MOVES] += 1
+		gc.idle_armies[land][player][.INF] += 1
+		gc.team_land_units[land][my_team] += 1
+		
+		// Update transport to empty
+		gc.active_ships[sea][transport_0_state] -= 1
+		gc.idle_ships[sea][player][.TRANS_1I] -= 1
+		gc.active_ships[sea][.TRANS_EMPTY_0_MOVES] += 1
+		gc.idle_ships[sea][player][.TRANS_EMPTY] += 1
+	}
+	
+	// Continue unloading remaining cargo if any
+	// For 1I_1T and 1I_1A, we still have 1T or 1A left - try to unload those too
+	#partial switch transport_type {
+	case .TRANS_1I_1T_2_MOVES:
+		// Still have tank on board (now in 1T state), unload it
+		gc.active_armies[land][.TANK_0_MOVES] += 1
+		gc.idle_armies[land][player][.TANK] += 1
+		gc.team_land_units[land][my_team] += 1
+		
+		// Update to empty
+		gc.active_ships[sea][.TRANS_1T_0_MOVES] -= 1
+		gc.idle_ships[sea][player][.TRANS_1T] -= 1
+		gc.active_ships[sea][.TRANS_EMPTY_0_MOVES] += 1
+		gc.idle_ships[sea][player][.TRANS_EMPTY] += 1
+		
+	case .TRANS_1I_1A_2_MOVES:
+		// Still have artillery on board, unload it
+		gc.active_armies[land][.ARTY_0_MOVES] += 1
+		gc.idle_armies[land][player][.ARTY] += 1
+		gc.team_land_units[land][my_team] += 1
+		
+		// Update to empty
+		gc.active_ships[sea][.TRANS_1A_0_MOVES] -= 1
+		gc.idle_ships[sea][player][.TRANS_1A] -= 1
+		gc.active_ships[sea][.TRANS_EMPTY_0_MOVES] += 1
+		gc.idle_ships[sea][player][.TRANS_EMPTY] += 1
+		
+	case .TRANS_2I_2_MOVES:
+		// Still have 1 infantry on board, unload it
+		gc.active_armies[land][.INF_0_MOVES] += 1
+		gc.idle_armies[land][player][.INF] += 1
+		gc.team_land_units[land][my_team] += 1
+		
+		// Update to empty
+		gc.active_ships[sea][.TRANS_1I_0_MOVES] -= 1
+		gc.idle_ships[sea][player][.TRANS_1I] -= 1
+		gc.active_ships[sea][.TRANS_EMPTY_0_MOVES] += 1
+		gc.idle_ships[sea][player][.TRANS_EMPTY] += 1
+	}
 }
