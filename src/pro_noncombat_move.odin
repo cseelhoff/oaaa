@@ -2728,10 +2728,23 @@ load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 		// Build set of territories that should NOT be loading sources
 		// Only exclude the destination itself (to prevent loading from India to unload back to India)
 		// Java's landRoutesMap is more sophisticated but for our case, just exclude the destination
+		// BUT: Only exclude if the destination has positive strategic value - otherwise we're just
+		// picking an arbitrary territory and should load freely (staging will pick a real destination)
 		lands_that_can_walk_to_dest: Land_Bitset = {}
 		if dest, ok := best_unload_dest.?; ok {
-			// The destination itself - units already there don't need transport
-			lands_that_can_walk_to_dest += {dest}
+			// Only exclude if this is a strategically valuable destination
+			// If value is near 0 or negative, we're far from the war and should load units freely
+			// Use 0.1 threshold to avoid floating-point precision issues (e.g., 1e-36)
+			if best_unload_value >= 0.1 {
+				// Only exclude if dest is adjacent (lands that could actually load here)
+				// Don't exclude if destination is 2 moves away - those units can't walk there
+				for adj_land in sa.slice(adjacent_lands) {
+					if adj_land == dest {
+						lands_that_can_walk_to_dest += {dest}
+						break
+					}
+				}
+			}
 		}
 		
 		// Check if any adjacent land has units we could load
