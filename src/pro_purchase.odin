@@ -299,7 +299,7 @@ Java Original (lines 258-387):
   }
 */
 
-// Odin Implementation:
+// PUR-001: purchase() main entry point - orchestrates all purchase logic
 purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 	/*
 	Full TripleA purchase flow:
@@ -841,7 +841,7 @@ simulate_sequential_enemy_attacks :: proc(
 	return result
 }
 
-// Odin Implementation:
+// PUR-006: prioritizeTerritoriesToDefend() - Sort territories by defense priority
 prioritize_territories_to_defend_triplea :: proc(
 	gc: ^Game_Cache,
 	is_land: bool,
@@ -959,6 +959,7 @@ prioritize_territories_to_defend_triplea :: proc(
 		return need_to_defend
 	}
 
+	// #region PUR-007: for (ProPlaceTerritory) loop - evaluate each territory for defense needs
 	for land_territory in Land_ID {
 		//check if units are placeable here
 		// if gc.factory_prod[land_territory] == 0 do continue
@@ -1040,6 +1041,7 @@ prioritize_territories_to_defend_triplea :: proc(
 		}
 		append(&need_to_defend, place_terr)
 	}
+	// #endregion PUR-007
 
 	// Sort by defense value (highest first)
 	for i := 0; i < len(need_to_defend) - 1; i += 1 {
@@ -1146,7 +1148,7 @@ Java Original (lines 715-914):
   }
 */
 
-// Odin Implementation:
+// PUR-012: purchaseDefenders() - Buy defensive units for threatened territories
 purchase_defenders_triplea :: proc(
 	gc: ^Game_Cache,
 	territories: [dynamic]Place_Territory_Defense,
@@ -1187,6 +1189,7 @@ purchase_defenders_triplea :: proc(
 		fmt.println("  [RATIONALE] Analyzing territories needing defense:")
 	}
 
+	// #region PUR-013: for (ProPlaceTerritory) loop - purchase defenders for each threatened territory
 	for place_terr in territories {
 		// Find nearest factory that can produce for this territory
 		factory := find_nearest_factory_triplea(gc, place_terr.territory)
@@ -1291,6 +1294,7 @@ purchase_defenders_triplea :: proc(
 		// Respect both money AND production capacity limits
 		// Use battle simulation to determine when we've purchased enough
 		current_defenders := place_terr.defending_units
+		// #region PUR-015: while loop - buy fodder units until territory is defended
 		for gc.money[gc.cur_player] >= 3 && gc.builds_left[factory_loc] > 0 {
 			// Re-simulate battle with current defenders to check if we need more
 			test_combatants := Land_Combatants {
@@ -1334,7 +1338,9 @@ purchase_defenders_triplea :: proc(
 			current_defenders.Infantry += 1  // Track added infantry for next simulation
 			// defense_gap -= 2.0 // Infantry has defense 2
 		}
+		// #endregion PUR-015
 	}
+	// #endregion PUR-013
 }
 
 // Helper: Find nearest factory to territory
@@ -1854,7 +1860,7 @@ Java Original (lines 1054-1221):
   }
 */
 
-// Odin Implementation:
+// PUR-028: purchaseLandUnits() - Buy offensive land units with fodder % algorithm
 purchase_land_units_triplea :: proc(
 	gc: ^Game_Cache,
 	prioritized_territories: [dynamic]Place_Territory_Land,
@@ -1876,6 +1882,7 @@ purchase_land_units_triplea :: proc(
 	total_tank := 0
 	starting_money := gc.money[gc.cur_player]
 
+	// #region PUR-029: for (ProPlaceTerritory) loop - iterate prioritized territories for land purchases
 	for place_terr in prioritized_territories {
 		if gc.money[gc.cur_player] < 3 do break
 
@@ -1920,6 +1927,7 @@ purchase_land_units_triplea :: proc(
 		// Check remaining production capacity at this factory
 		remaining_production := gc.builds_left[territory]
 		
+		// #region PUR-030: while loop - buy units until production/money exhausted
 		for gc.money[gc.cur_player] >= 3 && units_bought < 10 && remaining_production > 0 {
 			// Calculate current fodder ratio (what % of units bought so far are infantry)
 			current_fodder_ratio := units_bought > 0 ? (total_inf * 100) / (total_inf + total_arty + total_tank) : 100
@@ -1994,7 +2002,9 @@ purchase_land_units_triplea :: proc(
 				}
 			}
 		}
+		// #endregion PUR-030
 	}
+	// #endregion PUR-029
 
 	when ODIN_DEBUG {
 		if total_inf > 0 || total_arty > 0 || total_tank > 0 {
@@ -2490,7 +2500,7 @@ Java Original (lines 1519-2096):
   }
 */
 
-// Odin Implementation:
+// PUR-061: purchaseSeaAndAmphibUnits() - Buy naval and amphibious units (3 phases)
 purchase_sea_and_amphib_units_triplea :: proc(
 	gc: ^Game_Cache,
 	prioritized_sea: [dynamic]Place_Territory_Sea,
@@ -2514,6 +2524,7 @@ purchase_sea_and_amphib_units_triplea :: proc(
 	wanted_to_buy_but_couldnt_defend := false
 	debug_checks(gc)
 
+	// region PUR-062: for (ProPlaceTerritory) loop - iterate prioritized sea zones for purchases
 	for place_sea in prioritized_sea {
 		if gc.money[gc.cur_player] < 6 do break // Cheapest ship is sub at 6
 
@@ -2567,6 +2578,7 @@ purchase_sea_and_amphib_units_triplea :: proc(
 			
 			// Purchase defenders until we can hold (TUV swing < -1 OR win% < 5)
 			// OR until we've spent our defense budget
+			// region PUR-063: while loop - purchase defenders until TUV/win% threshold met
 			purchase_loop: for gc.money[gc.cur_player] >= 6 && gc.builds_left[factory_loc] > 0 && defense_spent < max_defense_spend {
 				// Check if we can already hold
 				if result.avg_TUV_swing < -1.0 || result.win_percent < 5.0 {
@@ -2614,6 +2626,7 @@ purchase_sea_and_amphib_units_triplea :: proc(
 					           "TUV swing:", result.avg_TUV_swing, "Win%:", result.win_percent)
 				}
 			}
+			// endregion PUR-063
 			
 			// Note: We no longer skip to next sea zone if we can't hold
 			// Instead, we still try to buy transports (they're valuable for offense)
@@ -2661,6 +2674,7 @@ purchase_sea_and_amphib_units_triplea :: proc(
 			}
 		}
 	}
+	// endregion PUR-062
 	debug_checks(gc)
 
 	/*

@@ -1044,7 +1044,7 @@ Air_Unit_To_Land :: struct {
 	options:           [dynamic]Air_Landing_Option, // Possible landing spots
 }
 
-// Land fighters in safe territories
+// NCM-060: Block 11 - Land air units at safe territories with attack options
 land_fighters_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Landing fighters in safe territories")
@@ -1054,7 +1054,7 @@ land_fighters_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	land_air_units_noncombat(gc, pro_data, .FIGHTER)
 }
 
-// Land bombers in safe territories
+// NCM-062: Block 12 - Land bombers at safest available territory
 land_bombers_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Landing bombers in safe territories")
@@ -1425,7 +1425,7 @@ calculate_air_value :: proc(option: ^Air_Landing_Option) {
 	}
 }
 
-// Land air units to best attack positions (first pass)
+// NCM-061: for (Unit air) loop - land units to best attack positions (first pass)
 land_air_units_to_best_attack_positions :: proc(
 	gc: ^Game_Cache,
 	pro_data: ^Pro_Data,
@@ -1461,6 +1461,7 @@ land_air_units_to_best_attack_positions :: proc(
 	moved := make([dynamic]int)
 	defer delete(moved)
 
+	// #region NCM-061: for (Unit air) loop - find best attack position for each air unit
 	for air_unit, idx in air_units {
 		max_air_value := 0.0
 		best_option_idx := -1
@@ -1501,6 +1502,7 @@ land_air_units_to_best_attack_positions :: proc(
 			append(&moved, idx)
 		}
 	}
+	// #endregion NCM-061
 
 	// Remove moved units (in reverse to preserve indices)
 	for i := len(moved) - 1; i >= 0; i -= 1 {
@@ -1509,7 +1511,7 @@ land_air_units_to_best_attack_positions :: proc(
 	}
 }
 
-// Land air units to safest territories (fallback pass)
+// NCM-063: for (Unit air) loop - land units to safest territories (fallback pass)
 land_air_units_to_safest_territories :: proc(
 	gc: ^Game_Cache,
 	pro_data: ^Pro_Data,
@@ -1544,6 +1546,7 @@ land_air_units_to_safest_territories :: proc(
 	}
 	*/
 
+	// #region NCM-063: for (Unit air) loop - find safest landing for each remaining air unit
 	for air_unit in air_units {
 		min_strength_diff := math.F64_MAX
 		best_option_idx := -1
@@ -1583,9 +1586,10 @@ land_air_units_to_safest_territories :: proc(
 			}
 		}
 	}
+	// #endregion NCM-063
 }
 
-// Move sea units to safe positions
+// NCM-051 to NCM-053: Block 7 - Sea units to best location (strategic positioning)
 move_sea_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Moving sea units to safe positions")
@@ -1701,7 +1705,7 @@ move_land_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	move_land_to_safest_territories(gc, pro_data, &moved)
 }
 
-// PASS 1: Move land units to high-value territories with transport capacity
+// NCM-054: Block 8 - Move land units to high-value territories with transport capacity
 move_land_to_high_value_territories :: proc(
 	gc: ^Game_Cache,
 	pro_data: ^Pro_Data,
@@ -1783,9 +1787,8 @@ move_land_to_high_value_territories :: proc(
 	
 	my_team := mm.team[gc.cur_player]
 	
-	// For each unit type at this location
+	// #region NCM-055: for (Unit land) loop - iterate land units to find optimal destinations
 	for army in Unmoved_Armies {
-		// For each land territory with our units
 		for src_land in Land_ID {
 			// if gc.owner[src_land] != gc.cur_player {
 			// 	continue
@@ -1893,9 +1896,10 @@ move_land_to_high_value_territories :: proc(
 			}
 		}
 	}
+	// #endregion NCM-055
 }
 
-// PASS 2: Move land units towards coastal factories
+// NCM-056: Block 9 - Move land units towards coastal factories
 move_land_towards_coastal_factories :: proc(
 	gc: ^Game_Cache,
 	pro_data: ^Pro_Data,
@@ -1963,9 +1967,8 @@ move_land_towards_coastal_factories :: proc(
 		fmt.printf("    Found %d coastal factories\n", len(coastal_factories))
 	}
 	
-	// For each unit type at this location
+	// #region NCM-057: for (Unit land) loop - move units towards coastal factories
 	for army in Unmoved_Armies {
-		// For each land territory with our units
 		for src_land in Land_ID {
 			// if gc.owner[src_land] != gc.cur_player {
 			// 	continue
@@ -2043,9 +2046,10 @@ move_land_towards_coastal_factories :: proc(
 			// }
 		}
 	}
+	// #endregion NCM-057
 }
 
-// PASS 3: Move land units to safest territories (fallback)
+// NCM-058: Block 10 - Move land units to safest territories (fallback)
 move_land_to_safest_territories :: proc(
 	gc: ^Game_Cache,
 	pro_data: ^Pro_Data,
@@ -2097,11 +2101,8 @@ move_land_to_safest_territories :: proc(
 	}
 	*/
 	
-	// For each land territory with our units
-	// For each land territory with our units
-	// For each unit type at this location
+	// #region NCM-059: for (Unit land) loop - move remaining units to safest territory
 	for army in Unmoved_Armies {
-		// For each land territory with our units
 		for src_land in Land_ID {
 			available := gc.active_armies[src_land][army]
 			if available == 0 {
@@ -2165,6 +2166,7 @@ move_land_to_safest_territories :: proc(
 			// }
 		}
 	}
+	// #endregion NCM-059
 }
 
 // ============================================================================
@@ -2312,6 +2314,7 @@ pro_noncombat_move_cleanup :: proc(targets: ^[dynamic]Defense_Target) {
 	delete(targets^)
 }
 
+// NCM-030 to NCM-045: Transport positioning blocks (Block 1-4)
 // Load transports during non-combat move phase
 load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	// TODO REVIEW: Java moveUnitsToBestTerritories transport loops (lines 985-1400):

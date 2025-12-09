@@ -67,7 +67,7 @@ TODO REVIEW: Missing from ProTerritoryValueUtils.java:
 
 MAX_LAND_MASS_SIZE :: 49
 
-
+// VAL-003/VAL-004: Production value calc + Neighbor bonus calc (inline helper)
 get_pro_value :: #force_inline proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
 	production := gc.factory_prod[territory]
 	return(
@@ -140,6 +140,7 @@ find_enemy_capitals_and_factories_value :: proc(
 }
 
 
+// VAL-012/VAL-013: findLandValue() - Land territory valuation with BFS from production centers
 find_land_value :: proc(
 	gc: ^Game_Cache,
 	t: Land_ID, // proData: ^ProData,

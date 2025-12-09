@@ -254,7 +254,7 @@ Java Original (lines 192-299):
   }
 */
 
-// Odin Implementation:
+// CMB-003: prioritizeAttackOptions() - Calculate attack value and sort territories by priority
 prioritize_attack_options_triplea :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_Option, is_defensive: bool) {
 	when ODIN_DEBUG {
 		fmt.println("Prioritizing territories to try to attack")
@@ -374,7 +374,7 @@ Java Original (lines 301-393):
   }
 */
 
-// Odin Implementation:
+// CMB-008: determineTerritoriesToAttack() - Iteratively select territories to attack
 determine_territories_to_attack_triplea :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_Option) {
 	when ODIN_DEBUG {
 		fmt.println("Determine which territories to attack")
@@ -2150,7 +2150,7 @@ Java Original (lines 1245-1778):
   }
 */
 
-// Odin Implementation:
+// CMB-024: tryToAttackTerritories() - 6 phases: trivial wins, fill attacks, destroyers, limit, excess, validate
 try_to_attack_territories_triplea :: proc(
 	gc: ^Game_Cache,
 	options: ^[dynamic]Attack_Option,
@@ -2185,6 +2185,7 @@ try_to_attack_territories_triplea :: proc(
 	assigned_units := make([dynamic]Unit_Info)
 	defer delete(assigned_units)
 	
+	// #region CMB-028: for (ProTerritory patd) sorted by value - assign attackers
 	for i := 0; i < num_to_attack && i < len(options); i += 1 {
 		option := &options[i]
 		
@@ -2221,6 +2222,7 @@ try_to_attack_territories_triplea :: proc(
 				option.territory, available_inf, available_arty, available_tank, available_ftr, available_bmb, total_available)
 		}
 		
+		// #region CMB-032: while loop - add units until win% >= MIN_WIN_PERCENTAGE
 		for iter := 0; iter < max_iterations && option.win_percentage < MIN_WIN_PERCENTAGE; iter += 1 {
 			// Add a batch of units (prioritize cheap infantry first)
 			added_this_round := 0
@@ -2273,12 +2275,14 @@ try_to_attack_territories_triplea :: proc(
 					option.territory, iter, added_this_round, len(option.attackers), option.win_percentage * 100)
 			}
 		}
+		// #endregion CMB-032
 		
 		when ODIN_DEBUG {
 			fmt.printf("  After land assignment: %v has %d attackers (win%%: %.1f%%, needed: %.1f%%)\n",
 				option.territory, len(option.attackers), option.win_percentage * 100, MIN_WIN_PERCENTAGE * 100)
 		}
 	}
+	// #endregion CMB-028
 	
 	// Phase 3: Handle amphib attacks (load transports)
 	// If need_amphib_units is true, assign units from potential_amphib_attackers

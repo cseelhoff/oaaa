@@ -68,9 +68,7 @@ TODO REVIEW: Missing from ProTerritoryManager.java:
 =============================================================================
 */
 
-// Populate attack options for combat move phase
-// Fills in where our units can attack enemy territories
-// Maps to: ProTerritoryManager.populateAttackOptions()
+// TM-001: populateAttackOptions() - Entry point to build attack map with attackers
 populate_attack_options :: proc(gc: ^Game_Cache, options: ^Pro_My_Move_Options) {
 	pro_my_move_options_clear(options)
 	

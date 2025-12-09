@@ -65,8 +65,7 @@ Workflow:
 3. aggregate_enemy_attack_options() - Combines into totals (max across all enemies)
 */
 
-// Main entry point: Generate attack options for ALL enemies, then aggregate
-// This replaces the old generate_enemy_attack_options
+// TM-012: populateEnemyAttackOptions() - Main entry for enemy threat analysis (per-enemy + aggregated)
 generate_all_enemy_attack_options :: proc(
 	gc: ^Game_Cache,
 	all_enemies: ^All_Enemy_Attack_Options,
@@ -74,11 +73,13 @@ generate_all_enemy_attack_options :: proc(
 ) {
 	all_enemy_attack_options_clear(all_enemies)
 	
+	// #region TM-014: for (enemy player) loop - generate attack options per enemy
 	// Generate attack options for each enemy separately
 	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
 		generate_single_enemy_attack_options(gc, enemy, &all_enemies.per_enemy[enemy])
 		all_enemies.enemies_analyzed += {enemy}
 	}
+	// #endregion TM-014
 	
 	// Aggregate per-enemy data into totals
 	aggregate_enemy_attack_options(all_enemies, totals)
