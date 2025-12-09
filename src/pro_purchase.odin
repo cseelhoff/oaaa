@@ -391,7 +391,17 @@ purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 		&all_enemies,
 		&enemy_attack_options,
 	)
-	purchase_defenders_triplea(gc, need_to_defend_land, true)
+	
+	// Reserve budget for naval if we're a coastal power
+	// This prevents spending ALL money on infantry when we need transports
+	naval_budget := calculate_naval_budget_reserve(gc)
+	if naval_budget > 0 {
+		when ODIN_DEBUG {
+			fmt.printf("  [BUDGET] Reserving %d IPCs for naval purchases\n", naval_budget)
+		}
+	}
+	
+	purchase_defenders_triplea(gc, need_to_defend_land, true, naval_budget)
 
 	// Prioritize sea territories needing defense (if any)
 	need_to_defend_sea := prioritize_territories_to_defend_triplea(
@@ -400,7 +410,7 @@ purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 		&all_enemies,
 		&enemy_attack_options,
 	)
-	purchase_defenders_triplea(gc, need_to_defend_sea, false)
+	purchase_defenders_triplea(gc, need_to_defend_sea, false, 0) // No naval reserve for sea defense
 
 	if gc.money[gc.cur_player] == 0 {
 		return true // All money spent on defense
@@ -410,7 +420,8 @@ purchase_triplea :: proc(gc: ^Game_Cache) -> bool {
 	prioritized_land := prioritize_land_territories_triplea(gc)
 
 	// Step 5: Purchase AA guns for territories with factories
-	purchase_aa_units_triplea(gc, prioritized_land)
+	// Pass naval budget to prevent AA from spending money reserved for transports
+	purchase_aa_units_triplea(gc, prioritized_land, naval_budget)
 
 	// Step 5.5: MOVED HERE - Prioritize sea territories and purchase naval units 
 	// This is moved BEFORE offensive land purchases to ensure ships can be bought
@@ -1153,6 +1164,7 @@ purchase_defenders_triplea :: proc(
 	gc: ^Game_Cache,
 	territories: [dynamic]Place_Territory_Defense,
 	is_land: bool,
+	naval_budget_reserve: u8, // Money to reserve for naval purchases
 ) {
 	// TODO REVIEW: Java purchaseDefenders (lines 715-914) has additional logic:
 	//
@@ -1295,7 +1307,21 @@ purchase_defenders_triplea :: proc(
 		// Use battle simulation to determine when we've purchased enough
 		current_defenders := place_terr.defending_units
 		// #region PUR-015: while loop - buy fodder units until territory is defended
-		for gc.money[gc.cur_player] >= 3 && gc.builds_left[factory_loc] > 0 {
+		// Check if we need to reserve money for naval purchases
+		// Use max(0, money - reserve) to ensure we don't spend reserved money
+		available_money: u8 = 0
+		if gc.money[gc.cur_player] > naval_budget_reserve {
+			available_money = gc.money[gc.cur_player] - naval_budget_reserve
+		}
+		
+		// Also reserve 1 production capacity for transport if we have naval budget
+		// This ensures we can actually BUILD a transport with the reserved money
+		min_builds_remaining: u8 = 0
+		if naval_budget_reserve >= 7 {
+			min_builds_remaining = 1 // Reserve capacity for 1 transport
+		}
+		
+		for available_money >= 3 && gc.builds_left[factory_loc] > min_builds_remaining {
 			// Re-simulate battle with current defenders to check if we need more
 			test_combatants := Land_Combatants {
 				defenders = current_defenders,
@@ -1336,7 +1362,14 @@ purchase_defenders_triplea :: proc(
 			add_units_to_place_triplea(factory_loc, .Infantry, 1)
 			inf_count += 1
 			current_defenders.Infantry += 1  // Track added infantry for next simulation
-			// defense_gap -= 2.0 // Infantry has defense 2
+			
+			// Update available money for next iteration
+			// Use max(0, money - reserve) to ensure we don't spend reserved money
+			if gc.money[gc.cur_player] > naval_budget_reserve {
+				available_money = gc.money[gc.cur_player] - naval_budget_reserve
+			} else {
+				available_money = 0
+			}
 		}
 		// #endregion PUR-015
 	}
@@ -1381,6 +1414,38 @@ find_nearest_factory_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> May
 	}
 
 	return best_factory
+}
+
+// Calculate how much money to reserve for naval purchases
+// Coastal powers (with factories adjacent to sea) should reserve money for transports/ships
+calculate_naval_budget_reserve :: proc(gc: ^Game_Cache) -> u8 {
+	player := gc.cur_player
+	
+	// Check if we have any coastal factories
+	has_coastal_factory := false
+	for factory_loc in sa.slice(&gc.factory_locations[player]) {
+		if gc.owner[factory_loc] != player do continue
+		if gc.builds_left[factory_loc] == 0 do continue
+		
+		// Check if factory is coastal (adjacent to sea)
+		if len(sa.slice(&mm.l2s_1away_via_land[factory_loc])) > 0 {
+			has_coastal_factory = true
+			break
+		}
+	}
+	
+	if !has_coastal_factory {
+		return 0 // Landlocked - no naval budget needed
+	}
+	
+	// Reserve enough for 1 transport (7 IPC) + some combat ships
+	// This ensures UK can buy transports even when threatened
+	// Use 25% of total income as naval reserve, minimum 7 (transport cost)
+	income := gc.money[player]
+	reserve := max(u8(7), income / 4)
+	
+	// Cap at 50% to not over-reserve
+	return min(reserve, income / 2)
 }
 
 // Helper: Estimate defense power of units
@@ -1741,6 +1806,7 @@ Java Original (lines 956-1052):
 purchase_aa_units_triplea :: proc(
 	gc: ^Game_Cache,
 	prioritized_territories: [dynamic]Place_Territory_Land,
+	naval_budget_reserve: u8 = 0, // Money to reserve for naval purchases
 ) {
 	// TODO REVIEW: Java purchaseAaUnits (lines 956-1052) has additional logic:
 	//
@@ -1757,13 +1823,20 @@ purchase_aa_units_triplea :: proc(
 	
 	if gc.money[gc.cur_player] == 0 do return
 
+	// Calculate available money (respecting naval reserve)
+	// Use max(0, money - reserve) to ensure we don't spend reserved money
+	available_money: u8 = 0
+	if gc.money[gc.cur_player] > naval_budget_reserve {
+		available_money = gc.money[gc.cur_player] - naval_budget_reserve
+	}
+
 	// Purchase AA guns for territories that:
 	// 1. Have factories (can be bombed)
 	// 2. Don't already have AA
 	// 3. Are threatened by enemy bombers
 
 	for place_terr in prioritized_territories {
-		if gc.money[gc.cur_player] < 5 do break // AA costs 5
+		if available_money < 5 do break // AA costs 5
 
 		territory := place_terr.territory
 
@@ -1778,7 +1851,12 @@ purchase_aa_units_triplea :: proc(
 		if place_terr.strategic_value >= 5.0 {
 			// Buy AA gun
 			if try_buy_aa_triplea(gc, territory) {
-				// Successfully purchased AA
+				// Update available money after purchase
+				if gc.money[gc.cur_player] > naval_budget_reserve {
+					available_money = gc.money[gc.cur_player] - naval_budget_reserve
+				} else {
+					available_money = 0
+				}
 			}
 		}
 	}
@@ -1793,6 +1871,11 @@ try_buy_aa_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> bool {
 	if factory_loc, ok := factory.?; ok {
 		// Check production capacity
 		if gc.builds_left[factory_loc] == 0 do return false
+		
+		when ODIN_DEBUG {
+			fmt.printf("  [AA PURCHASE] Bought AA for %v at factory %v, Money: %d\n", 
+			          territory, factory_loc, gc.money[gc.cur_player])
+		}
 		
 		// Deduct money and production
 		gc.money[gc.cur_player] -= 5
@@ -2458,6 +2541,121 @@ count_all_transports_triplea :: proc(gc: ^Game_Cache, sea_id: Sea_ID) -> u8 {
 	return count
 }
 
+// Count empty/partially loaded transports that need cargo
+count_empty_transports_triplea :: proc(gc: ^Game_Cache, sea_id: Sea_ID) -> u8 {
+	player := gc.cur_player
+	count := u8(0)
+	// Only count empty transports (they need units)
+	count += gc.idle_ships[sea_id][player][.TRANS_EMPTY]
+	// Partially loaded transports also need units
+	count += gc.idle_ships[sea_id][player][.TRANS_1I]  // Has space for 3 more
+	count += gc.idle_ships[sea_id][player][.TRANS_1A]  // Has space for 2 more
+	count += gc.idle_ships[sea_id][player][.TRANS_1T]  // Has space for 2 more
+	return count
+}
+
+// Count units stranded on low-value territories adjacent to a sea zone
+// Java uses territoryValueMap.get(neighbor) <= 0.25 to identify these
+// Key insight: UK and other islands have low value because they can't reach enemy by land
+count_stranded_units_for_sea :: proc(gc: ^Game_Cache, sea_id: Sea_ID, player: Player_ID) -> u8 {
+	count := u8(0)
+	
+	// Check all land territories adjacent to this sea zone
+	for land_id in sa.slice(&mm.s2l_1away_via_sea[sea_id]) {
+		// Only check our own territories
+		if gc.owner[land_id] != player do continue
+		
+		// Calculate territory value
+		// Low value = isolated from enemy / not strategically important
+		territory_value := calculate_strategic_land_value_for_transport(gc, land_id, player)
+		
+		when ODIN_DEBUG {
+			units_here := gc.idle_armies[land_id][player][.INF] + 
+			              gc.idle_armies[land_id][player][.ARTY] + 
+			              gc.idle_armies[land_id][player][.TANK]
+			if units_here > 0 {
+				fmt.printf("        [CHECK] %v owner=%v value=%.2f units=%d\n",
+					land_id, gc.owner[land_id], territory_value, units_here)
+			}
+		}
+		
+		// Java threshold is 0.25 - below this, units should be evacuated
+		if territory_value <= 0.25 {
+			// Count transportable units (infantry, artillery, tanks)
+			count += gc.idle_armies[land_id][player][.INF]
+			count += gc.idle_armies[land_id][player][.ARTY]
+			count += gc.idle_armies[land_id][player][.TANK]
+			
+			when ODIN_DEBUG {
+				if count > 0 {
+					fmt.printf("        [STRANDED] %v has value=%.2f, units=%d\n",
+						land_id, territory_value, count)
+				}
+			}
+		}
+	}
+	
+	return count
+}
+
+// Calculate strategic value of a territory for transport decisions
+// Returns low value (<=0.25) for isolated territories like UK
+calculate_strategic_land_value_for_transport :: proc(gc: ^Game_Cache, land_id: Land_ID, player: Player_ID) -> f64 {
+	/*
+	Java (ProTerritoryValueUtils.findTerritoryValues):
+	Territory value is based on:
+	1. Distance to enemy capitals/factories
+	2. Nearby enemy production
+	3. Whether territory can reach enemy by land
+	
+	Key insight: UK has low value because it's an island - no land path to enemy!
+	
+	Important: We want to identify territories where units are "stranded" and should
+	be transported out. This is DIFFERENT from the territory's strategic importance.
+	
+	A territory is "low value for transport purposes" if:
+	1. It's an island with no land connection to any enemy
+	2. It has no factory (factories always have value)
+	
+	Territories with land paths to enemy should have value > 0.25 so units stay put.
+	
+	UPDATE: For TRANSPORT purposes, we actually want to identify territories where
+	units NEED transport to reach enemies - this includes island factories like UK!
+	The original logic was wrong - factories on islands still need transports.
+	*/
+	
+	// Check if this territory has a land path to any enemy territory
+	// land_distances uses 127 (INFINITY) for unreachable territories
+	LAND_INFINITY :: 127
+	has_land_path_to_enemy := false
+	for enemy in sa.slice(&mm.enemies[player]) {
+		// Check if enemy has any territory we can reach by land
+		for land in Land_ID {
+			if gc.owner[land] != enemy do continue
+			
+			// Check land distance: > 0 means adjacent or reachable, < INFINITY means not infinite
+			// Distance of 0 only happens for same territory (not applicable here)
+			// Distance of INFINITY (127) means unreachable by land
+			dist := mm.land_distances[land_id][land]
+			if dist > 0 && dist < LAND_INFINITY {
+				has_land_path_to_enemy = true
+				break
+			}
+		}
+		if has_land_path_to_enemy do break
+	}
+	
+	// If there's a land path to enemy, units here aren't stranded - they can walk there
+	if has_land_path_to_enemy {
+		return 1.0 // High value - units should stay and advance by land
+	}
+	
+	// No land path to enemy - this is an isolated territory
+	// For TRANSPORT purposes, ALL isolated territories need transports, including factories
+	// Return low value to indicate units need transport evacuation
+	return 0.1 // Below 0.25 threshold - need transport to reach enemies
+}
+
 /*
 =============================================================================
 METHOD 13: purchaseSeaAndAmphibUnits
@@ -2567,9 +2765,21 @@ purchase_sea_and_amphib_units_triplea :: proc(
 		need_destroyer := check_need_destroyer_triplea(gc, sea_id) && threat.max_subs > 0
 
 		// Phase 1: Purchase sea defenders if under threat
-		// LIMIT: Don't spend more than 50% of remaining money on naval defense per sea zone
-		// This ensures we have money left for transports and land units
-		max_defense_spend := gc.money[gc.cur_player] / 2
+		// LIMIT: Reserve at least 7 IPCs for transport purchases (if we have enough)
+		// Then spend up to 50% of remaining on sea defense
+		transport_reserve: u8 = 0
+		if gc.money[gc.cur_player] >= 14 { // Can afford both defense and transport
+			transport_reserve = 7
+		} else if gc.money[gc.cur_player] >= 10 { // Prioritize transport for coastal powers
+			transport_reserve = 7 // Reserve for transport, less for defense
+		}
+		available_for_defense := gc.money[gc.cur_player]
+		if available_for_defense > transport_reserve {
+			available_for_defense = gc.money[gc.cur_player] - transport_reserve
+		} else {
+			available_for_defense = 0 // Not enough for defense after transport reserve
+		}
+		max_defense_spend := available_for_defense / 2 // 50% of what's available after transport reserve
 		defense_spent: u8 = 0
 		
 		if has_threat {
@@ -2585,7 +2795,16 @@ purchase_sea_and_amphib_units_triplea :: proc(
 					break
 				}
 				
+				// Calculate remaining defense budget
+				remaining_defense_budget := max_defense_spend
+				if defense_spent < max_defense_spend {
+					remaining_defense_budget = max_defense_spend - defense_spent
+				} else {
+					remaining_defense_budget = 0
+				}
+				
 				// Select best unit to buy based on efficiency
+				// Only consider units that fit within remaining defense budget
 				best_unit: Maybe(Idle_Ship) = nil
 				best_efficiency := f64(0)
 				unused_carrier_cap := int(gc.idle_ships[sea_id][gc.cur_player][.CARRIER]) * 2 - 
@@ -2593,8 +2812,10 @@ purchase_sea_and_amphib_units_triplea :: proc(
 				
 				ships_to_consider := [?]Idle_Ship{.DESTROYER, .CRUISER, .SUB, .CARRIER, .BATTLESHIP}
 				for ship in ships_to_consider {
-					cost := int(COST_IDLE_SHIP[ship])
-					if gc.money[gc.cur_player] < u8(cost) do continue
+					cost := COST_IDLE_SHIP[ship]
+					// Check both affordability AND budget limit
+					if gc.money[gc.cur_player] < cost do continue
+					if cost > remaining_defense_budget do continue // Don't exceed defense budget
 					
 					efficiency := get_sea_defense_efficiency(ship, need_destroyer, unused_carrier_cap)
 					if efficiency > best_efficiency {
@@ -2677,76 +2898,184 @@ purchase_sea_and_amphib_units_triplea :: proc(
 	// endregion PUR-062
 	debug_checks(gc)
 
-	/*
-	=============================================================================
-	TODO REVIEW: Java purchaseSeaAndAmphibUnits NESTED LOOP STRUCTURE
-	=============================================================================
+	// =============================================================================
+	// Phase 4: Transport/Amphib Purchase (Java lines 1891-2091)
+	// KEY INSIGHT: Buy transports for units stranded on low-value islands (like UK)
+	// =============================================================================
 	
-	Java lines 1519-2091 (577 lines total) has this nested loop structure:
+	// #region PUR-064: Transport/Amphib purchasing - buy transports and amphib units
+	purchase_transports_and_amphib_units(gc, prioritized_sea, &bought_units)
+	// #endregion PUR-064
 	
-	OUTER LOOP: for (ProPlaceTerritory placeTerritory : prioritizedSeaTerritories)
-	├── [IMPLEMENTED] Phase 1: Sea Defense Loop (lines 1570-1680)
-	│   └── INNER LOOP: for (ProPurchaseTerritory purchaseTerritory : selectedPurchaseTerritories)
-	│       └── INNER LOOP: while (true) - purchase defenders until can hold
-	│           ├── removeInvalidPurchaseOptions()
-	│           ├── Calculate defenseEfficiencies map
-	│           ├── randomizePurchaseOption()
-	│           ├── tempPurchase(), createTempUnits()
-	│           ├── calculateBattleResults()
-	│           └── Break if TUVSwing < -1 || winPercentage < threshold
-	│
-	├── [MISSING] Phase 2: Naval Superiority Loop (lines 1700-1885)
-	│   ├── Calculate enemyDistance, nearbyTerritories
-	│   ├── Collect enemyUnitsInLandTerritories (enemy air)
-	│   ├── Collect enemyUnitsInSeaTerritories
-	│   ├── Collect alliedUnitsInSeaTerritories  
-	│   └── INNER LOOP: while (true) - purchase until naval superiority
-	│       ├── estimateBattleResults(alliedUnits vs enemySeaUnits + enemyAirUnits)
-	│       ├── Check if winning - if so break
-	│       ├── removeInvalidPurchaseOptions()
-	│       ├── Calculate defenseEfficiencies with carrier capacity
-	│       └── Purchase best unit
-	│
-	├── [CRITICAL MISSING] Phase 3: Transport/Amphib Purchase (lines 1891-2091)
-	│   ├── SETUP: Find transports that need loading
-	│   │   ├── Get seaTerritories within transport movement distance
-	│   │   └── LOOP: for (Territory seaTerritory : seaTerritories)
-	│   │       └── LOOP: for (Unit transport : transports)
-	│   │           ├── Add to transportsThatNeedUnits
-	│   │           └── Find potentialUnitsToLoad from adjacent territories with value <= 0.25
-	│   │
-	│   ├── SETUP: Find additional potentialUnitsToLoad from land neighbors
-	│   │   └── LOOP: for (Territory neighbor : landNeighbors)
-	│   │       └── If territoryValueMap.get(neighbor) <= 0.25, add units
-	│   │
-	│   └── MAIN LOOP: while (true) - purchase transports and amphib units
-	│       ├── BRANCH A: if (!transportsThatNeedUnits.isEmpty())
-	│       │   ├── Get transport and its capacity
-	│       │   ├── selectUnitsToTransportFromList() - load existing units
-	│       │   └── INNER LOOP: while (transportCapacity > 0)
-	│       │       ├── removeInvalidPurchaseOptions()
-	│       │       ├── Calculate amphibEfficiencies
-	│       │       ├── randomizePurchaseOption()
-	│       │       ├── Add amphib unit, deduct capacity
-	│       │       └── Break if no valid options
-	│       │   └── Remove transport from transportsThatNeedUnits
-	│       │
-	│       └── BRANCH B: else (need new transport)
-	│           ├── removeInvalidPurchaseOptions()
-	│           ├── Calculate transportEfficiencies
-	│           ├── randomizePurchaseOption()
-	│           ├── Purchase transport
-	│           └── Add to transportsThatNeedUnits (triggers Branch A next iteration)
-	│
-	└── Break conditions: no money, no production, potentialUnitsToLoad empty
-	
-	KEY INSIGHT: The "value <= 0.25" check identifies territories like United_Kingdom
-	that are isolated islands. Units there should be transported OUT, not left stranded!
-	=============================================================================
-	*/
+	debug_checks(gc)
 
 	// Return whether we should save up for fleet
 	return !bought_units && wanted_to_buy_but_couldnt_defend
+}
+
+// =============================================================================
+// PUR-064: Purchase transports and amphib units
+// Identifies stranded units on low-value territories and buys transports to evacuate them
+// =============================================================================
+purchase_transports_and_amphib_units :: proc(
+	gc: ^Game_Cache,
+	prioritized_sea: [dynamic]Place_Territory_Sea,
+	bought_units: ^bool,
+) {
+	if gc.money[gc.cur_player] < 3 do return // Need at least 3 for infantry
+	
+	player := gc.cur_player
+	
+	// Calculate territory values to find low-value territories (stranded units)
+	// Java uses value <= 0.25 to identify territories where units should be evacuated
+	LOW_VALUE_THRESHOLD :: 0.25
+	
+	when ODIN_DEBUG {
+		fmt.println("\n  [PHASE 4] Transport/Amphib Purchase")
+	}
+	
+	// For each prioritized sea zone, check for transport opportunities
+	for place_sea in prioritized_sea {
+		sea_id := place_sea.sea_zone
+		
+		// Find factory that can build to this sea zone
+		factory_for_sea: Maybe(Land_ID) = nil
+		for factory_loc in sa.slice(&gc.factory_locations[player]) {
+			if gc.owner[factory_loc] != player do continue
+			if gc.builds_left[factory_loc] == 0 do continue
+			for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+				if adj_sea == sea_id {
+					factory_for_sea = factory_loc
+					break
+				}
+			}
+			if factory_for_sea != nil do break
+		}
+		
+		if factory_for_sea == nil do continue
+		factory_loc := factory_for_sea.?
+		
+		// Count existing transports that need units (empty or partially loaded)
+		transports_needing_units := count_empty_transports_triplea(gc, sea_id)
+		
+		// Count potential units to load from adjacent low-value territories
+		potential_units_to_load := count_stranded_units_for_sea(gc, sea_id, player)
+		
+		when ODIN_DEBUG {
+			fmt.printf("    [SEA %v] transports_needing_units=%d, potential_units_to_load=%d, factory=%v\n",
+				sea_id, transports_needing_units, potential_units_to_load, factory_loc)
+		}
+		
+		// Skip if no units need transport
+		if potential_units_to_load == 0 do continue
+		
+		// #region PUR-065: while loop - purchase transports and amphib units
+		amphib_loop: for gc.money[gc.cur_player] >= 3 && gc.builds_left[factory_loc] > 0 {
+			
+			// Branch A: Fill existing empty transports with purchased amphib units
+			if transports_needing_units > 0 {
+				// Buy amphib units to fill transport capacity
+				// Transport capacity is 5 (2 infantry or 1 infantry + 1 tank/arty)
+				transport_capacity := 5
+				
+				// #region PUR-066: while loop - fill transport with amphib units
+				fill_transport: for transport_capacity > 0 && gc.money[gc.cur_player] >= 3 && gc.builds_left[factory_loc] > 0 {
+					// Calculate amphib efficiencies
+					// Prefer tanks > artillery > infantry for offensive punch
+					best_unit: Maybe(Unit_Type) = nil
+					best_efficiency: f64 = 0
+					
+					// Tank: cost 6, transport cost 3, attack 3 -> efficiency 3/6 = 0.5 per PU
+					if transport_capacity >= 3 && gc.money[gc.cur_player] >= 6 {
+						efficiency := f64(3.0) / f64(6.0) // attack / cost
+						if efficiency > best_efficiency {
+							best_efficiency = efficiency
+							best_unit = .Tank
+						}
+					}
+					
+					// Artillery: cost 4, transport cost 3, attack 2 -> efficiency 2/4 = 0.5 per PU
+					// But artillery supports infantry, so slightly prefer
+					if transport_capacity >= 3 && gc.money[gc.cur_player] >= 4 {
+						efficiency := f64(2.2) / f64(4.0) // Slightly boosted for infantry support
+						if efficiency > best_efficiency {
+							best_efficiency = efficiency
+							best_unit = .Artillery
+						}
+					}
+					
+					// Infantry: cost 3, transport cost 2, attack 1 -> efficiency 1/3 = 0.33 per PU
+					if transport_capacity >= 2 && gc.money[gc.cur_player] >= 3 {
+						efficiency := f64(1.0) / f64(3.0)
+						if efficiency > best_efficiency {
+							best_efficiency = efficiency
+							best_unit = .Infantry
+						}
+					}
+					
+					if best_unit == nil do break fill_transport
+					
+					unit := best_unit.?
+					cost: u8 = 0
+					transport_cost: int = 0
+					
+					#partial switch unit {
+					case .Infantry:
+						cost = 3
+						transport_cost = 2
+					case .Artillery:
+						cost = 4
+						transport_cost = 3
+					case .Tank:
+						cost = 6
+						transport_cost = 3
+					case:
+						break fill_transport
+					}
+					
+					gc.money[gc.cur_player] -= cost
+					gc.builds_left[factory_loc] -= 1
+					transport_capacity -= transport_cost
+					add_units_to_place_triplea(factory_loc, unit, 1)
+					bought_units^ = true
+					
+					when ODIN_DEBUG {
+						fmt.printf("      [AMPHIB] Bought %v for transport at %v (capacity left: %d)\n",
+							unit, factory_loc, transport_capacity)
+					}
+				}
+				// #endregion PUR-066
+				
+				transports_needing_units -= 1
+				
+			} else {
+				// Branch B: Buy new transport if units need evacuation and we can defend it
+				if potential_units_to_load > 0 && gc.money[gc.cur_player] >= 7 {
+					// Check if we have enough defense for transport
+					defenders := count_sea_defenders_triplea(gc, sea_id)
+					if defenders >= 1 {
+						gc.money[gc.cur_player] -= 7
+						gc.builds_left[factory_loc] -= 1
+						add_naval_units_to_place_triplea(factory_loc, .TRANS_EMPTY, 1)
+						bought_units^ = true
+						transports_needing_units += 1 // Will trigger Branch A next iteration
+						
+						when ODIN_DEBUG {
+							fmt.printf("      [TRANSPORT] Bought transport at %v for stranded units\n", factory_loc)
+						}
+					} else {
+						// Can't defend transport, stop trying
+						break amphib_loop
+					}
+				} else {
+					// No more units to load or can't afford transport
+					break amphib_loop
+				}
+			}
+		}
+		// #endregion PUR-065
+	}
+	// #endregion PUR-064
 }
 
 // Helper: Check if we need destroyer for anti-sub warfare

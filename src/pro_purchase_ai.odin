@@ -75,7 +75,9 @@ purchase_triplea_full :: proc(gc: ^Game_Cache) -> map[Land_ID]Pro_Purchase_Terri
 	//         purchaseOptions.getLandZeroMoveOptions(),
 	//         purchaseOptions.getAirOptions(),
 	//         true);
-	purchase_defenders_triplea(gc, need_to_defend_land_territories, true)
+	// Calculate naval budget reserve once for this player's turn
+	naval_budget := calculate_naval_budget_reserve(gc)
+	purchase_defenders_triplea(gc, need_to_defend_land_territories, true, naval_budget)
 
 	//     // Find strategic value for each territory
 	//     ProLogger.info("Find strategic value for place territories");
@@ -116,7 +118,8 @@ purchase_triplea_full :: proc(gc: ^Game_Cache) -> map[Land_ID]Pro_Purchase_Terri
 	prioritized_land_territories := prioritize_land_territories_triplea(gc)
 	//     purchaseAaUnits(
 	//         purchaseTerritories, prioritizedLandTerritories, purchaseOptions.getAaOptions());
-	purchase_aa_units_triplea(gc, prioritized_land_territories)
+	// Pass naval budget to prevent AA from spending money reserved for transports
+	purchase_aa_units_triplea(gc, prioritized_land_territories, naval_budget)
 	
 	// MODIFIED: Move sea purchase BEFORE land units to ensure ships can be bought
 	// In Java, land units spending all money prevents any sea purchases.
@@ -149,7 +152,7 @@ purchase_triplea_full :: proc(gc: ^Game_Cache) -> map[Land_ID]Pro_Purchase_Terri
 	//         List.of(),
 	//         purchaseOptions.getAirOptions(),
 	//         false);
-	purchase_defenders_triplea(gc, need_to_defend_sea_territories, false)
+	purchase_defenders_triplea(gc, need_to_defend_sea_territories, false, 0)
 
 	//     // Determine whether to purchase new land factory
 	//     final Map<Territory, ProPurchaseTerritory> factoryPurchaseTerritories = new HashMap<>();
