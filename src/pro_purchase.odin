@@ -2988,10 +2988,38 @@ purchase_transports_and_amphib_units :: proc(
 			
 			// Branch A: Fill existing empty transports with purchased amphib units
 			if transports_needing_units > 0 {
-				// Buy amphib units to fill transport capacity
 				// Transport capacity is 5 (2 infantry or 1 infantry + 1 tank/arty)
 				transport_capacity := 5
 				
+				// CRITICAL FIX: First deduct capacity for existing stranded units
+				// Java does this with selectUnitsToTransportFromList() - existing units
+				// get priority to be loaded, and we only purchase for remaining capacity.
+				//
+				// Calculate how many stranded units can fill this transport:
+				// Infantry costs 2 transport capacity, others cost 3
+				stranded_to_load := min(int(potential_units_to_load), 2) // Max 2 units per transport
+				if stranded_to_load > 0 {
+					// Assume stranded units are mostly infantry (transport cost 2 each)
+					// 2 infantry = 4 capacity, leaving 1 (but can't use 1 for anything)
+					// 1 infantry = 2 capacity, could still fit 1 arty/tank (3)
+					capacity_used_by_stranded := stranded_to_load * 2 // Assume infantry at 2 each
+					transport_capacity -= capacity_used_by_stranded
+					potential_units_to_load -= u8(stranded_to_load)
+					
+					when ODIN_DEBUG {
+						fmt.printf("      [LOAD EXISTING] %d stranded units will fill %d capacity (remaining: %d)\n",
+							stranded_to_load, capacity_used_by_stranded, transport_capacity)
+					}
+				} else {
+					// No stranded units left to load - this transport would be empty after
+					// loading existing units. Skip buying units just to fill empty transports
+					// unless we have good amphibious assault opportunities.
+					// For now, skip filling transports that have no cargo purpose.
+					transports_needing_units -= 1
+					continue
+				}
+				
+				// Only purchase units if there's remaining capacity after loading stranded units
 				// #region PUR-066: while loop - fill transport with amphib units
 				fill_transport: for transport_capacity > 0 && gc.money[gc.cur_player] >= 3 && gc.builds_left[factory_loc] > 0 {
 					// Calculate amphib efficiencies
