@@ -336,14 +336,16 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// Step 5: Land bombers in safe territories
 	land_bombers_noncombat(gc, &pro_data)
 
-	// Step 6: Move remaining sea units to safe positions
+	// Step 6: Load transports with units for positioning (BEFORE land movement!)
+	// This is critical: we need to load units BEFORE they walk away
+	// Java does: move amphib units -> move empty transports -> move sea -> move land
+	load_transports_noncombat(gc, &pro_data)
+
+	// Step 7: Move remaining sea units to safe positions
 	move_sea_units_noncombat(gc, &pro_data)
 
-	// Step 7: Move remaining land units to consolidate
+	// Step 8: Move remaining land units to consolidate (units on transports won't move)
 	move_land_units_noncombat(gc, &pro_data)
-	
-	// Step 8: Load transports with units for next turn's attacks
-	load_transports_noncombat(gc, &pro_data)
 	
 	debug_checks(gc)
 	when ODIN_DEBUG {
@@ -1058,19 +1060,24 @@ find_air_units_needing_landing :: proc(
 ) -> [dynamic]Air_Unit_To_Land {
 	units := make([dynamic]Air_Unit_To_Land)
 
-	for plane in Unlanded_Fighters {
+	// Use the correct unlanded plane states based on plane type
+	unlanded_planes: []Active_Plane
+	movement_range: int
+	if plane_type == .BOMBER {
+		unlanded_planes = Unlanded_Bombers[:]
+		movement_range = 6 // Bombers have 6 movement
+	} else {
+		unlanded_planes = Unlanded_Fighters[:]
+		movement_range = 4 // Fighters have 4 movement
+	}
+
+	for plane in unlanded_planes {
 
 		// Check all territories for idle planes
 		for land_id in Land_ID {
 			count := gc.active_land_planes[land_id][plane]
 			if count == 0 {
 				continue
-			}
-
-			// Determine movement range
-			movement_range := 4 // Fighters have 4 movement
-			if plane_type == .BOMBER {
-				movement_range = 6 // Bombers have 6 movement
 			}
 
 			// Create entries for each plane at this location
@@ -1408,9 +1415,12 @@ land_air_units_to_best_attack_positions :: proc(
 			}
 			gc.current_territory = to_air(air_unit.current_location)
 			gc.current_active_unit = to_unit(air_unit.active_plane_type)
-			move_fighter_from_land_to_land(gc, to_action(best.territory))
-			// TODO: Execute the actual move
-			// For now, just mark as moved
+			// Use correct move function based on plane type
+			if air_unit.plane_type == .BOMBER {
+				move_bomber_from_land_to_land(gc, to_action(best.territory))
+			} else {
+				move_fighter_from_land_to_land(gc, to_action(best.territory))
+			}
 			append(&moved, idx)
 		}
 	}
@@ -1486,7 +1496,14 @@ land_air_units_to_safest_territories :: proc(
 				)
 			}
 
-			// TODO: Execute the actual move
+			gc.current_territory = to_air(air_unit.current_location)
+			gc.current_active_unit = to_unit(air_unit.active_plane_type)
+			// Use correct move function based on plane type
+			if air_unit.plane_type == .BOMBER {
+				move_bomber_from_land_to_land(gc, to_action(best.territory))
+			} else {
+				move_fighter_from_land_to_land(gc, to_action(best.territory))
+			}
 		}
 	}
 }
@@ -1820,7 +1837,14 @@ move_land_towards_coastal_factories :: proc(
 			min_distance := max(u8)
 			best_territory:= src_land
 			
-			// max_moves := idle_army_to_max_moves(army_type)
+			// First calculate distance from current position to nearest factory
+			src_to_factory_distance := max(u8)
+			for factory in coastal_factories {
+				dist := mm.air_distances[to_air(src_land)][to_air(factory)]
+				if dist < src_to_factory_distance {
+					src_to_factory_distance = dist
+				}
+			}
 			
 			// Check all reachable territories
 
@@ -1831,11 +1855,12 @@ move_land_towards_coastal_factories :: proc(
 					continue
 				}
 				
-				// Calculate distance to nearest coastal factory
+				// Calculate distance from DESTINATION to nearest coastal factory
 				for factory in coastal_factories {
-					distance := mm.air_distances[to_air(src_land)][to_air(factory)]
+					distance := mm.air_distances[to_air(dst_land)][to_air(factory)]
 					
-					if distance >= 0 && distance < min_distance {
+					// Only move if destination is closer to factory than current position
+					if distance < min_distance && distance < src_to_factory_distance {
 						min_distance = distance
 						best_territory = dst_land
 					}
@@ -1964,7 +1989,9 @@ move_land_to_safest_territories :: proc(
 				}
 			}
 			
-			if best_territory != src_land {
+			// Don't move units AWAY from factory territories
+			// Added factory check to prevent units leaving valuable factory locations
+			if best_territory != src_land && gc.factory_prod[src_land] == 0 {
 				gc.current_territory = to_air(src_land)
 				gc.current_active_unit = to_unit(army)
 				dst_action := to_action(best_territory)
@@ -2301,6 +2328,7 @@ load_noncombat_onto_empty_transport :: proc(
 			// Load tank
 			gc.idle_armies[land][player][.TANK] -= 1
 			gc.team_land_units[land][mm.team[player]] -= 1
+			remove_from_active_armies(gc, land, .TANK)
 			
 			// Update transport
 			gc.idle_ships[sea][player][.TRANS_EMPTY] -= 1
@@ -2315,6 +2343,7 @@ load_noncombat_onto_empty_transport :: proc(
 				if gc.idle_armies[inf_land][player][.INF] > 0 {
 					gc.idle_armies[inf_land][player][.INF] -= 1
 					gc.team_land_units[inf_land][mm.team[player]] -= 1
+					remove_from_active_armies(gc, inf_land, .INF)
 					
 					// Transform 1T to 1I_1T
 					gc.idle_ships[sea][player][.TRANS_1T] -= 1
@@ -2338,6 +2367,7 @@ load_noncombat_onto_empty_transport :: proc(
 		if gc.idle_armies[land][player][.ARTY] > 0 {
 			gc.idle_armies[land][player][.ARTY] -= 1
 			gc.team_land_units[land][mm.team[player]] -= 1
+			remove_from_active_armies(gc, land, .ARTY)
 			
 			gc.idle_ships[sea][player][.TRANS_EMPTY] -= 1
 			gc.idle_ships[sea][player][.TRANS_1A] += 1
@@ -2351,6 +2381,7 @@ load_noncombat_onto_empty_transport :: proc(
 				if gc.idle_armies[inf_land][player][.INF] > 0 {
 					gc.idle_armies[inf_land][player][.INF] -= 1
 					gc.team_land_units[inf_land][mm.team[player]] -= 1
+					remove_from_active_armies(gc, inf_land, .INF)
 					
 					gc.idle_ships[sea][player][.TRANS_1A] -= 1
 					gc.idle_ships[sea][player][.TRANS_1I_1A] += 1
@@ -2374,6 +2405,7 @@ load_noncombat_onto_empty_transport :: proc(
 		for gc.idle_armies[land][player][.INF] > 0 && infantry_loaded < 2 {
 			gc.idle_armies[land][player][.INF] -= 1
 			gc.team_land_units[land][mm.team[player]] -= 1
+			remove_from_active_armies(gc, land, .INF)
 			
 			if infantry_loaded == 0 {
 				gc.idle_ships[sea][player][.TRANS_EMPTY] -= 1
@@ -2415,6 +2447,7 @@ load_noncombat_second_unit_onto_1i :: proc(
 		if gc.idle_armies[land][player][.TANK] > 0 {
 			gc.idle_armies[land][player][.TANK] -= 1
 			gc.team_land_units[land][mm.team[player]] -= 1
+			remove_from_active_armies(gc, land, .TANK)
 			
 			gc.idle_ships[sea][player][.TRANS_1I] -= 1
 			gc.idle_ships[sea][player][.TRANS_1I_1T] += 1
@@ -2438,6 +2471,7 @@ load_noncombat_second_unit_onto_1i :: proc(
 		if gc.idle_armies[land][player][.ARTY] > 0 {
 			gc.idle_armies[land][player][.ARTY] -= 1
 			gc.team_land_units[land][mm.team[player]] -= 1
+			remove_from_active_armies(gc, land, .ARTY)
 			
 			gc.idle_ships[sea][player][.TRANS_1I] -= 1
 			gc.idle_ships[sea][player][.TRANS_1I_1A] += 1
@@ -2466,6 +2500,7 @@ load_noncombat_second_unit_onto_1i :: proc(
 		if gc.idle_armies[land][player][.INF] > 0 {
 			gc.idle_armies[land][player][.INF] -= 1
 			gc.team_land_units[land][mm.team[player]] -= 1
+			remove_from_active_armies(gc, land, .INF)
 			
 			gc.idle_ships[sea][player][.TRANS_1I] -= 1
 			gc.idle_ships[sea][player][.TRANS_2I] += 1
@@ -2505,6 +2540,7 @@ load_noncombat_infantry_onto_partial :: proc(
 		if gc.idle_armies[land][player][.INF] > 0 {
 			gc.idle_armies[land][player][.INF] -= 1
 			gc.team_land_units[land][mm.team[player]] -= 1
+			remove_from_active_armies(gc, land, .INF)
 			
 			if transport_type == .TRANS_1A {
 				gc.idle_ships[sea][player][.TRANS_1A] -= 1
@@ -2541,4 +2577,37 @@ load_noncombat_infantry_onto_partial :: proc(
 	}
 	
 	return false
+}
+
+// Helper: Remove unit from active_armies (find the right move state)
+// During noncombat, units might be in various move states - find and remove
+remove_from_active_armies :: proc(gc: ^Game_Cache, land: Land_ID, unit_type: Idle_Army) {
+	switch unit_type {
+	case .INF:
+		if gc.active_armies[land][.INF_1_MOVES] > 0 {
+			gc.active_armies[land][.INF_1_MOVES] -= 1
+		} else if gc.active_armies[land][.INF_0_MOVES] > 0 {
+			gc.active_armies[land][.INF_0_MOVES] -= 1
+		}
+	case .ARTY:
+		if gc.active_armies[land][.ARTY_1_MOVES] > 0 {
+			gc.active_armies[land][.ARTY_1_MOVES] -= 1
+		} else if gc.active_armies[land][.ARTY_0_MOVES] > 0 {
+			gc.active_armies[land][.ARTY_0_MOVES] -= 1
+		}
+	case .TANK:
+		if gc.active_armies[land][.TANK_2_MOVES] > 0 {
+			gc.active_armies[land][.TANK_2_MOVES] -= 1
+		} else if gc.active_armies[land][.TANK_1_MOVES] > 0 {
+			gc.active_armies[land][.TANK_1_MOVES] -= 1
+		} else if gc.active_armies[land][.TANK_0_MOVES] > 0 {
+			gc.active_armies[land][.TANK_0_MOVES] -= 1
+		}
+	case .AAGUN:
+		if gc.active_armies[land][.AAGUN_1_MOVES] > 0 {
+			gc.active_armies[land][.AAGUN_1_MOVES] -= 1
+		} else if gc.active_armies[land][.AAGUN_0_MOVES] > 0 {
+			gc.active_armies[land][.AAGUN_0_MOVES] -= 1
+		}
+	}
 }

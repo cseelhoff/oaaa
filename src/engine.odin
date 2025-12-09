@@ -102,6 +102,15 @@ when ODIN_DEBUG {//&& false {
 					   idle_plane == .BOMBER &&
 					   mm.team[gc.owner[land]] != mm.team[player] {
 						print_game_state(gc)
+						fmt.eprintln("=== BOMBER BUG DEBUG ===")
+						fmt.eprintln("Territory:", land)
+						fmt.eprintln("Territory owner:", gc.owner[land])
+						fmt.eprintln("Territory owner team:", mm.team[gc.owner[land]])
+						fmt.eprintln("Bomber owner (player):", player)
+						fmt.eprintln("Bomber owner team:", mm.team[player])
+						fmt.eprintln("Current player:", gc.cur_player)
+						fmt.eprintln("Bomber count:", plane)
+						fmt.eprintln("=========================")
 						fmt.eprintln("Enemy bombers at enemy land")
 						intrinsics.debug_trap()
 					}

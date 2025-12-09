@@ -29,19 +29,39 @@ find_air_landing_options :: proc(
 		...
 	}
 	*/
-	if !gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 	valid_landings :Air_Bitset= {}
 	territory := air_unit.current_location
 	air_location := to_air(territory)
 
+	// Handle fighters
 	if air_unit.active_plane_type == .FIGHTER_1_MOVES {
+		if !gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 		valid_landings = gc.can_fighter_land_here & mm.a2a_within_1_moves[air_location]
 	} else if air_unit.active_plane_type == .FIGHTER_2_MOVES {
+		if !gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 		valid_landings = gc.can_fighter_land_here & mm.a2a_within_2_moves[air_location]
 	} else if air_unit.active_plane_type == .FIGHTER_3_MOVES {
+		if !gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 		valid_landings = gc.can_fighter_land_here & mm.a2a_within_3_moves[air_location]
 	} else if air_unit.active_plane_type == .FIGHTER_4_MOVES {
+		if !gc.is_fighter_cache_current do refresh_can_fighter_land_here(gc)
 		valid_landings = gc.can_fighter_land_here & mm.a2a_within_4_moves[air_location]
+	// Handle bombers
+	} else if air_unit.active_plane_type == .BOMBER_1_MOVES {
+		if !gc.is_bomber_cache_current do refresh_can_bomber_land_here(gc)
+		valid_landings = to_air_bitset(gc.can_bomber_land_here) & mm.a2a_within_1_moves[air_location]
+	} else if air_unit.active_plane_type == .BOMBER_2_MOVES {
+		if !gc.is_bomber_cache_current do refresh_can_bomber_land_here(gc)
+		valid_landings = to_air_bitset(gc.can_bomber_land_here) & mm.a2a_within_2_moves[air_location]
+	} else if air_unit.active_plane_type == .BOMBER_3_MOVES {
+		if !gc.is_bomber_cache_current do refresh_can_bomber_land_here(gc)
+		valid_landings = to_air_bitset(gc.can_bomber_land_here) & mm.a2a_within_3_moves[air_location]
+	} else if air_unit.active_plane_type == .BOMBER_4_MOVES {
+		if !gc.is_bomber_cache_current do refresh_can_bomber_land_here(gc)
+		valid_landings = to_air_bitset(gc.can_bomber_land_here) & mm.a2a_within_4_moves[air_location]
+	} else if air_unit.active_plane_type == .BOMBER_5_MOVES {
+		if !gc.is_bomber_cache_current do refresh_can_bomber_land_here(gc)
+		valid_landings = to_air_bitset(gc.can_bomber_land_here) & mm.a2a_within_5_moves[air_location]
 	}
     sa_valid_landings: Air_ID_Array = {}
     get_airs(valid_landings, &sa_valid_landings)
