@@ -246,22 +246,22 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-027 | └─ └─ └─ └─ Find units to load | 880-910 | Identifies units that could be loaded onto transport for defensive movement. | ❌ MISSING | ❌ MISSING | 0% | |
 | NCM-028 | └─ └─ └─ └─ Find safest unload zone | 915-935 | Finds safest sea zone to unload defenders at destination. | ❌ MISSING | ❌ MISSING | 0% | |
 | NCM-029 | `moveUnitsToBestTerritories()` | 962-1840 | Large method with 12 blocks moving different unit types to optimal positions. Handles transports, sea units, land units, and air. | [`move_units_to_best_territories()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 45% | ~45% |
-| NCM-030 | └─ **Block 1: Transport amphib to land** | 985-1100 | Moves loaded transports to unload at high-value land territories. Key for offensive positioning. | ❌ MISSING | ❌ MISSING | 0% | **KEY MISSING** |
-| NCM-031 | └─ └─ `for (proTransportData)` transportMapList | 995-1095 | Iterates through transport movement data structures. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-032 | └─ └─ └─ `for (transport)` in transportMap | 1000-1090 | For each transport, finds best destination. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-033 | └─ └─ └─ └─ Find best land by value | 1010-1040 | Evaluates reachable land territories by strategic value for unloading. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-034 | └─ └─ └─ └─ `for` find units to load | 1045-1065 | If transport not full, finds additional units to load from adjacent land. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-035 | └─ └─ └─ └─ `for` find safest unload sea | 1070-1085 | Selects safest sea zone for the unload operation. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-036 | └─ **Block 2: Transport amphib to sea** | 1100-1180 | Moves transports to strategic sea positions even if not unloading. For future turn positioning. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-037 | └─ └─ Similar structure | 1105-1175 | Same pattern as Block 1 but for sea-only destinations. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-038 | └─ **Block 3: Empty transports to loading** | 1185-1280 | Moves empty transports towards territories with units waiting to be loaded (near factories). | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-039 | └─ └─ `for (transport)` empty | 1195-1275 | Iterates through empty transports. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-040 | └─ └─ └─ Calc load territory priorities | 1205-1240 | Calculates which territories have units that should be transported. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-041 | └─ └─ └─ Move to factory-adjacent sea | 1250-1270 | Moves transport to sea zone adjacent to factory for next-turn loading. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-042 | └─ **Block 4: Remaining transports to safety** | 1285-1400 | Moves transports that couldn't find good destinations to safest available sea zone. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-043 | └─ └─ `for (transport)` remaining | 1295-1395 | Iterates through transports not yet moved. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-044 | └─ └─ └─ Find safest sea zone | 1305-1350 | Evaluates sea zones by enemy threat to find safest destination. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-045 | └─ └─ └─ Try unload if carrying | 1355-1390 | If transport is carrying units, tries to unload at safe location rather than risk losing cargo. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-030 | └─ **Block 1: Transport amphib to land** | 985-1100 | Moves loaded transports to unload at high-value land territories. Key for offensive positioning. | [`stage_and_unload_transports_noncombat()`](src/pro_noncombat_move.odin) | ✅ DONE | 80% | Implemented with value-based destination selection |
+| NCM-031 | └─ └─ `for (proTransportData)` transportMapList | 995-1095 | Iterates through transport movement data structures. | [`stage_and_unload_one_transport()`](src/pro_noncombat_move.odin) | ✅ DONE | 75% | Priority-based iteration through loaded transports |
+| NCM-032 | └─ └─ └─ `for (transport)` in transportMap | 1000-1090 | For each transport, finds best destination. | Loop in `stage_and_unload_one_transport()` | ✅ DONE | 80% | |
+| NCM-033 | └─ └─ └─ └─ Find best land by value | 1010-1040 | Evaluates reachable land territories by strategic value for unloading. | `find_territory_values_triplea()` + land value calc | ✅ DONE | 85% | Uses territory values from ProTerritoryValueUtils |
+| NCM-034 | └─ └─ └─ └─ `for` find units to load | 1045-1065 | If transport not full, finds additional units to load from adjacent land. | ❌ SKIPPED | 🔶 PARTIAL | 0% | Not needed - transports already loaded during load phase |
+| NCM-035 | └─ └─ └─ └─ `for` find safest unload sea | 1070-1085 | Selects safest sea zone for the unload operation. | Adjacent sea selection in `stage_and_unload_one_transport()` | ✅ DONE | 70% | Simplified - uses first valid adjacent sea |
+| NCM-036 | └─ **Block 2: Transport amphib to sea** | 1100-1180 | Moves transports to strategic sea positions even if not unloading. For future turn positioning. | ❌ SKIPPED | 🔶 PARTIAL | 0% | Not needed for 1942 SE - always unload if loaded |
+| NCM-037 | └─ └─ Similar structure | 1105-1175 | Same pattern as Block 1 but for sea-only destinations. | ❌ SKIPPED | 🔶 PARTIAL | 0% | |
+| NCM-038 | └─ **Block 3: Empty transports to loading** | 1185-1280 | Moves empty transports towards territories with units waiting to be loaded (near factories). | [`move_empty_transports_to_loading()`](src/pro_noncombat_move.odin) | ✅ DONE | 85% | Uses Java loadValue formula |
+| NCM-039 | └─ └─ `for (transport)` empty | 1195-1275 | Iterates through empty transports. | `for trans_type in Empty_Trans_Types` | ✅ DONE | 85% | Processes UNMOVED and 2_MOVES |
+| NCM-040 | └─ └─ └─ Calc load territory priorities | 1205-1240 | Calculates which territories have units that should be transported. | [`calculate_load_value()`](src/pro_noncombat_move.odin) | ✅ DONE | 90% | territoryValue + 0.5*turns - 0.1*units - 0.1*production |
+| NCM-041 | └─ └─ └─ Move to factory-adjacent sea | 1250-1270 | Moves transport to sea zone adjacent to factory for next-turn loading. | `move_one_empty_transport_to_loading()` | ✅ DONE | 80% | Includes safe path checking |
+| NCM-042 | └─ **Block 4: Remaining transports to safety** | 1285-1400 | Moves transports that couldn't find good destinations to safest available sea zone. | [`skip_transport_to_0_moves()`](src/pro_noncombat_move.odin) | ✅ DONE | 65% | Transports without destinations skip to 0 moves |
+| NCM-043 | └─ └─ `for (transport)` remaining | 1295-1395 | Iterates through transports not yet moved. | Fallback in `stage_and_unload_one_transport()` | ✅ DONE | 60% | |
+| NCM-044 | └─ └─ └─ Find safest sea zone | 1305-1350 | Evaluates sea zones by enemy threat to find safest destination. | ❌ MISSING | 🔶 PARTIAL | 30% | Simplified - stays in place |
+| NCM-045 | └─ └─ └─ Try unload if carrying | 1355-1390 | If transport is carrying units, tries to unload at safe location rather than risk losing cargo. | [`unload_transport_cargo_to_land()`](src/pro_noncombat_move.odin) | ✅ DONE | 85% | Always unloads cargo to best destination |
 | NCM-046 | └─ **Block 5: Sea units defend transports** | 1500-1560 | Moves warships to protect vulnerable transports from enemy attack. | ❌ MISSING | ❌ MISSING | 0% | |
 | NCM-047 | └─ └─ `for (Unit sea)` | 1510-1555 | Iterates through available warships. | ❌ MISSING | ❌ MISSING | 0% | |
 | NCM-048 | └─ └─ └─ Check transport needs escort | 1520-1545 | Identifies transports that lack adequate protection. | ❌ MISSING | ❌ MISSING | 0% | |
@@ -1111,9 +1111,15 @@ odin build src/ -debug -out:debug_oaaa && ./debug_oaaa
 ### Known Issues
 1. Strategic bombing AI not implemented - bombers only used tactically
 2. Blitz logic incomplete - tanks may not use optimal paths
-3. Multi-transport coordination not implemented
+3. ~Transport staging/unloading not implemented~ - **FIXED**: `stage_and_unload_transports_noncombat()` now moves loaded transports to high-value destinations and unloads cargo
+4. ~Empty transport repositioning not implemented~ - **FIXED**: `move_empty_transports_to_loading()` moves transports toward factories
+
+### Recently Completed
+- **Empty Transport Positioning (NCM-038 to NCM-041)**: Empty transports now automatically move toward coastal territories with factories or units waiting to load. Uses Java's loadValue formula: `territoryValue + 0.5*numTurnsAway - 0.1*numUnitsToLoad - 0.1*factoryProduction`. Lower value = better destination (factories and units are attractive).
+- **Circular Loading Bug Fix**: Fixed issue where Japan would load units from India onto transports at Sea_35, then immediately unload them back to India. Implemented Java's `landRoutesMap` filtering pattern from `ProTerritoryManager.java` - now excludes territories that can walk to the unload destination from valid loading sources.
+- **Transport NCM Staging (NCM-030 to NCM-045)**: Loaded transports now automatically move to adjacent sea zones of high-value land territories and unload all cargo during non-combat phase. Uses `find_territory_values_triplea()` for destination selection.
 
 ---
 
 *Document created: December 6, 2025*
-*Last updated: December 7, 2025*
+*Last updated: December 9, 2025*
