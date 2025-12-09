@@ -4,6 +4,67 @@ import "core:fmt"
 import "core:math"
 import "core:slice"
 
+/*
+=============================================================================
+Pro Land Value Calculation
+
+Maps to Java ProTerritoryValueUtils.java (721 lines)
+Calculates strategic value of territories for attack and defense prioritization.
+
+=============================================================================
+JAVA ProTerritoryValueUtils.java STRUCTURE (721 lines)
+=============================================================================
+
+findTerritoryValues() - Main entry (lines 40-180) - [PARTIAL]
+├── LOOP: for each territory
+│   ├── Calculate production value - [IMPLEMENTED]
+│   ├── Calculate neighbor bonus - [IMPLEMENTED]
+│   ├── [MISSING] Enemy factory/capital distance bonus (lines 80-120)
+│   └── [MISSING] Sea zone accessibility bonus (lines 125-150)
+
+findSeaValue() - Sea zone valuation (lines 182-280) - [PARTIAL]
+├── LOOP: for each sea zone
+│   ├── Adjacent land value sum - [IMPLEMENTED]
+│   ├── [MISSING] Transport route value (lines 210-250)
+│   └── [MISSING] Naval choke point bonus (lines 255-275)
+
+findLandValue() - Land territory valuation (lines 282-400) - [PARTIAL]
+├── LOOP: for each land territory
+│   └── BFS from production centers - [IMPLEMENTED simplified]
+
+[MISSING] findAttackValue() (lines 402-520)
+├── Calculate value of attacking a territory
+├── Consider TUV swing, production gain
+└── Factor in post-conquest defensibility
+
+[MISSING] findDefenseValue() (lines 522-640)
+├── Calculate defensive priority
+├── Consider capital proximity
+└── Factor in factory presence
+
+[MISSING] findUnitValue() (lines 642-721)
+├── Unit-specific value multipliers
+└── Used for TUV calculations
+
+=============================================================================
+TODO REVIEW: Missing from ProTerritoryValueUtils.java:
+
+1. findAttackValue() - NOT IMPLEMENTED
+   - Territory attack prioritization formula
+   - Critical for attack sequencing
+
+2. findDefenseValue() - NOT IMPLEMENTED
+   - Defense priority calculation
+   - Used in non-combat move decisions
+
+3. Sea zone transport route value - NOT IMPLEMENTED
+   - Value of sea zones for transport paths
+
+4. Multi-hop value propagation - PARTIAL
+   - Java uses BFS with decay, Odin simplified
+=============================================================================
+*/
+
 MAX_LAND_MASS_SIZE :: 49
 
 

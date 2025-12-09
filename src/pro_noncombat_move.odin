@@ -7,76 +7,100 @@ This file implements non-combat movement logic following TripleA's ProNonCombatM
 The Pro AI moves units to defensive positions, lands planes safely, and repositions forces
 for future attacks.
 
-Key Responsibilities:
-- Find territories that need defense
-- Move units to best defensive positions
-- Land fighters and bombers safely
-- Move transports to loading positions
-- Consolidate forces for future attacks
-- Ensure capital remains defended
+=============================================================================
+JAVA ProNonCombatMoveAi.java NESTED LOOP STRUCTURE (2,541 lines)
+=============================================================================
 
-Algorithm Overview (from ProNonCombatMoveAi.java):
-1. Find units that can't move and infrastructure units
-2. Move one defender to land territories bordering enemy
-3. Determine max enemy attackers and if territories can be held
-4. Prioritize territories to defend
-5. Move units to defend territories
-6. Move units to best value territories (sea, land, air)
-7. Move infrastructure units (AA guns, factories if mobile)
-8. Execute non-combat moves
+MAIN ENTRY: doNonCombatMove() lines 76-198
+├── territoryManager.populateDefenseOptions()
+├── findUnitsThatCantMove() - [MISSING] lines 200-255
+├── findInfraUnitsThatCanMove() - [MISSING] lines 257-275
+├── moveOneDefenderToLandTerritoriesBorderingEnemy() - [PARTIAL]
+│   └── LOOP: for each empty border territory
+│       └── Find cheapest unit from adjacent owned territories
+├── territoryManager.populateEnemyAttackOptions()
+├── determineIfMoveTerritoriesCanBeHeld() - [PARTIAL]
+│   └── LOOP: for each defense territory
+│       └── calculateBattleResults(), set canHold flag
+├── prioritizeDefendOptions() - [PARTIAL]
+│   └── LOOP: for each territory, calculate defense priority
+│
+├── [CRITICAL] CAPITAL DEFENSE LOOP lines 130-165 - [MISSING]
+│   while (true) {
+│   │   └── LOOP: for each defend territory
+│   │       └── Adjust value based on distance to capital
+│   │   moveUnitsToBestTerritories()
+│   │   └── Check capital local superiority
+│   │   └── If no superiority: reset territoryManager, increase defenseRange, repeat
+│   └── Break when capital is safe
+│   }
+│
+├── moveUnitsToDefendTerritories() lines 630-960 - [PARTIAL]
+│   └── OUTER LOOP: Try decreasing number of territories to defend
+│       ├── LOOP: for each territory to defend
+│       │   └── INNER LOOP: for each unit with move options
+│       │       └── Add unit if improves defense
+│       ├── [MISSING] LOOP: Check for amphib defense options
+│       │   └── LOOP: for each transport in transportMapList
+│       │       └── Find units to load, calculate safest unload zone
+│       └── Check if all defenses successful; if not, reduce territory count
+│
+├── moveUnitsToBestTerritories() lines 962-1840 - [PARTIAL ~45%]
+│   ├── [MISSING] Block 1: Transport amphib to best land (lines 985-1100)
+│   │   └── LOOP: for proTransportData in transportMapList
+│   │       └── LOOP: for transport in transportMap
+│   │           ├── Find best land territory by value
+│   │           ├── LOOP: Find units to load from adjacent territories
+│   │           └── LOOP: Find safest unload sea zone
+│   │
+│   ├── [MISSING] Block 2: Transport amphib to best sea (lines 1100-1180)
+│   │   └── Similar structure but for sea destinations
+│   │
+│   ├── [MISSING] Block 3: Empty transports to loading position (lines 1185-1280)
+│   │   └── LOOP: for each empty transport
+│   │       ├── Calculate load territory priorities
+│   │       └── Move towards factory-adjacent sea zones
+│   │
+│   ├── [MISSING] Block 4: Remaining transports to safety (lines 1285-1400)
+│   │   └── LOOP: for remaining unmoved transports
+│   │       └── Find safest sea zone, try to unload if carrying units
+│   │
+│   ├── [MISSING] Block 5: Sea units defend transports (lines 1500-1560)
+│   │   └── LOOP: for each sea unit
+│   │       └── Check if transport needs escort, add to escort duty
+│   │
+│   ├── [MISSING] Block 6: Air units defend transports (lines 1560-1600)
+│   │   └── LOOP: for fighters
+│   │       └── Add to carriers providing transport defense
+│   │
+│   ├── [PARTIAL] Block 7: Sea units to best location (lines 1600-1730)
+│   │   └── LOOP: for remaining sea units
+│   │       └── Calculate sea value + transport presence, move to best
+│   │
+│   ├── [IMPLEMENTED] Block 8: Land units to high value (lines 1842-1904)
+│   ├── [IMPLEMENTED] Block 9: Land units to coastal factories (lines 1910-1944)
+│   ├── [IMPLEMENTED] Block 10: Land units to safest (lines 1950-1989)
+│   ├── [IMPLEMENTED] Block 11: Air to safe with attack options (lines 2000-2110)
+│   └── [IMPLEMENTED] Block 12: Air to safest (lines 2115-2160)
+│
+├── [MISSING] moveCarrierFighters() lines 2165-2175
+│   └── LOOP: for fighters on carriers
+│       └── Move carrier with fighters if carrier needs to move
+│
+├── [MISSING] moveInfraUnits() lines 2177-2475
+│   ├── moveInfrastructure() - Move AA guns
+│   │   └── LOOP: for each AA gun
+│   │       └── Find best factory to protect
+│   ├── moveFactoriesIfMobile() - Move mobile factories
+│   │   └── LOOP: for each mobile factory
+│   │       └── Move to highest production territory
+│   ├── checkNeedToConsumeUnits() - Consume units for production
+│   └── findBestPathToTerritoryUsingLandRoutes() - BFS multi-turn pathing
+│       └── BFS LOOP with distance tracking
+│
+└── doMove() - Execute all moves
 
-TODO REVIEW: Java ProNonCombatMoveAi.java comparison (2,541 lines Java vs 2,710 lines Odin)
-
-CRITICAL MISSING (~40% not implemented):
-
-1. findUnitsThatCantMove (lines 200-255) - NOT IMPLEMENTED
-   - Finds units being consumed, allied defenders, 0-move units
-   - Tracks purchased units that can't move
-   - Important for correct movement restrictions
-
-2. findInfrastructureUnits (lines 257-275) - NOT IMPLEMENTED
-   - No infrastructure unit (AA guns, mobile factories) handling
-
-3. checkCanTransport (lines 277-291) - NOT IMPLEMENTED
-   - Transport accessibility check for units
-
-4. Capital Defense Loop (lines 130-165) - NOT IMPLEMENTED
-   - while(true) loop checking capital can be held
-   - Adjusts defenseRange based on enemyDistanceToMyCapital
-   - Critical for capital protection
-
-5. Transport Logic Blocks (lines 985-1400) - MOSTLY MISSING
-   - Block 1 (985-1100): Transport amphib to land territory selection
-   - Block 2 (1100-1180): Transport amphib to sea positioning
-   - Block 3 (1185-1280): Empty transport loading position
-   - Block 4 (1285-1400): Remaining transports to safety
-
-6. Sea Unit Defense of Transports (lines 1500-1600) - NOT IMPLEMENTED
-   - Sea units protecting transports
-   - Air units providing carrier-based defense
-
-7. moveCarrierFighters (lines 2165-2175) - NOT IMPLEMENTED
-   - Carrier-must-move-with-fighters logic
-
-8. Infrastructure Movement (lines 2177-2475) - NOT IMPLEMENTED
-   - moveInfrastructure (AA guns)
-   - moveFactoriesIfMobile
-   - checkNeedToConsumeUnits
-   - findBestPathToTerritoryUsingLandRoutes (BFS multi-turn pathing)
-
-PARTIAL (~30%):
-- moveOneDefenderToLandTerritoriesBorderingEnemy - 40% (missing value calculation)
-- determineIfTerritoryCanBeHeld - 30% (missing TUV swing, min/max defender)
-- prioritizeTerritoriesToDefend - 80% (good formula, minor gaps)
-- moveUnitsToDefendTerritories - 40% (missing transport defend options)
-- moveUnitsToBestTerritories - 45% (sea movement simplified)
-
-COMPLETE (~30%):
-- Land units to high value territories
-- Land units to coastal factories
-- Land units to safest territories
-- Air to safe with attack options
-- Air to safest territory
+=============================================================================
 */
 
 import sa "core:container/small_array"

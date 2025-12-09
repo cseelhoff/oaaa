@@ -58,6 +58,76 @@ TODO REVIEW: Missing Java Pro AI modules:
    * Currently: Uses default casualty selection
 */
 
+/*
+=============================================================================
+PHASE-BY-PHASE COMPARISON: Java AbstractProAi vs Odin play_full_proai_turn
+=============================================================================
+
+JAVA TURN FLOW (from AbstractProAi.java):
+------------------------------------------
+
+1. PURCHASE PHASE (purchase() method, lines 140-226)
+   Java Flow:
+   a. purchaseAi.repair() - Repair damaged factories                    [+] repair_factories_triplea
+   b. ProPurchaseUtils.findPurchaseTerritories() - Find factories       [+] find_purchase_territories_triplea
+   c. SIMULATION LOOP - Simulate future phases before purchasing:       [!] NOT IMPLEMENTED
+      - Simulates combat move via combatMoveAi.doCombatMove()
+      - Simulates battles via ProSimulateTurnUtils.simulateBattles()
+      - Simulates non-combat via nonCombatMoveAi.simulateNonCombatMove()
+      - THEN makes purchase decisions based on simulated state
+   d. purchaseAi.purchase() - Make actual purchases                     [+] purchase_triplea
+   e. Stores: storedCombatMoveMap, storedFactoryMoveMap                 [-] No stored maps
+
+2. COMBAT MOVE PHASE (move() method with nonCombat=false, lines 108-138)
+   Java Flow:
+   a. If storedCombatMoveMap exists: combatMoveAi.doMove(storedMap)     [-] No stored map support
+   b. Else: combatMoveAi.doCombatMove(moveDel)                          [+] proai_combat_move_phase
+   c. If no non-combat phase: also do nonCombatMoveAi.doNonCombatMove() [-] Not checked
+
+3. BATTLE PHASE (implicit - handled by game engine)
+   Java: BattleDelegate handles battles, calls back to AI for:
+   a. retreatQuery() - Decide retreat/submerge                          [-] NOT IMPLEMENTED
+   b. selectCasualties() - Choose casualty order                        [!] Default order used
+   c. selectAttackSubs() - Decide sub attack vs retreat                 [-] NOT IMPLEMENTED
+   d. shouldBomberBomb() - Confirm strategic bombing                    [-] NOT IMPLEMENTED
+
+4. NON-COMBAT MOVE PHASE (move() with nonCombat=true, lines 108-138)
+   Java Flow:
+   a. If storedFactoryMoveMap exists: use stored map                    [-] No stored map support
+   b. nonCombatMoveAi.doNonCombatMove(storedFactoryMoveMap, ...)       [+] proai_noncombat_move_phase
+   c. Clear storedFactoryMoveMap                                        [-] No stored maps
+
+5. PLACE PHASE (place() method, lines 228-238)
+   Java Flow:
+   a. purchaseAi.place(storedPurchaseTerritories, placeDelegate)        [+] proai_place_units_phase
+   b. Clear storedPurchaseTerritories                                   [+] g_purchased_units cleared
+
+6. TECH PHASE (tech() method, lines 240-243)
+   Java: ProTechAi.tech(techDelegate, data, player)                     [-] NOT IMPLEMENTED
+
+7. POLITICS PHASE (politicalActions() method, lines 306-315)
+   Java: politicsAi.politicalActions() or doActions(storedPoliticalActions)  [-] NOT IMPLEMENTED
+
+CRITICAL MISSING FUNCTIONALITY:
+-------------------------------
+1. Pre-purchase simulation (simulate combat/battles/noncombat BEFORE purchasing)
+   - Java simulates the entire turn before making purchase decisions
+   - This allows purchases to account for expected battle outcomes
+   - IMPACT: Odin purchases blindly without knowing battle results
+
+2. Stored move maps between phases
+   - Java plans moves in purchase phase, executes in move phases
+   - IMPACT: Odin re-calculates moves each phase (less coordination)
+
+3. Battle callbacks (retreat, casualty selection, sub attacks)
+   - IMPACT: Fights to death, default casualty order
+
+4. Tech and Politics phases
+   - IMPACT: No technology research, no war declarations
+
+=============================================================================
+*/
+
 // Main Pro AI turn function - called during MCTS rollouts when use_pro_ai_rollout flag is set
 play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	debug_checks(gc)
@@ -93,7 +163,13 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	proai_place_units_phase(gc) or_return
 	debug_checks(gc)
 
-	// Phase 6: End Turn Phase
+	// Phase 6: Tech Phase (N/A for Axis & Allies 1942 SE)
+	// proai_tech_phase(gc) - Not applicable, 1942 SE has no technology research
+	
+	// Phase 7: Politics Phase (N/A for Axis & Allies 1942 SE)
+	// proai_politics_phase(gc) - Not applicable, 1942 SE has no political actions
+
+	// Phase 8: End Turn Phase
 	// Clean up, collect income, rotate to next player
 	reset_units_fully(gc)
 	collect_money(gc)
@@ -102,6 +178,60 @@ play_full_proai_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	debug_checks(gc)
 
 	return true
+}
+
+/*
+=============================================================================
+TECH PHASE - NOT APPLICABLE FOR AXIS & ALLIES 1942 SE
+=============================================================================
+
+Java Original (AbstractProAi.java lines 240-243):
+  @Override
+  protected void tech(ITechDelegate techDelegate, GameData data, GamePlayer player) {
+    ProTechAi.tech(techDelegate, data, player);
+  }
+
+ProTechAi.java implements technology research decisions:
+- selectTechRolls() - Choose how many dice to roll
+- getTechToResearch() - Choose which technology to pursue
+- Technologies include: jet power, rockets, super subs, long range air, etc.
+
+NOT IMPLEMENTED: Axis & Allies 1942 Second Edition does not include
+technology research rules. This is a feature of other A&A variants
+(Anniversary Edition, Global 1940, etc.).
+*/
+proai_tech_phase :: proc(gc: ^Game_Cache) {
+	// No-op: Technology research not used in A&A 1942 SE
+}
+
+/*
+=============================================================================
+POLITICS PHASE - NOT APPLICABLE FOR AXIS & ALLIES 1942 SE  
+=============================================================================
+
+Java Original (AbstractProAi.java lines 306-315):
+  @Override
+  public void politicalActions() {
+    initializeData();
+    if (storedPoliticalActions == null) {
+      politicsAi.politicalActions();
+    } else {
+      politicsAi.doActions(storedPoliticalActions);
+      storedPoliticalActions = null;
+    }
+  }
+
+ProPoliticsAi.java implements political action decisions:
+- shouldDeclareWar() - Decide when to declare war on neutral nations
+- getPoliticalActions() - Choose political actions (alliances, war declarations)
+- Politics affect neutral nations, diplomatic relations, etc.
+
+NOT IMPLEMENTED: Axis & Allies 1942 Second Edition does not include
+political action rules. All nations are already at war at game start.
+This is a feature of other A&A variants (Global 1940, Anniversary, etc.).
+*/
+proai_politics_phase :: proc(gc: ^Game_Cache) {
+	// No-op: Political actions not used in A&A 1942 SE
 }
 
 // Test Pro AI for a single turn with debug output

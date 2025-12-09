@@ -5,10 +5,59 @@ import "core:fmt"
 import "core:math"
 
 /*
+=============================================================================
 Enemy Attack Options Generation
 
 This module calculates what enemy units can attack our territories.
 It maintains per-enemy data separately, then aggregates into totals.
+
+Corresponds to Java ProTerritoryManager.populateEnemyAttackOptions() and
+the findEnemyAttackOptions() method in ProTerritoryManager.java (lines 125-400).
+
+=============================================================================
+JAVA ProTerritoryManager.java NESTED LOOP STRUCTURE (1,277 lines)
+=============================================================================
+
+populateEnemyAttackOptions() - Entry point (lines 125-131)
+└── findEnemyAttackOptions() - Main logic (lines 300-400)
+    │
+    ├── OUTER LOOP: for each enemy player
+    │   │
+    │   ├── [IMPLEMENTED] LOOP: for each land unit
+    │   │   └── Calculate territories unit can reach
+    │   │   └── Add to attack options for each reachable territory
+    │   │
+    │   ├── [IMPLEMENTED] LOOP: for each air unit
+    │   │   └── Calculate territories within range
+    │   │   └── Check if unit can land after attack
+    │   │   └── Add to attack options
+    │   │
+    │   ├── [IMPLEMENTED] LOOP: for each naval unit
+    │   │   └── Calculate sea zones within movement
+    │   │   └── Add to attack options
+    │   │
+    │   ├── [PARTIAL] LOOP: for each transport
+    │   │   └── Calculate amphibious assault options
+    │   │   └── Find units that can load and attack
+    │   │
+    │   └── [MISSING] findScrambleOptions() - lines 500-580
+    │       └── LOOP: for each airbase territory
+    │           └── Find fighters that can scramble
+    │           └── Add to attack options for adjacent sea zones
+
+=============================================================================
+TODO REVIEW: Missing from enemy attack generation:
+
+1. Scramble options (lines 500-580) - NOT IMPLEMENTED
+   - Airbase scrambling not modeled
+   - Could underestimate enemy defense in sea zones
+
+2. Blitz path calculation - PARTIAL
+   - Multi-territory blitz (tank through empty to attack) simplified
+
+3. Transport amphib threat calculation - PARTIAL
+   - Full transport loading combinations not exhaustively calculated
+=============================================================================
 
 Workflow:
 1. generate_all_enemy_attack_options() - Main entry point

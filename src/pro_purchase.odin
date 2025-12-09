@@ -2663,48 +2663,73 @@ purchase_sea_and_amphib_units_triplea :: proc(
 	}
 	debug_checks(gc)
 
-	// TODO REVIEW: Java lines 1891-2091 - CRITICAL MISSING AMPHIB PURCHASE LOGIC
-	// This is the root cause of UK infantry pileup - transports never bought for stranded units!
-	//
-	// Java Block 1 (lines 1891-1933): Find potentialUnitsToLoad
-	//   - Get transports that need units loaded (transportsThatNeedUnits)
-	//   - For each territory adjacent to purchase territories:
-	//     - If territoryValueMap.get(neighbor) <= 0.25:
-	//       - Add land units to potentialUnitsToLoad
-	//   - This identifies units stranded in low-value territories!
-	//
-	// Java Block 2 (lines 1955-2039): Main transport/amphib purchase while loop
-	//   while (true) {
-	//     if (!transportsThatNeedUnits.isEmpty()) {
-	//       // Get transport and fill it with amphib units
-	//       int transportCapacity = transport.getTransportCapacity();
-	//       while (transportCapacity > 0) {
-	//         // Select best amphib unit by efficiency
-	//         amphibEfficiencies.put(ppo, ppo.getAmphibEfficiency(...));
-	//         // Purchase unit and track
-	//         amphibUnitsToPlace.addAll(ppo.createTempUnits());
-	//         transportCapacity -= ppo.getTransportCost();
-	//       }
-	//     } else {
-	//       // NO EXISTING TRANSPORT NEEDS UNITS - BUY NEW TRANSPORT!
-	//       // Select transport by efficiency ratio
-	//       transportEfficiencies.put(ppo, ppo.getTransportEfficiencyRatio());
-	//       // Purchase transport
-	//       transportsThatNeedUnits.addAll(newTransports);
-	//     }
-	//     // Break conditions: no money, no production, nothing to load
-	//   }
-	//
-	// Java Block 3 (lines 1755-1823): Naval superiority loop
-	//   - Purchase until localNavalSuperiorityWhilePurchasing
-	//   - Uses minWinPercentage check
-	//   - Considers enemy air from land territories
-	//
-	// Java Block 4: Sub retreat handling (lines 1633-1640)
-	//   - Calculate subRetreatBeforeBattle for battle simulation
-	//
-	// Current Odin Phase 2 is WRONG: checks strategic_value >= 3.0
-	// Should instead check: are there potentialUnitsToLoad in low-value territories?
+	/*
+	=============================================================================
+	TODO REVIEW: Java purchaseSeaAndAmphibUnits NESTED LOOP STRUCTURE
+	=============================================================================
+	
+	Java lines 1519-2091 (577 lines total) has this nested loop structure:
+	
+	OUTER LOOP: for (ProPlaceTerritory placeTerritory : prioritizedSeaTerritories)
+	├── [IMPLEMENTED] Phase 1: Sea Defense Loop (lines 1570-1680)
+	│   └── INNER LOOP: for (ProPurchaseTerritory purchaseTerritory : selectedPurchaseTerritories)
+	│       └── INNER LOOP: while (true) - purchase defenders until can hold
+	│           ├── removeInvalidPurchaseOptions()
+	│           ├── Calculate defenseEfficiencies map
+	│           ├── randomizePurchaseOption()
+	│           ├── tempPurchase(), createTempUnits()
+	│           ├── calculateBattleResults()
+	│           └── Break if TUVSwing < -1 || winPercentage < threshold
+	│
+	├── [MISSING] Phase 2: Naval Superiority Loop (lines 1700-1885)
+	│   ├── Calculate enemyDistance, nearbyTerritories
+	│   ├── Collect enemyUnitsInLandTerritories (enemy air)
+	│   ├── Collect enemyUnitsInSeaTerritories
+	│   ├── Collect alliedUnitsInSeaTerritories  
+	│   └── INNER LOOP: while (true) - purchase until naval superiority
+	│       ├── estimateBattleResults(alliedUnits vs enemySeaUnits + enemyAirUnits)
+	│       ├── Check if winning - if so break
+	│       ├── removeInvalidPurchaseOptions()
+	│       ├── Calculate defenseEfficiencies with carrier capacity
+	│       └── Purchase best unit
+	│
+	├── [CRITICAL MISSING] Phase 3: Transport/Amphib Purchase (lines 1891-2091)
+	│   ├── SETUP: Find transports that need loading
+	│   │   ├── Get seaTerritories within transport movement distance
+	│   │   └── LOOP: for (Territory seaTerritory : seaTerritories)
+	│   │       └── LOOP: for (Unit transport : transports)
+	│   │           ├── Add to transportsThatNeedUnits
+	│   │           └── Find potentialUnitsToLoad from adjacent territories with value <= 0.25
+	│   │
+	│   ├── SETUP: Find additional potentialUnitsToLoad from land neighbors
+	│   │   └── LOOP: for (Territory neighbor : landNeighbors)
+	│   │       └── If territoryValueMap.get(neighbor) <= 0.25, add units
+	│   │
+	│   └── MAIN LOOP: while (true) - purchase transports and amphib units
+	│       ├── BRANCH A: if (!transportsThatNeedUnits.isEmpty())
+	│       │   ├── Get transport and its capacity
+	│       │   ├── selectUnitsToTransportFromList() - load existing units
+	│       │   └── INNER LOOP: while (transportCapacity > 0)
+	│       │       ├── removeInvalidPurchaseOptions()
+	│       │       ├── Calculate amphibEfficiencies
+	│       │       ├── randomizePurchaseOption()
+	│       │       ├── Add amphib unit, deduct capacity
+	│       │       └── Break if no valid options
+	│       │   └── Remove transport from transportsThatNeedUnits
+	│       │
+	│       └── BRANCH B: else (need new transport)
+	│           ├── removeInvalidPurchaseOptions()
+	│           ├── Calculate transportEfficiencies
+	│           ├── randomizePurchaseOption()
+	│           ├── Purchase transport
+	│           └── Add to transportsThatNeedUnits (triggers Branch A next iteration)
+	│
+	└── Break conditions: no money, no production, potentialUnitsToLoad empty
+	
+	KEY INSIGHT: The "value <= 0.25" check identifies territories like United_Kingdom
+	that are isolated islands. Units there should be transported OUT, not left stranded!
+	=============================================================================
+	*/
 
 	// Return whether we should save up for fleet
 	return !bought_units && wanted_to_buy_but_couldnt_defend

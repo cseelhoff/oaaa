@@ -6,31 +6,80 @@ Pro AI Place Units Phase Implementation
 This file implements unit placement logic following TripleA's ProPurchaseAi.place().
 The Pro AI places purchased units at factories to maximize defensive and offensive value.
 
-Key Responsibilities:
-- Place units purchased during purchase phase
-- Prioritize threatened territories
-- Place defenders first at critical locations
-- Place remaining units at strategic positions
-- Handle factory production capacity limits
+=============================================================================
+JAVA ProPurchaseAi.java place() NESTED LOOP STRUCTURE (lines 430-575)
+=============================================================================
 
-Algorithm Overview (from ProPurchaseAi.java place() method):
-1. Place all units calculated during purchase phase (land first, then sea)
-2. If any units remain unplaced:
-   a. Find all territories where units can be placed
-   b. Determine enemy threats to each placement location
-   c. Prioritize land territories needing defense
-   d. Place defenders at threatened territories
-   e. Prioritize sea territories needing defense
-   f. Place naval defenders
-   g. Calculate strategic value for remaining territories
-   h. Place remaining units at highest value locations
+MAIN ENTRY: place() lines 430-575
+│
+├── [IMPLEMENTED] Phase 1: Place land units first (lines 461-480)
+│   └── OUTER LOOP: for purchaseTerritory in purchaseTerritories
+│       └── MIDDLE LOOP: for placeTerritory in canPlaceTerritories
+│           └── IF !isWater:
+│               └── INNER LOOP: for placeUnit in placeUnits
+│                   └── Match unit from player collection
+│               └── doPlace(territory, unitsToPlace)
+│
+├── [IMPLEMENTED] Phase 2: Place sea units second (lines 482-502)
+│   └── OUTER LOOP: for purchaseTerritory in purchaseTerritories
+│       └── MIDDLE LOOP: for placeTerritory in canPlaceTerritories
+│           └── IF isWater:
+│               └── INNER LOOP: for placeUnit in placeUnits
+│               └── doPlace(territory, unitsToPlace)
+│
+├── [PARTIAL] Phase 3: Place remaining units (lines 505-575)
+│   │   (Only handles WW2v3 China-style remaining units)
+│   │
+│   ├── findDefendersInPlaceTerritories() - [IMPLEMENTED]
+│   │   └── LOOP: for each place territory
+│   │       └── Count allied defenders
+│   │
+│   ├── territoryManager.populateEnemyAttackOptions() - [STUB]
+│   │
+│   ├── prioritizeTerritoriesToDefend(isLand=true) - [MISSING]
+│   │   └── LOOP: for each place territory
+│   │       ├── Check if max enemy attack > current defense
+│   │       ├── Calculate battle results
+│   │       └── Add to needToDefend if can't hold
+│   │
+│   ├── placeDefenders(landTerritories) - [MISSING]
+│   │   └── OUTER LOOP: for territory needing defense
+│   │       └── INNER LOOP: for available units
+│   │           └── Add defenders until can hold
+│   │
+│   ├── prioritizeTerritoriesToDefend(isLand=false) - [MISSING]
+│   │   └── Same structure for sea territories
+│   │
+│   ├── placeDefenders(seaTerritories) - [MISSING]
+│   │
+│   ├── findTerritoryValues() - [PARTIAL]
+│   │   └── Calculate strategic value for each place territory
+│   │
+│   ├── prioritizeLandTerritories() - [PARTIAL]
+│   │   └── Sort by strategic value
+│   │
+│   └── placeUnits(regularThenConstruction) - [PARTIAL]
+│       └── OUTER LOOP: for prioritized territories
+│           └── INNER LOOP: for units matching filter
+│               └── Place at highest value locations
 
-Placement Priority:
-- Capital defense (highest)
-- Factory defense
-- Threatened border territories
-- High production value territories
-- Strategic staging areas
+=============================================================================
+TODO REVIEW: Missing from place() implementation:
+
+1. prioritizeTerritoriesToDefend() (lines 576-660) - NOT IMPLEMENTED
+   - Calculate if territories can be held against max enemy attack
+   - Uses battle simulation to determine defense needs
+
+2. placeDefenders() (lines 662-745) - NOT IMPLEMENTED
+   - Loops through territories needing defense
+   - Adds minimum defenders to hold each territory
+
+3. prioritizeLandTerritories() - PARTIAL
+   - Strategic value calculation simplified
+
+4. Construction unit handling - NOT IMPLEMENTED
+   - placeUnits with Matches.unitIsConstruction() filter
+=============================================================================
 */
 
 import "core:fmt"

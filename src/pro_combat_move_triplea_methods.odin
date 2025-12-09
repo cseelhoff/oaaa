@@ -23,28 +23,95 @@ Current Implementation Status:
 - [+] logAttackMoves - Debug output
 - [+] canAirSafelyLandAfterAttack - Air unit safety check
 
+=============================================================================
+JAVA ProCombatMoveAi.java NESTED LOOP STRUCTURE (2,031 lines)
+=============================================================================
+
+MAIN ENTRY: doCombatMove() lines 76-175
+├── territoryManager.populateAttackOptions() - Build attack option list
+├── determineTerritoriesThatCanBeBombed() - [PARTIAL] lines 1780-1875
+│   └── LOOP: for each bomber
+│       └── LOOP: for each possible bombing target
+│           └── Calculate bombing value, check air battle property
+├── prioritizeAttackOptions() - [IMPLEMENTED] lines 192-299
+│   └── LOOP: for each territory
+│       └── Calculate attack value based on 10+ factors
+├── determineTerritoriesThatCanBeHeld() - [IMPLEMENTED] lines 301-430
+│   └── LOOP: for each territory
+│       └── LOOP: for each potential attacker combo
+│           └── Simulate battle, check max enemy counter-attack
+├── removeTerritoriesThatArentWorthAttacking() - [IMPLEMENTED]
+│   └── LOOP: filter by attack_value thresholds
+├── determineTerritoriesToAttack() - [IMPLEMENTED] lines 432-620
+│   └── while (true) MAIN LOOP
+│       ├── Select highest priority territory
+│       ├── Break if TUV swing too negative
+│       └── Check if units still available
+│
+├── determineUnitsToAttackWith() - [IMPLEMENTED] lines 622-896
+│   └── OUTER LOOP: for each attack territory
+│       ├── Sort potential units by options available
+│       ├── LOOP: for each transport route
+│       │   └── Assign amphib units
+│       └── LOOP: for each air unit
+│           └── Check landing options post-attack
+│
+├── [CRITICAL] tryToAttackTerritories() - [PARTIAL] lines 1245-1778
+│   │
+│   ├── Phase 1 (Java lines 1257-1320): Try trivial wins - [IMPLEMENTED]
+│   │   └── LOOP: for each can-hold territory (sorted by value desc)
+│   │       ├── Find necessary units (not limited by options)
+│   │       └── If win ≥99%: assign units, mark moved
+│   │
+│   ├── Phase 2 (Java lines 1322-1400): Fill non-trivial attacks - [IMPLEMENTED]
+│   │   └── LOOP: for each remaining can-hold territory
+│   │       └── LOOP: for remaining units sorted by attack options count
+│   │           └── Add unit if improves win% without wasting value
+│   │
+│   ├── Phase 3 (Java lines 1402-1478): Add destroyers for sub battles - [IMPLEMENTED]
+│   │   └── LOOP: for each attack missing destroyers
+│   │       └── LOOP: for destroyers with multi-attack options
+│   │           └── Assign destroyer to enable sub hits
+│   │
+│   ├── Phase 4 (Java lines 1480-1512): Limit units if can't hold - [IMPLEMENTED]
+│   │   └── LOOP: for !canHold territories
+│   │       └── Check if 1 less unit still wins, reduce to save TUV
+│   │
+│   ├── Phase 5 (Java lines 1514-1560): Use excess attackers - [MISSING]
+│   │   └── LOOP: for each strafing attack
+│   │       └── LOOP: for excess units (>150% needed)
+│   │           └── Redirect to lower-priority attacks
+│   │
+│   └── Phase 6 (Java lines 1562-1778): Validate & Log - [PARTIAL]
+│       ├── Transport casualty restriction check [MISSING]
+│       ├── Sub retreat before battle calc [MISSING]
+│       └── Log attack summary [IMPLEMENTED]
+│
+├── checkContestedSeaTerritories() - [IMPLEMENTED] lines 1875-1945
+│   └── LOOP: for each contested sea zone
+│       └── Check sub warfare, try to clear
+│
+└── doMove() - Execute combat moves
+
+=============================================================================
 TODO REVIEW: Minor gaps in ProCombatMoveAi.java (2,031 lines):
 
-1. tryToAttackTerritories (Java lines 1245-1778) - PARTIAL
-   - Odin has 4 phases, Java has 6 phases
-   - Missing: transport casualty restriction handling (property check)
-   - Missing: full sub retreat before battle calculation
+1. tryToAttackTerritories Phase 5 (Java lines 1514-1560) - MISSING
+   - Redirect excess attackers to secondary targets
+   - Important for efficient unit usage
 
-2. determineTerritoriesThatCanBeBombed/determineBestBombingAttackForBomber - PARTIAL
-   - Air battle filtering not implemented (canAirBattle property)
-   - Damage-to-units property simplified
-   - Same-target bomber counting simplified
+2. Transport casualty restriction (lines 1580-1610) - MISSING
+   - Check TRANSPORT_CASUALTIES_RESTRICTED property
+   - Validate transports can retreat before committing
 
-3. prioritizeAttackOptions (Java lines 177-299) - Minor gap
-   - Neutral territory nearby enemy value calculation simplified
-
-4. Full naval bombardment execution - STUB
+3. Full naval bombardment execution - STUB
    - Ships assigned but bombardment not fully executed
 
-5. Strategic bombing execution - STUB
+4. Strategic bombing execution - STUB
    - Target selection done, execution simplified
 
-6. Unit value map - Uses hardcoded values instead of proData.getUnitValue()
+5. Unit value map - Uses hardcoded values instead of proData.getUnitValue()
+=============================================================================
 */
 
 import "core:fmt"

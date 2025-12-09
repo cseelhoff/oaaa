@@ -5,6 +5,59 @@ import "core:fmt"
 import "core:math"
 import "core:slice"
 
+/*
+=============================================================================
+My Attack Options Generation
+
+This module calculates what our units can attack.
+Corresponds to Java ProTerritoryManager.populateAttackOptions() in
+ProTerritoryManager.java (lines 50-124).
+
+=============================================================================
+JAVA ProTerritoryManager.java populateAttackOptions() (lines 50-124)
+=============================================================================
+
+populateAttackOptions() - Entry point
+└── findAttackOptions() - Main logic (lines 600-900)
+    │
+    ├── [IMPLEMENTED] LOOP: for each land unit
+    │   └── Calculate territories unit can reach (1-move, 2-move blitz)
+    │   └── Add to attack options
+    │
+    ├── [IMPLEMENTED] LOOP: for each fighter
+    │   └── Calculate territories within range
+    │   └── Check landing options after attack
+    │   └── Add to attack options
+    │
+    ├── [IMPLEMENTED] LOOP: for each bomber
+    │   └── Calculate territories within range
+    │   └── Add to attack options (including bombing raids)
+    │
+    ├── [PARTIAL] LOOP: for each transport
+    │   └── Calculate amphibious assault destinations
+    │   └── Find units that can load
+    │   └── Add to amphib attack options
+    │
+    ├── [PARTIAL] LOOP: for each naval unit
+    │   └── Calculate sea zones within movement
+    │   └── Add bombardment options for adjacent land attacks
+    │
+    └── [MISSING] findBombardOptions() - lines 900-980
+        └── Match ships to land territories for bombardment
+
+TODO REVIEW: Missing from my attack generation:
+
+1. Full transport loading combinations - PARTIAL
+   - Simplified to immediate adjacent territories
+
+2. Bombardment assignment - PARTIAL
+   - Ships identified but not fully assigned to attacks
+
+3. Multi-turn attack planning - NOT IMPLEMENTED
+   - Java considers units 2+ turns away for strategic planning
+=============================================================================
+*/
+
 generate_my_attack_options :: proc(gc: ^Game_Cache, my_territory_targets: ^[Air_ID]Territory_Target) {
 
 	air_array: Air_ID_Array

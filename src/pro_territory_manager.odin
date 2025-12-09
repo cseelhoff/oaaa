@@ -5,11 +5,67 @@ import "core:slice"
 
 /*
 =============================================================================
-Pro_My_Move_Options Population Functions
+Pro Territory Manager - Attack and Defense Option Population
+
+Maps to Java TripleA's ProTerritoryManager.java (1,277 lines)
+This is the central hub for calculating what units can move where.
+
+=============================================================================
+JAVA ProTerritoryManager.java STRUCTURE (1,277 lines)
 =============================================================================
 
-These functions populate the attack_options and defend_options for the current player.
-Maps to Java TripleA's ProTerritoryManager.populateAttackOptions() and populateDefendOptions()
+ATTACK OPTIONS:
+├── populateAttackOptions() (lines 50-85) - [IMPLEMENTED]
+│   └── findAttackOptions() (lines 600-900) - [PARTIAL]
+│       ├── LOOP: for each land unit with movement - [IMPLEMENTED]
+│       ├── LOOP: for each air unit - [IMPLEMENTED]
+│       ├── LOOP: for each transport for amphib - [PARTIAL]
+│       ├── LOOP: for each naval unit - [PARTIAL]
+│       └── findBombardOptions() - [PARTIAL]
+
+DEFENSE OPTIONS:
+├── populateDefendOptions() (lines 86-120) - [IMPLEMENTED]
+│   └── findDefendOptions() (lines 400-580) - [PARTIAL]
+│       ├── LOOP: for each friendly land unit - [IMPLEMENTED]
+│       ├── LOOP: for each friendly air unit - [IMPLEMENTED]
+│       └── LOOP: for each transport for reinforcement - [PARTIAL]
+
+ENEMY OPTIONS:
+├── populateEnemyAttackOptions() (lines 125-131) - [IMPLEMENTED]
+│   └── findEnemyAttackOptions() (lines 300-400) - [IMPLEMENTED in pro_enemy_attacks.odin]
+│
+├── [MISSING] populateEnemyDefenseOptions() (lines 132-135)
+│   └── findScrambleOptions() - [NOT IMPLEMENTED]
+│   └── findEnemyDefendOptions() - [PARTIAL]
+
+TERRITORY ANALYSIS:
+├── removeTerritoriesThatCantBeConquered() (lines 140-300) - [PARTIAL]
+│   └── Battle simulation for each potential attack - [IMPLEMENTED]
+│   └── Strafing check for allied attacks - [NOT IMPLEMENTED]
+│
+├── [MISSING] findScrambleOptions() (lines 500-580)
+│   └── Airbase scramble calculation
+│
+└── Various utility methods
+
+=============================================================================
+TODO REVIEW: Missing from ProTerritoryManager.java:
+
+1. populateEnemyDefenseOptions() - NOT IMPLEMENTED
+   - Calculates enemy reinforcement potential
+   - Used for determining if conquered territories can be held
+
+2. findScrambleOptions() - NOT IMPLEMENTED
+   - Scrambling fighters from airbases
+   - Important for accurate sea zone defense calculation
+
+3. Strafing attack coordination - NOT IMPLEMENTED
+   - Checking if we should strafe to help allied attacks
+   - Lines 170-280 in Java
+
+4. Allied attack options integration - PARTIAL
+   - alliedAttackOptions used in canConquer calculations
+=============================================================================
 */
 
 // Populate attack options for combat move phase
