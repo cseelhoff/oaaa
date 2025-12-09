@@ -10,6 +10,35 @@ Key differences from TripleA:
 - Uses OAAA's Game_Cache instead of TripleA's GameData
 - Data-oriented design for performance
 - Simplified structure for fast rollouts
+
+TODO REVIEW: Missing Java data classes:
+
+1. ProPurchaseOptionMap.java - NOT IMPLEMENTED
+   - Factory class that creates lists of purchase options by type
+   - Methods: getLandOptions(), getAirOptions(), getSeaOptions(), getAaOptions(), etc.
+   - Used to filter available purchase options during purchase phase
+   
+2. ProResourceTracker.java - NOT IMPLEMENTED
+   - Tracks PUs and temporary purchases during planning
+   - Methods: getTempPurchases(), addTempPurchase(), confirmTempPurchases(), clearTempPurchases()
+   - Critical for purchase simulation/rollback
+   - Contains: purchasedUnits map, remainingPUs, etc.
+
+3. ProBattleResult.java - PARTIAL (inline in combat.odin)
+   - Should be explicit struct with:
+     - winPercentage, tuvSwing, hasLandUnitRemaining
+     - averageDefendersLeft, averageAttackersLeft
+     - battleRounds, etc.
+
+4. ProPlaceTerritory.java - Merged into Pro_Purchase_Territory
+   - Java separates "place" territories (where to place units)
+   - from "purchase" territories (where factories are)
+
+5. ProData.java utility methods - MISSING:
+   - getUnitValue(unit) - Returns TUV value of unit type
+   - isScrambleEnabled() - Check if scramble rule is on
+   - getMyCapital() - Get player's capital territory
+   - getProTerritory(territory) - Get cached territory analysis
 */
 
 import "core:fmt"

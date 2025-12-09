@@ -157,7 +157,7 @@ resfresh_cache :: proc(gc: ^Game_Cache) {
 	set_land_planes_avail_to_move(gc)
 	set_sea_ships_avail_to_move(gc)
 	set_sea_planes_avail_to_move(gc)
-	// build_map_production_value(gc)
+	build_map_production_value(gc)
 }
 
 count_sea_unit_totals :: proc(gc: ^Game_Cache) {

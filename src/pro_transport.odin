@@ -18,6 +18,27 @@ Architecture:
 - Uses OAAA's existing transport.odin state machine for low-level operations
 - Integrates with pro_combat_move.odin for attack planning
 - Leverages map graph data for pathfinding and reach analysis
+
+TODO REVIEW: Missing Java ProTransportUtils.java methods (18 total):
+
+CRITICAL MISSING (72% not implemented):
+- findMaxMovementForTransports (lines 35-44) - Uses hardcoded 2, should check purchase options
+- getUnitsToTransportThatCantMoveToHigherValue (lines 50-77) - KEY FOR UK PILEUP FIX
+- getTransportCost (lines 164-170) - Hardcoded, should sum unit costs
+- getLandTransports (lines 172-186) - Mechanized infantry support
+- selectLandUnitsToTransport (lines 202-237) - Land transport selection
+- validateCarrierCapacity (lines 267-284) - Not implemented
+- validateCarrierCanReceiveAir (lines 291-306) - Not implemented  
+- getUnusedCarrierCapacity (lines 313-343) - Not implemented
+- getUnusedLocalCarrierCapacity (lines 350-365) - Not implemented
+- interleaveUnitsCarriersAndPlanes (lines 376-491) - 115 lines! Complex casualty optimization
+- checkTransportDefense (lines 505-521) - Battle simulation for transport defense
+
+PARTIAL (22%):
+- getUnitsToTransportFromTerritories (lines 79-118) - find_loadable_units_near_sea partial
+- selectUnitsToTransport (lines 121-162) - select_units_to_load good
+- getAttackValue (lines 239-261) - Uses attack_power but no support bonuses
+- getTransports (lines 493-503) - add_transports_at_sea partial
 */
 
 import "core:fmt"

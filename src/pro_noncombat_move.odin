@@ -24,6 +24,59 @@ Algorithm Overview (from ProNonCombatMoveAi.java):
 6. Move units to best value territories (sea, land, air)
 7. Move infrastructure units (AA guns, factories if mobile)
 8. Execute non-combat moves
+
+TODO REVIEW: Java ProNonCombatMoveAi.java comparison (2,541 lines Java vs 2,710 lines Odin)
+
+CRITICAL MISSING (~40% not implemented):
+
+1. findUnitsThatCantMove (lines 200-255) - NOT IMPLEMENTED
+   - Finds units being consumed, allied defenders, 0-move units
+   - Tracks purchased units that can't move
+   - Important for correct movement restrictions
+
+2. findInfrastructureUnits (lines 257-275) - NOT IMPLEMENTED
+   - No infrastructure unit (AA guns, mobile factories) handling
+
+3. checkCanTransport (lines 277-291) - NOT IMPLEMENTED
+   - Transport accessibility check for units
+
+4. Capital Defense Loop (lines 130-165) - NOT IMPLEMENTED
+   - while(true) loop checking capital can be held
+   - Adjusts defenseRange based on enemyDistanceToMyCapital
+   - Critical for capital protection
+
+5. Transport Logic Blocks (lines 985-1400) - MOSTLY MISSING
+   - Block 1 (985-1100): Transport amphib to land territory selection
+   - Block 2 (1100-1180): Transport amphib to sea positioning
+   - Block 3 (1185-1280): Empty transport loading position
+   - Block 4 (1285-1400): Remaining transports to safety
+
+6. Sea Unit Defense of Transports (lines 1500-1600) - NOT IMPLEMENTED
+   - Sea units protecting transports
+   - Air units providing carrier-based defense
+
+7. moveCarrierFighters (lines 2165-2175) - NOT IMPLEMENTED
+   - Carrier-must-move-with-fighters logic
+
+8. Infrastructure Movement (lines 2177-2475) - NOT IMPLEMENTED
+   - moveInfrastructure (AA guns)
+   - moveFactoriesIfMobile
+   - checkNeedToConsumeUnits
+   - findBestPathToTerritoryUsingLandRoutes (BFS multi-turn pathing)
+
+PARTIAL (~30%):
+- moveOneDefenderToLandTerritoriesBorderingEnemy - 40% (missing value calculation)
+- determineIfTerritoryCanBeHeld - 30% (missing TUV swing, min/max defender)
+- prioritizeTerritoriesToDefend - 80% (good formula, minor gaps)
+- moveUnitsToDefendTerritories - 40% (missing transport defend options)
+- moveUnitsToBestTerritories - 45% (sea movement simplified)
+
+COMPLETE (~30%):
+- Land units to high value territories
+- Land units to coastal factories
+- Land units to safest territories
+- Air to safe with attack options
+- Air to safest territory
 */
 
 import sa "core:container/small_array"
@@ -1556,12 +1609,45 @@ move_land_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	2. Move land units towards nearest factory that is adjacent to the sea
 	3. Move any remaining land units to safest territory (fallback)
 	
-	NOTE: Uses gc.pro_value which is calculated by build_map_production_value() during
-	game cache initialization. This matches TripleA's ProTerritoryValueUtils.findTerritoryValues.
+	Territory values are calculated using find_territory_values_triplea() which computes
+	value based on distance to ENEMY capitals/factories (not our own), matching Java's
+	ProTerritoryValueUtils.findTerritoryValues().
 	*/
 	
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Moving land units to consolidate")
+	}
+
+	// Build territory value map based on distance to enemy capitals/factories
+	// This matches Java: ProTerritoryValueUtils.findTerritoryValues(proData, player, 
+	//   territoriesThatCantBeHeld, List.of(), territoriesToCheck)
+	territories_cant_hold := find_territories_that_cant_be_held(gc, pro_data)
+	territories_cant_hold_bitset: Land_Bitset = {}
+	for land in territories_cant_hold[:] {
+		territories_cant_hold_bitset += {land}
+	}
+	delete(territories_cant_hold)
+	
+	// All friendly territories are candidates for movement
+	territories_to_check := gc.friendly_owner
+	
+	// Build the value map using enemy-focused calculation
+	territory_value_map := find_territory_values_triplea(
+		gc,
+		gc.cur_player,
+		territories_cant_hold_bitset,
+		{}, // territories_to_attack is empty in non-combat
+		territories_to_check,
+	)
+	defer delete(territory_value_map)
+	
+	when ODIN_DEBUG {
+		fmt.println("  [LAND] Territory values (based on enemy targets):")
+		for land, value in territory_value_map {
+			if value > 0 {
+				fmt.printf("    %v: %.1f\n", land, value)
+			}
+		}
 	}
 
 	// Initialize movement tracker
@@ -1573,7 +1659,7 @@ move_land_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 		fmt.println("  [LAND] Pass 1: Move to high-value territories near transports")
 	}
 	
-	move_land_to_high_value_territories(gc, pro_data, &moved)
+	move_land_to_high_value_territories(gc, pro_data, &moved, &territory_value_map)
 	debug_checks(gc)
 
 	// PASS 2: Move towards coastal factories
@@ -1596,6 +1682,7 @@ move_land_to_high_value_territories :: proc(
 	gc: ^Game_Cache,
 	pro_data: ^Pro_Data,
 	moved: ^Moved_Units,
+	territory_value_map: ^map[Land_ID]f64,
 ) {
 	/*
 	From ProNonCombatMoveAi.java (lines 1842-1904):
@@ -1685,30 +1772,60 @@ move_land_to_high_value_territories :: proc(
 				continue
 			}
 			
+			// Get source territory value
+			src_value := territory_value_map[src_land] or_else 0.0
+			
+			when ODIN_DEBUG {
+				fmt.printf("    [PASS 1] Checking %d x %v at %v (src_value=%.1f)\n", 
+					available, army, src_land, src_value)
+			}
+			
 			// Find best destination considering value and transport capacity
-			best_territory:= src_land
-			best_value := 0.0
-			best_amphib_value := 0.0
+			// Initialize with current position as default (stay in place if no better option)
+			// This matches Java's approach of including current territory in move options
+			best_territory := src_land
+			best_value := src_value  // Start with source value, not 0
+			best_amphib_value := calculate_amphib_value(gc, src_land)  // Include current amphib value
+			destinations_checked := 0
+			destinations_rejected := 0
 			
 			// Check all territories this unit can reach
 			//if army == .TANK_2_MOVES do add_valid_army_moves_2(gc)
 
 			for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
+				destinations_checked += 1
 				if !can_hold_destination(gc, pro_data, dst_land) {					
+					destinations_rejected += 1
 					when ODIN_DEBUG {
-						fmt.printf("Cannot hold destination: %v\n", dst_land)
+						fmt.printf("      -> %v: Cannot hold\n", dst_land)
 					}
 					continue
 				}
 				// Calculate transport capacity (amphib potential)
 				amphib_value := calculate_amphib_value(gc, dst_land)
 				
+				// Get destination territory value from map
+				dst_value := territory_value_map[dst_land] or_else 0.0
+				
+				when ODIN_DEBUG {
+					fmt.printf("      -> %v: value=%.1f, amphib=%.1f\n", 
+						dst_land, dst_value, amphib_value)
+				}
+				
 				// Choose if better than current best
-				if gc.pro_value[dst_land] > best_value || amphib_value > best_amphib_value {
-					best_value = gc.pro_value[dst_land]
+				// Only move if destination value is at least as good as source
+				// This prevents moving from high-value to low-value territories
+				// Amphib value is a tiebreaker when territory values are equal
+				if dst_value > best_value || (dst_value == best_value && amphib_value > best_amphib_value) {
+					best_value = dst_value
 					best_amphib_value = amphib_value
 					best_territory = dst_land
 				}
+			}
+			
+			when ODIN_DEBUG {
+				fmt.printf("      Checked %d destinations, rejected %d, best=%v (value=%.1f)\n",
+					destinations_checked, destinations_rejected, best_territory, best_value)
 			}
 
 			//TODO add tanks with 2 moves
@@ -2173,6 +2290,32 @@ pro_noncombat_move_cleanup :: proc(targets: ^[dynamic]Defense_Target) {
 
 // Load transports during non-combat move phase
 load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
+	// TODO REVIEW: Java moveUnitsToBestTerritories transport loops (lines 985-1400):
+	//
+	// Missing Block 1 (985-1100): Transport amphib to best LAND territory
+	//   - Iterates transportMapList for transports with land destinations
+	//   - Calculates best land territory by value using ProTerritoryValueUtils
+	//   - Finds units to load from adjacent territories with value-based selection
+	//   - Calculates safest unload sea zone
+	//
+	// Missing Block 2 (1100-1180): Transport amphib to best SEA territory
+	//   - For transports with sea destinations (not land)
+	//   - Find best sea value territory
+	//   - Calculate unload-to-land options from that sea
+	//
+	// Missing Block 3 (1185-1280): Empty transport to loading position
+	//   - For empty transports
+	//   - Calculate load territory priorities (factories adjacent to sea)
+	//   - Move towards best loading position
+	//   - Check route safety along the way
+	//
+	// Missing Block 4 (1285-1400): Remaining transports to safety
+	//   - For transports still unmoved
+	//   - Find safest sea zone considering enemy attack potential
+	//   - If carrying units, try to unload safely first
+	//
+	// Current implementation: Simple "load anything nearby" approach
+	// Java approach: Value-based territory selection for unloading position
 	/*
 	From Java ProNonCombatMoveAi.java (lines 920-1010):
 	
@@ -2215,17 +2358,30 @@ load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 		adjacent_lands := &mm.s2l_1away_via_sea[sea]
 		
 		// Check if any adjacent land has units we could load
+		// Must check both idle_armies AND active_armies (units with moves remaining)
 		has_loadable_units := false
 		for land in sa.slice(adjacent_lands) {
 			if mm.team[gc.owner[land]] != mm.team[player] {
 				continue
 			}
 			
-			// Check for unmoved units (units that still have movement)
-			// In noncombat, units with 0 moves can still board transports
+			// Check idle armies (units that haven't moved this turn)
 			if gc.idle_armies[land][player][.INF] > 0 ||
 			   gc.idle_armies[land][player][.ARTY] > 0 ||
 			   gc.idle_armies[land][player][.TANK] > 0 {
+				has_loadable_units = true
+				break
+			}
+			
+			// Also check active armies (units that still have movement)
+			// This is critical for island nations like UK where units can't walk away
+			if gc.active_armies[land][.INF_1_MOVES] > 0 ||
+			   gc.active_armies[land][.INF_0_MOVES] > 0 ||
+			   gc.active_armies[land][.ARTY_1_MOVES] > 0 ||
+			   gc.active_armies[land][.ARTY_0_MOVES] > 0 ||
+			   gc.active_armies[land][.TANK_2_MOVES] > 0 ||
+			   gc.active_armies[land][.TANK_1_MOVES] > 0 ||
+			   gc.active_armies[land][.TANK_0_MOVES] > 0 {
 				has_loadable_units = true
 				break
 			}
@@ -2324,11 +2480,9 @@ load_noncombat_onto_empty_transport :: proc(
 			continue
 		}
 		
-		if gc.idle_armies[land][player][.TANK] > 0 {
+		if get_available_army_count(gc, land, .TANK) > 0 {
 			// Load tank
-			gc.idle_armies[land][player][.TANK] -= 1
-			gc.team_land_units[land][mm.team[player]] -= 1
-			remove_from_active_armies(gc, land, .TANK)
+			remove_army_for_transport(gc, land, .TANK)
 			
 			// Update transport
 			gc.idle_ships[sea][player][.TRANS_EMPTY] -= 1
@@ -2340,10 +2494,8 @@ load_noncombat_onto_empty_transport :: proc(
 				if mm.team[gc.owner[inf_land]] != mm.team[player] {
 					continue
 				}
-				if gc.idle_armies[inf_land][player][.INF] > 0 {
-					gc.idle_armies[inf_land][player][.INF] -= 1
-					gc.team_land_units[inf_land][mm.team[player]] -= 1
-					remove_from_active_armies(gc, inf_land, .INF)
+				if get_available_army_count(gc, inf_land, .INF) > 0 {
+					remove_army_for_transport(gc, inf_land, .INF)
 					
 					// Transform 1T to 1I_1T
 					gc.idle_ships[sea][player][.TRANS_1T] -= 1
@@ -2364,10 +2516,8 @@ load_noncombat_onto_empty_transport :: proc(
 			continue
 		}
 		
-		if gc.idle_armies[land][player][.ARTY] > 0 {
-			gc.idle_armies[land][player][.ARTY] -= 1
-			gc.team_land_units[land][mm.team[player]] -= 1
-			remove_from_active_armies(gc, land, .ARTY)
+		if get_available_army_count(gc, land, .ARTY) > 0 {
+			remove_army_for_transport(gc, land, .ARTY)
 			
 			gc.idle_ships[sea][player][.TRANS_EMPTY] -= 1
 			gc.idle_ships[sea][player][.TRANS_1A] += 1
@@ -2378,10 +2528,8 @@ load_noncombat_onto_empty_transport :: proc(
 				if mm.team[gc.owner[inf_land]] != mm.team[player] {
 					continue
 				}
-				if gc.idle_armies[inf_land][player][.INF] > 0 {
-					gc.idle_armies[inf_land][player][.INF] -= 1
-					gc.team_land_units[inf_land][mm.team[player]] -= 1
-					remove_from_active_armies(gc, inf_land, .INF)
+				if get_available_army_count(gc, inf_land, .INF) > 0 {
+					remove_army_for_transport(gc, inf_land, .INF)
 					
 					gc.idle_ships[sea][player][.TRANS_1A] -= 1
 					gc.idle_ships[sea][player][.TRANS_1I_1A] += 1
@@ -2402,10 +2550,8 @@ load_noncombat_onto_empty_transport :: proc(
 			continue
 		}
 		
-		for gc.idle_armies[land][player][.INF] > 0 && infantry_loaded < 2 {
-			gc.idle_armies[land][player][.INF] -= 1
-			gc.team_land_units[land][mm.team[player]] -= 1
-			remove_from_active_armies(gc, land, .INF)
+		for get_available_army_count(gc, land, .INF) > 0 && infantry_loaded < 2 {
+			remove_army_for_transport(gc, land, .INF)
 			
 			if infantry_loaded == 0 {
 				gc.idle_ships[sea][player][.TRANS_EMPTY] -= 1
@@ -2444,10 +2590,8 @@ load_noncombat_second_unit_onto_1i :: proc(
 		}
 		
 		// Tank
-		if gc.idle_armies[land][player][.TANK] > 0 {
-			gc.idle_armies[land][player][.TANK] -= 1
-			gc.team_land_units[land][mm.team[player]] -= 1
-			remove_from_active_armies(gc, land, .TANK)
+		if get_available_army_count(gc, land, .TANK) > 0 {
+			remove_army_for_transport(gc, land, .TANK)
 			
 			gc.idle_ships[sea][player][.TRANS_1I] -= 1
 			gc.idle_ships[sea][player][.TRANS_1I_1T] += 1
@@ -2468,10 +2612,8 @@ load_noncombat_second_unit_onto_1i :: proc(
 		}
 		
 		// Artillery
-		if gc.idle_armies[land][player][.ARTY] > 0 {
-			gc.idle_armies[land][player][.ARTY] -= 1
-			gc.team_land_units[land][mm.team[player]] -= 1
-			remove_from_active_armies(gc, land, .ARTY)
+		if get_available_army_count(gc, land, .ARTY) > 0 {
+			remove_army_for_transport(gc, land, .ARTY)
 			
 			gc.idle_ships[sea][player][.TRANS_1I] -= 1
 			gc.idle_ships[sea][player][.TRANS_1I_1A] += 1
@@ -2497,10 +2639,8 @@ load_noncombat_second_unit_onto_1i :: proc(
 			continue
 		}
 		
-		if gc.idle_armies[land][player][.INF] > 0 {
-			gc.idle_armies[land][player][.INF] -= 1
-			gc.team_land_units[land][mm.team[player]] -= 1
-			remove_from_active_armies(gc, land, .INF)
+		if get_available_army_count(gc, land, .INF) > 0 {
+			remove_army_for_transport(gc, land, .INF)
 			
 			gc.idle_ships[sea][player][.TRANS_1I] -= 1
 			gc.idle_ships[sea][player][.TRANS_2I] += 1
@@ -2537,10 +2677,8 @@ load_noncombat_infantry_onto_partial :: proc(
 			continue
 		}
 		
-		if gc.idle_armies[land][player][.INF] > 0 {
-			gc.idle_armies[land][player][.INF] -= 1
-			gc.team_land_units[land][mm.team[player]] -= 1
-			remove_from_active_armies(gc, land, .INF)
+		if get_available_army_count(gc, land, .INF) > 0 {
+			remove_army_for_transport(gc, land, .INF)
 			
 			if transport_type == .TRANS_1A {
 				gc.idle_ships[sea][player][.TRANS_1A] -= 1
@@ -2610,4 +2748,41 @@ remove_from_active_armies :: proc(gc: ^Game_Cache, land: Land_ID, unit_type: Idl
 			gc.active_armies[land][.AAGUN_0_MOVES] -= 1
 		}
 	}
+}
+
+// Helper: Get count of available units of a type (checks both idle and active)
+// During noncombat, units might only exist in active_armies if idle_armies was already decremented
+get_available_army_count :: proc(gc: ^Game_Cache, land: Land_ID, unit_type: Idle_Army) -> u8 {
+	player := gc.cur_player
+	// First check idle_armies (the authoritative count per player)
+	idle_count := gc.idle_armies[land][player][unit_type]
+	if idle_count > 0 {
+		return idle_count
+	}
+	// If idle is 0, check active_armies in case of state mismatch
+	// This handles edge cases where idle was decremented but active wasn't
+	switch unit_type {
+	case .INF:
+		return gc.active_armies[land][.INF_1_MOVES] + gc.active_armies[land][.INF_0_MOVES]
+	case .ARTY:
+		return gc.active_armies[land][.ARTY_1_MOVES] + gc.active_armies[land][.ARTY_0_MOVES]
+	case .TANK:
+		return gc.active_armies[land][.TANK_2_MOVES] + gc.active_armies[land][.TANK_1_MOVES] + gc.active_armies[land][.TANK_0_MOVES]
+	case .AAGUN:
+		return gc.active_armies[land][.AAGUN_1_MOVES] + gc.active_armies[land][.AAGUN_0_MOVES]
+	}
+	return 0
+}
+
+// Helper: Remove one unit of a type from both idle_armies and active_armies
+remove_army_for_transport :: proc(gc: ^Game_Cache, land: Land_ID, unit_type: Idle_Army) {
+	player := gc.cur_player
+	// Decrement idle_armies if available
+	if gc.idle_armies[land][player][unit_type] > 0 {
+		gc.idle_armies[land][player][unit_type] -= 1
+	}
+	// Always decrement from active_armies
+	remove_from_active_armies(gc, land, unit_type)
+	// Update team land units
+	gc.team_land_units[land][mm.team[player]] -= 1
 }

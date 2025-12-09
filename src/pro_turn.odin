@@ -27,6 +27,35 @@ Key Differences from play_full_turn:
 - Makes strategic decisions rather than enumerating all possibilities
 - Focuses on quick evaluation and good-enough moves
 - Designed for rollout speed, not exhaustive search
+
+TODO REVIEW: Missing Java Pro AI modules:
+
+1. ProRetreatAi.java - ENTIRE MODULE MISSING
+   - shouldRetreat() - Decide if should retreat from battle
+   - getRetreatTerritories() - Find valid retreat territories
+   - shouldSubmerge() - Decide if subs should submerge
+   * Currently: Odin fights to the death (no retreat logic)
+
+2. ProScrambleAi.java - ENTIRE MODULE MISSING
+   - shouldScramble() - Decide if defending air should scramble
+   - getScrambleDefenders() - Select which planes scramble
+   * Currently: Scramble not implemented
+
+3. ProPoliticsAi.java - ENTIRE MODULE MISSING
+   - shouldDeclareWar() - Decide war declarations
+   - getPoliticalActions() - Choose political actions
+   * Currently: No politics support
+
+4. ProTechAi.java - ENTIRE MODULE MISSING
+   - shouldResearchTech() - Decide if should research technology
+   - getTechToResearch() - Choose which tech to pursue
+   * Currently: No technology support
+
+5. AbstractProAi.java delegate methods - PARTIAL
+   - selectCasualties() - Choose which units die first
+   - selectBombardingTerritories() - Choose bombardment targets
+   - selectFixedDice() - For games with dice selection
+   * Currently: Uses default casualty selection
 */
 
 // Main Pro AI turn function - called during MCTS rollouts when use_pro_ai_rollout flag is set

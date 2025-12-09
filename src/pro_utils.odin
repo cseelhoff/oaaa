@@ -14,6 +14,39 @@ Key functions:
 - Territory value calculation
 - Unit strength comparison
 - TUV (Total Unit Value) calculations
+
+TODO REVIEW: Missing Java utility methods:
+
+From ProBattleUtils.java:
+- territoryHasLocalLandSuperiority() - NOT IMPLEMENTED
+  * Critical for checking if we can hold territory
+  * Calculates strength ratio vs nearby enemies
+- territoryHasLocalNavalSuperiority() - NOT IMPLEMENTED
+  * Same for sea zones
+- estimateStrengthDifference() - PARTIAL
+  * Java considers support bonuses, movement
+- calculateBattleResults() with retreat handling - PARTIAL
+
+From ProUtils.java:
+- getClosestEnemyLandTerritoryDistance() - NOT IMPLEMENTED
+  * BFS to find nearest enemy territory
+- getClosestEnemyOrNeutralLandTerritory() - NOT IMPLEMENTED  
+- getPlayerTurnOrder() - NOT IMPLEMENTED
+  * Returns players in turn order for simulation
+- getEnemyPurchaseTerritories() - NOT IMPLEMENTED
+- getMyPurchaseTerritories() - NOT IMPLEMENTED
+
+From ProSortMoveOptionsUtils.java - ENTIRE FILE MISSING:
+- sortUnitMoveOptions() - Prioritize which units to move first
+- sortUnitNeededOptions() - Prioritize unit needs for defense
+- sortSeaUnitMoveOptions() - Sea unit movement priority
+- sortAirUnitMoveOptions() - Air unit movement priority
+- compareUnitTransportValue() - Transport loading priority
+
+From ProSimulateTurnUtils.java - ENTIRE FILE MISSING:
+- simulateCurrentTurn() - Simulate rest of current turn
+- simulateOtherPlayersTurns() - Simulate opponent turns
+- simulateNTurns() - N-turn lookahead
 */
 
 import "core:fmt"

@@ -7,34 +7,34 @@ import "core:slice"
 MAX_LAND_MASS_SIZE :: 49
 
 
-// get_pro_value :: #force_inline proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
-// 	production := gc.factory_prod[territory]
-// 	return(
-// 		math.sqrt(f64(production) + math.sqrt(f64(production))) *
-// 		32 *
-// 		(1.0 + f64(mm.l2l_1away_via_land[territory].len)) /
-// 		f64(MAX_LAND_TO_LAND_CONNECTIONS) \
-// 	)
-// }
+get_pro_value :: #force_inline proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
+	production := gc.factory_prod[territory]
+	return(
+		math.sqrt(f64(production) + math.sqrt(f64(production))) *
+		32 *
+		(1.0 + f64(mm.l2l_1away_via_land[territory].len)) /
+		f64(MAX_LAND_TO_LAND_CONNECTIONS) \
+	)
+}
 
-// build_map_production_value :: proc(gc: ^Game_Cache) {
-// 	for land in Land_ID {
-// 		if gc.factory_prod[land] == 0 do continue
-// 		gc.pro_value[land] = get_pro_value(gc, land)
-// 	}
-// 	for land in Land_ID {
-// 		land_mass_multiplier := f64(mm.land_mass_size[land]) / f64(MAX_LAND_MASS_SIZE)
-// 		for valuable_land in Land_ID {
-// 			if land == valuable_land do continue
-// 			gc.pro_value[land] = max(
-// 				gc.pro_value[land],
-// 				land_mass_multiplier *
-// 				gc.pro_value[valuable_land] /
-// 				math.pow(2, f64(mm.air_distances[to_air(land)][to_air(valuable_land)])),
-// 			)
-// 		}
-// 	}
-// }
+build_map_production_value :: proc(gc: ^Game_Cache) {
+	for land in Land_ID {
+		if gc.factory_prod[land] == 0 do continue
+		gc.pro_value[land] = get_pro_value(gc, land)
+	}
+	for land in Land_ID {
+		land_mass_multiplier := f64(mm.land_mass_size[land]) / f64(MAX_LAND_MASS_SIZE)
+		for valuable_land in Land_ID {
+			if land == valuable_land do continue
+			gc.pro_value[land] = max(
+				gc.pro_value[land],
+				land_mass_multiplier *
+				gc.pro_value[valuable_land] /
+				math.pow(2, f64(mm.air_distances[to_air(land)][to_air(valuable_land)])),
+			)
+		}
+	}
+}
 
 find_enemy_capitals_and_factories_value :: proc(
 	gc: ^Game_Cache,
@@ -54,15 +54,15 @@ find_enemy_capitals_and_factories_value :: proc(
 	enemy_capitals_and_factories = enemy_capitals_and_factories & ~territoriesToAttack
 
 	// Find value for each enemy capital and factory
-	enemy_capitals_and_factories_map: map[Land_ID]f64 = map[Land_ID]f64{}
-	for t in enemy_capitals_and_factories_map {
+	enemy_capitals_and_factories_map := make(map[Land_ID]f64)
+	for t in enemy_capitals_and_factories {
 		// Get factory production if factory
 		factory_production := gc.factory_prod[t]
 
 		// Get player production if capital
-		player_production :f64= 0
-		for player in Player_ID {
-			if mm.capital[player] == t {
+		player_production: f64 = 0
+		for p in Player_ID {
+			if mm.capital[p] == t {
 				player_production = f64(mm.value[t])
 			}
 		}

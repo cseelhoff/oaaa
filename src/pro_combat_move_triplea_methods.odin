@@ -5,26 +5,46 @@ package oaaa
 TRIPLEA ProCombatMoveAi.java METHOD MAPPING
 =============================================================================
 
-This file contains implementations of all methods from TripleA's ProCombatMoveAi.java
-Each method is fully implemented in Odin based on the original Java logic.
+This file contains implementations of methods from TripleA's ProCombatMoveAi.java.
+Each method is implemented in Odin based on the original Java logic.
 
 Current Implementation Status:
-- [+] prioritizeAttackOptions - Calculate attack value and sort territories
+- [+] prioritizeAttackOptions - Calculate attack value and sort territories (80%)
 - [+] determineTerritoriesToAttack - Iteratively select territories to attack
 - [+] determineTerritoriesThatCanBeHeld - Check if conquered territories can be defended
 - [+] removeTerritoriesThatArentWorthAttacking - Filter low-value targets
 - [+] moveOneDefenderToLandTerritoriesBorderingEnemy - Defensive positioning
 - [+] removeTerritoriesWhereTransportsAreExposed - Protect naval units
 - [+] determineUnitsToAttackWith - Assign specific units to each attack
-- [+] determineTerritoriesThatCanBeBombed - Strategic bombing logic
-- [+] determineBestBombingAttackForBomber - Per-bomber targeting
-- [+] tryToAttackTerritories - Attempt attack with available units
+- [PARTIAL] determineTerritoriesThatCanBeBombed - Strategic bombing (stub execution)
+- [PARTIAL] determineBestBombingAttackForBomber - Targeting (simplified)
+- [PARTIAL] tryToAttackTerritories - 4 phases vs Java's 6 phases
 - [+] checkContestedSeaTerritories - Sub warfare in contested seas
 - [+] logAttackMoves - Debug output
 - [+] canAirSafelyLandAfterAttack - Air unit safety check
 
-All methods are now fully implemented with complete logic matching TripleA's Pro AI.
-Helper functions have been added to support the main implementations.
+TODO REVIEW: Minor gaps in ProCombatMoveAi.java (2,031 lines):
+
+1. tryToAttackTerritories (Java lines 1245-1778) - PARTIAL
+   - Odin has 4 phases, Java has 6 phases
+   - Missing: transport casualty restriction handling (property check)
+   - Missing: full sub retreat before battle calculation
+
+2. determineTerritoriesThatCanBeBombed/determineBestBombingAttackForBomber - PARTIAL
+   - Air battle filtering not implemented (canAirBattle property)
+   - Damage-to-units property simplified
+   - Same-target bomber counting simplified
+
+3. prioritizeAttackOptions (Java lines 177-299) - Minor gap
+   - Neutral territory nearby enemy value calculation simplified
+
+4. Full naval bombardment execution - STUB
+   - Ships assigned but bombardment not fully executed
+
+5. Strategic bombing execution - STUB
+   - Target selection done, execution simplified
+
+6. Unit value map - Uses hardcoded values instead of proData.getUnitValue()
 */
 
 import "core:fmt"
@@ -4590,6 +4610,15 @@ execute_combat_moves_triplea :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]
 			when ODIN_DEBUG {
 				fmt.printf("  Marked %v for combat resolution\n", opt.territory)
 			}
+		} else if mm.team[gc.owner[opt.territory]] != mm.team[gc.cur_player] {
+			// Empty enemy territory - check if we should capture it
+			// This handles amphibious landings on undefended territories
+			if gc.team_land_units[opt.territory][mm.team[gc.cur_player]] > 0 {
+				transfer_land_ownership(gc, opt.territory)
+				when ODIN_DEBUG {
+					fmt.printf("  Captured undefended territory %v\n", opt.territory)
+				}
+			}
 		}
 	}
 	
@@ -4880,13 +4909,20 @@ execute_amphibious_routes :: proc(gc: ^Game_Cache, attack_options: ^[dynamic]Att
 					gc.idle_ships[sea_zone][gc.cur_player][new_trans_type] += 1
 					
 					// Add the unloaded unit to the target territory as an attacking unit
+					// Must update active_armies, idle_armies, and team_land_units to keep them in sync
 					#partial switch unit.unit_type {
 					case .Infantry:
 						gc.active_armies[target][.INF_0_MOVES] += 1
+						gc.idle_armies[target][gc.cur_player][.INF] += 1
+						gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 					case .Artillery:
 						gc.active_armies[target][.ARTY_0_MOVES] += 1
+						gc.idle_armies[target][gc.cur_player][.ARTY] += 1
+						gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 					case .Tank:
 						gc.active_armies[target][.TANK_0_MOVES] += 1
+						gc.idle_armies[target][gc.cur_player][.TANK] += 1
+						gc.team_land_units[target][mm.team[gc.cur_player]] += 1
 					}
 					
 					ship_found = true

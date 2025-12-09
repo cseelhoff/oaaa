@@ -118,9 +118,11 @@ start :: proc() {
 	for round_num in 0..<62 {
 		test_proai_single_turn(&game_state)
 		fmt.println(round_num)
+		load_cache_from_state(&game_cache, &game_state)
+		print_game_state(&game_cache)
 	}
-	load_cache_from_state(&game_cache, &game_state)
-	print_game_state(&game_cache)
+	// load_cache_from_state(&game_cache, &game_state)
+	// print_game_state(&game_cache)
 
 	// print_game_state(&game_cache)
 	// for {

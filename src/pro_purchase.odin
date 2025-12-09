@@ -5,10 +5,10 @@ package oaaa
 TRIPLEA ProPurchaseAi.java METHOD MAPPING
 =============================================================================
 
-This file contains complete implementations for all methods from TripleA's ProPurchaseAi.java
+This file implements methods from TripleA's ProPurchaseAi.java.
 Each method includes the original Java code commented out for reference.
 
-Implementation Status (ALL COMPLETE):
+Implementation Status:
 - [+] repair_factories_triplea - Repair damaged factories before purchasing
 - [N/A] bid - Bidding logic (not applicable for MCTS rollouts)
 - [+] purchase_triplea - Main purchase phase orchestration (all 11 steps)
@@ -16,14 +16,14 @@ Implementation Status (ALL COMPLETE):
 - [+] can_reach_enemy_by_land_triplea - Helper: Check if enemy reachable by land
 - [+] find_defenders_in_place_territories_triplea - Find current defenders
 - [+] prioritize_territories_to_defend_triplea - Sort territories by defense need
-- [+] purchase_defenders_triplea - Buy defenders for threatened territories
+- [PARTIAL] purchase_defenders_triplea - Buy defenders (missing: carrier tracking, zero-move options)
 - [+] prioritize_land_territories_triplea - Sort land territories by strategic value
-- [+] purchase_aa_units_triplea - Buy AA guns for high-value territories
+- [PARTIAL] purchase_aa_units_triplea - Buy AA guns (missing: bomber threat check)
 - [+] purchase_land_units_triplea - Buy land units for offense (fodder % algorithm)
 - [+] purchase_factory_triplea - Decide whether to buy new factory
 - [+] prioritize_sea_territories_triplea - Sort sea territories by value
-- [+] purchase_sea_and_amphib_units_triplea - Buy naval units and transports (4 phases)
-- [+] purchase_units_with_remaining_production_triplea - Use remaining factory production
+- [PARTIAL] purchase_sea_and_amphib_units_triplea - CRITICAL: Missing amphib purchase loop (Java 1891-2091)
+- [PARTIAL] purchase_units_with_remaining_production_triplea - Missing bomber preference, air multiplier
 - [+] upgrade_units_with_remaining_pus_triplea - Upgrade to better units
 - [+] find_upgrade_unit_efficiency_triplea - Calculate upgrade efficiency
 - [+] populate_production_rule_map_triplea - Initialize purchase tracking
@@ -31,8 +31,11 @@ Implementation Status (ALL COMPLETE):
 - [+] place_units_triplea - Alias for place_defenders (places all units)
 - [+] add_units_to_place_triplea - Track unit purchases (deferred placement)
 
-Plus 15+ helper methods fully implemented.
-Total: 25 methods mapped from Java, 17 fully implemented, 4 architectural N/A, 4 stubs/helpers
+CRITICAL ISSUE: purchase_sea_and_amphib_units_triplea is missing the main transport/amphib
+purchase loop from Java lines 1891-2091. This causes UK infantry pileup - no transports
+are being purchased for stranded units in low-value territories.
+
+Total: 25 methods mapped from Java, 13 fully implemented, 4 partial, 4 architectural N/A
 */
 
 import sa "core:container/small_array"
@@ -1149,6 +1152,33 @@ purchase_defenders_triplea :: proc(
 	territories: [dynamic]Place_Territory_Defense,
 	is_land: bool,
 ) {
+	// TODO REVIEW: Java purchaseDefenders (lines 715-914) has additional logic:
+	//
+	// Missing Block 1 (lines 739-744): Carrier capacity tracking
+	//   - carrierCapacity and carrierFightersToAdd for sea defense
+	//   - Tracks fighters that can land on purchased carriers
+	//
+	// Missing Block 2 (lines 749-761): Zero-move defense options
+	//   - Considers constructions like AA guns with different production limits
+	//   - Multiple purchase territories for single place territory
+	//
+	// Missing Block 3 (lines 829-844): Sea defense efficiency
+	//   - defenseEfficiency = defense / cost * 100 - 1
+	//   - Different efficiency formula for sea vs land
+	//
+	// Missing Block 4 (lines 876-895): Temp purchase confirmation
+	//   - confirmPlacementUnits() / clearTempPurchase() pattern
+	//   - Tracks purchases tentatively before confirming
+	//
+	// Missing Block 5: Defense efficiency with existing units
+	//   - Java calculates efficiency considering support bonuses
+	//
+	// Missing Block 6: Randomized purchase selection
+	//   - Java uses random selection for variety
+	//
+	// Missing Block 7: Local superiority check
+	//   - Java checks if we have local superiority already
+	
 	if gc.money[gc.cur_player] == 0 do return
 	if len(territories) == 0 do return
 
@@ -1706,6 +1736,19 @@ purchase_aa_units_triplea :: proc(
 	gc: ^Game_Cache,
 	prioritized_territories: [dynamic]Place_Territory_Land,
 ) {
+	// TODO REVIEW: Java purchaseAaUnits (lines 956-1052) has additional logic:
+	//
+	// Missing Block 1 (lines 970-985): Enemy bomber threat check
+	//   - Iterates enemy bomber range to check if territory can be bombed
+	//   - enemyBombersInRange = findEnemyBombersInRange(...)
+	//
+	// Missing Block 2: Territory can be bombed check
+	//   - ProMatches.territoryCanBeBombed()
+	//
+	// Missing Block 3: Best AA option selection by cost
+	//   - Java selects cheapest AA option that fits budget
+	//   - Currently hardcoded to check >= 5.0 strategic value
+	
 	if gc.money[gc.cur_player] == 0 do return
 
 	// Purchase AA guns for territories that:
@@ -2620,6 +2663,49 @@ purchase_sea_and_amphib_units_triplea :: proc(
 	}
 	debug_checks(gc)
 
+	// TODO REVIEW: Java lines 1891-2091 - CRITICAL MISSING AMPHIB PURCHASE LOGIC
+	// This is the root cause of UK infantry pileup - transports never bought for stranded units!
+	//
+	// Java Block 1 (lines 1891-1933): Find potentialUnitsToLoad
+	//   - Get transports that need units loaded (transportsThatNeedUnits)
+	//   - For each territory adjacent to purchase territories:
+	//     - If territoryValueMap.get(neighbor) <= 0.25:
+	//       - Add land units to potentialUnitsToLoad
+	//   - This identifies units stranded in low-value territories!
+	//
+	// Java Block 2 (lines 1955-2039): Main transport/amphib purchase while loop
+	//   while (true) {
+	//     if (!transportsThatNeedUnits.isEmpty()) {
+	//       // Get transport and fill it with amphib units
+	//       int transportCapacity = transport.getTransportCapacity();
+	//       while (transportCapacity > 0) {
+	//         // Select best amphib unit by efficiency
+	//         amphibEfficiencies.put(ppo, ppo.getAmphibEfficiency(...));
+	//         // Purchase unit and track
+	//         amphibUnitsToPlace.addAll(ppo.createTempUnits());
+	//         transportCapacity -= ppo.getTransportCost();
+	//       }
+	//     } else {
+	//       // NO EXISTING TRANSPORT NEEDS UNITS - BUY NEW TRANSPORT!
+	//       // Select transport by efficiency ratio
+	//       transportEfficiencies.put(ppo, ppo.getTransportEfficiencyRatio());
+	//       // Purchase transport
+	//       transportsThatNeedUnits.addAll(newTransports);
+	//     }
+	//     // Break conditions: no money, no production, nothing to load
+	//   }
+	//
+	// Java Block 3 (lines 1755-1823): Naval superiority loop
+	//   - Purchase until localNavalSuperiorityWhilePurchasing
+	//   - Uses minWinPercentage check
+	//   - Considers enemy air from land territories
+	//
+	// Java Block 4: Sub retreat handling (lines 1633-1640)
+	//   - Calculate subRetreatBeforeBattle for battle simulation
+	//
+	// Current Odin Phase 2 is WRONG: checks strategic_value >= 3.0
+	// Should instead check: are there potentialUnitsToLoad in low-value territories?
+
 	// Return whether we should save up for fleet
 	return !bought_units && wanted_to_buy_but_couldnt_defend
 }
@@ -2852,6 +2938,27 @@ purchase_units_with_remaining_production_triplea :: proc(
 	gc: ^Game_Cache,
 	prioritized_land: [dynamic]Place_Territory_Land,
 ) {
+	// TODO REVIEW: Java purchaseUnitsWithRemainingProduction (lines 2098-2250) has additional logic:
+	//
+	// Missing Block 1 (line 2164): Attack efficiency with movement bonus
+	//   - attackEfficiency = (attack * attack) * movement
+	//   - Squares attack value to emphasize high-attack units
+	//
+	// Missing Block 2 (line 2166): Air unit 10x multiplier
+	//   - if (ppo.isAir()) { attackEfficiency *= 10; }
+	//   - This heavily prioritizes air units for safe territories
+	//
+	// Missing Block 3: Defense efficiency with cost squared
+	//   - defenseEfficiency = (defense * defense) / cost
+	//   - Java uses squared defense for efficiency
+	//
+	// Missing Block 4: Bomber purchasing
+	//   - Java prefers bombers over fighters due to attack * movement
+	//   - Current code only buys fighters
+	//
+	// Missing Block 5: Randomized selection
+	//   - Java uses random() for variety in unit selection
+	
 	if gc.money[gc.cur_player] == 0 do return
 
 	/*
