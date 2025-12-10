@@ -274,11 +274,11 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-043 | └─ └─ `for (transport)` remaining | 1295-1395 | Iterates through transports not yet moved. | Fallback in `stage_and_unload_one_transport()` | ✅ DONE | 60% | |
 | NCM-044 | └─ └─ └─ Find safest sea zone | 1305-1350 | Evaluates sea zones by enemy threat to find safest destination. | ❌ MISSING | 🔶 PARTIAL | 30% | Simplified - stays in place |
 | NCM-045 | └─ └─ └─ Try unload if carrying | 1355-1390 | If transport is carrying units, tries to unload at safe location rather than risk losing cargo. | [`unload_transport_cargo_to_land()`](src/pro_noncombat_move.odin) | ✅ DONE | 85% | Always unloads cargo to best destination |
-| NCM-046 | └─ **Block 5: Sea units defend transports** | 1500-1560 | Moves warships to protect vulnerable transports from enemy attack. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-047 | └─ └─ `for (Unit sea)` | 1510-1555 | Iterates through available warships. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-048 | └─ └─ └─ Check transport needs escort | 1520-1545 | Identifies transports that lack adequate protection. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-049 | └─ **Block 6: Air units defend transports** | 1560-1600 | Moves fighters to carriers to provide air cover for transport fleets. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-050 | └─ └─ `for (fighter)` | 1570-1595 | Iterates through fighters that could land on carriers. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-046 | └─ **Block 5: Sea units defend transports** | 1500-1560 | Moves warships to protect vulnerable transports from enemy attack. | [`move_sea_units_noncombat()`](src/pro_noncombat_move.odin) `#region NCM-046` | ✅ DONE | 85% | Moves destroyers/cruisers/battleships/carriers to escort |
+| NCM-047 | └─ └─ `for (Unit sea)` | 1510-1555 | Iterates through available warships. | `Combat_Ships` loop | ✅ DONE | 85% | |
+| NCM-048 | └─ └─ └─ Check transport needs escort | 1520-1545 | Identifies transports that lack adequate protection. | [`check_transport_defense()`](src/pro_noncombat_move.odin) | ✅ DONE | 80% | Simplified threat assessment |
+| NCM-049 | └─ **Block 6: Air units defend transports** | 1560-1600 | Moves fighters to carriers to provide air cover for transport fleets. | `#region NCM-049` | ✅ DONE | 80% | Land and sea fighters to carriers |
+| NCM-050 | └─ └─ `for (fighter)` | 1570-1595 | Iterates through fighters that could land on carriers. | Fighter loops | ✅ DONE | 80% | |
 | NCM-051 | └─ **Block 7: Sea units to best location** | 1600-1730 | Moves remaining warships to strategically valuable sea zones. | [`move_sea_units_noncombat()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 55% | |
 | NCM-052 | └─ └─ `for (Unit sea)` remaining | 1610-1725 | Iterates through warships not assigned to escort duty. | Loop | 🔶 PARTIAL | 55% | |
 | NCM-053 | └─ └─ └─ Calc sea value + transport presence | 1620-1700 | Calculates sea zone value considering strategic importance and transport presence. | Simplified | 🔶 PARTIAL | 45% | |

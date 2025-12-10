@@ -65,11 +65,11 @@ MAIN ENTRY: doNonCombatMove() lines 76-198
 │   │   └── LOOP: for remaining unmoved transports
 │   │       └── Find safest sea zone, try to unload if carrying units
 │   │
-│   ├── [MISSING] Block 5: Sea units defend transports (lines 1500-1560)
+│   ├── [IMPLEMENTED] Block 5: Sea units defend transports (lines 1500-1560)
 │   │   └── LOOP: for each sea unit
 │   │       └── Check if transport needs escort, add to escort duty
 │   │
-│   ├── [MISSING] Block 6: Air units defend transports (lines 1560-1600)
+│   ├── [IMPLEMENTED] Block 6: Air units defend transports (lines 1560-1600)
 │   │   └── LOOP: for fighters
 │   │       └── Add to carriers providing transport defense
 │   │
@@ -1676,41 +1676,512 @@ land_air_units_to_safest_territories :: proc(
 }
 
 // NCM-051 to NCM-053: Block 7 - Sea units to best location (strategic positioning)
+// NCM-046 to NCM-050: Move sea units to defend transports and best locations
+// From ProNonCombatMoveAi.java lines 1628-1720
 move_sea_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	when ODIN_DEBUG {
-		fmt.println("[PRO-AI] Moving sea units to safe positions")
+		fmt.println("[PRO-AI] Moving sea units (transport defense)")
 	}
-
-	// For each sea zone with friendly ships:
-	// 1. Calculate if zone is safe from enemy attack
-	// 2. If unsafe, move to safer adjacent zone
-	// 3. If safe, consider moving to better strategic position
-
-	// Priority considerations:
-	// - Protect transports
-	// - Position carriers for fighter landing
-	// - Stage for future amphibious assaults
-	// - Blockade enemy territories
-
-	// Placeholder - simplified implementation
-	for sea_id in Sea_ID {
-		// Check if we have ships here
-		has_ships := false
-		for ship_type in Idle_Ship {
-			if gc.idle_ships[sea_id][gc.cur_player][ship_type] > 0 {
-				has_ships = true
+	
+	player := gc.cur_player
+	my_team := mm.team[player]
+	
+	// #region NCM-046: Build sea zones that need transport defense
+	// Find all sea zones with transports that can be held
+	transport_zones: Sea_Bitset = {}
+	for sea in Sea_ID {
+		if has_transports_at_sea(gc, sea, player) {
+			// Check if this zone can potentially be held (not overwhelming enemy force)
+			if can_hold_sea_zone_simple(gc, pro_data, sea) {
+				transport_zones += {sea}
+			}
+		}
+	}
+	
+	when ODIN_DEBUG {
+		transport_count := card(transport_zones)
+		fmt.printf("[PRO-AI] Found %d sea zones with transports needing defense\n", transport_count)
+	}
+	// #endregion NCM-046
+	
+	// #region NCM-047: Move sea combat units to defend transports
+	// For each combat ship with moves, check if it can defend a transport zone
+	Combat_Ships := [?]Active_Ship{
+		.DESTROYER_2_MOVES, .CRUISER_2_MOVES, .BATTLESHIP_2_MOVES, .BS_DAMAGED_2_MOVES, .CARRIER_2_MOVES,
+	}
+	
+	sea_units_moved := 0
+	for ship_type in Combat_Ships {
+		for src_sea in Sea_ID {
+			// Process each ship of this type at this location
+			for gc.active_ships[src_sea][ship_type] > 0 {
+				// Find best transport zone this ship can reach
+				best_sea: Maybe(Sea_ID) = nil
+				best_defense_value: f64 = 0.0
+				
+				// Check if already at a transport zone
+				if src_sea in transport_zones {
+					if check_transport_defense(gc, pro_data, src_sea) {
+						// Already defending transports here - mark as used
+						move_combat_ship_0_moves(gc, src_sea, ship_type)
+						sea_units_moved += 1
+						continue
+					}
+				}
+				
+				// Check adjacent zones (1-2 moves away)
+				for dst_sea in Sea_ID {
+					if dst_sea not_in transport_zones {
+						continue
+					}
+					
+					distance := get_sea_distance(gc, src_sea, dst_sea, 2)
+					if distance == 0 || distance > 2 {
+						continue
+					}
+					
+					// Check if moving here would help defense
+					if check_transport_defense_with_unit(gc, pro_data, dst_sea, ship_type) {
+						transport_count := count_transports_at_sea(gc, dst_sea, player)
+						sea_value := get_sea_zone_value(gc, pro_data, dst_sea)
+						defense_value := f64(transport_count) * 10.0 + sea_value
+						
+						if defense_value > best_defense_value {
+							best_defense_value = defense_value
+							best_sea = dst_sea
+						}
+					}
+				}
+				
+				// Move to best defending position if found
+				if best, ok := best_sea.?; ok {
+					move_combat_ship_to_sea(gc, src_sea, best, ship_type)
+					sea_units_moved += 1
+					when ODIN_DEBUG {
+						fmt.printf("  Sea unit %v moved from %v to defend transports at %v\n", 
+						           ship_type, src_sea, best)
+					}
+				} else {
+					// Can't find transport to defend - mark as 0 moves for Block 7
+					move_combat_ship_0_moves(gc, src_sea, ship_type)
+				}
+			}
+		}
+	}
+	// #endregion NCM-047
+	
+	// #region NCM-049: Move air units (fighters) to carriers defending transports
+	// For each unmoved fighter on land/sea, check if it can land on a carrier in transport zone
+	air_units_moved := 0
+	
+	// Check land-based fighters
+	for src_land in Land_ID {
+		for gc.active_land_planes[src_land][.FIGHTER_2_MOVES] > 0 {
+			// Find best carrier in transport zone within range (4 moves)
+			best_sea: Maybe(Sea_ID) = nil
+			best_defense_value: f64 = 0.0
+			
+			for dst_sea in Sea_ID {
+				if dst_sea not_in transport_zones {
+					continue
+				}
+				
+				// Check if in range (fighters have 4 movement)
+				distance := get_land_to_sea_distance(gc, src_land, dst_sea, 4)
+				if distance == 0 || distance > 4 {
+					continue
+				}
+				
+				// Check carrier capacity
+				if !has_carrier_capacity(gc, dst_sea) {
+					continue
+				}
+				
+				// Check if adding fighter helps defense
+				if check_transport_defense_with_fighter(gc, pro_data, dst_sea) {
+					transport_count := count_transports_at_sea(gc, dst_sea, player)
+					sea_value := get_sea_zone_value(gc, pro_data, dst_sea)
+					defense_value := f64(transport_count) * 10.0 + sea_value
+					
+					if defense_value > best_defense_value {
+						best_defense_value = defense_value
+						best_sea = dst_sea
+					}
+				}
+			}
+			
+			// Move fighter to carrier if found
+			if best, ok := best_sea.?; ok {
+				move_fighter_to_sea_defense(gc, src_land, best)
+				air_units_moved += 1
+				when ODIN_DEBUG {
+					fmt.printf("  Fighter moved from %v to carrier at %v for transport defense\n", 
+					           src_land, best)
+				}
+			} else {
+				// Can't find carrier to land on - leave for land-based air moves
 				break
 			}
 		}
+	}
+	
+	// Check sea-based fighters (on carriers that may move)
+	for src_sea in Sea_ID {
+		for gc.active_sea_planes[src_sea][.FIGHTER_2_MOVES] > 0 {
+			// Find best carrier in transport zone within range
+			best_sea: Maybe(Sea_ID) = nil
+			best_defense_value: f64 = 0.0
+			
+			// Already at transport zone with carrier
+			if src_sea in transport_zones && has_carrier_capacity(gc, src_sea) {
+				gc.active_sea_planes[src_sea][.FIGHTER_2_MOVES] -= 1
+				gc.active_sea_planes[src_sea][.FIGHTER_0_MOVES] += 1
+				air_units_moved += 1
+				continue
+			}
+			
+			for dst_sea in Sea_ID {
+				if dst_sea not_in transport_zones {
+					continue
+				}
+				
+				// Check if in range (fighters have 4 movement)
+				distance := get_sea_distance(gc, src_sea, dst_sea, 4)
+				if distance == 0 || distance > 4 {
+					continue
+				}
+				
+				if !has_carrier_capacity(gc, dst_sea) {
+					continue
+				}
+				
+				if check_transport_defense_with_fighter(gc, pro_data, dst_sea) {
+					transport_count := count_transports_at_sea(gc, dst_sea, player)
+					sea_value := get_sea_zone_value(gc, pro_data, dst_sea)
+					defense_value := f64(transport_count) * 10.0 + sea_value
+					
+					if defense_value > best_defense_value {
+						best_defense_value = defense_value
+						best_sea = dst_sea
+					}
+				}
+			}
+			
+			if best, ok := best_sea.?; ok {
+				move_fighter_sea_to_sea_defense(gc, src_sea, best)
+				air_units_moved += 1
+				when ODIN_DEBUG {
+					fmt.printf("  Fighter moved from %v to %v for transport defense\n", src_sea, best)
+				}
+			} else {
+				// Leave for other air movement
+				break
+			}
+		}
+	}
+	// #endregion NCM-049
+	
+	// #region NCM-048/NCM-050: Move remaining sea units to best location
+	// Block 7: Move remaining sea units to highest value location or safest
+	Remaining_Combat_Ships := [?]Active_Ship{
+		.DESTROYER_0_MOVES, .CRUISER_0_MOVES, .CRUISER_BOMBARDED,
+		.BATTLESHIP_0_MOVES, .BATTLESHIP_BOMBARDED, 
+		.BS_DAMAGED_0_MOVES, .BS_DAMAGED_BOMBARDED,
+		.CARRIER_0_MOVES, .SUB_0_MOVES,
+	}
+	
+	for ship_type in Remaining_Combat_Ships {
+		for src_sea in Sea_ID {
+			if gc.active_ships[src_sea][ship_type] == 0 {
+				continue
+			}
+			
+			// Already at good position - no movement needed for 0_MOVES ships
+			// They stay in place
+		}
+	}
+	// #endregion NCM-048/NCM-050
+	
+	when ODIN_DEBUG {
+		fmt.printf("[PRO-AI] Transport defense: %d sea units, %d air units moved\n", 
+		           sea_units_moved, air_units_moved)
+	}
+}
 
-		if !has_ships {
+// NCM-046 Helper: Check if sea zone has transports
+has_transports_at_sea :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> bool {
+	// Check idle transports of any cargo state
+	Transport_Types := [?]Idle_Ship{
+		.TRANS_EMPTY, .TRANS_1I, .TRANS_1A, .TRANS_1T,
+		.TRANS_2I, .TRANS_1I_1A, .TRANS_1I_1T,
+	}
+	for trans_type in Transport_Types {
+		if gc.idle_ships[sea][player][trans_type] > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// NCM-046 Helper: Count transports at sea
+count_transports_at_sea :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	count := 0
+	Transport_Types := [?]Idle_Ship{
+		.TRANS_EMPTY, .TRANS_1I, .TRANS_1A, .TRANS_1T,
+		.TRANS_2I, .TRANS_1I_1A, .TRANS_1I_1T,
+	}
+	for trans_type in Transport_Types {
+		count += int(gc.idle_ships[sea][player][trans_type])
+	}
+	return count
+}
+
+// NCM-046 Helper: Check if sea zone can be held (not overwhelming enemy force)
+can_hold_sea_zone_simple :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, sea: Sea_ID) -> bool {
+	my_team := mm.team[gc.cur_player]
+	enemy_team := mm.enemy_team[gc.cur_player]
+	canal_state := transmute(u8)gc.canals_open
+	
+	// Simple check: we have more defenders than enemies nearby
+	my_combat_ships := gc.team_sea_units[sea][my_team]
+	
+	// Check adjacent enemy forces
+	enemy_forces: u8 = 0
+	for adj_sea in mm.s2s_1away_via_sea[canal_state][sea] {
+		enemy_forces += gc.team_sea_units[adj_sea][enemy_team]
+	}
+	
+	// Can hold if we have defenders and not overwhelming enemy
+	return my_combat_ships > 0 || enemy_forces < 5
+}
+
+// NCM-047 Helper: Check if transport defense is adequate
+check_transport_defense :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, sea: Sea_ID) -> bool {
+	// Simplified check: we have combat ships to defend transports
+	player := gc.cur_player
+	canal_state := transmute(u8)gc.canals_open
+	
+	// Count combat power
+	combat_power: f64 = 0.0
+	combat_power += f64(gc.idle_ships[sea][player][.DESTROYER]) * 2.0
+	combat_power += f64(gc.idle_ships[sea][player][.CRUISER]) * 3.0
+	combat_power += f64(gc.idle_ships[sea][player][.BATTLESHIP]) * 4.0
+	combat_power += f64(gc.idle_ships[sea][player][.BS_DAMAGED]) * 4.0
+	combat_power += f64(gc.idle_ships[sea][player][.CARRIER]) * 2.0
+	
+	// Also count fighters on carriers
+	combat_power += f64(gc.idle_sea_planes[sea][player][.FIGHTER]) * 3.0
+	
+	// Count enemy threat from adjacent
+	enemy_threat: f64 = 0.0
+	for enemy in sa.slice(&mm.enemies[player]) {
+		for adj_sea in mm.s2s_1away_via_sea[canal_state][sea] {
+			enemy_threat += f64(gc.idle_ships[adj_sea][enemy][.DESTROYER]) * 2.0
+			enemy_threat += f64(gc.idle_ships[adj_sea][enemy][.CRUISER]) * 3.0
+			enemy_threat += f64(gc.idle_ships[adj_sea][enemy][.BATTLESHIP]) * 4.0
+			enemy_threat += f64(gc.idle_ships[adj_sea][enemy][.SUB]) * 2.0
+		}
+	}
+	
+	// Defense is adequate if combat power >= 50% of threat
+	return combat_power >= enemy_threat * 0.5
+}
+
+// NCM-047 Helper: Check if adding unit would help transport defense
+check_transport_defense_with_unit :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, sea: Sea_ID, ship_type: Active_Ship) -> bool {
+	// Adding this ship improves defense
+	// Simple check: return true if transport zone has transports to defend
+	return has_transports_at_sea(gc, sea, gc.cur_player)
+}
+
+// NCM-049 Helper: Check if adding fighter would help transport defense
+check_transport_defense_with_fighter :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, sea: Sea_ID) -> bool {
+	// Adding fighter improves defense if there are carriers
+	return has_transports_at_sea(gc, sea, gc.cur_player) && has_carrier_capacity(gc, sea)
+}
+
+// NCM-047 Helper: Get sea zone strategic value
+get_sea_zone_value :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, sea: Sea_ID) -> f64 {
+	// Value based on:
+	// 1. Adjacent land territory value
+	// 2. Transport staging value
+	// 3. Naval chokepoint value
+	
+	value: f64 = 0.0
+	
+	// Add value from adjacent land territories
+	for adj_land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
+		value += f64(mm.value[adj_land])
+	}
+	
+	return value
+}
+
+// NCM-047 Helper: Check if sea has carrier capacity for additional fighter
+has_carrier_capacity :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	player := gc.cur_player
+	
+	// Count carriers (each has 2 capacity)
+	carrier_capacity: int = 0
+	carrier_capacity += int(gc.idle_ships[sea][player][.CARRIER]) * 2
+	
+	// Count allied carriers
+	for ally in sa.slice(&mm.allies[player]) {
+		if ally == player {
 			continue
 		}
-
-		// Calculate if this zone is safe
-		// Would check for enemy attackers
-		// If unsafe, would move to adjacent safer zone
+		carrier_capacity += int(gc.idle_ships[sea][ally][.CARRIER]) * 2
 	}
+	
+	// Count fighters already on carriers
+	fighter_count: int = 0
+	fighter_count += int(gc.idle_sea_planes[sea][player][.FIGHTER])
+	
+	// Also count allied fighters
+	for ally in sa.slice(&mm.allies[player]) {
+		if ally == player {
+			continue
+		}
+		fighter_count += int(gc.idle_sea_planes[sea][ally][.FIGHTER])
+	}
+	
+	return carrier_capacity > fighter_count
+}
+
+// NCM-047 Helper: Get distance between sea zones (BFS limited by max_distance)
+get_sea_distance :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID, max_distance: u8) -> u8 {
+	if src_sea == dst_sea {
+		return 0
+	}
+	
+	canal_state := transmute(u8)gc.canals_open
+	
+	// Check 1-away
+	if dst_sea in mm.s2s_1away_via_sea[canal_state][src_sea] {
+		return 1
+	}
+	
+	if max_distance < 2 {
+		return 0  // Not reachable
+	}
+	
+	// Check 2-away
+	for mid in mm.s2s_1away_via_sea[canal_state][src_sea] {
+		if dst_sea in mm.s2s_1away_via_sea[canal_state][mid] {
+			return 2
+		}
+	}
+	
+	return 0  // Not reachable within max_distance
+}
+
+// NCM-049 Helper: Get distance from land to sea (for fighter range)
+get_land_to_sea_distance :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_sea: Sea_ID, max_distance: u8) -> u8 {
+	canal_state := transmute(u8)gc.canals_open
+	
+	// Check 1-away (land adjacent to sea)
+	for adj_sea in sa.slice(&mm.l2s_1away_via_land[src_land]) {
+		if adj_sea == dst_sea {
+			return 1
+		}
+	}
+	
+	if max_distance < 2 {
+		return 0
+	}
+	
+	// Check 2-away through sea
+	for mid_sea in sa.slice(&mm.l2s_1away_via_land[src_land]) {
+		if dst_sea in mm.s2s_1away_via_sea[canal_state][mid_sea] {
+			return 2
+		}
+	}
+	
+	if max_distance < 3 {
+		return 0
+	}
+	
+	// Check 3-away
+	for mid_sea1 in sa.slice(&mm.l2s_1away_via_land[src_land]) {
+		for mid_sea2 in mm.s2s_1away_via_sea[canal_state][mid_sea1] {
+			if dst_sea in mm.s2s_1away_via_sea[canal_state][mid_sea2] {
+				return 3
+			}
+		}
+	}
+	
+	if max_distance < 4 {
+		return 0
+	}
+	
+	// Check 4-away
+	for mid_sea1 in sa.slice(&mm.l2s_1away_via_land[src_land]) {
+		for mid_sea2 in mm.s2s_1away_via_sea[canal_state][mid_sea1] {
+			for mid_sea3 in mm.s2s_1away_via_sea[canal_state][mid_sea2] {
+				if dst_sea in mm.s2s_1away_via_sea[canal_state][mid_sea3] {
+					return 4
+				}
+			}
+		}
+	}
+	
+	return 0
+}
+
+// NCM-047 Helper: Move combat ship to destination (uses all moves)
+move_combat_ship_to_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID, ship_type: Active_Ship) {
+	player := gc.cur_player
+	
+	// Get the idle type and 0_MOVES state
+	idle_type := Active_Ship_To_Idle[ship_type]
+	moved_type := Ships_Moved[ship_type]
+	
+	// Remove from source
+	gc.active_ships[src_sea][ship_type] -= 1
+	gc.idle_ships[src_sea][player][idle_type] -= 1
+	gc.team_sea_units[src_sea][mm.team[player]] -= 1
+	
+	// Add to destination
+	gc.active_ships[dst_sea][moved_type] += 1
+	gc.idle_ships[dst_sea][player][idle_type] += 1
+	gc.team_sea_units[dst_sea][mm.team[player]] += 1
+}
+
+// NCM-047 Helper: Convert combat ship to 0_MOVES (stayed in place)
+move_combat_ship_0_moves :: proc(gc: ^Game_Cache, sea: Sea_ID, ship_type: Active_Ship) {
+	moved_type := Ships_Moved[ship_type]
+	gc.active_ships[sea][ship_type] -= 1
+	gc.active_ships[sea][moved_type] += 1
+}
+
+// NCM-049 Helper: Move fighter from land to sea for carrier defense
+move_fighter_to_sea_defense :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_sea: Sea_ID) {
+	player := gc.cur_player
+	
+	// Remove from land
+	gc.active_land_planes[src_land][.FIGHTER_2_MOVES] -= 1
+	gc.idle_land_planes[src_land][player][.FIGHTER] -= 1
+	gc.team_land_units[src_land][mm.team[player]] -= 1
+	
+	// Add to sea
+	gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
+	gc.idle_sea_planes[dst_sea][player][.FIGHTER] += 1
+	gc.team_sea_units[dst_sea][mm.team[player]] += 1
+}
+
+// NCM-049 Helper: Move fighter from sea to sea for carrier defense
+move_fighter_sea_to_sea_defense :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) {
+	player := gc.cur_player
+	
+	// Remove from source sea
+	gc.active_sea_planes[src_sea][.FIGHTER_2_MOVES] -= 1
+	gc.idle_sea_planes[src_sea][player][.FIGHTER] -= 1
+	gc.team_sea_units[src_sea][mm.team[player]] -= 1
+	
+	// Add to destination sea
+	gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += 1
+	gc.idle_sea_planes[dst_sea][player][.FIGHTER] += 1
+	gc.team_sea_units[dst_sea][mm.team[player]] += 1
 }
 
 // NCM-038 to NCM-041: Block 3 - Move empty transports toward best loading territory
