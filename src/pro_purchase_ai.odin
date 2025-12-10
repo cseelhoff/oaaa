@@ -229,6 +229,8 @@ find_territory_values_triplea :: proc(
 	territory_value_map := make(map[Land_ID]f64)
 	for land in territories_to_check {
 		// Use production value as strategic value
+		// Note: Java's findTerritoryValues does NOT apply capital multiplier here
+		// The (1 + 4.0 * isCapital) multiplier is in prioritizeDefendOptions, not here
 		territory_value_map[land] = find_land_value(
 			gc,
 			land,

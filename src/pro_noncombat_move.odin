@@ -994,7 +994,8 @@ prioritize_defense_targets :: proc(
 		is_capital := target.is_capital
 		
 		// Remove if: not a factory AND no enemy neighbors (matches isNotFactoryAndHasNoEnemyNeighbors)
-		is_not_factory_and_has_no_enemy_neighbors := !has_enemy_neighbors //&& !has_factory
+		// Java: !hasFactory && !territoryHasNeighborOwnedByAndHasLandUnit
+		is_not_factory_and_has_no_enemy_neighbors := !has_factory && !has_enemy_neighbors
 		
 		when ODIN_DEBUG {
 			fmt.printf(

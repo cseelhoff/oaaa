@@ -1,0 +1,2258 @@
+Starting CAAA
+Running  100000000000  iterations
+
+=== Pro AI Test Mode ===
+
+======================================================================
+PRO AI SINGLE TURN TEST (TripleA Purchase & Place)
+======================================================================
+Starting Player: Rus
+Starting Money: 24 IPCs
+Total units on board: 28
+======================================================================
+
+============================================================
+PURCHASE PHASE
+============================================================
+Player: Rus
+Starting Money: 24 IPCs
+
+Enemy Attack Options (per-enemy):
+Enemy: Ger
+  Land: Archangel Fighters: 1
+  Land: Archangel Bombers: 1
+  Land: Archangel Infantry: 3
+  Land: Archangel Artillery: 1
+  Land: Archangel Tanks: 1
+  Land: Caucasus Fighters: 3
+  Land: Caucasus Bombers: 1
+  Land: Caucasus Infantry: 6
+  Land: Caucasus Artillery: 2
+  Land: Caucasus Tanks: 2
+  Land: Karelia_SSR Fighters: 6
+  Land: Karelia_SSR Bombers: 1
+  Land: Karelia_SSR Infantry: 10
+  Land: Karelia_SSR Artillery: 1
+  Land: Karelia_SSR Tanks: 2
+  Land: Kazakh_SSR Fighters: 1
+  Land: Novosibirsk Fighters: 1
+  Land: Novosibirsk Bombers: 1
+  Land: Russia Fighters: 1
+  Land: Russia Bombers: 1
+  Land: Russia Infantry: 3
+  Land: Russia Artillery: 1
+  Land: Russia Tanks: 1
+  Sea: Sea_5 Fighters: 6 Subs: 0 Destroyers: 0
+Enemy: Jap
+  Land: Buryatia_SSR Fighters: 2
+  Land: Buryatia_SSR Bombers: 1
+  Land: Buryatia_SSR Infantry: 3
+  Land: Evenki_National_Okrug Fighters: 1
+  Land: Novosibirsk Fighters: 1
+  Land: Novosibirsk Bombers: 1
+  Land: Soviet_Far_East Fighters: 2
+  Land: Soviet_Far_East Bombers: 1
+  Land: Yakut_SSR Fighters: 1
+  Land: Yakut_SSR Bombers: 1
+Enemy Attack Options (aggregated max):
+  Land: Archangel Inf: 3 Art: 1 Tank: 1 Ftr: 1 Bmb: 1 Str: 15
+  Land: Buryatia_SSR Inf: 3 Art: 0 Tank: 0 Ftr: 2 Bmb: 1 Str: 13
+  Land: Caucasus Inf: 6 Art: 2 Tank: 2 Ftr: 3 Bmb: 1 Str: 29
+  Land: Evenki_National_Okrug Inf: 0 Art: 0 Tank: 0 Ftr: 1 Bmb: 0 Str: 3
+  Land: Karelia_SSR Inf: 10 Art: 1 Tank: 2 Ftr: 6 Bmb: 1 Str: 40
+  Land: Kazakh_SSR Inf: 0 Art: 0 Tank: 0 Ftr: 1 Bmb: 0 Str: 3
+  Land: Novosibirsk Inf: 0 Art: 0 Tank: 0 Ftr: 1 Bmb: 1 Str: 7
+  Land: Russia Inf: 3 Art: 1 Tank: 1 Ftr: 1 Bmb: 1 Str: 15
+  Land: Soviet_Far_East Inf: 0 Art: 0 Tank: 0 Ftr: 2 Bmb: 1 Str: 10
+  Land: Yakut_SSR Inf: 0 Art: 0 Tank: 0 Ftr: 1 Bmb: 1 Str: 7
+  [RATIONALE] Evaluating land territories for defensive needs...
+    Possible Enemy Target Territory: Archangel defense_value: 6.5
+      [THREATENED] Territory Archangel is not sufficiently protected (invaded%=100.0% < needed=95.0%)
+    Possible Enemy Target Territory: Buryatia_SSR defense_value: 5.0
+      [THREATENED] Territory Buryatia_SSR is not sufficiently protected (invaded%=100.0% < needed=95.0%)
+    Possible Enemy Target Territory: Caucasus defense_value: 43.0 [FACTORY]
+      [THREATENED] Territory Caucasus is not sufficiently protected (invaded%=100.0% < needed=95.0%)
+    Possible Enemy Target Territory: Evenki_National_Okrug defense_value: 5.0
+      [SAFE] Sequential Battle Results: TUV=-6.86, Invaded%=0.0%, Battles=1
+    Possible Enemy Target Territory: Karelia_SSR defense_value: 42.0 [FACTORY]
+      [THREATENED] Territory Karelia_SSR is not sufficiently protected (invaded%=100.0% < needed=95.0%)
+    Possible Enemy Target Territory: Kazakh_SSR defense_value: 5.5
+      [SAFE] Sequential Battle Results: TUV=-2.88, Invaded%=0.0%, Battles=1
+    Possible Enemy Target Territory: Novosibirsk defense_value: 3.5
+      [SAFE] Sequential Battle Results: TUV=-0.59, Invaded%=0.0%, Battles=2
+    Possible Enemy Target Territory: Russia defense_value: 858.0 [CAPITAL] [FACTORY]
+      [SAFE] Sequential Battle Results: TUV=-22.04, Invaded%=0.0%, Battles=1
+    Possible Enemy Target Territory: Soviet_Far_East defense_value: 5.0
+      [SAFE] Sequential Battle Results: TUV=-1.79, Invaded%=0.0%, Battles=1
+    Possible Enemy Target Territory: Yakut_SSR defense_value: 3.5
+      [SAFE] Sequential Battle Results: TUV=-0.26, Invaded%=0.0%, Battles=1
+  [RATIONALE] Found 4 threatened territories (sorted by priority)
+  [BUDGET] Reserving 7 IPCs for naval purchases
+  [RATIONALE] Analyzing territories needing defense:
+    Territory: Caucasus
+      Nearest factory: Caucasus
+      Battle simulation: 100.0% chance of invasion, TUV swing: 11.9
+        Re-simulating battle:
+          Defenders: 3 Inf, 1 Art, 1 Tank
+          Attackers: 6 Inf, 2 Art, 2 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 11.9
+      Purchasing infantry, Money: 24, factory: Caucasus, capacity: 4
+        Re-simulating battle:
+          Defenders: 4 Inf, 1 Art, 1 Tank
+          Attackers: 6 Inf, 2 Art, 2 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 12.9
+      Purchasing infantry, Money: 21, factory: Caucasus, capacity: 3
+        Re-simulating battle:
+          Defenders: 5 Inf, 1 Art, 1 Tank
+          Attackers: 6 Inf, 2 Art, 2 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 14.0
+      Purchasing infantry, Money: 18, factory: Caucasus, capacity: 2
+    Territory: Karelia_SSR
+      Nearest factory: Karelia_SSR
+      Battle simulation: 100.0% chance of invasion, TUV swing: 18.7
+        Re-simulating battle:
+          Defenders: 4 Inf, 1 Art, 1 Ftr
+          Attackers: 10 Inf, 1 Art, 2 Tank, 4 Ftr, 1 Bmb
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 18.7
+      Purchasing infantry, Money: 15, factory: Karelia_SSR, capacity: 2
+    Territory: Archangel
+      Nearest factory: Russia
+      Battle simulation: 100.0% chance of invasion, TUV swing: 6.4
+        Re-simulating battle:
+          Defenders: 1 Inf, 1 Tank
+          Attackers: 3 Inf, 1 Art, 1 Tank, 1 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 6.4
+      Purchasing infantry, Money: 12, factory: Russia, capacity: 8
+  [RATIONALE] Evaluating sea territories for defensive needs...
+    Evaluating sea zones for defensive needs...
+    Found 0 sea zones needing defense
+    [SEA ZONE] Sea_4 factory: Karelia_SSR has_threat: false threat subs: 0 destroyers: 0 cruisers: 0 BS: 0 fighters: 0 bombers: 0
+  [NAVAL SUP] Bought DESTROYER for sea Sea_4 towards superiority
+  [RATIONALE] Purchasing offensive land units...
+    No offensive units purchased
+  [RATIONALE] Using remaining production capacity...
+    No units purchased with remaining production
+
+Remaining Money: 1 IPCs
+Money Spent: 23 IPCs
+============================================================
+
+
+============================================================
+COMBAT MOVE PHASE
+============================================================
+
+[STEP 1] Finding ALL units that can attack (populateAttackOptions)...
+
+[STEP 2] Prioritizing attack targets by strategic value...
+    Possible My Target Territory: Baltic_States_Air
+      Battle Results (TUV, Invaded %):  6.444 ,  1
+      Attack Value:  6.444
+    Possible My Target Territory: Belorussia_Air
+      Battle Results (TUV, Invaded %):  5.82 ,  1
+      Attack Value:  5.82
+    Possible My Target Territory: Bulgaria_Romania_Air
+      Battle Results (TUV, Invaded %):  -16.751 ,  0
+    Possible My Target Territory: Finland_Air
+      Battle Results (TUV, Invaded %):  5.82 ,  1
+      Attack Value:  5.82
+    Possible My Target Territory: France_Air
+      Battle Results (TUV, Invaded %):  -8.494 ,  0
+    Possible My Target Territory: Germany_Air
+      Battle Results (TUV, Invaded %):  -4.0359999999999996 ,  0
+    Possible My Target Territory: Italy_Air
+      Battle Results (TUV, Invaded %):  -7.782 ,  0
+    Possible My Target Territory: Kwangtung_Air
+      Battle Results (TUV, Invaded %):  -6.766 ,  0
+    Possible My Target Territory: Manchuria_Air
+      Battle Results (TUV, Invaded %):  -4.971 ,  0
+    Possible My Target Territory: Northwestern_Europe_Air
+      Battle Results (TUV, Invaded %):  -8.512 ,  0
+    Possible My Target Territory: Norway_Air
+      Battle Results (TUV, Invaded %):  -8.506 ,  0
+    Possible My Target Territory: Poland_Air
+      Battle Results (TUV, Invaded %):  -16.748 ,  0
+    Possible My Target Territory: Ukraine_SSR_Air
+      Battle Results (TUV, Invaded %):  16.359999999999999 ,  1
+      Attack Value:  16.359999999999999
+    Possible My Target Territory: West_Russia_Air
+      Battle Results (TUV, Invaded %):  13.462 ,  1
+      Attack Value:  40.385999999999996
+  Attack priority order:
+    1. West_Russia (value: 40.4, production: 2)
+    2. Ukraine_SSR (value: 16.4, production: 2)
+    3. Baltic_States (value: 6.4, production: 2)
+    4. Belorussia (value: 5.8, production: 2)
+    5. Finland (value: 5.8, production: 1)
+
+[STEP 3] Checking which territories can be held after capture...
+Check if we should try to hold attack territories
+  West_Russia: Using pre-computed survivor_def_power=38.3 from Step 2
+    Our survivors (defenders):
+      Infantry: 9
+      Tank: 6
+    Enemy attackers:
+      Infantry: 6
+      Artillery: 1
+      Tank: 1
+      Fighter: 3
+    Enemy_win=0.0%, TUV=-44.9
+    Can hold because enemy win pct 0.0% < 60.0%
+    Can hold because enemy TUV swing -44.9 < 0
+    [CAN HOLD] (survivors=38.3 def power, enemy_win=0.0%, enemy_TUV=-44.9)
+  Ukraine_SSR: Using pre-computed survivor_def_power=9.2 from Step 2
+    Our survivors (defenders):
+      Infantry: 1
+      Tank: 2
+    Enemy attackers:
+      Infantry: 10
+      Artillery: 1
+      Tank: 3
+      Fighter: 4
+      Bomber: 1
+    Enemy_win=100.0%, TUV=11.0
+    [CANNOT HOLD] (survivors=9.2 def power, enemy_win=100.0%, enemy_TUV=11.0)
+  Baltic_States: Using pre-computed survivor_def_power=11.3 from Step 2
+    Our survivors (defenders):
+      Infantry: 2
+      Tank: 2
+    Enemy attackers:
+      Infantry: 8
+      Tank: 3
+      Fighter: 5
+      Bomber: 1
+    Enemy_win=100.0%, TUV=11.3
+    [CANNOT HOLD] (survivors=11.3 def power, enemy_win=100.0%, enemy_TUV=11.3)
+  Belorussia: Using pre-computed survivor_def_power=10.9 from Step 2
+    Our survivors (defenders):
+      Infantry: 2
+      Tank: 2
+    Enemy attackers:
+      Infantry: 9
+      Artillery: 2
+      Tank: 4
+      Fighter: 4
+      Bomber: 1
+    Enemy_win=100.0%, TUV=13.0
+    [CANNOT HOLD] (survivors=10.9 def power, enemy_win=100.0%, enemy_TUV=13.0)
+  Finland: Using pre-computed survivor_def_power=10.9 from Step 2
+    Our survivors (defenders):
+      Infantry: 2
+      Tank: 2
+    Enemy attackers:
+      Infantry: 2
+      Fighter: 1
+    Enemy_win=0.0%, TUV=-13.1
+    Can hold because enemy win pct 0.0% < 60.0%
+    Can hold because enemy TUV swing -13.1 < 0
+    [CAN HOLD] (survivors=10.9 def power, enemy_win=0.0%, enemy_TUV=-13.1)
+  -> 2 of 5 territories can be held
+    + West_Russia (can hold)
+    + Finland (can hold)
+
+[STEP 4] Filtering out low-value targets...
+Remove territories that aren't worth attacking
+  -> Removed 0 low-value targets, 5 remain
+  Targets worth attacking:
+    - West_Russia (value: 40.4, holdable: true)
+    - Ukraine_SSR (value: 16.4, holdable: false)
+    - Baltic_States (value: 6.4, holdable: false)
+    - Belorussia (value: 5.8, holdable: false)
+    - Finland (value: 5.8, holdable: true)
+  [populateAttackOptions] Iterating through all friendly units...
+  [Air] Karelia_SSR has 1 fighters
+  [Air] Fighter from Karelia_SSR can reach Baltic_States (1 move)
+  [Air] Fighter from Karelia_SSR can reach Belorussia (1 move)
+  [Air] Fighter from Karelia_SSR can reach Finland (1 move)
+  [Air] Fighter from Karelia_SSR can reach West_Russia (1 move)
+  [Air] Fighter from Karelia_SSR can reach West_Russia via Archangel (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Belorussia via Baltic_States (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Germany via Baltic_States (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Poland via Baltic_States (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Baltic_States via Belorussia (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Poland via Belorussia (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Ukraine_SSR via Belorussia (2 moves)
+  [Air] Fighter from Karelia_SSR can reach West_Russia via Belorussia (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Norway via Finland (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Belorussia via West_Russia (2 moves)
+  [Air] Fighter from Karelia_SSR can reach Ukraine_SSR via West_Russia (2 moves)
+  [Air] Russia has 1 fighters
+  [Air] Fighter from Russia can reach West_Russia (1 move)
+  [Air] Fighter from Russia can reach West_Russia via Archangel (2 moves)
+  [Air] Fighter from Russia can reach Ukraine_SSR via Caucasus (2 moves)
+  [Air] Fighter from Russia can reach West_Russia via Caucasus (2 moves)
+  [Air] Fighter from Russia can reach Belorussia via West_Russia (2 moves)
+  [Air] Fighter from Russia can reach Ukraine_SSR via West_Russia (2 moves)
+  [populateAttackOptions] Found 9 potential attack targets
+Prioritizing territories to try to attack
+
+[STEP 4b] Evaluating amphibious attack requirements...
+
+[AMPHIB EVAL] Evaluating which territories need amphibious reinforcements...
+  West_Russia: No amphib units available
+  Belorussia: No amphib units available
+  Baltic_States: No amphib units available
+  Finland: No amphib units available
+  Ukraine_SSR: No amphib units available
+
+[STEP 5] Selecting territories to attack (iterative algorithm)...
+Determine which territories to attack
+Current number of territories: 1
+Try to attack territories with available units
+    [ITER] West_Russia: available inf=12 arty=3 tank=4 ftr=2 bmb=0 (total=21)
+    [ITER] West_Russia: iter=0 added=6 total=6 win%=26.0%
+    [ITER] West_Russia: iter=1 added=6 total=12 win%=100.0%
+  After land assignment: West_Russia has 12 attackers (win%: 100.0%, needed: 75.0%)
+  Total assigned units:
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Karelia_SSR:
+      Infantry: 2
+      Artillery: 1
+      Fighter: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Russia:
+      Fighter: 1
+Trying  West_Russia
+West_Russia: 100.0% win, attackers=12 (land/air=12, amphib=0)
+Current number of territories: 2
+Try to attack territories with available units
+    [ITER] West_Russia: available inf=12 arty=3 tank=4 ftr=2 bmb=0 (total=21)
+    [ITER] West_Russia: iter=0 added=6 total=6 win%=25.8%
+    [ITER] West_Russia: iter=1 added=6 total=12 win%=100.0%
+  After land assignment: West_Russia has 12 attackers (win%: 100.0%, needed: 75.0%)
+    [ITER] Belorussia: available inf=2 arty=0 tank=2 ftr=0 bmb=0 (total=4)
+    [ITER] Belorussia: iter=0 added=3 total=3 win%=45.3%
+    [ITER] Belorussia: iter=1 added=1 total=4 win%=100.0%
+  After land assignment: Belorussia has 4 attackers (win%: 100.0%, needed: 75.0%)
+  Total assigned units:
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+      Fighter: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Russia:
+      Tank: 2
+      Fighter: 1
+Trying  West_Russia
+West_Russia: 100.0% win, attackers=12 (land/air=12, amphib=0)
+Trying  Belorussia
+Belorussia: 100.0% win, attackers=4 (land/air=4, amphib=0)
+Current number of territories: 3
+Try to attack territories with available units
+    [ITER] West_Russia: available inf=12 arty=3 tank=4 ftr=2 bmb=0 (total=21)
+    [ITER] West_Russia: iter=0 added=6 total=6 win%=26.4%
+    [ITER] West_Russia: iter=1 added=6 total=12 win%=100.0%
+  After land assignment: West_Russia has 12 attackers (win%: 100.0%, needed: 75.0%)
+    [ITER] Belorussia: available inf=2 arty=0 tank=2 ftr=0 bmb=0 (total=4)
+    [ITER] Belorussia: iter=0 added=3 total=3 win%=45.1%
+    [ITER] Belorussia: iter=1 added=1 total=4 win%=100.0%
+  After land assignment: Belorussia has 4 attackers (win%: 100.0%, needed: 75.0%)
+    [ITER] Baltic_States: available inf=0 arty=0 tank=0 ftr=0 bmb=0 (total=0)
+    [ITER] Baltic_States: No units added in iteration 0, breaking
+  After land assignment: Baltic_States has 0 attackers (win%: 0.0%, needed: 75.0%)
+  Total assigned units:
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+      Fighter: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Russia:
+      Tank: 2
+      Fighter: 1
+Trying  West_Russia
+West_Russia: 100.0% win, attackers=12 (land/air=12, amphib=0)
+Trying  Belorussia
+Belorussia: 100.0% win, attackers=4 (land/air=4, amphib=0)
+Trying  Baltic_States
+Simulated battle results:  Battle_Results{avg_TUV_swing = 0, invaded_percent = 0, avg_survivor_def_power = 0}
+Baltic_States: 0.0% win, attackers=0 (land/air=0, amphib=0)
+Removing territory: Baltic_States
+Current number of territories: 3
+Try to attack territories with available units
+    [ITER] West_Russia: available inf=12 arty=3 tank=4 ftr=2 bmb=0 (total=21)
+    [ITER] West_Russia: iter=0 added=6 total=6 win%=26.1%
+    [ITER] West_Russia: iter=1 added=6 total=12 win%=100.0%
+  After land assignment: West_Russia has 12 attackers (win%: 100.0%, needed: 75.0%)
+    [ITER] Belorussia: available inf=2 arty=0 tank=2 ftr=0 bmb=0 (total=4)
+    [ITER] Belorussia: iter=0 added=3 total=3 win%=45.1%
+    [ITER] Belorussia: iter=1 added=1 total=4 win%=100.0%
+  After land assignment: Belorussia has 4 attackers (win%: 100.0%, needed: 75.0%)
+    [ITER] Ukraine_SSR: available inf=0 arty=0 tank=0 ftr=0 bmb=0 (total=0)
+    [ITER] Ukraine_SSR: No units added in iteration 0, breaking
+  After land assignment: Ukraine_SSR has 0 attackers (win%: 0.0%, needed: 75.0%)
+  Total assigned units:
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+      Fighter: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Russia:
+      Tank: 2
+      Fighter: 1
+Trying  West_Russia
+West_Russia: 100.0% win, attackers=12 (land/air=12, amphib=0)
+Trying  Belorussia
+Belorussia: 100.0% win, attackers=4 (land/air=4, amphib=0)
+Trying  Ukraine_SSR
+Simulated battle results:  Battle_Results{avg_TUV_swing = 0, invaded_percent = 0, avg_survivor_def_power = 0}
+Ukraine_SSR: 0.0% win, attackers=0 (land/air=0, amphib=0)
+Removing territory: Ukraine_SSR
+Current number of territories: 3
+Try to attack territories with available units
+    [ITER] West_Russia: available inf=12 arty=3 tank=4 ftr=2 bmb=0 (total=21)
+    [ITER] West_Russia: iter=0 added=6 total=6 win%=25.9%
+    [ITER] West_Russia: iter=1 added=6 total=12 win%=100.0%
+  After land assignment: West_Russia has 12 attackers (win%: 100.0%, needed: 75.0%)
+    [ITER] Belorussia: available inf=2 arty=0 tank=2 ftr=0 bmb=0 (total=4)
+    [ITER] Belorussia: iter=0 added=3 total=3 win%=45.3%
+    [ITER] Belorussia: iter=1 added=1 total=4 win%=100.0%
+  After land assignment: Belorussia has 4 attackers (win%: 100.0%, needed: 75.0%)
+    [ITER] Finland: available inf=0 arty=0 tank=0 ftr=0 bmb=0 (total=0)
+    [ITER] Finland: No units added in iteration 0, breaking
+  After land assignment: Finland has 0 attackers (win%: 0.0%, needed: 75.0%)
+  Total assigned units:
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+      Fighter: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Russia:
+      Tank: 2
+      Fighter: 1
+Trying  West_Russia
+West_Russia: 100.0% win, attackers=12 (land/air=12, amphib=0)
+Trying  Belorussia
+Belorussia: 100.0% win, attackers=4 (land/air=4, amphib=0)
+Trying  Finland
+Simulated battle results:  Battle_Results{avg_TUV_swing = 0, invaded_percent = 0, avg_survivor_def_power = 0}
+Finland: 0.0% win, attackers=0 (land/air=0, amphib=0)
+Removing territory: Finland
+Current number of territories: 2
+Try to attack territories with available units
+    [ITER] West_Russia: available inf=12 arty=3 tank=4 ftr=2 bmb=0 (total=21)
+    [ITER] West_Russia: iter=0 added=6 total=6 win%=26.0%
+    [ITER] West_Russia: iter=1 added=6 total=12 win%=100.0%
+  After land assignment: West_Russia has 12 attackers (win%: 100.0%, needed: 75.0%)
+    [ITER] Belorussia: available inf=2 arty=0 tank=2 ftr=0 bmb=0 (total=4)
+    [ITER] Belorussia: iter=0 added=3 total=3 win%=45.5%
+    [ITER] Belorussia: iter=1 added=1 total=4 win%=100.0%
+  After land assignment: Belorussia has 4 attackers (win%: 100.0%, needed: 75.0%)
+  Total assigned units:
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+      Fighter: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Russia:
+      Tank: 2
+      Fighter: 1
+Trying  West_Russia
+West_Russia: 100.0% win, attackers=12 (land/air=12, amphib=0)
+Trying  Belorussia
+Belorussia: 100.0% win, attackers=4 (land/air=4, amphib=0)
+Final number of territories to attack: 2
+  -> Selected 2 territories for attack (removed 3 unsuccessful)
+  Final attack targets:
+    - West_Russia (value: 12.0)
+    - Belorussia (value: 8.0)
+
+[STEP 6] Re-calculating with final attack selection...
+Re-calculating enemy attack options after territory selection
+  Re-assigning attackers to selected territories...
+Try to attack territories with available units
+    [ITER] West_Russia: available inf=12 arty=3 tank=4 ftr=2 bmb=0 (total=21)
+    [ITER] West_Russia: iter=0 added=6 total=6 win%=25.9%
+    [ITER] West_Russia: iter=1 added=6 total=12 win%=100.0%
+  After land assignment: West_Russia has 12 attackers (win%: 100.0%, needed: 75.0%)
+    [ITER] Belorussia: available inf=2 arty=0 tank=2 ftr=0 bmb=0 (total=4)
+    [ITER] Belorussia: iter=0 added=3 total=3 win%=45.1%
+    [ITER] Belorussia: iter=1 added=1 total=4 win%=100.0%
+  After land assignment: Belorussia has 4 attackers (win%: 100.0%, needed: 75.0%)
+  Total assigned units:
+    Caucasus:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Karelia_SSR:
+      Infantry: 4
+      Artillery: 1
+      Fighter: 1
+    Archangel:
+      Infantry: 1
+      Tank: 1
+    Russia:
+      Tank: 2
+      Fighter: 1
+  Re-checking which territories can be held...
+Check if we should try to hold attack territories
+  Combatants for West_Russia (from arrays):
+    potential_attackers count: 29
+    potential_amphib_attackers count: 0
+    defenders count: 5
+    Built attackers[0]: INF=12, ARTY=3, TANK=12
+    Built attackers[1]: FIGH=2
+    Built attackers[2]: BOMB=0
+    Built defenders: INF=3, ARTY=1, TANK=1, FIGH=0, BOMB=0, AA=0
+  Battle sim for West_Russia: win=100.0%, TUV=13.4, survivor_def=62.3
+    Our survivors (defenders):
+      Infantry: 15
+      Tank: 10
+    Enemy attackers:
+      Infantry: 6
+      Artillery: 1
+      Tank: 1
+      Fighter: 3
+    Enemy_win=0.0%, TUV=-47.5
+    Can hold because enemy win pct 0.0% < 60.0%
+    Can hold because enemy TUV swing -47.5 < 0
+    [CAN HOLD] (survivors=62.3 def power, enemy_win=0.0%, enemy_TUV=-47.5)
+  Combatants for Belorussia (from arrays):
+    potential_attackers count: 12
+    potential_amphib_attackers count: 0
+    defenders count: 3
+    Built attackers[0]: INF=4, ARTY=1, TANK=6
+    Built attackers[1]: FIGH=1
+    Built attackers[2]: BOMB=0
+    Built defenders: INF=3, ARTY=0, TANK=0, FIGH=0, BOMB=0, AA=0
+  Battle sim for Belorussia: win=100.0%, TUV=6.0, survivor_def=26.0
+    Our survivors (defenders):
+      Infantry: 6
+      Tank: 4
+    Enemy attackers:
+      Infantry: 9
+      Artillery: 2
+      Tank: 4
+      Fighter: 4
+      Bomber: 1
+    Enemy_win=100.0%, TUV=20.0
+    [CANNOT HOLD] (survivors=26.0 def power, enemy_win=100.0%, enemy_TUV=20.0)
+  Re-filtering low-value targets...
+Remove territories that aren't worth attacking
+  -> 2 attacks remain after recalculation
+
+[STEP 7] Moving defenders to border territories...
+  Searching for empty border territories needing defenders...
+  (No border territories needed defenders)
+
+[STEP 8] Checking transport safety...
+Remove territories where transports are exposed
+  -> All transports safe
+
+[STEP 9] Ensuring capital defense...
+Check capital defenses after attack moves
+  Capital: 27.2 defenders vs 8.0 enemy threat
+  Capital can be defended with current attack plan
+  -> Capital can be defended with current attack plan
+
+  FINAL ATTACK PLAN:
+    -> Attack West_Russia (value: 12.0, holdable: true)
+    -> Attack Belorussia (value: 8.0, holdable: false)
+
+[STEP 9b] Planning strategic bombing raids...
+[CMB-002] Planning strategic bombing raids...
+  No valid bombing targets found
+  -> No strategic bombing raids planned
+
+[STEP 10] Assigning units to each attack...
+[determineUnitsToAttackWith] Assigning units to attacks...
+  Attempting to assign units to attacks...
+    Assigning units to attack West_Russia...
+      -> Assigned 21 land/air, 0 amphib
+    Assigning units to attack Belorussia...
+      -> Assigned 0 land/air, 0 amphib
+    West_Russia: 38.0 attack vs 11.0 defense
+    Belorussia: 0.0 attack vs 6.0 defense
+    -> Removing Belorussia (no units assigned)
+  Attempting to assign units to attacks...
+    Assigning units to attack West_Russia...
+      -> Assigned 21 land/air, 0 amphib
+    West_Russia: 38.0 attack vs 11.0 defense
+  -> All attacks have units assigned
+
+  UNIT ASSIGNMENTS:
+    West_Russia:
+      Ground/Air attackers (21 units):
+        - 12 x Infantry from: Archangel, Caucasus, Caucasus, Caucasus, Karelia_SSR, Karelia_SSR, Karelia_SSR, Karelia_SSR, Russia, Russia, Russia, Russia
+        - 3 x Artillery from: Caucasus, Karelia_SSR, Russia
+        - 4 x Tank from: Archangel, Caucasus, Russia, Russia
+        - 2 x Fighter from: Karelia_SSR, Russia
+      Total: 38.0 attack vs 11.0 defense
+============================================================
+
+
+[STEP 11] Loading transports for amphibious assaults...
+
+[STEP 12] Executing combat moves (doMove)
+  Executing combat moves for 1 attacks
+
+  [MOVE ROUTES] Moving land and air units to attack destinations
+    Moving 21 units to attack West_Russia
+      Moved Infantry from Archangel to West_Russia
+      Moved Tank from Archangel to West_Russia
+      Moved Infantry from Caucasus to West_Russia
+      Moved Infantry from Caucasus to West_Russia
+      Moved Infantry from Caucasus to West_Russia
+      Moved Artillery from Caucasus to West_Russia
+      Moved Tank from Caucasus to West_Russia
+      Moved Infantry from Karelia_SSR to West_Russia
+      Moved Infantry from Karelia_SSR to West_Russia
+      Moved Infantry from Karelia_SSR to West_Russia
+      Moved Infantry from Karelia_SSR to West_Russia
+      Moved Artillery from Karelia_SSR to West_Russia
+      Moved Infantry from Russia to West_Russia
+      Moved Infantry from Russia to West_Russia
+      Moved Infantry from Russia to West_Russia
+      Moved Infantry from Russia to West_Russia
+      Moved Artillery from Russia to West_Russia
+      Moved Tank from Russia to West_Russia
+      Moved Tank from Russia to West_Russia
+      Moved Fighter from Karelia_SSR to West_Russia
+      Moved Fighter from Russia to West_Russia
+
+  [AMPHIB ROUTES] Unloading transports for amphibious assaults
+  Marked West_Russia for combat resolution
+Starting combat round  0  for land  West_Russia
+  [COMBAT] Rus lost 1 INF at West_Russia
+  [COMBAT] Rus lost 1 INF at West_Russia
+  [COMBAT] Ger lost 1 INF at West_Russia
+  [COMBAT] Ger lost 1 INF at West_Russia
+  [COMBAT] Ger lost 1 INF at West_Russia
+  [COMBAT] Ger lost 1 ARTY at West_Russia
+  [COMBAT] Ger lost 1 TANK at West_Russia
+[PRO-AI] Starting non-combat move phase
+  [NONCOMBAT] Scanning all ALLIED territories for defense needs...
+    [DEFENSE] Caucasus is WEAK (cur_def=0.0) with strategic value (factory=true, capital=false, value=14.0, has_enemy_neighbors=true)
+    [DEFENSE] Karelia_SSR is WEAK (cur_def=0.0) with strategic value (factory=true, capital=false, value=12.0, has_enemy_neighbors=true)
+[PRO-AI] Found 2 territories needing defense:
+  - Caucasus: defense=0.0 vs threat=4.0 (gap=8.0, factory=true, capital=false)
+  - Karelia_SSR: defense=0.0 vs threat=4.0 (gap=8.0, factory=true, capital=false)
+[PRO-AI] Prioritizing defense targets...
+  [DEFENSE] Evaluating Caucasus
+  [DEFENSE] Evaluating Karelia_SSR
+  [FILTER] Considering Caucasus (value=18.40): factory=true, enemyNeighbors=true, capital=false
+  [FILTER] Considering Karelia_SSR (value=14.00): factory=true, enemyNeighbors=true, capital=false
+[PRO-AI] Prioritized defense targets (after filtering):
+  1. Caucasus: value=18.4, factory=true, capital=false, enemyNeighbors=true
+  2. Karelia_SSR: value=14.0, factory=true, capital=false, enemyNeighbors=true
+[PRO-AI] Prioritized defense targets:
+  - Caucasus: priority=18.4, defense_needed=8.0
+  - Karelia_SSR: priority=14.0, defense_needed=8.0
+[PRO-MOVE-03] Moved 1 INF_1_MOVES from Kazakh_SSR to Caucasus
+  [AMPHIB-DEFENSE] Checking amphib defense for Caucasus (need 6.0 defense)
+[PRO-AI] Moved 1 units to defend territory Caucasus
+  [AMPHIB-DEFENSE] Checking amphib defense for Karelia_SSR (need 8.0 defense)
+[PRO-AI] Landing fighters in safe territories
+  [AIR] Find all air units of this type that need landing...
+  [AIR] Found 2 FIGHTER units needing landing
+  [AIR] FIGHTER landing at Archangel_Air (airValue=310.0, seaAttacks=0, landAttacks=0)
+  [AIR] FIGHTER landing at Archangel_Air (airValue=310.0, seaAttacks=0, landAttacks=0)
+[PRO-AI] Landing bombers in safe territories
+  [AIR] Find all air units of this type that need landing...
+  [NONCOMBAT] Loading transports for next turn positioning...
+  [NONCOMBAT] No units loaded onto transports
+  [NONCOMBAT] Staging and unloading loaded transports...
+  [NONCOMBAT] Unloaded 0 transports
+[PRO-AI] Moving empty transports toward loading positions
+[PRO-AI] Moved 0 empty transports toward loading positions
+[PRO-AI] Moving sea units (transport defense)
+[PRO-AI] Found 0 sea zones with transports needing defense
+[PRO-AI] Transport defense: 0 sea units, 0 air units moved
+[PRO-AI] Capital Russia, enemy distance: 1
+[PRO-AI] Moving land units to consolidate
+  [LAND] Territory values (based on enemy targets):
+    Alaska: 0.0
+    Western_United_States: 0.0
+    Evenki_National_Okrug: 9.9
+    Iceland: 0.0
+    Archangel: 23.9
+    Soviet_Far_East: 3.7
+    Caucasus: 25.9
+    Yakut_SSR: 5.5
+    Western_Australia: 0.0
+    Burma: 3.8
+    Central_United_States: 0.0
+    French_Madagascar: 0.0
+    Karelia_SSR: 52.9
+    Union_of_South_Africa: 0.3
+    Anglo_Egyptian_Sudan: 1.7
+    Szechwan: 7.0
+    Central_America: 0.0
+    Yunnan: 3.8
+    Eastern_Canada: 0.0
+    French_West_Africa: 0.3
+    French_Equatorial_Africa: 0.7
+    Gibraltar: 0.0
+    Kazakh_SSR: 11.2
+    Novosibirsk: 5.3
+    Rhodesia: 0.7
+    Persia: 12.2
+    Belgian_Congo: 0.7
+    United_Kingdom: 0.0
+    Trans_Jordan: 5.7
+    Anhwei: 2.3
+    Eastern_United_States: 0.0
+    East_Mexico: 0.0
+    India: 6.7
+    Greenland: 0.0
+    Mexico: 0.0
+    Russia: 11.6
+    Vologda: 9.9
+    Buryatia_SSR: 3.3
+    Western_Canada: 0.0
+    West_Indies: 0.0
+    Brazil: 0.0
+    Egypt: 3.0
+    Eastern_Australia: 0.0
+    Italian_East_Africa: 0.7
+    Hawaiian_Islands: 0.0
+    New_Zealand: 0.0
+    Midway: 0.0
+    Sinkiang: 6.9
+  [LAND] Pass 1: Move to high-value territories near transports
+    [PASS 1] Checking 2 x INF_1_MOVES at Buryatia_SSR (src_value=3.3)
+      -> Manchuria: Cannot hold
+      -> Soviet_Far_East: value=3.7, amphib=1.0
+      -> Yakut_SSR: value=5.5, amphib=0.0
+      Checked 3 destinations, rejected 1, best=Yakut_SSR (value=5.5)
+    [PASS 1] Moved INF_1_MOVES from Buryatia_SSR to Yakut_SSR (value: 5.5, amphib: 0.0)
+    [PASS 1] Moved INF_1_MOVES from Buryatia_SSR to Yakut_SSR (value: 5.5, amphib: 0.0)
+    [PASS 1] Checking 2 x INF_1_MOVES at Evenki_National_Okrug (src_value=9.9)
+      -> Archangel: value=23.9, amphib=1.0
+      -> Novosibirsk: value=5.3, amphib=0.0
+      -> Sinkiang: value=6.9, amphib=0.0
+      -> Vologda: value=9.9, amphib=0.0
+      -> Yakut_SSR: value=5.5, amphib=0.0
+      Checked 5 destinations, rejected 0, best=Archangel (value=23.9)
+    [PASS 1] Moved INF_1_MOVES from Evenki_National_Okrug to Archangel (value: 23.9, amphib: 1.0)
+    [PASS 1] Moved INF_1_MOVES from Evenki_National_Okrug to Archangel (value: 23.9, amphib: 1.0)
+    [PASS 1] Checking 1 x INF_1_MOVES at Novosibirsk (src_value=5.3)
+      -> Evenki_National_Okrug: value=9.9, amphib=0.0
+      -> Kazakh_SSR: value=11.2, amphib=0.0
+      -> Russia: value=11.6, amphib=0.0
+      -> Sinkiang: value=6.9, amphib=0.0
+      -> Vologda: value=9.9, amphib=0.0
+      Checked 5 destinations, rejected 0, best=Russia (value=11.6)
+    [PASS 1] Moved INF_1_MOVES from Novosibirsk to Russia (value: 11.6, amphib: 0.0)
+    [PASS 1] Checking 2 x INF_1_MOVES at Soviet_Far_East (src_value=3.7)
+      -> Buryatia_SSR: value=3.3, amphib=1.0
+      -> Yakut_SSR: value=5.5, amphib=0.0
+      Checked 2 destinations, rejected 0, best=Yakut_SSR (value=5.5)
+    [PASS 1] Moved INF_1_MOVES from Soviet_Far_East to Yakut_SSR (value: 5.5, amphib: 0.0)
+    [PASS 1] Moved INF_1_MOVES from Soviet_Far_East to Yakut_SSR (value: 5.5, amphib: 0.0)
+    [PASS 1] Checking 1 x INF_1_MOVES at Yakut_SSR (src_value=5.5)
+      -> Buryatia_SSR: value=3.3, amphib=1.0
+      -> Evenki_National_Okrug: value=9.9, amphib=0.0
+      -> Soviet_Far_East: value=3.7, amphib=1.0
+      Checked 3 destinations, rejected 0, best=Evenki_National_Okrug (value=9.9)
+    [PASS 1] Moved INF_1_MOVES from Yakut_SSR to Evenki_National_Okrug (value: 9.9, amphib: 0.0)
+  [LAND] Pass 2: Move towards coastal factories
+    Found 2 coastal factories
+  [LAND] Pass 3: Move remaining units to safety
+[PRO-AI] Moving AA guns to protect factories
+[PRO-AI] Moved 0 AA guns
+[PRO-AI] Completed non-combat move phase
+[PRO-AI] Starting place units phase
+[PRO-AI] Placing purchased units at factories
+  Factory at Caucasus: 4 production capacity, 1 units to place
+  Factory at Karelia_SSR: 2 production capacity, 0 units to place
+  Factory at Russia: 8 production capacity, 7 units to place
+  [PLACE] Placing units from 3 territories
+  [PLACE] 3 Infantry -> Caucasus
+  [PLACE] 1 Infantry -> Karelia_SSR
+  [PLACE] 1 Destroyer -> Sea_4 (from factory at Karelia_SSR)
+  [PLACE] 1 Infantry -> Russia
+  + All purchased units placed
+  [PLACE] No factories to place
+[PRO-AI] Checking for remaining unplaced units
+  + No remaining units to place (placeholder implementation)
+[PRO-AI] Completed place units phase
+
+======================================================================
+PRO AI TURN COMPLETE
+======================================================================
+Next Player: Ger
+Final Money: 27 IPCs
+Units Added: 3
+Game Score: -0.0
+======================================================================
+
+round_num:  0
+[1;34m --------------------
+Current Player:  Ger
+Money:  41 [1;0m 
+
+[1;32mAlaska (Owner:  USA )
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+INF : 1
+
+[1;34mAlgeria (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 1
+ARTY_1_MOVES : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;32mAnhwei (Owner:  USA )
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+INF : 2
+
+[1;31mArchangel (Owner:  Rus )
+[1;34m[1;31m (Units:  Rus )
+INF : 2
+FIGHTER : 2
+[1;95m[1;33m[1;32m
+[1;34mBaltic_States (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 1
+TANK_2_MOVES : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;34mBelorussia (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 3
+[1;31m[1;95m[1;33m[1;32m
+[1;33mBorneo (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;34mBulgaria_Romania (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 2
+TANK_2_MOVES : 1
+FIGHTER_UNMOVED : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;95mBurma (Owner:  Eng )
+[1;34m[1;31m[1;95m (Units:  Eng )
+INF : 1
+[1;33m[1;32m
+[1;33mCaroline_Islands (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;31mCaucasus (Owner:  Rus ) builds: 1 factory-prod: 4
+[1;34m[1;31m (Units:  Rus )
+INF : 4
+[1;95m[1;33m[1;32m
+[1;32mCentral_United_States (Owner:  USA )
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+INF : 1
+
+[1;33mEast_Indies (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 2
+[1;32m
+[1;95mEastern_Australia (Owner:  Eng )
+[1;34m[1;31m[1;95m (Units:  Eng )
+INF : 2
+[1;33m[1;32m
+[1;95mEastern_Canada (Owner:  Eng )
+[1;34m[1;31m[1;95m (Units:  Eng )
+TANK : 1
+[1;33m[1;32m
+[1;32mEastern_United_States (Owner:  USA ) factory-prod: 12
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+INF : 2
+ARTY : 1
+TANK : 1
+FIGHTER : 1
+BOMBER : 1
+
+[1;95mEgypt (Owner:  Eng )
+[1;34m[1;31m[1;95m (Units:  Eng )
+INF : 1
+ARTY : 1
+TANK : 1
+FIGHTER : 1
+[1;33m[1;32m
+[1;31mEvenki_National_Okrug (Owner:  Rus )
+[1;34m[1;31m (Units:  Rus )
+INF : 1
+[1;95m[1;33m[1;32m
+[1;34mFinland (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 3
+[1;31m[1;95m[1;33m[1;32m
+[1;34mFrance (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 1
+TANK_2_MOVES : 2
+[1;31m[1;95m[1;33m[1;32m
+[1;33mFrench_Indo_China_Thailand (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 2
+ARTY : 1
+FIGHTER : 1
+[1;32m
+[1;34mGermany (Owner:  Ger ) builds: 10 factory-prod: 10
+[1;34m (Units:  Ger )
+INF_1_MOVES : 3
+TANK_2_MOVES : 2
+FIGHTER_UNMOVED : 1
+BOMBER_UNMOVED : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;32mHawaiian_Islands (Owner:  USA )
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+INF : 1
+FIGHTER : 1
+
+[1;95mIndia (Owner:  Eng ) factory-prod: 3
+[1;34m[1;31m[1;95m (Units:  Eng )
+INF : 3
+[1;33m[1;32m
+[1;34mItaly (Owner:  Ger ) builds: 3 factory-prod: 3
+[1;34m (Units:  Ger )
+INF_1_MOVES : 1
+TANK_2_MOVES : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;33mIwo_Jima (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;33mJapan (Owner:  Jap ) factory-prod: 8
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 4
+ARTY : 1
+TANK : 1
+FIGHTER : 1
+BOMBER : 1
+[1;32m
+[1;31mKarelia_SSR (Owner:  Rus ) factory-prod: 2
+[1;34m[1;31m (Units:  Rus )
+INF : 1
+[1;95m[1;33m[1;32m
+[1;33mKiangsu (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 4
+[1;32m
+[1;33mKwangtung (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 1
+ARTY : 1
+[1;32m
+[1;34mLibya (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 1
+TANK_2_MOVES : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;33mMalaya (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;33mManchuria (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 3
+FIGHTER : 1
+[1;32m
+[1;32mMidway (Owner:  USA )
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+INF : 1
+
+[1;34mMorocco (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;33mNew_Guinea (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;95mNew_Zealand (Owner:  Eng )
+[1;34m[1;31m[1;95m (Units:  Eng )
+INF : 1
+[1;33m[1;32m
+[1;34mNorthwestern_Europe (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 1
+TANK_2_MOVES : 1
+FIGHTER_UNMOVED : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;34mNorway (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 2
+FIGHTER_UNMOVED : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;33mOkinawa (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;95mPersia (Owner:  Eng )
+[1;34m[1;31m[1;95m (Units:  Eng )
+INF : 1
+[1;33m[1;32m
+[1;33mPhilippine_Islands (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 1
+ARTY : 1
+[1;32m
+[1;34mPoland (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 2
+TANK_2_MOVES : 1
+FIGHTER_UNMOVED : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;31mRussia (Owner:  Rus ) builds: 7 factory-prod: 8
+[1;34m[1;31m (Units:  Rus )
+INF : 2
+[1;95m[1;33m[1;32m
+[1;33mSolomon_Islands (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;34mSouthern_Europe (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 1
+ARTY_1_MOVES : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;32mSzechwan (Owner:  USA )
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+INF : 2
+FIGHTER : 1
+
+[1;95mTrans_Jordan (Owner:  Eng )
+[1;34m[1;31m[1;95m (Units:  Eng )
+INF : 1
+[1;33m[1;32m
+[1;34mUkraine_SSR (Owner:  Ger )
+[1;34m (Units:  Ger )
+INF_1_MOVES : 3
+ARTY_1_MOVES : 1
+TANK_2_MOVES : 1
+FIGHTER_UNMOVED : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;95mUnion_of_South_Africa (Owner:  Eng )
+[1;34m[1;31m[1;95m (Units:  Eng )
+INF : 1
+[1;33m[1;32m
+[1;95mUnited_Kingdom (Owner:  Eng ) factory-prod: 8
+[1;34m[1;31m[1;95m (Units:  Eng )
+INF : 2
+ARTY : 1
+TANK : 1
+FIGHTER : 2
+BOMBER : 1
+[1;33m[1;32m
+[1;33mWake_Island (Owner:  Jap )
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;31mWest_Russia (Owner:  Rus )
+[1;34m[1;31m (Units:  Rus )
+INF : 10
+ARTY : 3
+TANK : 4
+[1;95m[1;33m[1;32m
+[1;95mWestern_Australia (Owner:  Eng )
+[1;34m[1;31m[1;95m (Units:  Eng )
+INF : 1
+[1;33m[1;32m
+[1;95mWestern_Canada (Owner:  Eng )
+[1;34m[1;31m[1;95m (Units:  Eng )
+INF : 1
+[1;33m[1;32m
+[1;32mWestern_United_States (Owner:  USA ) factory-prod: 10
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+INF : 2
+FIGHTER : 1
+
+[1;31mYakut_SSR (Owner:  Rus )
+[1;34m[1;31m (Units:  Rus )
+INF : 4
+[1;95m[1;33m[1;32m
+[1;32mYunnan (Owner:  USA )
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+INF : 2
+
+[1;0mSea_4
+[1;34m[1;31m (Units:  Rus )
+SUB : 1
+DESTROYER : 1
+[1;95m[1;33m[1;32m
+[1;0mSea_5
+[1;34m (Units:  Ger )
+TRANS_EMPTY_UNMOVED : 1
+SUB_2_MOVES : 2
+CRUISER_2_MOVES : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;0mSea_7
+[1;34m[1;31m[1;95m (Units:  Eng )
+TRANS_EMPTY : 1
+BATTLESHIP : 1
+[1;33m[1;32m
+[1;0mSea_9
+[1;34m (Units:  Ger )
+SUB_2_MOVES : 2
+[1;31m[1;95m[1;33m[1;32m
+[1;0mSea_10
+[1;34m[1;31m[1;95m (Units:  Eng )
+TRANS_EMPTY : 1
+DESTROYER : 1
+[1;33m[1;32m
+[1;0mSea_11
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+TRANS_EMPTY : 2
+DESTROYER : 1
+
+[1;0mSea_14
+[1;34m[1;31m[1;95m (Units:  Eng )
+CRUISER : 1
+[1;33m[1;32m
+[1;0mSea_15
+[1;34m (Units:  Ger )
+TRANS_EMPTY_UNMOVED : 1
+BATTLESHIP_2_MOVES : 1
+[1;31m[1;95m[1;33m[1;32m
+[1;0mSea_17
+[1;34m[1;31m[1;95m (Units:  Eng )
+DESTROYER : 1
+[1;33m[1;32m
+[1;0mSea_19
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+CRUISER : 1
+
+[1;0mSea_35
+[1;34m[1;31m[1;95m (Units:  Eng )
+TRANS_EMPTY : 1
+CARRIER : 1
+CRUISER : 1
+FIGHTER : 1
+[1;33m[1;32m
+[1;0mSea_37
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+CARRIER : 1
+BATTLESHIP : 1
+FIGHTER : 2
+[1;32m
+[1;0mSea_39
+[1;34m[1;31m[1;95m (Units:  Eng )
+TRANS_EMPTY : 1
+SUB : 1
+CRUISER : 1
+[1;33m[1;32m
+[1;0mSea_44
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+SUB : 1
+[1;32m
+[1;0mSea_50
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+CARRIER : 1
+CRUISER : 1
+FIGHTER : 1
+[1;32m
+[1;0mSea_53
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+SUB : 1
+DESTROYER : 1
+CARRIER : 1
+FIGHTER : 1
+
+[1;0mSea_56
+[1;34m[1;31m[1;95m[1;33m[1;32m (Units:  USA )
+TRANS_EMPTY : 1
+DESTROYER : 1
+BATTLESHIP : 1
+
+[1;0mSea_60
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+TRANS_EMPTY : 1
+DESTROYER : 1
+BATTLESHIP : 1
+[1;32m
+[1;0mSea_61
+[1;34m[1;31m[1;95m[1;33m (Units:  Jap )
+TRANS_EMPTY : 1
+DESTROYER : 1
+[1;32m
+[1;0m
+
+======================================================================
+PRO AI SINGLE TURN TEST (TripleA Purchase & Place)
+======================================================================
+Starting Player: Ger
+Starting Money: 41 IPCs
+Total units on board: 40
+======================================================================
+
+============================================================
+PURCHASE PHASE
+============================================================
+Player: Ger
+Starting Money: 41 IPCs
+
+Enemy Attack Options (per-enemy):
+Enemy: Rus
+  Land: Baltic_States Fighters: 2
+  Land: Baltic_States Infantry: 1
+  Land: Belorussia Fighters: 2
+  Land: Belorussia Infantry: 11
+  Land: Belorussia Artillery: 3
+  Land: Belorussia Tanks: 4
+  Land: Bulgaria_Romania Fighters: 2
+  Land: Finland Fighters: 2
+  Land: Finland Infantry: 1
+  Land: Germany Fighters: 2
+  Land: Northwestern_Europe Fighters: 2
+  Land: Norway Fighters: 2
+  Land: Poland Fighters: 2
+  Land: Ukraine_SSR Fighters: 2
+  Land: Ukraine_SSR Infantry: 14
+  Land: Ukraine_SSR Artillery: 3
+  Land: Ukraine_SSR Tanks: 4
+  Sea: Sea_5 Fighters: 2 Subs: 0 Destroyers: 0
+Enemy: Eng
+  Land: Algeria Fighters: 1
+  Land: Algeria Bombers: 1
+  Land: Baltic_States Bombers: 1
+  Land: Belorussia Bombers: 1
+  Land: Bulgaria_Romania Bombers: 1
+  Land: Finland Fighters: 2
+  Land: Finland Bombers: 1
+  Land: France Fighters: 2
+  Land: France Bombers: 1
+  Land: Germany Fighters: 2
+  Land: Germany Bombers: 1
+  Land: Italy Bombers: 1
+  Land: Libya Fighters: 1
+  Land: Libya Bombers: 1
+  Land: Libya Infantry: 1
+  Land: Libya Artillery: 1
+  Land: Libya Tanks: 1
+  Land: Morocco Bombers: 1
+  Land: Northwestern_Europe Fighters: 2
+  Land: Northwestern_Europe Bombers: 1
+  Land: Norway Fighters: 2
+  Land: Norway Bombers: 1
+  Land: Poland Bombers: 1
+  Sea: Sea_5 Fighters: 2 Subs: 0 Destroyers: 0
+  Sea: Sea_9 Fighters: 0 Subs: 0 Destroyers: 1
+  Sea: Sea_15 Fighters: 1 Subs: 0 Destroyers: 1
+Enemy: USA
+  Land: France Bombers: 1
+  Land: Morocco Bombers: 1
+  Sea: Sea_9 Fighters: 0 Subs: 0 Destroyers: 1
+Enemy Attack Options (aggregated max):
+  Land: Algeria Inf: 0 Art: 0 Tank: 0 Ftr: 1 Bmb: 1 Str: 7
+  Land: Baltic_States Inf: 1 Art: 0 Tank: 0 Ftr: 2 Bmb: 0 Str: 7
+  Land: Belorussia Inf: 11 Art: 3 Tank: 4 Ftr: 2 Bmb: 0 Str: 35
+  Land: Bulgaria_Romania Inf: 0 Art: 0 Tank: 0 Ftr: 2 Bmb: 0 Str: 6
+  Land: Finland Inf: 1 Art: 0 Tank: 0 Ftr: 2 Bmb: 0 Str: 7
+  Land: France Inf: 0 Art: 0 Tank: 0 Ftr: 2 Bmb: 1 Str: 10
+  Land: Germany Inf: 0 Art: 0 Tank: 0 Ftr: 2 Bmb: 1 Str: 10
+  Land: Italy Inf: 0 Art: 0 Tank: 0 Ftr: 0 Bmb: 1 Str: 4
+  Land: Libya Inf: 1 Art: 1 Tank: 1 Ftr: 1 Bmb: 1 Str: 13
+  Land: Morocco Inf: 0 Art: 0 Tank: 0 Ftr: 0 Bmb: 1 Str: 4
+  Land: Northwestern_Europe Inf: 0 Art: 0 Tank: 0 Ftr: 2 Bmb: 1 Str: 10
+  Land: Norway Inf: 0 Art: 0 Tank: 0 Ftr: 2 Bmb: 1 Str: 10
+  Land: Poland Inf: 0 Art: 0 Tank: 0 Ftr: 2 Bmb: 0 Str: 6
+  Land: Ukraine_SSR Inf: 14 Art: 3 Tank: 4 Ftr: 2 Bmb: 0 Str: 38
+  [RATIONALE] Evaluating land territories for defensive needs...
+    Possible Enemy Target Territory: Algeria defense_value: 5.5
+      [SAFE] Sequential Battle Results: TUV=-3.91, Invaded%=0.0%, Battles=1
+    Possible Enemy Target Territory: Baltic_States defense_value: 8.5
+      [THREATENED] Territory Baltic_States is not sufficiently protected (invaded%=11.0% < needed=95.0%)
+    Possible Enemy Target Territory: Belorussia defense_value: 8.5
+      [THREATENED] Territory Belorussia is not sufficiently protected (invaded%=100.0% < needed=95.0%)
+    Possible Enemy Target Territory: Bulgaria_Romania defense_value: 15.0
+      [SAFE] Sequential Battle Results: TUV=-26.74, Invaded%=0.0%, Battles=2
+    Possible Enemy Target Territory: Finland defense_value: 6.5
+      [SAFE] Sequential Battle Results: TUV=-10.45, Invaded%=0.0%, Battles=2
+    Possible Enemy Target Territory: France defense_value: 19.5
+      [SAFE] Sequential Battle Results: TUV=-19.19, Invaded%=0.0%, Battles=2
+    Possible Enemy Target Territory: Germany defense_value: 1001.0 [CAPITAL] [FACTORY]
+      [SAFE] Sequential Battle Results: TUV=-25.60, Invaded%=0.0%, Battles=2
+    Possible Enemy Target Territory: Italy defense_value: 29.0 [FACTORY]
+      [SAFE] Sequential Battle Results: TUV=-8.53, Invaded%=0.0%, Battles=1
+    Possible Enemy Target Territory: Libya defense_value: 6.5
+      [THREATENED] Territory Libya is not sufficiently protected (invaded%=100.0% < needed=95.0%)
+    Possible Enemy Target Territory: Morocco defense_value: 3.5
+      [SAFE] Sequential Battle Results: TUV=-3.00, Invaded%=0.0%, Battles=2
+    Possible Enemy Target Territory: Northwestern_Europe defense_value: 13.5
+      [SAFE] Sequential Battle Results: TUV=-24.66, Invaded%=0.0%, Battles=2
+    Possible Enemy Target Territory: Norway defense_value: 12.0
+      [SAFE] Sequential Battle Results: TUV=-25.57, Invaded%=0.0%, Battles=2
+    Possible Enemy Target Territory: Poland defense_value: 15.0
+      [SAFE] Sequential Battle Results: TUV=-26.75, Invaded%=0.0%, Battles=2
+    Possible Enemy Target Territory: Ukraine_SSR defense_value: 18.5
+      [THREATENED] Territory Ukraine_SSR is not sufficiently protected (invaded%=100.0% < needed=95.0%)
+  [RATIONALE] Found 4 threatened territories (sorted by priority)
+  [BUDGET] Reserving 10 IPCs for naval purchases
+  [RATIONALE] Analyzing territories needing defense:
+    Territory: Ukraine_SSR
+      Nearest factory: Germany
+      Battle simulation: 100.0% chance of invasion, TUV swing: 21.5
+        Re-simulating battle:
+          Defenders: 3 Inf, 1 Art, 1 Tank, 1 Ftr
+          Attackers: 14 Inf, 3 Art, 4 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 21.5
+      Purchasing infantry, Money: 41, factory: Germany, capacity: 10
+        Re-simulating battle:
+          Defenders: 4 Inf, 1 Art, 1 Tank, 1 Ftr
+          Attackers: 14 Inf, 3 Art, 4 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 23.2
+      Purchasing infantry, Money: 38, factory: Germany, capacity: 9
+        Re-simulating battle:
+          Defenders: 5 Inf, 1 Art, 1 Tank, 1 Ftr
+          Attackers: 14 Inf, 3 Art, 4 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 23.2
+      Purchasing infantry, Money: 35, factory: Germany, capacity: 8
+        Re-simulating battle:
+          Defenders: 6 Inf, 1 Art, 1 Tank, 1 Ftr
+          Attackers: 14 Inf, 3 Art, 4 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 23.9
+      Purchasing infantry, Money: 32, factory: Germany, capacity: 7
+        Re-simulating battle:
+          Defenders: 7 Inf, 1 Art, 1 Tank, 1 Ftr
+          Attackers: 14 Inf, 3 Art, 4 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 24.8
+      Purchasing infantry, Money: 29, factory: Germany, capacity: 6
+        Re-simulating battle:
+          Defenders: 8 Inf, 1 Art, 1 Tank, 1 Ftr
+          Attackers: 14 Inf, 3 Art, 4 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 25.8
+      Purchasing infantry, Money: 26, factory: Germany, capacity: 5
+        Re-simulating battle:
+          Defenders: 9 Inf, 1 Art, 1 Tank, 1 Ftr
+          Attackers: 14 Inf, 3 Art, 4 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 26.9
+      Purchasing infantry, Money: 23, factory: Germany, capacity: 4
+        Re-simulating battle:
+          Defenders: 10 Inf, 1 Art, 1 Tank, 1 Ftr
+          Attackers: 14 Inf, 3 Art, 4 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 27.6
+      Purchasing infantry, Money: 20, factory: Germany, capacity: 3
+        Re-simulating battle:
+          Defenders: 11 Inf, 1 Art, 1 Tank, 1 Ftr
+          Attackers: 14 Inf, 3 Art, 4 Tank, 2 Ftr
+        Re-simulated battle: invasion chance: 100.0%, TUV swing: 26.5
+      Purchasing infantry, Money: 17, factory: Germany, capacity: 2
+    Territory: Belorussia
+      Nearest factory: Germany
+      Battle simulation: 100.0% chance of invasion, TUV swing: 6.0
+    Territory: Baltic_States
+      Nearest factory: Germany
+      Battle simulation: 10.8% chance of invasion, TUV swing: 3.5
+      Decision: Already adequately defended (10.8% invasion chance < 15% threshold) - skipping
+  [RATIONALE] Evaluating sea territories for defensive needs...
+    Evaluating sea zones for defensive needs...
+    Sea_4: TUV=31.0, holdValue=3.9, TUV_swing=21.7, win%=100.0%
+      [THREATENED] Sea_4 needs defense, factory at Germany
+    Sea_8: TUV=12.0, holdValue=1.5, TUV_swing=8.5, win%=100.0%
+      [SKIP] No adjacent factory for Sea_8
+    Sea_14: TUV=27.0, holdValue=3.4, TUV_swing=14.3, win%=100.0%
+      [THREATENED] Sea_14 needs defense, factory at Italy
+    Found 2 sea zones needing defense
+  [RATIONALE] Analyzing territories needing defense:
+    Territory: Germany
+      No adjacent enemy threats detected
+      Nearest factory: Germany
+      Battle simulation: 0.0% chance of invasion, TUV swing: 0.0
+      Decision: Already adequately defended (0.0% invasion chance < 15% threshold) - skipping
+    Territory: Italy
+      No adjacent enemy threats detected
+      Nearest factory: Italy
+      Battle simulation: 0.0% chance of invasion, TUV swing: 0.0
+      Decision: Already adequately defended (0.0% invasion chance < 15% threshold) - skipping
+    [SEA ZONE] Sea_5 factory: Germany has_threat: true threat subs: 0 destroyers: 0 cruisers: 0 BS: 1 fighters: 2 bombers: 1
+    [SIM] Sea_5: Def(subs=2,DD=0,CA=1,CV=0,BS=0,ftr=0) vs Att(subs=0,DD=0,CA=0,CV=0,BS=1,ftr=2,bmb=1)
+  [NAVAL SUP] Bought DESTROYER for sea Sea_5 towards superiority
+    [SEA ZONE] Sea_15 factory: Italy has_threat: true threat subs: 0 destroyers: 1 cruisers: 1 BS: 0 fighters: 1 bombers: 1
+    [SIM] Sea_15: Def(subs=0,DD=0,CA=0,CV=0,BS=1,ftr=0) vs Att(subs=0,DD=1,CA=1,CV=0,BS=0,ftr=1,bmb=1)
+  [NAVAL SUP] Bought SUB for sea Sea_15 towards superiority
+
+Remaining Money: 0 IPCs
+Money Spent: 41 IPCs
+============================================================
+
+
+============================================================
+COMBAT MOVE PHASE
+============================================================
+
+[STEP 1] Finding ALL units that can attack (populateAttackOptions)...
+
+[STEP 2] Prioritizing attack targets by strategic value...
+    Possible My Target Territory: Archangel_Air
+      Battle Results (TUV, Invaded %):  3.8199999999999998 ,  0
+    Possible My Target Territory: Caucasus_Air
+      Battle Results (TUV, Invaded %):  7.9889999999999999 ,  1
+      Attack Value:  39.988999999999997
+    Possible My Target Territory: Egypt_Air
+      Battle Results (TUV, Invaded %):  -12.278 ,  0
+    Possible My Target Territory: Evenki_National_Okrug_Air
+      Battle Results (TUV, Invaded %):  -1.62 ,  0
+    Possible My Target Territory: Karelia_SSR_Air
+      Battle Results (TUV, Invaded %):  2.004 ,  1
+      Attack Value:  18.004
+    Possible My Target Territory: Persia_Air
+      Battle Results (TUV, Invaded %):  -2.891 ,  0
+    Possible My Target Territory: Russia_Air
+      Battle Results (TUV, Invaded %):  -0.68 ,  0
+    Possible My Target Territory: Szechwan_Air
+      Battle Results (TUV, Invaded %):  -15.784 ,  0
+    Possible My Target Territory: United_Kingdom_Air
+      Battle Results (TUV, Invaded %):  -17.948 ,  0
+    Possible My Target Territory: West_Russia_Air
+      Battle Results (TUV, Invaded %):  -43.618 ,  0
+  Attack priority order:
+    1. Caucasus (value: 40.0, production: 4, FACTORY)
+    2. Karelia_SSR (value: 18.0, production: 2, FACTORY)
+
+[STEP 3] Checking which territories can be held after capture...
+Check if we should try to hold attack territories
+  Caucasus: Using pre-computed survivor_def_power=14.3 from Step 2
+    Our survivors (defenders):
+      Infantry: 3
+      Tank: 2
+    Enemy attackers:
+      Infantry: 13
+      Artillery: 3
+      Tank: 4
+      Fighter: 3
+    Enemy_win=100.0%, TUV=15.0
+    [CANNOT HOLD] (survivors=14.3 def power, enemy_win=100.0%, enemy_TUV=15.0)
+  Karelia_SSR: Using pre-computed survivor_def_power=28.3 from Step 2
+    Our survivors (defenders):
+      Infantry: 6
+      Tank: 5
+    Enemy attackers:
+      Infantry: 12
+      Artillery: 3
+      Tank: 4
+      Fighter: 2
+    Enemy_win=100.0%, TUV=25.6
+    [CANNOT HOLD] (survivors=28.3 def power, enemy_win=100.0%, enemy_TUV=25.6)
+  -> 0 of 2 territories can be held
+
+[STEP 4] Filtering out low-value targets...
+Remove territories that aren't worth attacking
+  -> Removed 0 low-value targets, 2 remain
+  Targets worth attacking:
+    - Caucasus (value: 40.0, holdable: false)
+    - Karelia_SSR (value: 18.0, holdable: false)
+  [populateAttackOptions] Iterating through all friendly units...
+  [Air] Bulgaria_Romania has 1 fighters
+  [Air] Fighter from Bulgaria_Romania can reach Caucasus via Ukraine_SSR (2 moves)
+  [Air] Fighter from Bulgaria_Romania can reach West_Russia via Ukraine_SSR (2 moves)
+  [Air] Germany has 1 fighters
+  [Air] Germany has 1 bombers
+  [Air] Fighter from Germany can reach Karelia_SSR via Baltic_States (2 moves)
+  [Air] Northwestern_Europe has 1 fighters
+  [Air] Norway has 1 fighters
+  [Air] Fighter from Norway can reach Karelia_SSR via Finland (2 moves)
+  [Air] Poland has 1 fighters
+  [Air] Fighter from Poland can reach Karelia_SSR via Baltic_States (2 moves)
+  [Air] Fighter from Poland can reach Karelia_SSR via Belorussia (2 moves)
+  [Air] Fighter from Poland can reach West_Russia via Belorussia (2 moves)
+  [Air] Fighter from Poland can reach Caucasus via Ukraine_SSR (2 moves)
+  [Air] Fighter from Poland can reach West_Russia via Ukraine_SSR (2 moves)
+  [Air] Ukraine_SSR has 1 fighters
+  [Air] Fighter from Ukraine_SSR can reach Caucasus (1 move)
+  [Air] Fighter from Ukraine_SSR can reach West_Russia (1 move)
+  [Air] Fighter from Ukraine_SSR can reach Karelia_SSR via Belorussia (2 moves)
+  [Air] Fighter from Ukraine_SSR can reach West_Russia via Belorussia (2 moves)
+  [Air] Fighter from Ukraine_SSR can reach Kazakh_SSR via Caucasus (2 moves)
+  [Air] Fighter from Ukraine_SSR can reach Persia via Caucasus (2 moves)
+  [Air] Fighter from Ukraine_SSR can reach Russia via Caucasus (2 moves)
+  [Air] Fighter from Ukraine_SSR can reach West_Russia via Caucasus (2 moves)
+  [Air] Fighter from Ukraine_SSR can reach Archangel via West_Russia (2 moves)
+  [Air] Fighter from Ukraine_SSR can reach Caucasus via West_Russia (2 moves)
+  [Air] Fighter from Ukraine_SSR can reach Karelia_SSR via West_Russia (2 moves)
+  [Air] Fighter from Ukraine_SSR can reach Russia via West_Russia (2 moves)
+  [populateAttackOptions] Found 9 potential attack targets
+Prioritizing territories to try to attack
+
+[STEP 4b] Evaluating amphibious attack requirements...
+
+[AMPHIB EVAL] Evaluating which territories need amphibious reinforcements...
+  Caucasus: No amphib units available
+  Karelia_SSR: No amphib units available
+
+[STEP 5] Selecting territories to attack (iterative algorithm)...
+Determine which territories to attack
+Current number of territories: 1
+Try to attack territories with available units
+    [ITER] Caucasus: available inf=3 arty=1 tank=3 ftr=3 bmb=0 (total=10)
+    [ITER] Caucasus: iter=0 added=6 total=6 win%=94.7%
+  After land assignment: Caucasus has 6 attackers (win%: 94.7%, needed: 75.0%)
+  Total assigned units:
+    Ukraine_SSR:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Bulgaria_Romania:
+      Fighter: 1
+Trying  Caucasus
+Caucasus: 94.7% win, attackers=6 (land/air=6, amphib=0)
+Current number of territories: 2
+Try to attack territories with available units
+    [ITER] Caucasus: available inf=3 arty=1 tank=3 ftr=3 bmb=0 (total=10)
+    [ITER] Caucasus: iter=0 added=6 total=6 win%=94.7%
+  After land assignment: Caucasus has 6 attackers (win%: 94.7%, needed: 75.0%)
+    [ITER] Karelia_SSR: available inf=7 arty=0 tank=4 ftr=4 bmb=1 (total=16)
+    [ITER] Karelia_SSR: iter=0 added=6 total=6 win%=100.0%
+  After land assignment: Karelia_SSR has 6 attackers (win%: 100.0%, needed: 75.0%)
+  Total assigned units:
+    Baltic_States:
+      Infantry: 1
+      Tank: 1
+    Ukraine_SSR:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Belorussia:
+      Infantry: 2
+    Germany:
+      Fighter: 1
+      Bomber: 1
+    Bulgaria_Romania:
+      Fighter: 1
+Trying  Caucasus
+Caucasus: 94.7% win, attackers=6 (land/air=6, amphib=0)
+Trying  Karelia_SSR
+Karelia_SSR: 100.0% win, attackers=6 (land/air=6, amphib=0)
+Final number of territories to attack: 2
+  -> Selected 2 territories for attack (removed 0 unsuccessful)
+  Final attack targets:
+    - Caucasus (value: 32.0)
+    - Karelia_SSR (value: 16.0)
+
+[STEP 6] Re-calculating with final attack selection...
+Re-calculating enemy attack options after territory selection
+  Re-assigning attackers to selected territories...
+Try to attack territories with available units
+    [ITER] Caucasus: available inf=3 arty=1 tank=3 ftr=3 bmb=0 (total=10)
+    [ITER] Caucasus: iter=0 added=6 total=6 win%=94.7%
+  After land assignment: Caucasus has 6 attackers (win%: 94.7%, needed: 75.0%)
+    [ITER] Karelia_SSR: available inf=7 arty=0 tank=4 ftr=4 bmb=1 (total=16)
+    [ITER] Karelia_SSR: iter=0 added=6 total=6 win%=100.0%
+  After land assignment: Karelia_SSR has 6 attackers (win%: 100.0%, needed: 75.0%)
+  Total assigned units:
+    Baltic_States:
+      Infantry: 1
+      Tank: 1
+    Ukraine_SSR:
+      Infantry: 3
+      Artillery: 1
+      Tank: 1
+    Belorussia:
+      Infantry: 2
+    Germany:
+      Fighter: 1
+      Bomber: 1
+    Bulgaria_Romania:
+      Fighter: 1
+  Re-checking which territories can be held...
+Check if we should try to hold attack territories
+  Combatants for Caucasus (from arrays):
+    potential_attackers count: 9
+    potential_amphib_attackers count: 0
+    defenders count: 4
+    Built attackers[0]: INF=3, ARTY=1, TANK=4
+    Built attackers[1]: FIGH=1
+    Built attackers[2]: BOMB=0
+    Built defenders: INF=4, ARTY=0, TANK=0, FIGH=0, BOMB=0, AA=0
+  Battle sim for Caucasus: win=100.0%, TUV=7.1, survivor_def=16.7
+    Our survivors (defenders):
+      Infantry: 3
+      Tank: 3
+    Enemy attackers:
+      Infantry: 13
+      Artillery: 3
+      Tank: 4
+      Fighter: 3
+    Enemy_win=100.0%, TUV=19.3
+    [CANNOT HOLD] (survivors=16.7 def power, enemy_win=100.0%, enemy_TUV=19.3)
+  Combatants for Karelia_SSR (from arrays):
+    potential_attackers count: 15
+    potential_amphib_attackers count: 0
+    defenders count: 1
+    Built attackers[0]: INF=7, ARTY=0, TANK=8
+    Built attackers[1]: FIGH=0
+    Built attackers[2]: BOMB=0
+    Built defenders: INF=1, ARTY=0, TANK=0, FIGH=0, BOMB=0, AA=0
+  Battle sim for Karelia_SSR: win=100.0%, TUV=2.0, survivor_def=37.3
+    Our survivors (defenders):
+      Infantry: 9
+      Tank: 6
+    Enemy attackers:
+      Infantry: 12
+      Artillery: 3
+      Tank: 4
+      Fighter: 2
+    Enemy_win=100.0%, TUV=21.0
+    [CANNOT HOLD] (survivors=37.3 def power, enemy_win=100.0%, enemy_TUV=21.0)
+  Re-filtering low-value targets...
+Remove territories that aren't worth attacking
+  -> 2 attacks remain after recalculation
+
+[STEP 7] Moving defenders to border territories...
+  Searching for empty border territories needing defenders...
+  (No border territories needed defenders)
+
+[STEP 8] Checking transport safety...
+Remove territories where transports are exposed
+  -> All transports safe
+
+[STEP 9] Ensuring capital defense...
+Check capital defenses after attack moves
+  Capital: 36.4 defenders vs 0.0 enemy threat
+  Capital can be defended with current attack plan
+  -> Capital can be defended with current attack plan
+
+  FINAL ATTACK PLAN:
+    -> Attack Caucasus (value: 32.0, holdable: false)
+    -> Attack Karelia_SSR (value: 16.0, holdable: false)
+
+[STEP 9b] Planning strategic bombing raids...
+[CMB-002] Planning strategic bombing raids...
+  Potential bombing targets:
+    - Caucasus (prod=4, dmg=0/8, no AA, score=40.0)
+    - Karelia_SSR (prod=2, dmg=0/4, no AA, score=20.0)
+  Bomber from Germany bombing factory at Caucasus
+[CMB-002] Assigned 1 bombers to strategic bombing
+  -> Assigned 1 bombers to strategic bombing
+
+[STEP 10] Assigning units to each attack...
+[determineUnitsToAttackWith] Assigning units to attacks...
+  Attempting to assign units to attacks...
+    Assigning units to attack Caucasus...
+      -> Assigned 10 land/air, 0 amphib
+    Assigning units to attack Karelia_SSR...
+      -> Assigned 11 land/air, 0 amphib
+    Caucasus: 26.0 attack vs 8.0 defense
+    Karelia_SSR: 21.0 attack vs 2.0 defense
+  -> All attacks have units assigned
+
+  UNIT ASSIGNMENTS:
+    Caucasus:
+      Ground/Air attackers (10 units):
+        - 3 x Infantry from: Ukraine_SSR, Ukraine_SSR, Ukraine_SSR
+        - 1 x Artillery from: Ukraine_SSR
+        - 3 x Tank from: Ukraine_SSR, Bulgaria_Romania, Poland
+        - 3 x Fighter from: Bulgaria_Romania, Poland, Ukraine_SSR
+      Total: 26.0 attack vs 8.0 defense
+    Karelia_SSR:
+      Ground/Air attackers (11 units):
+        - 7 x Infantry from: Baltic_States, Belorussia, Belorussia, Belorussia, Finland, Finland, Finland
+        - 2 x Tank from: Baltic_States, Germany
+        - 2 x Fighter from: Germany, Norway
+      Total: 21.0 attack vs 2.0 defense
+============================================================
+
+
+[STEP 11] Loading transports for amphibious assaults...
+
+[STEP 12] Executing combat moves (doMove)
+  Executing combat moves for 2 attacks
+
+  [MOVE ROUTES] Moving land and air units to attack destinations
+    Moving 10 units to attack Caucasus
+      Moved Infantry from Ukraine_SSR to Caucasus
+      Moved Infantry from Ukraine_SSR to Caucasus
+      Moved Infantry from Ukraine_SSR to Caucasus
+      Moved Artillery from Ukraine_SSR to Caucasus
+      Moved Tank from Ukraine_SSR to Caucasus
+      Moved Tank from Bulgaria_Romania to Caucasus
+      Moved Tank from Poland to Caucasus
+      Moved Fighter from Bulgaria_Romania to Caucasus
+      Moved Fighter from Poland to Caucasus
+      Moved Fighter from Ukraine_SSR to Caucasus
+    Moving 11 units to attack Karelia_SSR
+      Moved Infantry from Baltic_States to Karelia_SSR
+      Moved Tank from Baltic_States to Karelia_SSR
+      Moved Infantry from Belorussia to Karelia_SSR
+      Moved Infantry from Belorussia to Karelia_SSR
+      Moved Infantry from Belorussia to Karelia_SSR
+      Moved Infantry from Finland to Karelia_SSR
+      Moved Infantry from Finland to Karelia_SSR
+      Moved Infantry from Finland to Karelia_SSR
+      Moved Tank from Germany to Karelia_SSR
+      Moved Fighter from Germany to Karelia_SSR
+      Moved Fighter from Norway to Karelia_SSR
+
+  [AMPHIB ROUTES] Unloading transports for amphibious assaults
+  Marked Caucasus for combat resolution
+  Marked Karelia_SSR for combat resolution
+Starting combat round  0  for land  Caucasus
+  [COMBAT] Ger lost 1 INF at Caucasus
+  [COMBAT] Rus lost 1 INF at Caucasus
+  [COMBAT] Rus lost 1 INF at Caucasus
+  [COMBAT] Rus lost 1 INF at Caucasus
+  [COMBAT] Rus lost 1 INF at Caucasus
+Starting combat round  0  for land  Karelia_SSR
+  [COMBAT] Rus lost 1 INF at Karelia_SSR
+[PRO-AI] Starting non-combat move phase
+  [NONCOMBAT] Scanning all ALLIED territories for defense needs...
+[PRO-AI] No territories need defense
+[PRO-AI] Prioritizing defense targets...
+[PRO-AI] Prioritized defense targets (after filtering):
+[PRO-AI] Prioritized defense targets:
+[PRO-AI] Landing fighters in safe territories
+  [AIR] Find all air units of this type that need landing...
+  [AIR] Found 5 FIGHTER units needing landing
+  [AIR] FIGHTER landing at Belorussia_Air (airValue=470.0, seaAttacks=0, landAttacks=0)
+  [AIR] FIGHTER landing at Belorussia_Air (airValue=470.0, seaAttacks=0, landAttacks=0)
+  [AIR] FIGHTER landing at Baltic_States_Air (airValue=470.0, seaAttacks=0, landAttacks=0)
+  [AIR] FIGHTER landing at Baltic_States_Air (airValue=470.0, seaAttacks=0, landAttacks=0)
+  [AIR] FIGHTER landing at Baltic_States_Air (airValue=470.0, seaAttacks=0, landAttacks=0)
+[PRO-AI] Landing bombers in safe territories
+  [AIR] Find all air units of this type that need landing...
+  [NONCOMBAT] Loading transports for next turn positioning...
+    Loaded 1 units onto transports at sea Sea_5
+    Loaded 1 units onto transports at sea Sea_15
+  [NONCOMBAT] Total units loaded onto transports: 2
+  [NONCOMBAT] Staging and unloading loaded transports...
+    [TRANSPORT] Moving TRANS_1I_1T_2_MOVES from sea Sea_5 to sea Sea_5, unloading to Finland (value=42.8)
+    [TRANSPORT] Moving TRANS_1I_1T_2_MOVES from sea Sea_15 to sea Sea_16, unloading to Ukraine_SSR (value=71.8)
+  [NONCOMBAT] Unloaded 2 transports
+[PRO-AI] Moving empty transports toward loading positions
+[PRO-AI] Moved 1 empty transports toward loading positions
+[PRO-AI] Moving sea units (transport defense)
+[PRO-AI] Found 2 sea zones with transports needing defense
+  Sea unit BATTLESHIP_2_MOVES moved from Sea_15 to defend transports at Sea_16
+[PRO-AI] Transport defense: 2 sea units, 0 air units moved
+[PRO-AI] Capital Germany, enemy distance: 2
+[PRO-AI] Moving land units to consolidate
+  [LAND] Territory values (based on enemy targets):
+    Kwangtung: 27.7
+    France: 11.5
+    Southern_Europe: 17.7
+    Solomon_Islands: 0.0
+    Japan: 0.0
+    Formosa: 0.0
+    French_Indo_China_Thailand: 28.2
+    Belorussia: 52.9
+    Bulgaria_Romania: 35.5
+    Caroline_Islands: 0.0
+    Poland: 33.0
+    Manchuria: 13.9
+    Finland: 42.8
+    Philippine_Islands: 0.0
+    Kiangsu: 14.6
+    Malaya: 14.0
+    East_Indies: 0.0
+    Germany: 26.0
+    Baltic_States: 42.6
+    Borneo: 0.0
+    Wake_Island: 0.0
+    New_Guinea: 0.0
+    Norway: 21.5
+    Iwo_Jima: 0.0
+    Libya: 9.7
+    Algeria: 5.3
+    Ukraine_SSR: 71.8
+    Morocco: 2.3
+    Northwestern_Europe: 11.5
+    Okinawa: 0.0
+    Italy: 12.6
+  [LAND] Pass 1: Move to high-value territories near transports
+    [PASS 1] Checking 1 x INF_1_MOVES at Algeria (src_value=5.3)
+      -> Libya: value=9.7, amphib=1.0
+      -> Morocco: value=2.3, amphib=2.0
+      Checked 2 destinations, rejected 0, best=Libya (value=9.7)
+    [PASS 1] Moved INF_1_MOVES from Algeria to Libya (value: 9.7, amphib: 1.0)
+    [PASS 1] Checking 2 x INF_1_MOVES at Bulgaria_Romania (src_value=35.5)
+      -> Germany: value=26.0, amphib=10.0
+      -> Poland: value=33.0, amphib=0.0
+      -> Southern_Europe: value=17.7, amphib=1.0
+      -> Ukraine_SSR: value=71.8, amphib=1.0
+      Checked 4 destinations, rejected 0, best=Ukraine_SSR (value=71.8)
+    [PASS 1] Moved INF_1_MOVES from Bulgaria_Romania to Ukraine_SSR (value: 71.8, amphib: 1.0)
+    [PASS 1] Moved INF_1_MOVES from Bulgaria_Romania to Ukraine_SSR (value: 71.8, amphib: 1.0)
+    [PASS 1] Checking 1 x INF_1_MOVES at France (src_value=11.5)
+      -> Germany: value=26.0, amphib=10.0
+      -> Italy: value=12.6, amphib=10.0
+      -> Northwestern_Europe: value=11.5, amphib=3.0
+      Checked 3 destinations, rejected 0, best=Germany (value=26.0)
+    [PASS 1] Moved INF_1_MOVES from France to Germany (value: 26.0, amphib: 10.0)
+    [PASS 1] Checking 2 x INF_1_MOVES at Germany (src_value=26.0)
+      -> Baltic_States: value=42.6, amphib=1.0
+      -> Bulgaria_Romania: value=35.5, amphib=1.0
+      -> France: value=11.5, amphib=2.0
+      -> Italy: value=12.6, amphib=10.0
+      -> Northwestern_Europe: value=11.5, amphib=3.0
+      -> Poland: value=33.0, amphib=0.0
+      Checked 6 destinations, rejected 0, best=Baltic_States (value=42.6)
+    [PASS 1] Moved INF_1_MOVES from Germany to Baltic_States (value: 42.6, amphib: 1.0)
+    [PASS 1] Moved INF_1_MOVES from Germany to Baltic_States (value: 42.6, amphib: 1.0)
+    [PASS 1] Checking 1 x INF_1_MOVES at Libya (src_value=9.7)
+      -> Algeria: value=5.3, amphib=1.0
+      -> Egypt: Cannot hold
+      Checked 2 destinations, rejected 1, best=Libya (value=9.7)
+    [PASS 1] Checking 1 x INF_1_MOVES at Morocco (src_value=2.3)
+      -> Algeria: value=5.3, amphib=1.0
+      Checked 1 destinations, rejected 0, best=Algeria (value=5.3)
+    [PASS 1] Moved INF_1_MOVES from Morocco to Algeria (value: 5.3, amphib: 1.0)
+    [PASS 1] Checking 1 x INF_1_MOVES at Northwestern_Europe (src_value=11.5)
+      -> France: value=11.5, amphib=2.0
+      -> Germany: value=26.0, amphib=10.0
+      Checked 2 destinations, rejected 0, best=Germany (value=26.0)
+    [PASS 1] Moved INF_1_MOVES from Northwestern_Europe to Germany (value: 26.0, amphib: 10.0)
+    [PASS 1] Checking 2 x INF_1_MOVES at Norway (src_value=21.5)
+      -> Finland: value=42.8, amphib=2.0
+      Checked 1 destinations, rejected 0, best=Finland (value=42.8)
+    [PASS 1] Moved INF_1_MOVES from Norway to Finland (value: 42.8, amphib: 2.0)
+    [PASS 1] Moved INF_1_MOVES from Norway to Finland (value: 42.8, amphib: 2.0)
+    [PASS 1] Checking 2 x INF_1_MOVES at Poland (src_value=33.0)
+      -> Baltic_States: value=42.6, amphib=1.0
+      -> Belorussia: value=52.9, amphib=0.0
+      -> Bulgaria_Romania: value=35.5, amphib=1.0
+      -> Germany: value=26.0, amphib=10.0
+      -> Ukraine_SSR: value=71.8, amphib=1.0
+      Checked 5 destinations, rejected 0, best=Ukraine_SSR (value=71.8)
+    [PASS 1] Moved INF_1_MOVES from Poland to Ukraine_SSR (value: 71.8, amphib: 1.0)
+    [PASS 1] Moved INF_1_MOVES from Poland to Ukraine_SSR (value: 71.8, amphib: 1.0)
+    [PASS 1] Checking 1 x INF_1_MOVES at Southern_Europe (src_value=17.7)
+      -> Bulgaria_Romania: value=35.5, amphib=1.0
+      -> Germany: value=26.0, amphib=10.0
+      -> Italy: value=12.6, amphib=10.0
+      Checked 3 destinations, rejected 0, best=Bulgaria_Romania (value=35.5)
+    [PASS 1] Moved INF_1_MOVES from Southern_Europe to Bulgaria_Romania (value: 35.5, amphib: 1.0)
+    [PASS 1] Checking 1 x ARTY_1_MOVES at Algeria (src_value=5.3)
+      -> Libya: value=9.7, amphib=1.0
+      -> Morocco: value=2.3, amphib=2.0
+      Checked 2 destinations, rejected 0, best=Libya (value=9.7)
+    [PASS 1] Moved ARTY_1_MOVES from Algeria to Libya (value: 9.7, amphib: 1.0)
+    [PASS 1] Checking 1 x ARTY_1_MOVES at Southern_Europe (src_value=17.7)
+      -> Bulgaria_Romania: value=35.5, amphib=1.0
+      -> Germany: value=26.0, amphib=10.0
+      -> Italy: value=12.6, amphib=10.0
+      Checked 3 destinations, rejected 0, best=Bulgaria_Romania (value=35.5)
+    [PASS 1] Moved ARTY_1_MOVES from Southern_Europe to Bulgaria_Romania (value: 35.5, amphib: 1.0)
+    [PASS 1] Checking 2 x TANK_2_MOVES at France (src_value=11.5)
+      -> Germany: value=26.0, amphib=10.0
+      -> Italy: value=12.6, amphib=10.0
+      -> Northwestern_Europe: value=11.5, amphib=3.0
+      Checked 3 destinations, rejected 0, best=Germany (value=26.0)
+    [PASS 1] Moved TANK_2_MOVES from France to Germany (value: 26.0, amphib: 10.0)
+    [PASS 1] Moved TANK_2_MOVES from France to Germany (value: 26.0, amphib: 10.0)
+    [PASS 1] Checking 1 x TANK_2_MOVES at Libya (src_value=9.7)
+      -> Algeria: value=5.3, amphib=1.0
+      -> Egypt: Cannot hold
+      Checked 2 destinations, rejected 1, best=Libya (value=9.7)
+    [PASS 1] Checking 1 x TANK_2_MOVES at Northwestern_Europe (src_value=11.5)
+      -> France: value=11.5, amphib=2.0
+      -> Germany: value=26.0, amphib=10.0
+      Checked 2 destinations, rejected 0, best=Germany (value=26.0)
+    [PASS 1] Moved TANK_2_MOVES from Northwestern_Europe to Germany (value: 26.0, amphib: 10.0)
+  [LAND] Pass 2: Move towards coastal factories
+    Found 4 coastal factories
+  [LAND] Pass 3: Move remaining units to safety
+    [PASS 3] Moved INF_1_MOVES from Libya to Algeria (strength diff: -4.0)
+    [PASS 3] Moved TANK_2_MOVES from Libya to Algeria (strength diff: -7.0)
+  [LOCAL-SUP] Germany: dist=2, allied=63.0, enemy=0.0, diff=-43.1
+[PRO-AI] Post-move capital superiority check: true
+[PRO-AI] Moving AA guns to protect factories
+[PRO-AI] Moved 0 AA guns
+[PRO-AI] Completed non-combat move phase
+[PRO-AI] Starting place units phase
+[PRO-AI] Placing purchased units at factories
+  Factory at Germany: 10 production capacity, 0 units to place
+  Factory at Italy: 3 production capacity, 2 units to place
+  Factory at Caucasus: 4 production capacity, 1 units to place
+  Factory at Karelia_SSR: 2 production capacity, 0 units to place
+  [PLACE] Placing units from 2 territories
+  [PLACE] 9 Infantry -> Germany
+  [PLACE] 1 Destroyer -> Sea_5 (from factory at Germany)
+  [PLACE] 1 Submarine -> Sea_15 (from factory at Italy)
+  + All purchased units placed
+  [PLACE] No factories to place
+[PRO-AI] Checking for remaining unplaced units
+  + No remaining units to place (placeholder implementation)
+[PRO-AI] Completed place units phase
+
+======================================================================
+PRO AI TURN COMPLETE
+======================================================================
+Next Player: Eng
+Final Money: 45 IPCs
+Units Added: 8
+Game Score: -0.0
+======================================================================
+
+round_num:  1
+[1;95m --------------------
+Current Player:  Eng
+Money:  31 [1;0m 
+
+[1;32mAlaska (Owner:  USA )
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+INF : 1
+
+[1;34mAlgeria (Owner:  Ger )
+[1;95m[1;31m[1;34m (Units:  Ger )
+INF : 2
+TANK : 1
+[1;33m[1;32m
+[1;32mAnhwei (Owner:  USA )
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+INF : 2
+
+[1;31mArchangel (Owner:  Rus )
+[1;95m[1;31m (Units:  Rus )
+INF : 2
+FIGHTER : 2
+[1;34m[1;33m[1;32m
+[1;34mBaltic_States (Owner:  Ger )
+[1;95m[1;31m[1;34m (Units:  Ger )
+INF : 2
+FIGHTER : 3
+[1;33m[1;32m
+[1;34mBelorussia (Owner:  Ger )
+[1;95m[1;31m[1;34m (Units:  Ger )
+FIGHTER : 2
+[1;33m[1;32m
+[1;33mBorneo (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;34mBulgaria_Romania (Owner:  Ger )
+[1;95m[1;31m[1;34m (Units:  Ger )
+INF : 1
+ARTY : 1
+[1;33m[1;32m
+[1;95mBurma (Owner:  Eng )
+[1;95m (Units:  Eng )
+INF_1_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;33mCaroline_Islands (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;34mCaucasus (Owner:  Ger ) builds: 1 factory-prod: 4
+[1;95m[1;31m[1;34m (Units:  Ger )
+INF : 2
+ARTY : 1
+TANK : 3
+BOMBER : 1
+[1;33m[1;32m
+[1;32mCentral_United_States (Owner:  USA )
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+INF : 1
+
+[1;33mEast_Indies (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 2
+[1;32m
+[1;95mEastern_Australia (Owner:  Eng )
+[1;95m (Units:  Eng )
+INF_1_MOVES : 2
+[1;31m[1;34m[1;33m[1;32m
+[1;95mEastern_Canada (Owner:  Eng )
+[1;95m (Units:  Eng )
+TANK_2_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;32mEastern_United_States (Owner:  USA ) factory-prod: 12
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+INF : 2
+ARTY : 1
+TANK : 1
+FIGHTER : 1
+BOMBER : 1
+
+[1;95mEgypt (Owner:  Eng )
+[1;95m (Units:  Eng )
+INF_1_MOVES : 1
+ARTY_1_MOVES : 1
+TANK_2_MOVES : 1
+FIGHTER_UNMOVED : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;31mEvenki_National_Okrug (Owner:  Rus )
+[1;95m[1;31m (Units:  Rus )
+INF : 1
+[1;34m[1;33m[1;32m
+[1;34mFinland (Owner:  Ger )
+[1;95m[1;31m[1;34m (Units:  Ger )
+INF : 3
+TANK : 1
+[1;33m[1;32m
+[1;33mFrench_Indo_China_Thailand (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 2
+ARTY : 1
+FIGHTER : 1
+[1;32m
+[1;34mGermany (Owner:  Ger ) factory-prod: 10
+[1;95m[1;31m[1;34m (Units:  Ger )
+INF : 11
+TANK : 3
+[1;33m[1;32m
+[1;32mHawaiian_Islands (Owner:  USA )
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+INF : 1
+FIGHTER : 1
+
+[1;95mIndia (Owner:  Eng ) builds: 3 factory-prod: 3
+[1;95m (Units:  Eng )
+INF_1_MOVES : 3
+[1;31m[1;34m[1;33m[1;32m
+[1;33mIwo_Jima (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;33mJapan (Owner:  Jap ) factory-prod: 8
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 4
+ARTY : 1
+TANK : 1
+FIGHTER : 1
+BOMBER : 1
+[1;32m
+[1;34mKarelia_SSR (Owner:  Ger ) factory-prod: 2
+[1;95m[1;31m[1;34m (Units:  Ger )
+INF : 7
+TANK : 2
+[1;33m[1;32m
+[1;33mKiangsu (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 4
+[1;32m
+[1;33mKwangtung (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 1
+ARTY : 1
+[1;32m
+[1;34mLibya (Owner:  Ger )
+[1;95m[1;31m[1;34m (Units:  Ger )
+INF : 1
+ARTY : 1
+[1;33m[1;32m
+[1;33mMalaya (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;33mManchuria (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 3
+FIGHTER : 1
+[1;32m
+[1;32mMidway (Owner:  USA )
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+INF : 1
+
+[1;33mNew_Guinea (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;95mNew_Zealand (Owner:  Eng )
+[1;95m (Units:  Eng )
+INF_1_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;34mNorthwestern_Europe (Owner:  Ger )
+[1;95m[1;31m[1;34m (Units:  Ger )
+FIGHTER : 1
+[1;33m[1;32m
+[1;33mOkinawa (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;95mPersia (Owner:  Eng )
+[1;95m (Units:  Eng )
+INF_1_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;33mPhilippine_Islands (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 1
+ARTY : 1
+[1;32m
+[1;31mRussia (Owner:  Rus ) builds: 7 factory-prod: 8
+[1;95m[1;31m (Units:  Rus )
+INF : 2
+[1;34m[1;33m[1;32m
+[1;33mSolomon_Islands (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;32mSzechwan (Owner:  USA )
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+INF : 2
+FIGHTER : 1
+
+[1;95mTrans_Jordan (Owner:  Eng )
+[1;95m (Units:  Eng )
+INF_1_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;34mUkraine_SSR (Owner:  Ger )
+[1;95m[1;31m[1;34m (Units:  Ger )
+INF : 5
+TANK : 1
+[1;33m[1;32m
+[1;95mUnion_of_South_Africa (Owner:  Eng )
+[1;95m (Units:  Eng )
+INF_1_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;95mUnited_Kingdom (Owner:  Eng ) builds: 8 factory-prod: 8
+[1;95m (Units:  Eng )
+INF_1_MOVES : 2
+ARTY_1_MOVES : 1
+TANK_2_MOVES : 1
+FIGHTER_UNMOVED : 2
+BOMBER_UNMOVED : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;33mWake_Island (Owner:  Jap )
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+INF : 1
+[1;32m
+[1;31mWest_Russia (Owner:  Rus )
+[1;95m[1;31m (Units:  Rus )
+INF : 10
+ARTY : 3
+TANK : 4
+[1;34m[1;33m[1;32m
+[1;95mWestern_Australia (Owner:  Eng )
+[1;95m (Units:  Eng )
+INF_1_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;95mWestern_Canada (Owner:  Eng )
+[1;95m (Units:  Eng )
+INF_1_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;32mWestern_United_States (Owner:  USA ) factory-prod: 10
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+INF : 2
+FIGHTER : 1
+
+[1;31mYakut_SSR (Owner:  Rus )
+[1;95m[1;31m (Units:  Rus )
+INF : 4
+[1;34m[1;33m[1;32m
+[1;32mYunnan (Owner:  USA )
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+INF : 2
+
+[1;0mSea_4
+[1;95m[1;31m (Units:  Rus )
+SUB : 1
+DESTROYER : 1
+[1;34m[1;33m[1;32m
+[1;0mSea_5
+[1;95m[1;31m[1;34m (Units:  Ger )
+TRANS_EMPTY : 1
+SUB : 2
+DESTROYER : 1
+CRUISER : 1
+[1;33m[1;32m
+[1;0mSea_7
+[1;95m (Units:  Eng )
+TRANS_EMPTY_UNMOVED : 1
+BATTLESHIP_2_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;0mSea_9
+[1;95m[1;31m[1;34m (Units:  Ger )
+SUB : 2
+[1;33m[1;32m
+[1;0mSea_10
+[1;95m (Units:  Eng )
+TRANS_EMPTY_UNMOVED : 1
+DESTROYER_2_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;0mSea_11
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+TRANS_EMPTY : 2
+DESTROYER : 1
+
+[1;0mSea_14
+[1;95m (Units:  Eng )
+CRUISER_2_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;0mSea_15
+[1;95m[1;31m[1;34m (Units:  Ger )
+SUB : 1
+[1;33m[1;32m
+[1;0mSea_16
+[1;95m[1;31m[1;34m (Units:  Ger )
+TRANS_EMPTY : 1
+BATTLESHIP : 1
+[1;33m[1;32m
+[1;0mSea_17
+[1;95m (Units:  Eng )
+DESTROYER_2_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;0mSea_19
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+CRUISER : 1
+
+[1;0mSea_35
+[1;95m (Units:  Eng )
+TRANS_EMPTY_UNMOVED : 1
+CARRIER_2_MOVES : 1
+CRUISER_2_MOVES : 1
+FIGHTER_UNMOVED : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;0mSea_37
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+CARRIER : 1
+BATTLESHIP : 1
+FIGHTER : 2
+[1;32m
+[1;0mSea_39
+[1;95m (Units:  Eng )
+TRANS_EMPTY_UNMOVED : 1
+SUB_2_MOVES : 1
+CRUISER_2_MOVES : 1
+[1;31m[1;34m[1;33m[1;32m
+[1;0mSea_44
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+SUB : 1
+[1;32m
+[1;0mSea_50
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+CARRIER : 1
+CRUISER : 1
+FIGHTER : 1
+[1;32m
+[1;0mSea_53
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+SUB : 1
+DESTROYER : 1
+CARRIER : 1
+FIGHTER : 1
+
+[1;0mSea_56
+[1;95m[1;31m[1;34m[1;33m[1;32m (Units:  USA )
+TRANS_EMPTY : 1
+DESTROYER : 1
+BATTLESHIP : 1
+
+[1;0mSea_60
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+TRANS_EMPTY : 1
+DESTROYER : 1
+BATTLESHIP : 1
+[1;32m
+[1;0mSea_61
+[1;95m[1;31m[1;34m[1;33m (Units:  Jap )
+TRANS_EMPTY : 1
+DESTROYER : 1
+[1;32m
+[1;0m
