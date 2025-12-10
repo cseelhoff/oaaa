@@ -234,9 +234,9 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-003 | └─ `for (Unit unit)` consumed units | 210-250 | Iterates through units being consumed for production or other purposes. | N/A | ⏭️ SKIP | N/A | No consumed units in 1942 SE |
 | NCM-004 | `findInfraUnitsThatCanMove()` | 257-275 | Identifies infrastructure units (AA guns, mobile factories) that can be moved during non-combat. | `AAGUN_1_MOVES` state check | ⏭️ SKIP | N/A | Only AA guns, handled by state |
 | NCM-005 | └─ `for (Territory t)` | 262-272 | Scans territories for moveable infrastructure. | Inline in `move_aa_guns_noncombat()` | ⏭️ SKIP | N/A | |
-| NCM-006 | `moveOneDefenderToLandTerritoriesBorderingEnemy()` | 277-360 | Same as combat move version - ensures border territories have at least one defender. | [`move_one_defender_noncombat()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 60% | |
-| NCM-007 | └─ `for (Territory t)` empty borders | 290-355 | Finds empty territories adjacent to enemy and assigns defenders. | Loop | 🔶 PARTIAL | 60% | |
-| NCM-008 | └─ └─ Find cheapest adjacent unit | 305-340 | Searches for cheapest unit to move as defender. | Inline | 🔶 PARTIAL | 55% | |
+| NCM-006 | `moveOneDefenderToLandTerritoriesBorderingEnemy()` | 277-360 | Same as combat move version - ensures border territories have at least one defender. | [`move_one_defender_to_border_territories()`](src/pro_noncombat_move.odin#L3875) | ✅ DONE | 85% | Full implementation with 1-move and 2-move tank search |
+| NCM-007 | └─ `for (Territory t)` empty borders | 290-355 | Finds empty territories adjacent to enemy and assigns defenders. | Loop | ✅ DONE | 85% | Checks enemy adjacency and no existing defenders |
+| NCM-008 | └─ └─ Find cheapest adjacent unit | 305-340 | Searches for cheapest unit to move as defender. | Inline | ✅ DONE | 85% | Cost-ordered search: Infantry < Artillery < Tank |
 | NCM-009 | `determineIfMoveTerritoriesCanBeHeld()` | 362-440 | Calculates whether each territory can be held against enemy attack with current + potential defenders. | [`determine_if_territories_can_be_held()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 60% | |
 | NCM-010 | └─ `for (ProTerritory t)` | 375-435 | Iterates through territories running battle simulations. | Loop | 🔶 PARTIAL | 60% | |
 | NCM-011 | └─ └─ Battle simulation | 390-420 | Simulates enemy attack to determine if territory is defensible. | Sim | 🔶 PARTIAL | 70% | |
@@ -264,7 +264,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-033 | └─ └─ └─ └─ Find best land by value | 1010-1040 | Evaluates reachable land territories by strategic value for unloading. | `find_territory_values_triplea()` + land value calc | ✅ DONE | 85% | Uses territory values from ProTerritoryValueUtils |
 | NCM-034 | └─ └─ └─ └─ `for` find units to load | 1045-1065 | If transport not full, finds additional units to load from adjacent land. | ❌ SKIPPED | 🔶 PARTIAL | 0% | Not needed - transports already loaded during load phase |
 | NCM-035 | └─ └─ └─ └─ `for` find safest unload sea | 1070-1085 | Selects safest sea zone for the unload operation. | Adjacent sea selection in `stage_and_unload_one_transport()` | ✅ DONE | 70% | Simplified - uses first valid adjacent sea |
-| NCM-036 | └─ **Block 2: Transport amphib to sea** | 1100-1180 | Moves transports to strategic sea positions even if not unloading. For future turn positioning. | ❌ SKIPPED | 🔶 PARTIAL | 0% | Not needed for 1942 SE - always unload if loaded |
+| NCM-036 | └─ **Block 2: Transport amphib to sea** | 1100-1180 | Moves transports to strategic sea positions even if not unloading. For future turn positioning. | ❌ SKIPPED | 🔶 PARTIAL | 50% |  |
 | NCM-037 | └─ └─ Similar structure | 1105-1175 | Same pattern as Block 1 but for sea-only destinations. | ❌ SKIPPED | 🔶 PARTIAL | 0% | |
 | NCM-038 | └─ **Block 3: Empty transports to loading** | 1185-1280 | Moves empty transports towards territories with units waiting to be loaded (near factories). | [`move_empty_transports_to_loading()`](src/pro_noncombat_move.odin) | ✅ DONE | 85% | Uses Java loadValue formula |
 | NCM-039 | └─ └─ `for (transport)` empty | 1195-1275 | Iterates through empty transports. | `for trans_type in Empty_Trans_Types` | ✅ DONE | 85% | Processes UNMOVED and 2_MOVES |
@@ -397,8 +397,8 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | VAL-019 | └─ `for (Territory t)` | 535-635 | Iterates friendly territories calculating defense priority. | ✅ DONE | Part of find_defense_value() | 100% | |
 | VAL-020 | └─ └─ Capital proximity | 550-580 | Territories closer to capital are more critical to defend. | ✅ DONE | Uses mm.land_distances to capital | 100% | |
 | VAL-021 | └─ └─ Factory presence | 585-620 | Territories with factories are high defense priority. | ✅ DONE | Factory bonus in find_defense_value() | 100% | |
-| VAL-022 | `findUnitValue()` | 642-721 | Returns combat efficiency value for each unit type (attack/defense power relative to cost). | Hardcoded values | 🔶 PARTIAL | 60% | |
-| VAL-023 | └─ `for (UnitType type)` | 655-715 | Iterates unit types calculating value ratios. | N/A | 🔶 PARTIAL | 60% | Hardcoded |
+| VAL-022 | `findUnitValue()` | 642-721 | Returns combat efficiency value for each unit type (attack/defense power relative to cost). | [`get_army_unit_value()`](src/pro_utils.odin#L211) + family | ✅ DONE | 90% | Full lookup tables for army/ship/plane |
+| VAL-023 | └─ `for (UnitType type)` | 655-715 | Iterates unit types calculating value ratios. | N/A | ✅ DONE | 90% | Uses COST_IDLE_ARMY/SHIP/PLANE arrays |
 
 ---
 

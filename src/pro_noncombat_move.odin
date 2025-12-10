@@ -3864,18 +3864,162 @@ can_hold_destination :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, land: Land_ID
 	return current_defense >= enemy_threat * 0.8
 }
 
-// Helper: Move one unit to each territory bordering enemy
-move_one_defender_to_border_territories :: proc(gc: ^Game_Cache) {
-	// Find all friendly territories adjacent to enemy
-	// For each, ensure at least one defender present
-	// This prevents enemy from easily capturing undefended border territories
-
+// NCM-006/07: Move one unit to each territory bordering enemy
+// From ProNonCombatMoveAi.java moveOneDefenderToLandTerritoriesBorderingEnemy() lines 330-390
+move_one_defender_to_border_territories :: proc(gc: ^Game_Cache) -> int {
+	/*
+	Algorithm:
+	1. Find friendly territories adjacent to enemy land units with no defenders
+	2. Sort available units by cost (cheapest first - prefer infantry)
+	3. For each territory needing defender, move cheapest unit that can reach
+	4. Skip if unit value > territory production + 3 (avoid sacrificing expensive units)
+	*/
+	
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Moving one defender to each border territory")
 	}
-
-	// Placeholder - simplified implementation
-	// Would identify border territories and ensure minimal defense
+	
+	player := gc.cur_player
+	my_team := mm.team[player]
+	defenders_moved := 0
+	
+	// NCM-007: Find territories that need a defender
+	// Must be: friendly, adjacent to enemy with land units, currently undefended
+	territories_needing_defender := make([dynamic]Land_ID, context.temp_allocator)
+	
+	for land in gc.friendly_owner {
+		if gc.owner[land] != player do continue
+		
+		// Check if we already have defenders here
+		has_defender := gc.team_land_units[land][my_team] > 0
+		if has_defender do continue
+		
+		// Check if adjacent to enemy with land units
+		has_enemy_neighbor_with_units := false
+		for adj_land in sa.slice(&mm.l2l_1away_via_land[land]) {
+			adj_owner := gc.owner[adj_land]
+			if mm.team[adj_owner] != my_team {
+				// Check if enemy has land units there
+				if gc.team_land_units[adj_land][mm.team[adj_owner]] > 0 {
+					has_enemy_neighbor_with_units = true
+					break
+				}
+			}
+		}
+		
+		if has_enemy_neighbor_with_units {
+			append(&territories_needing_defender, land)
+		}
+	}
+	
+	when ODIN_DEBUG {
+		if len(territories_needing_defender) > 0 {
+			fmt.printf("  Found %d territories needing border defender\n", len(territories_needing_defender))
+		}
+	}
+	
+	// NCM-008: For each territory needing defender, find cheapest unit that can reach
+	// Process in order: Infantry (3) < Artillery (4) < Tank (6)
+	Unit_Move_Option :: struct {
+		from_territory: Land_ID,
+		unit_type:      Active_Army,
+		cost:           int,
+	}
+	
+	for target_land in territories_needing_defender {
+		production := int(mm.value[target_land])
+		
+		// Find cheapest unit that can move here
+		best_option: Maybe(Unit_Move_Option) = nil
+		best_cost := 999
+		
+		// Check adjacent territories for units that can move
+		for adj_land in sa.slice(&mm.l2l_1away_via_land[target_land]) {
+			if gc.owner[adj_land] != player do continue
+			
+			// Check infantry first (cheapest, cost 3)
+			if gc.active_armies[adj_land][.INF_1_MOVES] > 0 && 3 < best_cost {
+				// Only move if unit value <= production + 3
+				if 3 <= production + 3 {
+					best_option = Unit_Move_Option{adj_land, .INF_1_MOVES, 3}
+					best_cost = 3
+				}
+			}
+			
+			// Check artillery (cost 4)
+			if gc.active_armies[adj_land][.ARTY_1_MOVES] > 0 && 4 < best_cost {
+				if 4 <= production + 3 {
+					best_option = Unit_Move_Option{adj_land, .ARTY_1_MOVES, 4}
+					best_cost = 4
+				}
+			}
+			
+			// Check tanks (cost 6) - only if territory is valuable enough
+			if gc.active_armies[adj_land][.TANK_1_MOVES] > 0 && 6 < best_cost {
+				if 6 <= production + 3 {
+					best_option = Unit_Move_Option{adj_land, .TANK_1_MOVES, 6}
+					best_cost = 6
+				}
+			}
+			// Tanks with 2 moves can also reach
+			if gc.active_armies[adj_land][.TANK_2_MOVES] > 0 && 6 < best_cost {
+				if 6 <= production + 3 {
+					best_option = Unit_Move_Option{adj_land, .TANK_2_MOVES, 6}
+					best_cost = 6
+				}
+			}
+		}
+		
+		// Check 2-move distance for tanks
+		for land_2_away in mm.l2l_2away_via_land_bitset[target_land] {
+			if gc.owner[land_2_away] != player do continue
+			
+			// Only tanks can move 2 spaces
+			if gc.active_armies[land_2_away][.TANK_2_MOVES] > 0 && 6 < best_cost {
+				// Check if route is valid (mid-territory friendly)
+				for midland in mm.l2l_2away_via_midland_bitset[target_land][land_2_away] {
+					if mm.team[gc.owner[midland]] == my_team {
+						if 6 <= production + 3 {
+							best_option = Unit_Move_Option{land_2_away, .TANK_2_MOVES, 6}
+							best_cost = 6
+						}
+						break
+					}
+				}
+			}
+		}
+		
+		// Execute move if found
+		if opt, ok := best_option.?; ok {
+			gc.active_armies[opt.from_territory][opt.unit_type] -= 1
+			
+			// Convert to 0-moves version at destination
+			dest_type: Active_Army
+			#partial switch opt.unit_type {
+			case .INF_1_MOVES:
+				dest_type = .INF_0_MOVES
+			case .ARTY_1_MOVES:
+				dest_type = .ARTY_0_MOVES
+			case .TANK_1_MOVES, .TANK_2_MOVES:
+				dest_type = .TANK_0_MOVES
+			case:
+				dest_type = .INF_0_MOVES
+			}
+			gc.active_armies[target_land][dest_type] += 1
+			defenders_moved += 1
+			
+			when ODIN_DEBUG {
+				fmt.printf("    Moved %v from %v to defend %v (cost %d, prod %d)\n",
+					opt.unit_type, opt.from_territory, target_land, opt.cost, production)
+			}
+		}
+	}
+	
+	when ODIN_DEBUG {
+		fmt.printf("  Moved %d defenders to border territories\n", defenders_moved)
+	}
+	
+	return defenders_moved
 }
 
 // Helper: Check if territory can be held after reinforcement

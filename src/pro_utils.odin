@@ -198,6 +198,107 @@ calculate_tuv :: proc(
 	return tuv
 }
 
+// #region VAL-022/VAL-023: Unit Value Lookups
+// Maps to Java findUnitValue() - Returns cost-based combat value for each unit type
+
+// Get unit value (TUV) for an Idle_Army type
+get_army_unit_value :: proc(unit: Idle_Army) -> int {
+	return int(COST_IDLE_ARMY[unit])
+}
+
+// Get unit value (TUV) for an Active_Army type
+get_active_army_unit_value :: proc(unit: Active_Army) -> int {
+	idle := Active_Army_To_Idle[unit]
+	return int(COST_IDLE_ARMY[idle])
+}
+
+// Get unit value (TUV) for an Idle_Ship type
+get_ship_unit_value :: proc(ship: Idle_Ship) -> int {
+	// Return just the base transport cost, not the cargo cost
+	#partial switch ship {
+	case .TRANS_EMPTY, .TRANS_1I, .TRANS_1A, .TRANS_1T, .TRANS_2I, .TRANS_1I_1A, .TRANS_1I_1T:
+		return 7  // Transport base cost
+	}
+	return int(COST_IDLE_SHIP[ship])
+}
+
+// Get unit value (TUV) for an Active_Ship type
+get_active_ship_unit_value :: proc(ship: Active_Ship) -> int {
+	idle := Active_Ship_To_Idle[ship]
+	return get_ship_unit_value(idle)
+}
+
+// Get unit value (TUV) for an Idle_Plane type
+get_plane_unit_value :: proc(plane: Idle_Plane) -> int {
+	return int(COST_IDLE_PLANE[plane])
+}
+
+// Get unit value (TUV) for an Active_Plane type
+get_active_plane_unit_value :: proc(plane: Active_Plane) -> int {
+	idle := Active_Plane_To_Idle[plane]
+	return int(COST_IDLE_PLANE[idle])
+}
+
+// Calculate TUV for all land units at a territory (for current player)
+calculate_land_tuv_at_territory :: proc(gc: ^Game_Cache, territory: Land_ID, player: Player_ID) -> int {
+	tuv := 0
+	
+	// Count idle armies
+	for army in Idle_Army {
+		count := int(gc.idle_armies[territory][player][army])
+		tuv += count * get_army_unit_value(army)
+	}
+	
+	return tuv
+}
+
+// Calculate TUV for all sea units at a sea zone (for current player)
+calculate_sea_tuv_at_zone :: proc(gc: ^Game_Cache, sea_zone: Sea_ID, player: Player_ID) -> int {
+	tuv := 0
+	
+	// Count idle ships
+	for ship in Idle_Ship {
+		count := int(gc.idle_ships[sea_zone][player][ship])
+		tuv += count * get_ship_unit_value(ship)
+	}
+	
+	return tuv
+}
+
+// Calculate total TUV for enemy units at a territory (for TUV swing calculation)
+calculate_defender_tuv :: proc(gc: ^Game_Cache, territory: Land_ID) -> int {
+	tuv := 0
+	
+	// Get all enemy units (non-friendly)
+	enemy_team := mm.enemy_team[gc.cur_player]
+	
+	for player in Player_ID {
+		if mm.team[player] != enemy_team do continue
+		
+		// Enemy idle armies
+		for army in Idle_Army {
+			count := int(gc.idle_armies[territory][player][army])
+			tuv += count * get_army_unit_value(army)
+		}
+		
+		// Enemy idle planes (from land-based planes)
+		for plane in Idle_Plane {
+			count := int(gc.idle_land_planes[territory][player][plane])
+			tuv += count * get_plane_unit_value(plane)
+		}
+	}
+	
+	return tuv
+}
+
+// Calculate min cost per hit point (for determining if unit is worth risking)
+// Java: proData.getMinCostPerHitPoint()
+get_min_cost_per_hit_point :: proc() -> int {
+	// Infantry is the cheapest per hit point: 3 IPC / 1 HP = 3
+	return 3
+}
+// #endregion VAL-022/VAL-023
+
 // Calculate win percentage for a battle (simplified)
 // Full implementation would use Monte Carlo battle simulation like TripleA
 // For now, use strength difference as proxy
