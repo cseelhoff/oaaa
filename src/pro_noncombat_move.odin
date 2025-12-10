@@ -2313,6 +2313,24 @@ validate_carrier_capacity_for_count :: proc(gc: ^Game_Cache, sea: Sea_ID, additi
 	return get_unused_carrier_capacity(gc, sea) >= additional_fighters
 }
 
+// TRN-021: Get count of allied fighters that can't land on carriers in a sea zone
+// From ProTransportUtils.java getAirThatCantLandOnCarrier() lines 280-300
+// Returns the number of excess fighters that have no carrier space
+get_air_that_cant_land_on_carrier :: proc(gc: ^Game_Cache, sea: Sea_ID) -> int {
+	unused_capacity := get_unused_carrier_capacity(gc, sea)
+	if unused_capacity >= 0 {
+		return 0  // All fighters can land
+	}
+	return -unused_capacity  // Return the overflow count
+}
+
+// TRN-022: Check if a specific number of fighters can find carrier space
+// Includes checking adjacent sea zones for carriers that could pick them up
+can_fighters_find_carrier_space :: proc(gc: ^Game_Cache, sea: Sea_ID, fighter_count: int) -> bool {
+	local_capacity := get_unused_local_carrier_capacity(gc, sea)
+	return local_capacity >= fighter_count
+}
+
 // NCM-047 Helper: Get distance between sea zones (BFS limited by max_distance)
 get_sea_distance :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID, max_distance: u8) -> u8 {
 	if src_sea == dst_sea {

@@ -363,6 +363,8 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TRN-018 | └─ `for (Unit carrier)` | 465-485 | Checks each carrier's fighter count doesn't exceed capacity. | Inline | ✅ DONE | 90% | |
 | TRN-019 | `getTransportsThatCanTransport()` | 492-521 | Filters transports to only those with available capacity and movement remaining. | 🔶 PARTIAL | 🔶 PARTIAL | 50% | |
 | TRN-020 | └─ `for (Unit transport)` | 500-518 | Checks each transport for capacity and movement status. | Loop | 🔶 PARTIAL | 50% | |
+| TRN-021 | `getAirThatCantLandOnCarrier()` | 280-300 | Returns count of excess fighters that have no carrier space. | `get_air_that_cant_land_on_carrier()` | ✅ DONE | 90% | New helper |
+| TRN-022 | `canFightersFindCarrierSpace()` | N/A | Checks if fighters can find carrier space including nearby sea zones. | `can_fighters_find_carrier_space()` | ✅ DONE | 85% | Uses local capacity |
 
 ---
 
