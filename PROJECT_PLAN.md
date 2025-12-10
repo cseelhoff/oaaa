@@ -237,8 +237,8 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-006 | `moveOneDefenderToLandTerritoriesBorderingEnemy()` | 277-360 | Same as combat move version - ensures border territories have at least one defender. | [`move_one_defender_to_border_territories()`](src/pro_noncombat_move.odin#L3875) | ✅ DONE | 85% | Full implementation with 1-move and 2-move tank search |
 | NCM-007 | └─ `for (Territory t)` empty borders | 290-355 | Finds empty territories adjacent to enemy and assigns defenders. | Loop | ✅ DONE | 85% | Checks enemy adjacency and no existing defenders |
 | NCM-008 | └─ └─ Find cheapest adjacent unit | 305-340 | Searches for cheapest unit to move as defender. | Inline | ✅ DONE | 85% | Cost-ordered search: Infantry < Artillery < Tank |
-| NCM-009 | `determineIfMoveTerritoriesCanBeHeld()` | 362-440 | Calculates whether each territory can be held against enemy attack with current + potential defenders. | [`determine_if_territories_can_be_held()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 60% | |
-| NCM-010 | └─ `for (ProTerritory t)` | 375-435 | Iterates through territories running battle simulations. | Loop | 🔶 PARTIAL | 60% | |
+| NCM-009 | `determineIfMoveTerritoriesCanBeHeld()` | 362-440 | Calculates whether each territory can be held against enemy attack with current + potential defenders. | [`find_territories_that_cant_be_held()`](src/pro_noncombat_move.odin#L1609) | ✅ DONE | 80% | Enemy threat vs defense comparison |
+| NCM-010 | └─ `for (ProTerritory t)` | 375-435 | Iterates through territories running battle simulations. | Loop | ✅ DONE | 80% | Uses enemy threat and defense calculations |
 | NCM-011 | └─ └─ Battle simulation | 390-420 | Simulates enemy attack to determine if territory is defensible. | Sim | 🔶 PARTIAL | 70% | |
 | NCM-012 | `prioritizeDefendOptions()` | 442-510 | Ranks territories by defense priority based on production, capital proximity, and strategic value. | [`prioritize_defend_options()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 55% | |
 | NCM-013 | └─ `for (ProTerritory t)` calc priority | 455-505 | Calculates defense priority score for each territory. | Loop | 🔶 PARTIAL | 55% | |
@@ -353,9 +353,9 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TRN-008 | `getUnitsToTransportFromTerritories()` | 202-280 | Gets list of units to load from a set of territories, prioritizing attack units over infantry. | [`find_loadable_units_near_sea()`](src/pro_transport.odin) | ✅ DONE | 80% | |
 | TRN-009 | └─ `for (Territory t)` | 215-275 | Iterates through source territories for loading. | `for land in adjacent_lands` | ✅ DONE | 80% | |
 | TRN-010 | └─ └─ `for (Unit unit)` | 225-270 | Filters units suitable for transport loading (land units with sufficient movement). | `Unit_Load_Info` struct | ✅ DONE | 80% | Checks infantry/artillery/tanks |
-| TRN-011 | `selectUnitsToTransportFromList()` | 282-340 | Given excess units, selects optimal subset to fill transport capacity (tanks first, then artillery, then infantry). | Inline loading | 🔶 PARTIAL | 55% | Simplified |
-| TRN-012 | └─ `while (capacity > 0)` | 295-335 | Greedy loop filling transport capacity with highest-value units first. | Loop | 🔶 PARTIAL | 55% | |
-| TRN-013 | └─ └─ `for (Unit unit)` best to load | 300-330 | Selects best available unit type to fill remaining capacity. | Inline | 🔶 PARTIAL | 50% | |
+| TRN-011 | `selectUnitsToTransportFromList()` | 282-340 | Given excess units, selects optimal subset to fill transport capacity (tanks first, then artillery, then infantry). | [`select_units_to_load()`](src/pro_transport.odin#L259) | ✅ DONE | 85% | Full algorithm with efficiency sort and optimization |
+| TRN-012 | └─ `while (capacity > 0)` | 295-335 | Greedy loop filling transport capacity with highest-value units first. | Loop | ✅ DONE | 85% | Greedy capacity fill + replacement optimization |
+| TRN-013 | └─ └─ `for (Unit unit)` best to load | 300-330 | Selects best available unit type to fill remaining capacity. | Inline | ✅ DONE | 85% | Attack efficiency or cost-based sorting |
 | TRN-014 | `interleaveUnitsCarriersAndPlanes()` | 342-455 | Complex movement ordering for carrier+fighter fleets. Ensures fighters don't move before their carrier, and carriers don't strand fighters. | N/A | ⏭️ SKIP | N/A | Java-specific for unit list ordering; Odin uses state-based tracking |
 | TRN-015 | └─ `while (carriers.hasNext())` | 360-450 | Pairs carriers with fighters for coordinated movement. | N/A | ⏭️ SKIP | N/A | Not needed with state machine |
 | TRN-016 | └─ └─ `for (fighter)` per carrier | 375-440 | Assigns fighters to specific carriers and orders movement appropriately. | N/A | ⏭️ SKIP | N/A | Fighter landing handled separately |
