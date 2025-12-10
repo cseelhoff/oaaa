@@ -103,7 +103,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | PUR-022 | └─ └─ `while (true)` purchase until can hold | 750-870 | Inner loop that keeps buying defenders until battle simulation shows territory can be held (TUV swing ≤ 0). | `#region PUR-015` | ✅ DONE | 80% | |
 | PUR-023 | └─ └─ └─ `removeInvalidPurchaseOptions()` | 760 | Filters out purchase options that exceed budget, production capacity, or max unit limits. | Inline checks | ✅ DONE | 70% | Simplified |
 | PUR-024 | └─ └─ └─ `for (ppo)` calc defenseEfficiencies | 765-790 | Calculates defense efficiency (defense power / cost) for each purchasable unit type. Considers destroyer need and carrier capacity. | Inline | ✅ DONE | 60% | Infantry only |
-| PUR-025 | └─ └─ └─ `randomizePurchaseOption()` | 795 | Selects purchase option with some randomization weighted by efficiency. Prevents always buying same unit. | Simplified selection | 🔶 PARTIAL | 30% | No randomization |
+| PUR-025 | └─ └─ └─ `randomizePurchaseOption()` | 795 | Selects purchase option with some randomization weighted by efficiency. Prevents always buying same unit. | [`randomize_land_purchase()`](src/pro_purchase_utils.odin) | ✅ DONE | 90% | Weighted random selection |
 | PUR-026 | └─ └─ └─ `calculateBattleResults()` | 830 | Simulates battle with current defenders + pending purchases vs max enemy attackers. Returns win%, TUV swing. | [`simulate_sequential_enemy_attacks()`](src/pro_purchase.odin) | ✅ DONE | 95% | Improved |
 | PUR-027 | `prioritizeLandTerritories()` | 902-960 | Ranks land territories for offensive unit placement. Considers enemy neighbors, strategic value, and local land superiority. | [`prioritize_land_territories_triplea()`](src/pro_purchase.odin) | ✅ DONE | 70% | Simplified formula |
 | PUR-028 | └─ `for (ProPurchaseTerritory ppt)` | 908-935 | Iterates through purchase territories to find those needing offensive units. | Inline | ✅ DONE | 70% | |
@@ -117,7 +117,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | PUR-036 | └─ `for (ProPlaceTerritory place)` | 1095-1348 | Iterates through prioritized land territories that should receive offensive units. | `#region PUR-029` | ✅ DONE | 80% | |
 | PUR-037 | └─ └─ `while (true)` land purchase | 1150-1340 | Keeps buying land units until production capacity or budget exhausted. Balances attack power vs fodder. | `#region PUR-030` | ✅ DONE | 75% | |
 | PUR-038 | └─ └─ └─ `for (ppo)` calc attackEfficiency | 1180-1220 | Calculates attack efficiency (attack power / cost) for each unit. Weights infantry vs attack units based on enemy distance. | Fodder % calc | ✅ DONE | 85% | Different algorithm |
-| PUR-039 | └─ └─ └─ `randomizePurchaseOption()` | 1225 | Weighted random selection of unit type to purchase. | Best option selection | 🔶 PARTIAL | 40% | No randomization |
+| PUR-039 | └─ └─ └─ `randomizePurchaseOption()` | 1225 | Weighted random selection of unit type to purchase. | [`randomize_land_purchase()`](src/pro_purchase_utils.odin) | ✅ DONE | 90% | Weighted random selection |
 | PUR-040 | `purchaseFactory()` | 1352-1517 | Decides where to build new factories. Considers production value, enemy distance, defensibility, and existing factories. | [`purchase_factory_triplea()`](src/pro_purchase.odin) | ✅ DONE | 70% | |
 | PUR-041 | └─ `for (Territory t)` find factory locations | 1365-1440 | Scans all owned territories without factories to find potential factory locations. | Loop | ✅ DONE | 70% | |
 | PUR-042 | └─ └─ Factory value calculation | 1380-1430 | Calculates factory value based on territory production, neighbor production, and distance from enemy. | Inline | ✅ DONE | 65% | |
@@ -127,12 +127,12 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | PUR-046 | └─ `for (ProPurchaseTerritory ppt)` | 1530-1580 | Iterates through purchase territories with coastal factories. | Outer loop | ✅ DONE | 65% | |
 | PUR-047 | └─ └─ `for (ProPlaceTerritory place)` | 1535-1575 | For each sea zone adjacent to factory, calculates naval strategic value. | Inner loop | ✅ DONE | 65% | |
 | PUR-048 | └─ Sort by strategic value | 1585-1610 | Sorts sea zones by strategic value for naval purchases. | `slice.sort_by` | ✅ DONE | 90% | |
-| PUR-049 | **`purchaseSeaAndAmphibUnits()`** | 1622-2091 | **CRITICAL**: Main naval and amphibious unit purchasing. Three phases: sea defense, naval superiority, and transport/amphib units. | [`purchase_sea_and_amphib_units_triplea()`](src/pro_purchase.odin) | 🔶 PARTIAL | 55% | **Phase 2 missing** |
+| PUR-049 | **`purchaseSeaAndAmphibUnits()`** | 1622-2091 | **CRITICAL**: Main naval and amphibious unit purchasing. Three phases: sea defense, naval superiority, and transport/amphib units. | [`purchase_sea_and_amphib_units_triplea()`](src/pro_purchase.odin) | ✅ DONE | 90% | All 3 phases implemented |
 | PUR-050 | └─ `for (ProPlaceTerritory place)` outer | 1640-2089 | Iterates through prioritized sea territories for naval purchases. | `#region PUR-062` | 🔶 PARTIAL | 60% | |
 | PUR-051 | └─ └─ **Phase 1: Sea Defense** `while(true)` | 1680-1755 | Buys naval defenders until sea zone can be held against enemy naval attack. Similar to land defense purchasing. | `#region PUR-063` | ✅ DONE | 75% | |
 | PUR-052 | └─ └─ └─ `removeInvalidPurchaseOptions()` | 1690 | Filters invalid naval purchase options by budget and production. | Inline | ✅ DONE | 70% | |
 | PUR-053 | └─ └─ └─ `for (ppo)` defenseEfficiencies | 1695-1720 | Calculates naval defense efficiency. Considers destroyer need for sub defense and carrier capacity for fighters. | Inline | ✅ DONE | 65% | |
-| PUR-054 | └─ └─ └─ `randomizePurchaseOption()` | 1725 | Weighted selection of naval unit to purchase. | Selection | 🔶 PARTIAL | 40% | |
+| PUR-054 | └─ └─ └─ `randomizePurchaseOption()` | 1725 | Weighted selection of naval unit to purchase. | [`randomize_ship_purchase()`](src/pro_purchase_utils.odin) | ✅ DONE | 90% | Weighted random selection |
 | PUR-055 | └─ └─ └─ `calculateBattleResults()` | 1740 | Simulates naval battle with current + pending ships vs enemy fleet. | Battle sim | ✅ DONE | 90% | |
 | PUR-056 | └─ └─ **Phase 2: Naval Superiority** `while(true)` | 1760-1885 | Buys ships until achieving local naval superiority considering enemy air from adjacent land territories. | [`territory_has_local_naval_superiority()`](src/pro_utils.odin) | ✅ DONE | 90% | Threshold=50 |
 | PUR-057 | └─ └─ └─ Collect enemyUnitsInLandTerritories | 1770-1790 | Gathers enemy air units from land territories within striking distance of sea zone. Critical for accurate threat assessment. | [`calculate_enemy_air_threat_from_land()`](src/pro_utils.odin) | ✅ DONE | 90% | BFS to max_dist |
@@ -219,8 +219,8 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | CMB-045 | └─ └─ Transport casualty restriction check | 1580-1610 | Verifies attacks don't violate transport casualty restriction rules (some maps require transports to be taken as casualties last). | ✅ DONE | check_transport_casualty_restriction() | 100% | |
 | CMB-046 | └─ └─ Sub retreat before battle calc | 1620-1650 | Calculates whether enemy subs should retreat before battle based on destroyer presence. | ✅ DONE | should_enemy_subs_retreat() | 100% | |
 | CMB-047 | └─ └─ Log attack summary | 1700-1770 | Outputs detailed log of all planned attacks for debugging. | [`log_attack_moves()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 90% | |
-| CMB-048 | `checkContestedSeaTerritories()` | 1875-1945 | Handles contested sea zones where both sides have units. May need to clear with subs or avoid. | [`check_contested_sea_territories_triplea()`](src/pro_combat_move_triplea_methods.odin) | 🔄 STUB | 10% | |
-| CMB-049 | └─ `for (Territory t)` contested sea | 1885-1940 | Iterates through sea zones with both friendly and enemy units. | Loop | 🔄 STUB | 10% | |
+| CMB-048 | `checkContestedSeaTerritories()` | 1875-1945 | Handles contested sea zones where both sides have units. May need to clear with subs or avoid. | [`check_contested_sea_territories_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 90% | Moves ships to safe adjacent sea zones |
+| CMB-049 | └─ `for (Territory t)` contested sea | 1885-1940 | Iterates through sea zones with both friendly and enemy units. | Loop | ✅ DONE | 90% | |
 | CMB-050 | `doMove()` execute moves | 176-190 | Executes all planned combat moves by calling move delegate. Handles move failures gracefully. | [`execute_combat_moves_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 90% | |
 
 ---

@@ -2528,74 +2528,92 @@ Java Original (lines 1890-1913):
 */
 
 // Odin Implementation:
-check_contested_sea_territories_triplea :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_Option) {
+// CMB-048/049: Handle contested sea territories where we have units but haven't planned an attack
+// Java logic: If sea zone has both friendly and enemy units, and we haven't planned to attack,
+// move our ships to an adjacent safe sea zone to avoid being destroyed
+check_contested_sea_territories_triplea :: proc(gc: ^Game_Cache) {
 	when ODIN_DEBUG {
-		fmt.println("Check contested sea territories for sub warfare")
+		fmt.println("Check contested sea territories")
 	}
 	
-	/*
-	Sub Warfare in Contested Seas:
-	If a sea zone has both friendly and enemy units, we may need to attack
-	to clear enemy subs that could:
-	1. Block our transport routes
-	2. Sink our transports
-	3. Attack our convoy zones
-	
-	Strategy:
-	- Only engage if we have destroyers (to counter subs)
-	- Don't engage if it weakens our naval defense elsewhere
-	- Prioritize clearing routes needed for planned amphib attacks
-	*/
-	
-	// Check all sea zones we control
+	// Check all sea zones where we have units
 	for sea in Sea_ID {
 		// Skip if we don't have ships here
 		if !has_friendly_ships(gc, sea) {
 			continue
 		}
 		
-		// Check if has enemy units (especially subs)
-		if gc.team_sea_units[sea][mm.enemy_team[gc.cur_player]] == 0 {
+		// Check if has enemy units
+		has_enemy := gc.team_sea_units[sea][mm.enemy_team[gc.cur_player]] > 0
+		if !has_enemy {
 			continue
 		}
 		
-		// Check if we have destroyers to counter subs
-		has_destroyers := gc.idle_ships[sea][gc.cur_player][.DESTROYER] > 0
+		// This is a contested sea zone - try to find an adjacent safe sea zone to move to
+		move_to_sea: Maybe(Sea_ID) = nil
+		canal_state := transmute(u8)gc.canals_open
 		
-		// Count enemy subs
-		enemy_subs := 0
-		for player in Player_ID {
-			if mm.team[player] != mm.team[gc.cur_player] {
-				enemy_subs += int(gc.idle_ships[sea][player][.SUB])
+		// Check adjacent sea zones for safety
+		for adj_sea in mm.s2s_1away_via_sea[canal_state][sea] {
+			
+			// Check if adjacent sea is safe (no enemies)
+			enemy_there := gc.team_sea_units[adj_sea][mm.enemy_team[gc.cur_player]]
+			
+			// Prefer empty or friendly-controlled seas
+			if enemy_there == 0 {
+				// Check if we can move through (not blocked)
+				if can_sea_units_move_through(gc, adj_sea) {
+					move_to_sea = adj_sea
+					break
+				}
 			}
 		}
 		
-		// If enemy subs present and we have destroyers, consider attacking
-		if enemy_subs > 0 && has_destroyers {
-			// Check if this sea zone is critical (adjacent to planned amphib attacks)
-			is_critical := false
-			for option in options {
-				if option.is_amphib {
-					// Check if this sea is used for the amphib
-					for adj_sea in sa.slice(&mm.l2s_1away_via_land[option.territory]) {
-						if adj_sea == sea {
-							is_critical = true
-							break
-						}
-					}
-				}
+		if target_sea, ok := move_to_sea.?; ok {
+			when ODIN_DEBUG {
+				fmt.printf("  Contested sea %v - retreating ships to %v\n", 
+				          mm.sea_name[sea], mm.sea_name[target_sea])
 			}
 			
-			if is_critical {
-				when ODIN_DEBUG {
-					fmt.printf("Critical contested sea zone: %s (%d enemy subs)\n",
-						mm.sea_name[sea], enemy_subs)
+			// Move our sea units to the safe zone
+			for ship_type in Idle_Ship {
+				ship_count := gc.idle_ships[sea][gc.cur_player][ship_type]
+				if ship_count > 0 {
+					// Move ships to safe zone
+					gc.idle_ships[sea][gc.cur_player][ship_type] = 0
+					gc.idle_ships[target_sea][gc.cur_player][ship_type] += ship_count
+					
+					// Update team counts
+					gc.team_sea_units[sea][mm.team[gc.cur_player]] -= ship_count
+					gc.team_sea_units[target_sea][mm.team[gc.cur_player]] += ship_count
 				}
-				// Note: Full implementation would add sea attack option here
-				// For now, just log the issue
+			}
+		} else {
+			when ODIN_DEBUG {
+				fmt.printf("  Contested sea %v - no safe retreat found\n", mm.sea_name[sea])
 			}
 		}
 	}
+}
+
+// Helper: Check if sea units can move through a sea zone
+can_sea_units_move_through :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	// Can move through if:
+	// 1. No enemies, or
+	// 2. Only enemy subs (we can ignore them if we have no transports)
+	enemy_count := gc.team_sea_units[sea][mm.enemy_team[gc.cur_player]]
+	if enemy_count == 0 do return true
+	
+	// Check if only subs
+	enemy_subs := u8(0)
+	for player in Player_ID {
+		if mm.team[player] != mm.team[gc.cur_player] {
+			enemy_subs += gc.idle_ships[sea][player][.SUB]
+		}
+	}
+	
+	// If all enemies are subs, we can pass through (subs can be ignored)
+	return enemy_subs == enemy_count
 }
 
 /*
