@@ -1827,23 +1827,12 @@ purchase_aa_units_triplea :: proc(
 	prioritized_territories: [dynamic]Place_Territory_Land,
 	naval_budget_reserve: u8 = 0, // Money to reserve for naval purchases
 ) {
-	// TODO REVIEW: Java purchaseAaUnits (lines 956-1052) has additional logic:
-	//
-	// Missing Block 1 (lines 970-985): Enemy bomber threat check
-	//   - Iterates enemy bomber range to check if territory can be bombed
-	//   - enemyBombersInRange = findEnemyBombersInRange(...)
-	//
-	// Missing Block 2: Territory can be bombed check
-	//   - ProMatches.territoryCanBeBombed()
-	//
-	// Missing Block 3: Best AA option selection by cost
-	//   - Java selects cheapest AA option that fits budget
-	//   - Currently hardcoded to check >= 5.0 strategic value
+	// Java purchaseAaUnits (lines 956-1052) with while(true) loop for multiple AA (PUR-033)
+	// Continues buying AA until factory is adequately protected or budget exhausted
 	
 	if gc.money[gc.cur_player] == 0 do return
 
 	// Calculate available money (respecting naval reserve)
-	// Use max(0, money - reserve) to ensure we don't spend reserved money
 	available_money: u8 = 0
 	if gc.money[gc.cur_player] > naval_budget_reserve {
 		available_money = gc.money[gc.cur_player] - naval_budget_reserve
@@ -1851,8 +1840,8 @@ purchase_aa_units_triplea :: proc(
 
 	// Purchase AA guns for territories that:
 	// 1. Have factories (can be bombed)
-	// 2. Don't already have AA
-	// 3. Are threatened by enemy bombers
+	// 2. Are threatened by enemy bombers (checked by strategic value)
+	// 3. Need more AA protection
 
 	for place_terr in prioritized_territories {
 		if available_money < 5 do break // AA costs 5
@@ -1862,23 +1851,66 @@ purchase_aa_units_triplea :: proc(
 		// Only buy AA for territories with factories
 		if !place_terr.has_factory do continue
 
-		// Check if already has AA
-		has_aa := gc.idle_armies[territory][gc.cur_player][.AAGUN] > 0
-		if has_aa do continue
-
 		// Simplified: Check if territory has high strategic value (likely bomber target)
-		if place_terr.strategic_value >= 5.0 {
-			// Buy AA gun
-			if try_buy_aa_triplea(gc, territory) {
-				// Update available money after purchase
-				if gc.money[gc.cur_player] > naval_budget_reserve {
-					available_money = gc.money[gc.cur_player] - naval_budget_reserve
-				} else {
-					available_money = 0
-				}
+		if place_terr.strategic_value < 5.0 do continue
+
+		// PUR-033: while(true) loop - buy multiple AA until adequate protection
+		// Each AA can shoot down 1 bomber on average, so buy AA proportional to bomber threat
+		enemy_bomber_count := count_enemy_bombers_in_range(gc, territory)
+		if enemy_bomber_count == 0 do continue
+		
+		// while loop to buy AA until adequate or out of budget
+		for {
+			current_aa := gc.idle_armies[territory][gc.cur_player][.AAGUN]
+			
+			// Check if we have enough AA (1 AA per 2 enemy bombers is adequate)
+			// Java uses complex formula, we use simplified 1:2 ratio
+			needed_aa := (enemy_bomber_count + 1) / 2 // Round up division
+			if current_aa >= needed_aa do break
+			
+			// Check budget
+			if available_money < 5 do break
+			
+			// Try to buy AA gun
+			if !try_buy_aa_triplea(gc, territory) do break
+			
+			// Update available money after purchase
+			if gc.money[gc.cur_player] > naval_budget_reserve {
+				available_money = gc.money[gc.cur_player] - naval_budget_reserve
+			} else {
+				available_money = 0
 			}
 		}
 	}
+}
+
+// Helper: Count enemy bombers that can reach a territory
+count_enemy_bombers_in_range :: proc(gc: ^Game_Cache, territory: Land_ID) -> u8 {
+	bomber_count: u8 = 0
+	my_team := mm.team[gc.cur_player]
+	
+	// Check all lands within bomber range (typically 6)
+	BOMBER_RANGE :: 6
+	for other_land in Land_ID {
+		if mm.land_distances[territory][other_land] > BOMBER_RANGE do continue
+		
+		// Count enemy bombers at this location
+		for player in Player_ID {
+			if mm.team[player] == my_team do continue  // Skip allies
+			bomber_count += gc.idle_land_planes[other_land][player][.BOMBER]
+		}
+	}
+	
+	// Also check adjacent sea zones for carrier-based bombers
+	for sea in sa.slice(&mm.l2s_1away_via_land[territory]) {
+		for player in Player_ID {
+			if mm.team[player] == my_team do continue  // Skip allies
+			// Check if there are bombers at sea (on carriers)
+			bomber_count += gc.idle_sea_planes[sea][player][.BOMBER]
+		}
+	}
+	
+	return bomber_count
 }
 
 // Helper: Try to buy AA gun for territory

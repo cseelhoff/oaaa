@@ -663,7 +663,32 @@ calculate_enemy_threat :: proc(gc: ^Game_Cache, air_id: Air_ID, pro_data: ^Pro_D
 			}
 		}
 	} else {
-		//TODO sea units
+		// NCM-044: Sea zone enemy threat calculation
+		sea := to_sea(air_id)
+		canal_state := transmute(u8)gc.canals_open
+		
+		// Count enemy units in this zone and adjacent zones
+		for player in Player_ID {
+			if player == gc.cur_player do continue
+			if mm.team[player] == mm.team[gc.cur_player] do continue
+			
+			// Direct threat in this sea zone
+			threat += f64(gc.idle_ships[sea][player][.DESTROYER]) * 2.0
+			threat += f64(gc.idle_ships[sea][player][.CRUISER]) * 3.0
+			threat += f64(gc.idle_ships[sea][player][.BATTLESHIP]) * 4.0
+			threat += f64(gc.idle_ships[sea][player][.BS_DAMAGED]) * 4.0
+			threat += f64(gc.idle_ships[sea][player][.SUB]) * 2.0
+			threat += f64(gc.idle_sea_planes[sea][player][.FIGHTER]) * 3.0
+			threat += f64(gc.idle_sea_planes[sea][player][.BOMBER]) * 4.0
+			
+			// Threat from adjacent sea zones (can attack in 1 move)
+			for adj_sea in mm.s2s_1away_via_sea[canal_state][sea] {
+				threat += f64(gc.idle_ships[adj_sea][player][.DESTROYER]) * 1.0  // Half threat (needs to move)
+				threat += f64(gc.idle_ships[adj_sea][player][.CRUISER]) * 1.5
+				threat += f64(gc.idle_ships[adj_sea][player][.BATTLESHIP]) * 2.0
+				threat += f64(gc.idle_ships[adj_sea][player][.SUB]) * 1.0
+			}
+		}
 	}
 
 	return threat
@@ -713,9 +738,112 @@ calculate_current_defense :: proc(gc: ^Game_Cache, air_id: Air_ID) -> f64 {
 			defense += f64(count) * get_plane_defense_value(plane_type)
 		}
 	} else {
-		// TODO sea units
+		// NCM-044: Sea zone defense calculation
+		sea := to_sea(air_id)
+		player := gc.cur_player
+		
+		// Count friendly ships
+		defense += f64(gc.idle_ships[sea][player][.DESTROYER]) * 2.0
+		defense += f64(gc.idle_ships[sea][player][.CRUISER]) * 3.0
+		defense += f64(gc.idle_ships[sea][player][.BATTLESHIP]) * 4.0
+		defense += f64(gc.idle_ships[sea][player][.BS_DAMAGED]) * 4.0
+		defense += f64(gc.idle_ships[sea][player][.CARRIER]) * 2.0
+		defense += f64(gc.idle_ships[sea][player][.SUB]) * 1.0
+		
+		// Count allied ships
+		for ally in Player_ID {
+			if ally == player do continue
+			if mm.team[ally] != mm.team[player] do continue
+			
+			defense += f64(gc.idle_ships[sea][ally][.DESTROYER]) * 2.0
+			defense += f64(gc.idle_ships[sea][ally][.CRUISER]) * 3.0
+			defense += f64(gc.idle_ships[sea][ally][.BATTLESHIP]) * 4.0
+			defense += f64(gc.idle_ships[sea][ally][.CARRIER]) * 2.0
+		}
+		
+		// Count sea-based planes
+		defense += f64(gc.idle_sea_planes[sea][player][.FIGHTER]) * 3.0
+		defense += f64(gc.idle_sea_planes[sea][player][.BOMBER]) * 4.0
 	}
 	return defense
+}
+
+// NCM-044: Find safest sea zone for air unit landing
+// Evaluates sea zones by enemy threat to find safest destination
+find_safest_sea_zone :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, from_land: Land_ID, movement_range: u8) -> Maybe(Sea_ID) {
+	/*
+	From ProNonCombatMoveAi.java lines 1305-1350:
+	Evaluates sea zones by enemy threat to find safest destination
+	*/
+	
+	best_sea: Maybe(Sea_ID) = nil
+	min_threat: f64 = math.F64_MAX
+	canal_state := transmute(u8)gc.canals_open
+	
+	// Check all sea zones in range
+	for sea in Sea_ID {
+		// Check if in range
+		distance := get_land_to_sea_distance(gc, from_land, sea, movement_range)
+		if distance == 0 || distance > movement_range do continue
+		
+		// Must have carrier capacity
+		if !has_carrier_capacity(gc, sea) do continue
+		
+		// Calculate threat
+		threat := calculate_enemy_threat(gc, to_air(sea), pro_data)
+		defense := calculate_current_defense(gc, to_air(sea))
+		
+		// Calculate safety score (lower is safer)
+		// Account for our defense when evaluating
+		strength_diff := threat - defense
+		
+		// Prefer sea zones with some defense
+		if defense > 0 {
+			strength_diff -= 5.0  // Bonus for having friendly forces
+		}
+		
+		if strength_diff < min_threat {
+			min_threat = strength_diff
+			best_sea = sea
+		}
+	}
+	
+	return best_sea
+}
+
+// NCM-044 Helper: Find safest sea zone from sea zone start
+find_safest_sea_zone_from_sea :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, from_sea: Sea_ID, movement_range: u8) -> Maybe(Sea_ID) {
+	best_sea: Maybe(Sea_ID) = nil
+	min_threat: f64 = math.F64_MAX
+	
+	// Check all sea zones in range
+	for sea in Sea_ID {
+		// Check if in range
+		distance := get_sea_distance(gc, from_sea, sea, movement_range)
+		if distance == 0 || distance > movement_range do continue
+		
+		// Must have carrier capacity
+		if !has_carrier_capacity(gc, sea) do continue
+		
+		// Calculate threat
+		threat := calculate_enemy_threat(gc, to_air(sea), pro_data)
+		defense := calculate_current_defense(gc, to_air(sea))
+		
+		// Calculate safety score (lower is safer)
+		strength_diff := threat - defense
+		
+		// Prefer sea zones with some defense
+		if defense > 0 {
+			strength_diff -= 5.0
+		}
+		
+		if strength_diff < min_threat {
+			min_threat = strength_diff
+			best_sea = sea
+		}
+	}
+	
+	return best_sea
 }
 
 // Get defense value for army types

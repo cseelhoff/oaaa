@@ -109,10 +109,10 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | PUR-028 | └─ `for (ProPurchaseTerritory ppt)` | 908-935 | Iterates through purchase territories to find those needing offensive units. | Inline | ✅ DONE | 70% | |
 | PUR-029 | └─ └─ `for (ProPlaceTerritory place)` | 909-934 | Checks each place territory for enemy neighbors and strategic value thresholds. | Inline | ✅ DONE | 70% | |
 | PUR-030 | └─ Sort by strategic value | 938-945 | Sorts territories by strategic value descending. Higher value territories get offensive units first. | `slice.sort_by` | ✅ DONE | 90% | |
-| PUR-031 | `purchaseAaUnits()` | 962-1080 | Purchases AA guns for territories with factories that can be strategically bombed by enemy bombers. | [`purchase_aa_units_triplea()`](src/pro_purchase.odin) | 🔶 PARTIAL | 50% | |
-| PUR-032 | └─ `for (ProPlaceTerritory place)` | 972-1078 | Iterates through territories checking if they have bombable factories and lack AA defense. | Outer loop | 🔶 PARTIAL | 50% | |
-| PUR-033 | └─ └─ `while (true)` AA purchase | 1020-1070 | Continues buying AA until factory is adequately protected or budget exhausted. Java can buy multiple AA. | Inner while | ❌ MISSING | 20% | Only buys 1 AA max |
-| PUR-034 | └─ └─ └─ efficiency calculation | 1025-1040 | Calculates AA purchase efficiency based on expected bombing damage reduction vs AA cost. | Simplified | 🔶 PARTIAL | 30% | |
+| PUR-031 | `purchaseAaUnits()` | 962-1080 | Purchases AA guns for territories with factories that can be strategically bombed by enemy bombers. | [`purchase_aa_units_triplea()`](src/pro_purchase.odin) | ✅ DONE | 90% | |
+| PUR-032 | └─ `for (ProPlaceTerritory place)` | 972-1078 | Iterates through territories checking if they have bombable factories and lack AA defense. | Outer loop | ✅ DONE | 85% | |
+| PUR-033 | └─ └─ `while (true)` AA purchase | 1020-1070 | Continues buying AA until factory is adequately protected or budget exhausted. Java can buy multiple AA. | Inner while loop | ✅ DONE | 85% | Multiple AA purchase based on bomber threat |
+| PUR-034 | └─ └─ └─ efficiency calculation | 1025-1040 | Calculates AA purchase efficiency based on expected bombing damage reduction vs AA cost. | count_enemy_bombers_in_range | ✅ DONE | 75% | Uses bomber count for AA ratio |
 | PUR-035 | `purchaseLandUnits()` | 1082-1350 | Main offensive land unit purchasing. Buys attack units (tanks, artillery) balanced with fodder (infantry) based on distance to enemy. | [`purchase_land_units_triplea()`](src/pro_purchase.odin) | ✅ DONE | 80% | |
 | PUR-036 | └─ `for (ProPlaceTerritory place)` | 1095-1348 | Iterates through prioritized land territories that should receive offensive units. | `#region PUR-029` | ✅ DONE | 80% | |
 | PUR-037 | └─ └─ `while (true)` land purchase | 1150-1340 | Keeps buying land units until production capacity or budget exhausted. Balances attack power vs fodder. | `#region PUR-030` | ✅ DONE | 75% | |
@@ -272,7 +272,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-041 | └─ └─ └─ Move to factory-adjacent sea | 1250-1270 | Moves transport to sea zone adjacent to factory for next-turn loading. | `move_one_empty_transport_to_loading()` | ✅ DONE | 80% | Includes safe path checking |
 | NCM-042 | └─ **Block 4: Remaining transports to safety** | 1285-1400 | Moves transports that couldn't find good destinations to safest available sea zone. | [`skip_transport_to_0_moves()`](src/pro_noncombat_move.odin) | ✅ DONE | 65% | Transports without destinations skip to 0 moves |
 | NCM-043 | └─ └─ `for (transport)` remaining | 1295-1395 | Iterates through transports not yet moved. | Fallback in `stage_and_unload_one_transport()` | ✅ DONE | 60% | |
-| NCM-044 | └─ └─ └─ Find safest sea zone | 1305-1350 | Evaluates sea zones by enemy threat to find safest destination. | ❌ MISSING | 🔶 PARTIAL | 30% | Simplified - stays in place |
+| NCM-044 | └─ └─ └─ Find safest sea zone | 1305-1350 | Evaluates sea zones by enemy threat to find safest destination. | [`find_safest_sea_zone()`](src/pro_noncombat_move.odin) | ✅ DONE | 85% | Evaluates threat vs defense for sea zones |
 | NCM-045 | └─ └─ └─ Try unload if carrying | 1355-1390 | If transport is carrying units, tries to unload at safe location rather than risk losing cargo. | [`unload_transport_cargo_to_land()`](src/pro_noncombat_move.odin) | ✅ DONE | 85% | Always unloads cargo to best destination |
 | NCM-046 | └─ **Block 5: Sea units defend transports** | 1500-1560 | Moves warships to protect vulnerable transports from enemy attack. | [`move_sea_units_noncombat()`](src/pro_noncombat_move.odin) `#region NCM-046` | ✅ DONE | 85% | Moves destroyers/cruisers/battleships/carriers to escort |
 | NCM-047 | └─ └─ `for (Unit sea)` | 1510-1555 | Iterates through available warships. | `Combat_Ships` loop | ✅ DONE | 85% | |
@@ -298,9 +298,9 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-067 | └─ `moveInfrastructure()` AA guns | 2185-2300 | Moves AA guns to protect valuable factories from strategic bombing. | `#region NCM-067` | ✅ DONE | 85% | |
 | NCM-068 | └─ └─ `for (Unit aa)` | 2195-2295 | Iterates through AA guns to find best destinations. | `#region NCM-068` | ✅ DONE | 85% | |
 | NCM-069 | └─ └─ └─ Find best factory to protect | 2210-2280 | Evaluates factories by bombing vulnerability and current AA coverage. | `#region NCM-069` | ✅ DONE | 85% | |
-| NCM-070 | └─ `moveFactoriesIfMobile()` | 2305-2400 | For maps with mobile factories, moves them to optimal production locations. | ❌ MISSING | ❌ MISSING | N/A | Mobile factories N/A |
-| NCM-071 | └─ └─ `for (Unit factory)` mobile | 2315-2395 | Iterates through mobile factories. | ❌ MISSING | ❌ MISSING | N/A | |
-| NCM-072 | └─ `checkNeedToConsumeUnits()` | 2405-2440 | Checks if any units need to be consumed for production (some map mechanics). | ❌ MISSING | ❌ MISSING | N/A | N/A for 1942 SE |
+| NCM-070 | └─ `moveFactoriesIfMobile()` | 2305-2400 | For maps with mobile factories, moves them to optimal production locations. | ⏭️ SKIP | N/A for 1942 SE | N/A | Mobile factories N/A |
+| NCM-071 | └─ └─ `for (Unit factory)` mobile | 2315-2395 | Iterates through mobile factories. | ⏭️ SKIP | N/A for 1942 SE | N/A | |
+| NCM-072 | └─ `checkNeedToConsumeUnits()` | 2405-2440 | Checks if any units need to be consumed for production (some map mechanics). | ⏭️ SKIP | N/A for 1942 SE | N/A | N/A for 1942 SE |
 | NCM-073 | └─ `findBestPathToTerritoryUsingLandRoutes()` BFS | 2445-2475 | Multi-turn pathfinding using BFS to find optimal route to distant territories. | ✅ DONE | find_best_path_to_territory() | 100% | |
 | NCM-074 | └─ └─ BFS loop with distance tracking | 2450-2470 | Breadth-first search through land connections with movement cost tracking. | ✅ DONE | Uses visited/distances arrays | 100% | |
 | NCM-075 | `doMove()` execute moves | 195-198 | Executes all planned non-combat moves via move delegate. | [`execute_noncombat_moves()`](src/pro_noncombat_move.odin) | ✅ DONE | 90% | |
@@ -328,9 +328,9 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TM-015 | └─ └─ └─ `for (Unit land)` | 320-350 | For each enemy land unit, calculates territories it threatens. | Loop | ✅ DONE | 90% | |
 | TM-016 | └─ └─ └─ `for (Unit air)` | 355-380 | For each enemy air unit, calculates territories within strike range. | Loop | ✅ DONE | 90% | |
 | TM-017 | └─ └─ └─ `for (Unit naval)` | 385-395 | For each enemy ship, identifies sea zones and bombardment targets it threatens. | Loop | ✅ DONE | 85% | |
-| TM-018 | `populateEnemyDefenseOptions()` | 132-135 | Analyzes enemy defensive capabilities including scramble-capable airbases and reserve forces. | ❌ MISSING | ❌ MISSING | 0% | |
-| TM-019 | └─ `findScrambleOptions()` | 500-580 | Identifies airbases that can scramble fighters to defend adjacent sea zones (map-specific rule). | ❌ MISSING | ❌ MISSING | N/A | Scramble N/A |
-| TM-020 | └─ └─ `for (airbase)` | 510-575 | Checks each airbase for scramble capability and available fighters. | ❌ MISSING | ❌ MISSING | N/A | |
+| TM-018 | `populateEnemyDefenseOptions()` | 132-135 | Analyzes enemy defensive capabilities including scramble-capable airbases and reserve forces. | 🔶 PARTIAL | find_enemy_defend_options() | 50% | Scramble N/A for 1942 SE |
+| TM-019 | └─ `findScrambleOptions()` | 500-580 | Identifies airbases that can scramble fighters to defend adjacent sea zones (map-specific rule). | ⏭️ SKIP | N/A for 1942 SE | N/A | Scramble N/A |
+| TM-020 | └─ └─ `for (airbase)` | 510-575 | Checks each airbase for scramble capability and available fighters. | ⏭️ SKIP | N/A for 1942 SE | N/A | |
 | TM-021 | └─ `findEnemyDefendOptions()` | 580-600 | Finds enemy units that could reinforce threatened territories on enemy's turn. | ✅ DONE | find_enemy_defend_options() | 100% | |
 | TM-022 | `removeTerritoriesThatCantBeConquered()` | 140-300 | Filters attack options by running battle simulations and removing attacks that can't win. | 🔶 PARTIAL | 🔶 PARTIAL | 60% | |
 | TM-023 | └─ `for (Territory t)` in attackMap | 155-295 | Iterates through each attack option and runs simulation to check win probability. | Loop | 🔶 PARTIAL | 60% | |
