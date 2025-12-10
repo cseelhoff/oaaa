@@ -410,6 +410,13 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | MATCH-002 | `territoryHasLandNeighbors()` | N/A | Checks if territory has adjacent land territories. | `has_land_neighbors()` | ✅ DONE | 95% | Map geometry helper |
 | MATCH-003 | `getLandNeighborCount()` | N/A | Returns count of adjacent land territories. | `get_land_neighbor_count()` | ✅ DONE | 95% | Connectivity metric |
 | MATCH-004 | `getSeaNeighborCount()` | N/A | Returns count of adjacent sea zones. | `get_sea_neighbor_count()` | ✅ DONE | 95% | Coastal access metric |
+| MATCH-005 | Player relationship: enemies | N/A | Checks if two players are on opposing teams. | `are_enemies()` | ✅ DONE | 95% | Team comparison |
+| MATCH-006 | Player relationship: allies | N/A | Checks if two players are on same team. | `are_allies()` | ✅ DONE | 95% | Team comparison |
+| MATCH-007 | `isEnemyOfCurrent()` | N/A | Checks if player is enemy of current player. | `is_enemy_of_current()` | ✅ DONE | 95% | Loop helper |
+| MATCH-008 | `isAllyOfCurrent()` | N/A | Checks if player is allied with current player. | `is_ally_of_current()` | ✅ DONE | 95% | Loop helper |
+| MATCH-009 | Territory ownership: self | N/A | Checks if territory owned by current player. | `is_owned_by_current()` | ✅ DONE | 95% | Ownership check |
+| MATCH-010 | Territory ownership: ally | N/A | Checks if territory owned by ally (not self). | `is_owned_by_ally()` | ✅ DONE | 95% | Reinforcement targets |
+| MATCH-011 | Territory ownership: friendly | N/A | Checks if territory owned by self or ally. | `is_friendly_territory()` | ✅ DONE | 95% | Movement validation |
 
 ---
 

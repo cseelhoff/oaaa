@@ -92,3 +92,50 @@ get_sea_neighbor_count :: proc(land: Land_ID) -> int {
 	return sa.len(mm.l2s_1away_via_land[land])
 }
 
+// ===== Player Relationship Predicates =====
+// These predicates determine relationships between players.
+
+// MATCH-005: are_enemies checks if two players are on opposing teams.
+// Uses the team lookup table from map data.
+are_enemies :: proc(player1: Player_ID, player2: Player_ID) -> bool {
+	return mm.team[player1] != mm.team[player2]
+}
+
+// MATCH-006: are_allies checks if two players are on the same team (including self).
+// Note: A player is allied with themselves.
+are_allies :: proc(player1: Player_ID, player2: Player_ID) -> bool {
+	return mm.team[player1] == mm.team[player2]
+}
+
+// MATCH-007: is_enemy_of_current checks if a player is an enemy of the current player.
+// Convenience wrapper for use in iteration loops.
+is_enemy_of_current :: proc(gc: ^Game_Cache, player: Player_ID) -> bool {
+	return mm.team[player] != mm.team[gc.cur_player]
+}
+
+// MATCH-008: is_ally_of_current checks if a player is allied with the current player.
+// Includes the current player themselves.
+is_ally_of_current :: proc(gc: ^Game_Cache, player: Player_ID) -> bool {
+	return mm.team[player] == mm.team[gc.cur_player]
+}
+
+// ===== Territory Ownership Predicates =====
+// These predicates check territory ownership status.
+
+// MATCH-009: is_owned_by_current checks if territory is owned by current player.
+is_owned_by_current :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	return gc.owner[land] == gc.cur_player
+}
+
+// MATCH-010: is_owned_by_ally checks if territory is owned by an allied player (not self).
+// Useful for identifying friendly reinforcement opportunities.
+is_owned_by_ally :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	owner := gc.owner[land]
+	return owner != gc.cur_player && mm.team[owner] == mm.team[gc.cur_player]
+}
+
+// MATCH-011: is_friendly_territory checks if territory is owned by current player or ally.
+is_friendly_territory :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	return mm.team[gc.owner[land]] == mm.team[gc.cur_player]
+}
+
