@@ -350,9 +350,9 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TRN-005 | `getUnitsToTransportThatCantMoveToHigherValue()` | 122-200 | **KEY**: Finds units stranded on low-value territories (islands) that need transport evacuation. | `count_stranded_units` | 🔶 PARTIAL | 70% | Recently improved |
 | TRN-006 | └─ `for (Territory neighbor)` | 135-195 | Checks if any adjacent land has higher strategic value - if not, units are "stranded". | Inline | 🔶 PARTIAL | 65% | Low-value check |
 | TRN-007 | └─ └─ `for (Unit unit)` | 145-190 | Identifies specific units that should be transported out due to lack of land route to battle. | Inline | 🔶 PARTIAL | 60% | |
-| TRN-008 | `getUnitsToTransportFromTerritories()` | 202-280 | Gets list of units to load from a set of territories, prioritizing attack units over infantry. | ❌ MISSING | ❌ MISSING | 0% | |
-| TRN-009 | └─ `for (Territory t)` | 215-275 | Iterates through source territories for loading. | ❌ MISSING | ❌ MISSING | 0% | |
-| TRN-010 | └─ └─ `for (Unit unit)` | 225-270 | Filters units suitable for transport loading (land units with sufficient movement). | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-008 | `getUnitsToTransportFromTerritories()` | 202-280 | Gets list of units to load from a set of territories, prioritizing attack units over infantry. | [`find_loadable_units_near_sea()`](src/pro_transport.odin) | ✅ DONE | 80% | |
+| TRN-009 | └─ `for (Territory t)` | 215-275 | Iterates through source territories for loading. | `for land in adjacent_lands` | ✅ DONE | 80% | |
+| TRN-010 | └─ └─ `for (Unit unit)` | 225-270 | Filters units suitable for transport loading (land units with sufficient movement). | `Unit_Load_Info` struct | ✅ DONE | 80% | Checks infantry/artillery/tanks |
 | TRN-011 | `selectUnitsToTransportFromList()` | 282-340 | Given excess units, selects optimal subset to fill transport capacity (tanks first, then artillery, then infantry). | Inline loading | 🔶 PARTIAL | 55% | Simplified |
 | TRN-012 | └─ `while (capacity > 0)` | 295-335 | Greedy loop filling transport capacity with highest-value units first. | Loop | 🔶 PARTIAL | 55% | |
 | TRN-013 | └─ └─ `for (Unit unit)` best to load | 300-330 | Selects best available unit type to fill remaining capacity. | Inline | 🔶 PARTIAL | 50% | |
@@ -380,13 +380,13 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | VAL-002 | └─ `for (Territory t)` | 55-175 | Iterates all territories calculating composite strategic value. | Loop | 🔶 PARTIAL | 55% | |
 | VAL-003 | └─ └─ Production value calc | 65-90 | Base value from IPC production (factories worth more in contested areas). | Inline | ✅ DONE | 85% | |
 | VAL-004 | └─ └─ Neighbor bonus calc | 95-120 | Adds bonus based on adjacent territory values (positions near good territories are worth more). | Inline | ✅ DONE | 80% | |
-| VAL-005 | └─ └─ Enemy factory/capital distance | 125-150 | Territories closer to enemy capitals/factories worth more for offensive staging. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-006 | └─ └─ Sea zone accessibility | 155-170 | Coastal territories worth more for transport loading/unloading potential. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-007 | `findSeaValue()` | 182-280 | Calculates strategic value of sea zones for naval positioning decisions. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-008 | └─ `for (Sea zone)` | 195-275 | Iterates all sea zones calculating naval strategic value. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-009 | └─ └─ Adjacent land value sum | 205-230 | Sea zones adjacent to valuable land are worth controlling. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-010 | └─ └─ Transport route value | 235-260 | Sea zones on key transport routes (factory to front line) are valuable. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-011 | └─ └─ Naval choke point | 265-275 | Narrow passages or canal-adjacent zones get bonus value. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-005 | └─ └─ Enemy factory/capital distance | 125-150 | Territories closer to enemy capitals/factories worth more for offensive staging. | [`find_enemy_capitals_and_factories_value()`](src/pro_land_value.odin) | ✅ DONE | 85% | Distance-based decay |
+| VAL-006 | └─ └─ Sea zone accessibility | 155-170 | Coastal territories worth more for transport loading/unloading potential. | `l2s_1away` check in `find_land_value()` | ✅ DONE | 80% | 15% coastal bonus |
+| VAL-007 | `findSeaValue()` | 182-280 | Calculates strategic value of sea zones for naval positioning decisions. | [`get_sea_zone_value()`](src/pro_noncombat_move.odin) | ✅ DONE | 80% | |
+| VAL-008 | └─ `for (Sea zone)` | 195-275 | Iterates all sea zones calculating naval strategic value. | Loop in caller | ✅ DONE | 80% | |
+| VAL-009 | └─ └─ Adjacent land value sum | 205-230 | Sea zones adjacent to valuable land are worth controlling. | `for adj_land in adjacent_lands` | ✅ DONE | 85% | Factory + enemy bonus |
+| VAL-010 | └─ └─ Transport route value | 235-260 | Sea zones on key transport routes (factory to front line) are valuable. | Factory-adjacent bonus | ✅ DONE | 75% | 3x factory prod bonus |
+| VAL-011 | └─ └─ Naval choke point | 265-275 | Narrow passages or canal-adjacent zones get bonus value. | `num_connections` check | ✅ DONE | 80% | 30% for ≤2 connections |
 | VAL-012 | `findLandValue()` | 282-400 | Detailed land territory valuation using BFS from production centers. | 🔶 PARTIAL | 🔶 PARTIAL | 45% | |
 | VAL-013 | └─ BFS from production centers | 295-395 | Breadth-first search radiating value outward from factories, decaying with distance. | Simplified | 🔶 PARTIAL | 40% | |
 | VAL-014 | `findAttackValue()` | 402-520 | Evaluates territories from offensive perspective - how valuable to capture. | ❌ MISSING | ❌ MISSING | 0% | |

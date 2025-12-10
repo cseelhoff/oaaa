@@ -213,6 +213,12 @@ find_land_value :: proc(
 	if gc.factory_prod[t] > 0 {
 		value *= 1.1 // prefer territories with factories
 	}
+	
+	// VAL-006: Sea zone accessibility bonus
+	// Coastal territories are worth more for transport loading/unloading
+	if sa.len(mm.l2s_1away_via_land[t]) > 0 {
+		value *= 1.15 // 15% bonus for coastal territories
+	}
 
 	return value
 }

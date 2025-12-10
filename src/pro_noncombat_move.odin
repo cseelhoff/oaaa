@@ -2356,18 +2356,56 @@ check_transport_defense_with_fighter :: proc(gc: ^Game_Cache, pro_data: ^Pro_Dat
 }
 
 // NCM-047 Helper: Get sea zone strategic value
+// VAL-007 to VAL-011: Implements findSeaValue() from Java ProTerritoryValueUtils
 get_sea_zone_value :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, sea: Sea_ID) -> f64 {
-	// Value based on:
-	// 1. Adjacent land territory value
-	// 2. Transport staging value
-	// 3. Naval chokepoint value
+	/*
+	Sea zone value calculation based on Java findSeaValue():
+	VAL-007: Main entry
+	VAL-008: Loop through sea zones
+	VAL-009: Adjacent land value sum
+	VAL-010: Transport route value
+	VAL-011: Naval choke point bonus
+	*/
 	
 	value: f64 = 0.0
 	
-	// Add value from adjacent land territories
-	for adj_land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
-		value += f64(mm.value[adj_land])
+	// VAL-009: Add value from adjacent land territories
+	adjacent_lands := sa.slice(&mm.s2l_1away_via_sea[sea])
+	for adj_land in adjacent_lands {
+		land_value := f64(mm.value[adj_land])
+		
+		// Bonus for adjacent enemy territories (offensive value)
+		if mm.team[gc.owner[adj_land]] != mm.team[gc.cur_player] {
+			land_value *= 1.5  // Enemy territory is worth more
+		}
+		
+		// Bonus for adjacent factories
+		if gc.factory_prod[adj_land] > 0 {
+			land_value += f64(gc.factory_prod[adj_land]) * 2.0
+		}
+		
+		value += land_value
 	}
+	
+	// VAL-010: Transport route value - bonus for being near friendly factories
+	// Sea zones adjacent to factory territories are valuable for loading units
+	for adj_land in adjacent_lands {
+		if gc.owner[adj_land] == gc.cur_player && gc.factory_prod[adj_land] > 0 {
+			value += f64(gc.factory_prod[adj_land]) * 3.0  // Strong bonus for factory-adjacent
+		}
+	}
+	
+	// VAL-011: Naval choke point bonus
+	// Narrow passages (fewer connections) are more strategically valuable
+	num_connections := card(mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea])
+	if num_connections <= 2 {
+		value *= 1.3  // 30% bonus for narrow passages
+	} else if num_connections <= 3 {
+		value *= 1.15  // 15% bonus for moderately restricted zones
+	}
+	
+	// Bonus for canal-adjacent zones (strategic importance)
+	// TODO: Check if this sea is adjacent to a canal
 	
 	return value
 }
