@@ -2868,6 +2868,63 @@ purchase_sea_and_amphib_units_triplea :: proc(
 		}
 		debug_checks(gc)
 
+		// #region PUR-060: Phase 1.5 - Naval Superiority purchasing
+		// After initial defense, purchase ships until we have local naval superiority
+		// This uses the territory_has_local_naval_superiority() function which considers:
+		// - Enemy air from adjacent land territories
+		// - Enemy naval from nearby sea zones
+		// - Allied naval strength within range
+		superiority_loop: for gc.money[gc.cur_player] >= 6 && gc.builds_left[factory_loc] > 0 {
+			// Check if we already have naval superiority
+			if territory_has_local_naval_superiority(gc, sea_id, gc.cur_player) {
+				when ODIN_DEBUG {
+					fmt.println("  [NAVAL SUP] Sea", sea_id, "already has naval superiority")
+				}
+				break
+			}
+			
+			// Calculate unused carrier capacity for fighter efficiency
+			unused_carrier_cap := int(gc.idle_ships[sea_id][gc.cur_player][.CARRIER]) * 2 - 
+			                      int(gc.idle_sea_planes[sea_id][gc.cur_player][.FIGHTER])
+			
+			// Select best ship to buy for achieving naval superiority
+			// Use defense efficiency since we want to defend against enemy attack
+			best_unit: Maybe(Idle_Ship) = nil
+			best_efficiency := f64(0)
+			
+			ships_to_consider := [?]Idle_Ship{.DESTROYER, .CRUISER, .SUB, .CARRIER, .BATTLESHIP}
+			for ship in ships_to_consider {
+				cost := COST_IDLE_SHIP[ship]
+				if gc.money[gc.cur_player] < cost do continue
+				
+				efficiency := get_sea_defense_efficiency(ship, need_destroyer, unused_carrier_cap)
+				if efficiency > best_efficiency {
+					best_efficiency = efficiency
+					best_unit = ship
+				}
+			}
+			
+			if best_unit == nil do break
+			ship := best_unit.?
+			cost := COST_IDLE_SHIP[ship]
+			
+			// Buy the unit
+			gc.money[gc.cur_player] -= cost
+			gc.builds_left[factory_loc] -= 1
+			add_naval_units_to_place_triplea(factory_loc, ship, 1)
+			bought_units = true
+			
+			if ship == .DESTROYER {
+				need_destroyer = false
+			}
+			
+			when ODIN_DEBUG {
+				fmt.println("  [NAVAL SUP] Bought", ship, "for sea", sea_id, "towards superiority")
+			}
+		}
+		// #endregion PUR-060
+		debug_checks(gc)
+
 		// Phase 2: Purchase transports if strategic value is high
 		// CHANGED: Buy transports even if we can't perfectly defend the sea zone
 		// Having transports enables attacks; losing them is worth the strategic value
