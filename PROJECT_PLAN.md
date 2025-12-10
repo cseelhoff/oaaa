@@ -420,6 +420,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | MATCH-012 | `getAdjacentLandCount(sea)` | N/A | Returns count of land territories touching a sea zone. | `get_adjacent_land_count()` | ✅ DONE | 95% | Transport value |
 | MATCH-013 | `getAdjacentSeaCount(sea)` | N/A | Returns count of sea zones connected to this one. | `get_adjacent_sea_count()` | ✅ DONE | 95% | Naval mobility |
 | MATCH-014 | `isCanalSea(sea)` | N/A | Checks if sea zone's connectivity depends on canal status. | `is_canal_sea()` | ✅ DONE | 95% | Chokepoint detection |
+| MATCH-015 | `isEnemyTerritory()` | N/A | Checks if territory is owned by enemy player. | `is_enemy_territory()` | ✅ DONE | 95% | Attack targets |
 
 ---
 

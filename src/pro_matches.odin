@@ -139,6 +139,12 @@ is_friendly_territory :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 	return mm.team[gc.owner[land]] == mm.team[gc.cur_player]
 }
 
+// MATCH-015: is_enemy_territory checks if territory is owned by an enemy player.
+// Complement to is_friendly_territory for attack target identification.
+is_enemy_territory :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	return mm.team[gc.owner[land]] != mm.team[gc.cur_player]
+}
+
 // ===== Sea Zone Geometry Predicates =====
 // These predicates analyze sea zone connectivity.
 
