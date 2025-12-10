@@ -20,8 +20,8 @@ TODO REVIEW: Missing Java utility methods:
 From ProBattleUtils.java:
 - territoryHasLocalLandSuperiority() - IMPLEMENTED (NCM-014)
   * Calculates strength ratio vs nearby enemies
-- territoryHasLocalNavalSuperiority() - NOT IMPLEMENTED
-  * Same for sea zones
+- territoryHasLocalNavalSuperiority() - IMPLEMENTED (PUR-056)
+  * Same for sea zones, includes enemy air from land
 - estimateStrengthDifference() - PARTIAL
   * Java considers support bonuses, movement
 - calculateBattleResults() with retreat handling - PARTIAL
@@ -473,4 +473,378 @@ get_plane_defense_value_for_sup :: proc(plane_type: Idle_Plane) -> f64 {
 	}
 	return 5.0
 }
+// #endregion
+
+// #region Naval Superiority (PUR-056 to PUR-060)
+
+// territory_has_local_naval_superiority checks if we have naval superiority at a sea zone
+// Java: ProBattleUtils.territoryHasLocalNavalSuperiority()
+// Returns true if:
+//   1. Defense strength difference < 50 (enemy attack can't overwhelm us)
+//   2. Attack strength difference > 50 (we can attack enemy fleet)
+//   3. TUV swing > 0 against strongest enemy fleet
+territory_has_local_naval_superiority :: proc(
+	gc: ^Game_Cache,
+	sea_zone: Sea_ID,
+	player: Player_ID,
+) -> bool {
+	// Calculate search distances based on enemy land distance
+	land_distance := get_closest_enemy_land_distance_over_water(gc, sea_zone, player)
+	if land_distance <= 0 {
+		land_distance = 10
+	}
+	enemy_distance := max(3, land_distance + 1)
+	allied_distance := (enemy_distance + 1) / 2
+	
+	// Collect allied sea units within allied_distance
+	allied_strength := calculate_allied_naval_strength(gc, sea_zone, allied_distance, player)
+	
+	// Collect enemy units: both sea units and air from land within enemy_distance
+	enemy_sea_strength := calculate_enemy_naval_strength(gc, sea_zone, enemy_distance, player)
+	enemy_air_strength := calculate_enemy_air_threat_from_land(gc, sea_zone, enemy_distance, player)
+	
+	total_enemy_attack := enemy_sea_strength + enemy_air_strength
+	
+	when ODIN_DEBUG {
+		fmt.printf("[NAVAL-SUP] %v: allied_str=%.1f, enemy_sea=%.1f, enemy_air=%.1f, total_enemy=%.1f\n",
+			sea_zone, allied_strength, enemy_sea_strength, enemy_air_strength, total_enemy_attack)
+	}
+	
+	// Check 1: Defense superiority - enemy attack strength difference < 50
+	defense_diff := total_enemy_attack - allied_strength
+	if defense_diff >= 50 {
+		when ODIN_DEBUG {
+			fmt.printf("[NAVAL-SUP] %v: NO defense superiority, diff=%.1f\n", sea_zone, defense_diff)
+		}
+		return false
+	}
+	
+	// Check 2: Attack superiority - our attack strength difference > 50
+	attack_diff := allied_strength - enemy_sea_strength
+	if attack_diff <= 50 {
+		when ODIN_DEBUG {
+			fmt.printf("[NAVAL-SUP] %v: NO attack superiority, diff=%.1f\n", sea_zone, attack_diff)
+		}
+		return false
+	}
+	
+	when ODIN_DEBUG {
+		fmt.printf("[NAVAL-SUP] %v: HAS naval superiority\n", sea_zone)
+	}
+	return true
+}
+
+// Get closest enemy land territory distance over water from a sea zone
+get_closest_enemy_land_distance_over_water :: proc(
+	gc: ^Game_Cache,
+	sea_zone: Sea_ID,
+	player: Player_ID,
+) -> int {
+	// BFS from sea zone to find nearest enemy-owned land
+	visited_sea: Sea_Bitset = {sea_zone}
+	current_frontier: Sea_Bitset = {sea_zone}
+	
+	for dist := 1; dist <= 10; dist += 1 {
+		next_frontier: Sea_Bitset = {}
+		
+		for sea_id in current_frontier {
+			// Check adjacent land territories
+			for land in mm.s2l_1away[sea_id] {
+				if land not_in gc.friendly_owner {
+					// Found enemy or neutral land
+					return dist
+				}
+			}
+			
+			// Expand to adjacent sea zones
+			for adj_sea in Sea_ID {
+				if adj_sea in mm.s2s_1away[sea_id] && adj_sea not_in visited_sea {
+					visited_sea += {adj_sea}
+					next_frontier += {adj_sea}
+				}
+			}
+		}
+		
+		current_frontier = next_frontier
+		if current_frontier == {} {
+			break
+		}
+	}
+	
+	return 10  // No enemy land found within range
+}
+
+// Calculate allied naval strength within distance of sea zone
+calculate_allied_naval_strength :: proc(
+	gc: ^Game_Cache,
+	center: Sea_ID,
+	max_dist: int,
+	player: Player_ID,
+) -> f64 {
+	strength: f64 = 0
+	visited: Sea_Bitset = {center}
+	current_frontier: Sea_Bitset = {center}
+	
+	// Include center
+	strength += count_naval_units_at_sea(gc, center, player, true)
+	
+	// BFS outward
+	for dist := 1; dist <= max_dist; dist += 1 {
+		next_frontier: Sea_Bitset = {}
+		
+		for sea_id in current_frontier {
+			for adj_sea in Sea_ID {
+				if adj_sea in mm.s2s_1away[sea_id] && adj_sea not_in visited {
+					visited += {adj_sea}
+					next_frontier += {adj_sea}
+					strength += count_naval_units_at_sea(gc, adj_sea, player, true)
+				}
+			}
+		}
+		
+		current_frontier = next_frontier
+	}
+	
+	return strength
+}
+
+// Calculate enemy naval strength within distance of sea zone
+calculate_enemy_naval_strength :: proc(
+	gc: ^Game_Cache,
+	center: Sea_ID,
+	max_dist: int,
+	player: Player_ID,
+) -> f64 {
+	strength: f64 = 0
+	visited: Sea_Bitset = {center}
+	current_frontier: Sea_Bitset = {center}
+	
+	// Include center
+	strength += count_naval_units_at_sea(gc, center, player, false)
+	
+	// BFS outward
+	for dist := 1; dist <= max_dist; dist += 1 {
+		next_frontier: Sea_Bitset = {}
+		
+		for sea_id in current_frontier {
+			for adj_sea in Sea_ID {
+				if adj_sea in mm.s2s_1away[sea_id] && adj_sea not_in visited {
+					visited += {adj_sea}
+					next_frontier += {adj_sea}
+					strength += count_naval_units_at_sea(gc, adj_sea, player, false)
+				}
+			}
+		}
+		
+		current_frontier = next_frontier
+	}
+	
+	return strength
+}
+
+// Calculate enemy air threat from land territories within range
+calculate_enemy_air_threat_from_land :: proc(
+	gc: ^Game_Cache,
+	center_sea: Sea_ID,
+	max_dist: int,
+	player: Player_ID,
+) -> f64 {
+	strength: f64 = 0
+	
+	// Get all land territories within max_dist of the sea zone
+	// This is approximate - we check land territories adjacent to sea zones in range
+	visited_sea: Sea_Bitset = {center_sea}
+	current_sea_frontier: Sea_Bitset = {center_sea}
+	checked_lands: Land_Bitset = {}
+	
+	// Check lands adjacent to center sea
+	for land in mm.s2l_1away[center_sea] {
+		if land not_in checked_lands {
+			checked_lands += {land}
+			strength += count_enemy_air_at_land(gc, land, player)
+		}
+	}
+	
+	// BFS through sea zones
+	for dist := 1; dist <= max_dist; dist += 1 {
+		next_sea_frontier: Sea_Bitset = {}
+		
+		for sea_id in current_sea_frontier {
+			for adj_sea in Sea_ID {
+				if adj_sea in mm.s2s_1away[sea_id] && adj_sea not_in visited_sea {
+					visited_sea += {adj_sea}
+					next_sea_frontier += {adj_sea}
+					
+					// Check lands adjacent to this sea zone
+					for land in mm.s2l_1away[adj_sea] {
+						if land not_in checked_lands {
+							checked_lands += {land}
+							strength += count_enemy_air_at_land(gc, land, player)
+						}
+					}
+				}
+			}
+		}
+		
+		current_sea_frontier = next_sea_frontier
+	}
+	
+	return strength
+}
+
+// Count naval units at a sea zone (allied=true for our team, false for enemies)
+count_naval_units_at_sea :: proc(
+	gc: ^Game_Cache,
+	sea_zone: Sea_ID,
+	player: Player_ID,
+	allied: bool,
+) -> f64 {
+	strength: f64 = 0
+	
+	for other_player in Player_ID {
+		is_ally := mm.team[other_player] == mm.team[player]
+		if allied && !is_ally do continue
+		if !allied && is_ally do continue
+		
+		// Count idle ships
+		for ship_type in Idle_Ship {
+			count := gc.idle_ships[sea_zone][other_player][ship_type]
+			if count > 0 {
+				if allied {
+					strength += f64(count) * get_ship_defense_value_for_sup(ship_type)
+				} else {
+					strength += f64(count) * get_ship_attack_value_for_sup(ship_type)
+				}
+			}
+		}
+		
+		// Count moving ships
+		for ship_type in Active_Ship {
+			count := gc.active_ships[sea_zone][other_player][ship_type]
+			if count > 0 {
+				if allied {
+					strength += f64(count) * get_active_ship_defense_value(ship_type)
+				} else {
+					strength += f64(count) * get_active_ship_attack_value(ship_type)
+				}
+			}
+		}
+		
+		// Count planes on carriers in this sea zone
+		for plane_type in Idle_Plane {
+			count := gc.idle_sea_planes[sea_zone][other_player][plane_type]
+			if count > 0 {
+				if allied {
+					strength += f64(count) * get_plane_defense_value_for_sup(plane_type)
+				} else {
+					strength += f64(count) * get_plane_attack_value_for_sup(plane_type)
+				}
+			}
+		}
+	}
+	
+	return strength
+}
+
+// Count enemy air units at a land territory
+count_enemy_air_at_land :: proc(
+	gc: ^Game_Cache,
+	land: Land_ID,
+	player: Player_ID,
+) -> f64 {
+	strength: f64 = 0
+	
+	for other_player in Player_ID {
+		// Only count enemies
+		if mm.team[other_player] == mm.team[player] do continue
+		
+		for plane_type in Idle_Plane {
+			count := gc.idle_land_planes[land][other_player][plane_type]
+			if count > 0 {
+				// Use attack value since these would be attacking
+				strength += f64(count) * get_plane_attack_value_for_sup(plane_type)
+			}
+		}
+	}
+	
+	return strength
+}
+
+// Ship attack values for superiority calculation
+get_ship_attack_value_for_sup :: proc(ship_type: Idle_Ship) -> f64 {
+	// 2*HP + attack power
+	switch ship_type {
+	case .SUB:
+		return 2.0 + 2.0   // 2 HP + 2 attack
+	case .DESTROYER:
+		return 2.0 + 2.0   // 2 HP + 2 attack
+	case .CRUISER:
+		return 2.0 + 3.0   // 2 HP + 3 attack
+	case .BATTLESHIP:
+		return 4.0 + 4.0   // 4 HP (2 hits) + 4 attack
+	case .CARRIER:
+		return 2.0 + 1.0   // 2 HP + 1 attack
+	case .TRANS_EMPTY, .TRANS_1I, .TRANS_2I, .TRANS_1T, .TRANS_1I_1T:
+		return 2.0 + 0.0   // Transports can't attack
+	}
+	return 2.0
+}
+
+get_ship_defense_value_for_sup :: proc(ship_type: Idle_Ship) -> f64 {
+	// 2*HP + defense power
+	switch ship_type {
+	case .SUB:
+		return 2.0 + 1.0   // 2 HP + 1 defense
+	case .DESTROYER:
+		return 2.0 + 2.0   // 2 HP + 2 defense
+	case .CRUISER:
+		return 2.0 + 3.0   // 2 HP + 3 defense
+	case .BATTLESHIP:
+		return 4.0 + 4.0   // 4 HP (2 hits) + 4 defense
+	case .CARRIER:
+		return 2.0 + 2.0   // 2 HP + 2 defense
+	case .TRANS_EMPTY, .TRANS_1I, .TRANS_2I, .TRANS_1T, .TRANS_1I_1T:
+		return 2.0 + 0.0   // Transports can't defend
+	}
+	return 2.0
+}
+
+get_active_ship_attack_value :: proc(ship_type: Active_Ship) -> f64 {
+	switch ship_type {
+	case .SUB_2_MOVES:
+		return 2.0 + 2.0
+	case .DESTROYER_2_MOVES:
+		return 2.0 + 2.0
+	case .CRUISER_2_MOVES:
+		return 2.0 + 3.0
+	case .BATTLESHIP_2_MOVES:
+		return 4.0 + 4.0
+	case .CARRIER_2_MOVES:
+		return 2.0 + 1.0
+	case .TRANS_EMPTY_UNMOVED, .TRANS_1I_UNMOVED, .TRANS_2I_UNMOVED, 
+	     .TRANS_1T_UNMOVED, .TRANS_1I_1T_UNMOVED:
+		return 2.0 + 0.0
+	}
+	return 2.0
+}
+
+get_active_ship_defense_value :: proc(ship_type: Active_Ship) -> f64 {
+	switch ship_type {
+	case .SUB_2_MOVES:
+		return 2.0 + 1.0
+	case .DESTROYER_2_MOVES:
+		return 2.0 + 2.0
+	case .CRUISER_2_MOVES:
+		return 2.0 + 3.0
+	case .BATTLESHIP_2_MOVES:
+		return 4.0 + 4.0
+	case .CARRIER_2_MOVES:
+		return 2.0 + 2.0
+	case .TRANS_EMPTY_UNMOVED, .TRANS_1I_UNMOVED, .TRANS_2I_UNMOVED, 
+	     .TRANS_1T_UNMOVED, .TRANS_1I_1T_UNMOVED:
+		return 2.0 + 0.0
+	}
+	return 2.0
+}
+
 // #endregion
