@@ -376,18 +376,18 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 
 | ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
 |----|------------------|-------|-------------|-----------------|--------|-------|-------|
-| VAL-001 | `findTerritoryValues()` | 40-180 | Main entry for strategic territory valuation. Combines production, position, and accessibility into single value score. | [`get_pro_value()`](src/pro_land_value.odin) | 🔶 PARTIAL | 55% | |
-| VAL-002 | └─ `for (Territory t)` | 55-175 | Iterates all territories calculating composite strategic value. | Loop | 🔶 PARTIAL | 55% | |
+| VAL-001 | `findTerritoryValues()` | 40-180 | Main entry for strategic territory valuation. Combines production, position, and accessibility into single value score. | [`find_territory_values()`](src/pro_land_value.odin) | ✅ DONE | 90% | Full entry with land+sea |
+| VAL-002 | └─ `for (Territory t)` | 55-175 | Iterates all territories calculating composite strategic value. | Loop in `find_territory_values()` | ✅ DONE | 90% | Iterates land then sea |
 | VAL-003 | └─ └─ Production value calc | 65-90 | Base value from IPC production (factories worth more in contested areas). | Inline | ✅ DONE | 85% | |
 | VAL-004 | └─ └─ Neighbor bonus calc | 95-120 | Adds bonus based on adjacent territory values (positions near good territories are worth more). | Inline | ✅ DONE | 80% | |
 | VAL-005 | └─ └─ Enemy factory/capital distance | 125-150 | Territories closer to enemy capitals/factories worth more for offensive staging. | [`find_enemy_capitals_and_factories_value()`](src/pro_land_value.odin) | ✅ DONE | 85% | Distance-based decay |
 | VAL-006 | └─ └─ Sea zone accessibility | 155-170 | Coastal territories worth more for transport loading/unloading potential. | `l2s_1away` check in `find_land_value()` | ✅ DONE | 80% | 15% coastal bonus |
-| VAL-007 | `findSeaValue()` | 182-280 | Calculates strategic value of sea zones for naval positioning decisions. | [`get_sea_zone_value()`](src/pro_noncombat_move.odin) | ✅ DONE | 80% | |
-| VAL-008 | └─ `for (Sea zone)` | 195-275 | Iterates all sea zones calculating naval strategic value. | Loop in caller | ✅ DONE | 80% | |
-| VAL-009 | └─ └─ Adjacent land value sum | 205-230 | Sea zones adjacent to valuable land are worth controlling. | `for adj_land in adjacent_lands` | ✅ DONE | 85% | Factory + enemy bonus |
-| VAL-010 | └─ └─ Transport route value | 235-260 | Sea zones on key transport routes (factory to front line) are valuable. | Factory-adjacent bonus | ✅ DONE | 75% | 3x factory prod bonus |
-| VAL-011 | └─ └─ Naval choke point | 265-275 | Narrow passages or canal-adjacent zones get bonus value. | `num_connections` check | ✅ DONE | 80% | 30% for ≤2 connections |
-| VAL-012 | `findLandValue()` | 282-400 | Detailed land territory valuation using BFS from production centers. | 🔶 PARTIAL | 🔶 PARTIAL | 45% | |
+| VAL-007 | `findSeaValue()` | 182-280 | Calculates strategic value of sea zones for naval positioning decisions. | [`find_water_value()`](src/pro_land_value.odin) | ✅ DONE | 85% | Full sea zone valuation |
+| VAL-008 | └─ `for (Sea zone)` | 195-275 | Iterates all sea zones calculating naval strategic value. | Loop in `find_territory_values()` | ✅ DONE | 85% | Uses canal-aware routing |
+| VAL-009 | └─ └─ Adjacent land value sum | 205-230 | Sea zones adjacent to valuable land are worth controlling. | [`find_territory_attack_value()`](src/pro_land_value.odin) | ✅ DONE | 85% | Factory + enemy bonus |
+| VAL-010 | └─ └─ Transport route value | 235-260 | Sea zones on key transport routes (factory to front line) are valuable. | `get_sea_distance_to_land()` helper | ✅ DONE | 80% | Distance-based decay |
+| VAL-011 | └─ └─ Naval choke point | 265-275 | Narrow passages or canal-adjacent zones get bonus value. | `has_sea_neighbors()` check | ✅ DONE | 80% | Uses canal-aware bitsets |
+| VAL-012 | `findLandValue()` | 282-400 | Detailed land territory valuation using BFS from production centers. | [`find_land_value()`](src/pro_land_value.odin) | ✅ DONE | 85% | Full neutral handling |
 | VAL-013 | └─ BFS from production centers | 295-395 | Breadth-first search radiating value outward from factories, decaying with distance. | [`find_land_value()`](src/pro_land_value.odin) | ✅ DONE | 85% | Uses sorted decay |
 | VAL-014 | `findAttackValue()` | 402-520 | Evaluates territories from offensive perspective - how valuable to capture. | ✅ DONE | find_attack_value() in pro_land_value.odin | 100% | |
 | VAL-015 | └─ `for (Territory t)` | 415-515 | Iterates enemy territories calculating attack priority. | ✅ DONE | Part of find_attack_value() | 100% | |

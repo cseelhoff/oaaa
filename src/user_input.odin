@@ -130,7 +130,7 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		fmt.print(mm.color[gc.owner[land]])
 		fmt.print(land)
 		// print current owner name
-		fmt.print(" (Units: ", gc.owner[land], ")")
+		fmt.print(" (Owner: ", gc.owner[land], ")")
 		if land in gc.more_land_combat_needed do fmt.print(" more-combat")
 		if land in gc.land_combat_started do fmt.print(" combat-started")
 		if gc.builds_left[land] > 0 do fmt.print(" builds:", gc.builds_left[land])

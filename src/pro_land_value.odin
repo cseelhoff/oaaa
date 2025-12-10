@@ -78,6 +78,57 @@ get_pro_value :: #force_inline proc(gc: ^Game_Cache, territory: Land_ID) -> f64 
 	)
 }
 
+// =============================================================================
+// VAL-001/VAL-002: Main Entry Point - findTerritoryValues
+// =============================================================================
+// Maps to Java ProTerritoryValueUtils.findTerritoryValues()
+// Calculates values for all territories in the territories_to_check set
+
+find_territory_values :: proc(
+	gc: ^Game_Cache,
+	player: Player_ID,
+	territories_that_cant_be_held: Land_Bitset,
+	territories_to_attack: Land_Bitset,
+	land_territories_to_check: Land_Bitset,
+	sea_territories_to_check: Sea_Bitset,
+) -> (land_values: [Land_ID]f64, sea_values: [Sea_ID]f64) {
+	// Get enemy capitals and factories map first
+	enemy_capitals_and_factories_map := find_enemy_capitals_and_factories_value(
+		gc,
+		player,
+		territories_that_cant_be_held,
+		territories_to_attack,
+	)
+	defer delete(enemy_capitals_and_factories_map)
+
+	// Calculate land territory values first
+	for t in land_territories_to_check {
+		land_values[t] = find_land_value(
+			gc,
+			t,
+			player,
+			enemy_capitals_and_factories_map,
+			territories_that_cant_be_held,
+			territories_to_attack,
+		)
+	}
+
+	// Calculate sea territory values (depends on land values)
+	for s in sea_territories_to_check {
+		sea_values[s] = find_water_value(
+			gc,
+			s,
+			player,
+			enemy_capitals_and_factories_map,
+			territories_that_cant_be_held,
+			territories_to_attack,
+			land_values,
+		)
+	}
+
+	return land_values, sea_values
+}
+
 build_map_production_value :: proc(gc: ^Game_Cache) {
 	for land in Land_ID {
 		if gc.factory_prod[land] == 0 do continue
@@ -195,15 +246,26 @@ find_land_value :: proc(
 	for nearby_enemy_territory in nearby_enemy_territories {
 		distance := mm.land_distances[t][nearby_enemy_territory]
 		if distance > 0 {
-			value := f64(gc.factory_prod[nearby_enemy_territory])
-			if nearby_enemy_territory in gc.friendly_owner {
+			value: f64 = 0
+			
+			// VAL-012: Check if neutral land - use attack value calculation
+			if is_neutral_land(gc, nearby_enemy_territory) {
+				// Neutral territories use attack value / 3 (per Java)
+				value = find_territory_attack_value(gc, nearby_enemy_territory, player) / 3.0
+			} else if nearby_enemy_territory in gc.friendly_owner {
+				// Allied territory that can't be held
+				value = f64(gc.factory_prod[nearby_enemy_territory])
 				neighbors := mm.l2l_1away_via_land_bitset[nearby_enemy_territory]
 				enemy_neighbors := neighbors & ~gc.friendly_owner
 				if enemy_neighbors == {} {
 					value *= 0.1 // reduce value for can't hold amphib allied territories
 				}
+			} else {
+				// Enemy territory - use production value
+				value = f64(mm.value[nearby_enemy_territory])
 			}
-			if (value > 0) {
+			
+			if value > 0 {
 				nearby_enemy_value += (value / math.pow(2, f64(distance)))
 			}
 		}
@@ -236,6 +298,137 @@ find_nearby_enemy_capitals_and_factories :: proc(
 		}
 	}
 	return result
+}
+
+// =============================================================================
+// VAL-005/VAL-007/VAL-008: Sea Zone Value Calculation
+// =============================================================================
+// Maps to Java ProTerritoryValueUtils.findWaterValue()
+// Calculates value of sea zones based on nearby land and transport routes
+
+find_water_value :: proc(
+	gc: ^Game_Cache,
+	s: Sea_ID,
+	player: Player_ID,
+	enemy_capitals_and_factories_map: map[Land_ID]f64,
+	territories_that_cant_be_held: Land_Bitset,
+	territories_to_attack: Land_Bitset,
+	land_values: [Land_ID]f64,
+) -> f64 {
+	canal_state := transmute(u8)gc.canals_open
+	
+	if !has_sea_neighbors(gc, s) {
+		return 0.0
+	}
+	
+	// Find nearby enemy capitals/factories reachable by sea
+	capital_or_factory_value: f64 = 0
+	values: [dynamic]f64 = {}
+	defer delete(values)
+	
+	for enemy_capital_or_factory, factory_value in enemy_capitals_and_factories_map {
+		// Check if reachable via sea routes (simplified: use air distance as proxy)
+		sea_distance := get_sea_distance_to_land(gc, s, enemy_capital_or_factory)
+		if sea_distance > 0 && sea_distance <= 6 {
+			append(&values, factory_value / math.pow(2, f64(sea_distance)))
+		}
+	}
+	
+	// Sort and accumulate with decay
+	slice.reverse_sort(values[:])
+	for i in 0 ..< len(values) {
+		capital_or_factory_value += values[i] / math.pow(2.0, f64(i))
+	}
+	
+	// VAL-007: Determine value based on nearby land territories
+	nearby_land_value: f64 = 0
+	
+	// Check adjacent land territories (distance 1)
+	for land in sa.slice(&mm.s2l_1away_via_sea[s]) {
+		land_value := land_values[land]
+		
+		// Add production value for enemy territories
+		if land in (territories_that_cant_be_held | ~gc.friendly_owner) && land not_in territories_to_attack {
+			nearby_land_value += f64(mm.value[land])
+		}
+		
+		// Add propagated land value
+		nearby_land_value += land_value
+	}
+	
+	// VAL-008: Check nearby sea zones for transport routes (distance 2-3)
+	for adj_sea in mm.s2s_1away_via_sea[canal_state][s] {
+		for land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+			land_value := land_values[land]
+			nearby_land_value += land_value / 2.0  // Decay by distance
+		}
+	}
+	
+	return capital_or_factory_value / 100 + nearby_land_value / 10
+}
+
+// Helper: Check if sea zone has water neighbors
+has_sea_neighbors :: proc(gc: ^Game_Cache, s: Sea_ID) -> bool {
+	canal_state := transmute(u8)gc.canals_open
+	return card(mm.s2s_1away_via_sea[canal_state][s]) > 0
+}
+
+// Helper: Get approximate sea distance from sea zone to land territory
+get_sea_distance_to_land :: proc(gc: ^Game_Cache, s: Sea_ID, land: Land_ID) -> int {
+	canal_state := transmute(u8)gc.canals_open
+	
+	// Check if land is adjacent to this sea zone
+	for adj_land in sa.slice(&mm.s2l_1away_via_sea[s]) {
+		if adj_land == land {
+			return 1
+		}
+	}
+	
+	// Check distance 2 (through adjacent sea zones)
+	for adj_sea in mm.s2s_1away_via_sea[canal_state][s] {
+		for adj_land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+			if adj_land == land {
+				return 2
+			}
+		}
+	}
+	
+	// Check distance 3
+	for adj_sea in mm.s2s_1away_via_sea[canal_state][s] {
+		for adj_sea2 in mm.s2s_1away_via_sea[canal_state][adj_sea] {
+			for adj_land in sa.slice(&mm.s2l_1away_via_sea[adj_sea2]) {
+				if adj_land == land {
+					return 3
+				}
+			}
+		}
+	}
+	
+	return 0  // Not reachable in 3 moves
+}
+
+// =============================================================================
+// VAL-009: Territory Attack Value (Simple)
+// =============================================================================
+// Maps to Java ProTerritoryValueUtils.findTerritoryAttackValue()
+// Simplified version used for neutral territory evaluation
+
+find_territory_attack_value :: proc(gc: ^Game_Cache, t: Land_ID, player: Player_ID) -> f64 {
+	// Check if enemy factory
+	is_enemy_factory := gc.factory_prod[t] > 0 && mm.team[gc.owner[t]] != mm.team[player]
+	factory_multiplier := 1 + (1 if is_enemy_factory else 0)
+	
+	value := 3.0 * f64(mm.value[t]) * f64(factory_multiplier)
+	
+	// For neutral land, estimate TUV swing based on defender strength
+	if is_neutral_land(gc, t) {
+		strength := calculate_land_defense_strength(gc, t)
+		// Estimate TUV swing as number of casualties * min cost per hit point
+		tuv_swing := -(strength / 8.0) * f64(get_min_cost_per_hit_point())
+		value += tuv_swing
+	}
+	
+	return value
 }
 
 // =============================================================================
