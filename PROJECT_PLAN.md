@@ -16,13 +16,13 @@ This document provides a comprehensive project plan for completing the conversio
 
 ## Known Regressions
 
-| Commit | Date | Issue | Suspected Cause |
-|--------|------|-------|-----------------|
-| `3e00286` | 2025-12-10 | Germany loses capital to Russia before round 60 | Naval superiority purchase loop (PUR-060) may be over-spending on naval units, weakening land defense |
-| `04b71c2` | 2025-12-10 | (same session) | territory_has_local_naval_superiority() implementation (PUR-056 to PUR-059) |
-| (uncommitted) | 2025-12-10 | Russia loses to Germany by round 21 | CMB-041 to CMB-043 excess attackers redistribution - may be stripping too many units from attacks |
+| Commit | Date | Issue | Suspected Cause | Status |
+|--------|------|-------|-----------------|--------|
+| `3e00286` | 2025-12-10 | Germany loses capital to Russia before round 60 | Naval superiority purchase loop (PUR-060) may be over-spending on naval units, weakening land defense | ✅ FIXED |
+| `04b71c2` | 2025-12-10 | (same session) | territory_has_local_naval_superiority() implementation (PUR-056 to PUR-059) | ✅ FIXED |
+| (uncommitted) | 2025-12-10 | Russia loses to Germany by round 21 | CMB-041 to CMB-043 excess attackers redistribution - may be stripping too many units from attacks | ✅ FIXED |
 
-**Last known good commit**: `6c2e3ca` (NCM-014 Capital Defense Loop)
+**Last known good commit**: `1e25982` (NCM-066-069 AA gun movement) - AI stable 60+ rounds as of 2025-12-10
 
 ---
 
@@ -173,9 +173,9 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
 |----|------------------|-------|-------------|-----------------|--------|-------|-------|
 | CMB-001 | `doCombatMove()` main entry | 76-175 | Main combat move phase entry point. Orchestrates attack option generation, prioritization, territory selection, and move execution. | [`proai_combat_move_phase()`](src/pro_turn.odin) | ✅ DONE | 90% | |
-| CMB-002 | `determineTerritoriesThatCanBeBombed()` | 1780-1875 | Identifies enemy factories that can be strategically bombed. Calculates expected bombing damage vs risk of losing bombers. | 🔄 STUB | 🔄 STUB | 5% | |
-| CMB-003 | └─ `for (Unit bomber)` | 1790-1870 | For each bomber, finds all reachable enemy factories within range. | ❌ MISSING | ❌ MISSING | 0% | |
-| CMB-004 | └─ └─ `for (Territory target)` | 1800-1865 | Calculates bombing value for each target (damage potential vs AA defense risk). | ❌ MISSING | ❌ MISSING | 0% | |
+| CMB-002 | `determineTerritoriesThatCanBeBombed()` | 1780-1875 | Identifies enemy factories that can be strategically bombed. Calculates expected bombing damage vs risk of losing bombers. | `plan_strategic_bombing_raids()` | ✅ DONE | 85% | |
+| CMB-003 | └─ `for (Unit bomber)` | 1790-1870 | For each bomber, finds all reachable enemy factories within range. | `#region CMB-003` | ✅ DONE | 85% | |
+| CMB-004 | └─ └─ `for (Territory target)` | 1800-1865 | Calculates bombing value for each target (damage potential vs AA defense risk). | `#region CMB-004` | ✅ DONE | 85% | |
 | CMB-005 | `prioritizeAttackOptions()` | 192-299 | Calculates attack priority value for each potential target. Considers production, capital status, defensibility, and strategic position. | [`prioritize_attack_options_triplea()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 85% | |
 | CMB-006 | └─ `for (Iterator<ProTerritory> it)` | 200-295 | Iterates through all attack options, calculating value and removing invalid ones. | Loop | ✅ DONE | 85% | |
 | CMB-007 | └─ └─ Attack value calculation | 210-280 | Complex formula considering: isLand, isNeutral, isCanHold, isAmphib, hasFactory, nearCapital, production value. | Inline | ✅ DONE | 80% | |

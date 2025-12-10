@@ -580,6 +580,21 @@ proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		}
 	}
 
+	// Step 9b: Plan strategic bombing raids (CMB-002 to CMB-004)
+	// This assigns bombers to bomb enemy factories separately from regular attacks
+	when ODIN_DEBUG {
+		fmt.println("\n[STEP 9b] Planning strategic bombing raids...")
+	}
+	debug_checks(gc)
+	bombing_count := plan_strategic_bombing_raids(gc)
+	when ODIN_DEBUG {
+		if bombing_count > 0 {
+			fmt.printf("  -> Assigned %d bombers to strategic bombing\n", bombing_count)
+		} else {
+			fmt.println("  -> No strategic bombing raids planned")
+		}
+	}
+
 	// Step 10: Determine specific units to attack with
 	when ODIN_DEBUG {
 		fmt.println("\n[STEP 10] Assigning units to each attack...")

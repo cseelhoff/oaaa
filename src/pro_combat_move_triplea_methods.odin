@@ -5438,3 +5438,262 @@ simulate_attack_win_percentage :: proc(option: ^Attack_Option) -> f64 {
 	results := simulate_battle(combatants)
 	return results.invaded_percent
 }
+
+// =============================================================================
+// CMB-002 to CMB-004: Strategic Bombing Implementation
+// =============================================================================
+// From ProCombatMoveAi.java determineTerritoriesThatCanBeBombed() lines 1160-1243
+//
+// Strategic bombing allows bombers to damage enemy factories instead of
+// participating in regular combat. Key rules:
+// 1. Only bombers can do strategic bombing
+// 2. Bombers must be the ONLY units in the attack (no ground troops)
+// 3. AA guns at the factory shoot at bombers first
+// 4. Surviving bombers deal damage to the factory
+
+// Bombing target with calculated score
+Bombing_Target :: struct {
+	territory:    Land_ID,
+	production:   u8,
+	has_aa:       bool,
+	current_dmg:  u8,
+	max_dmg:      u8,  // production * 2
+	score:        f64,
+}
+
+// #region CMB-002: Plan strategic bombing raids
+// Identifies factories worth bombing and assigns bombers
+plan_strategic_bombing_raids :: proc(gc: ^Game_Cache) -> (bombed_count: int) {
+	when ODIN_DEBUG {
+		fmt.println("[CMB-002] Planning strategic bombing raids...")
+	}
+	
+	player := gc.cur_player
+	enemy_team := mm.enemy_team[player]
+	
+	// #region CMB-003: Find all available bombers and potential targets
+	// Build list of bombing targets (enemy factories we can reach)
+	bombing_targets := make([dynamic]Bombing_Target)
+	defer delete(bombing_targets)
+	
+	for target in Land_ID {
+		// Must be enemy-owned with a factory
+		if mm.team[gc.owner[target]] == mm.team[player] {
+			continue
+		}
+		if gc.factory_prod[target] == 0 {
+			continue
+		}
+		
+		// Check current damage vs max damage
+		production := gc.factory_prod[target]
+		max_dmg := production * 2
+		current_dmg := gc.factory_dmg[target]
+		
+		// Skip if factory is already at max damage
+		if current_dmg >= max_dmg {
+			continue
+		}
+		
+		// Check if any bomber can reach this target
+		can_reach := false
+		for src_land in Land_ID {
+			if gc.owner[src_land] != player {
+				continue
+			}
+			if gc.idle_land_planes[src_land][player][.BOMBER] == 0 {
+				continue
+			}
+			// Check distance (bombers have 6 movement)
+			dist := get_air_distance(gc, src_land, target)
+			if dist <= 3 {  // 3 to target, 3 to land back
+				can_reach = true
+				break
+			}
+		}
+		
+		if !can_reach {
+			continue
+		}
+		
+		// Calculate bombing score
+		has_aa := has_aa_gun(gc, target)
+		remaining_dmg_potential := f64(max_dmg - current_dmg)
+		
+		// Score formula:
+		// - Higher production = more valuable to damage
+		// - No AA = much safer (10x bonus)
+		// - Less current damage = more room for impact
+		aa_multiplier := has_aa ? 1.0 : 10.0
+		score := f64(production) * aa_multiplier * (remaining_dmg_potential / f64(max_dmg))
+		
+		append(&bombing_targets, Bombing_Target{
+			territory   = target,
+			production  = production,
+			has_aa      = has_aa,
+			current_dmg = current_dmg,
+			max_dmg     = max_dmg,
+			score       = score,
+		})
+	}
+	// #endregion CMB-003
+	
+	if len(bombing_targets) == 0 {
+		when ODIN_DEBUG {
+			fmt.println("  No valid bombing targets found")
+		}
+		return 0
+	}
+	
+	// Sort targets by score (highest first)
+	slice.sort_by(bombing_targets[:], proc(a, b: Bombing_Target) -> bool {
+		return a.score > b.score
+	})
+	
+	when ODIN_DEBUG {
+		fmt.println("  Potential bombing targets:")
+		for i := 0; i < min(5, len(bombing_targets)); i += 1 {
+			t := bombing_targets[i]
+			aa_str := t.has_aa ? "AA" : "no AA"
+			fmt.printf("    - %v (prod=%d, dmg=%d/%d, %s, score=%.1f)\n",
+				t.territory, t.production, t.current_dmg, t.max_dmg, aa_str, t.score)
+		}
+	}
+	
+	// #region CMB-004: Assign bombers to best targets
+	// For each bombing target, find bombers that can reach it
+	for &target in bombing_targets {
+		// Find best bomber for this target
+		best_src: Maybe(Land_ID) = nil
+		best_dist := 999
+		
+		for src_land in Land_ID {
+			if gc.owner[src_land] != player {
+				continue
+			}
+			
+			// Check for available bombers (unmoved)
+			bomber_count := gc.active_land_planes[src_land][.BOMBER_UNMOVED]
+			if bomber_count == 0 {
+				continue
+			}
+			
+			// Check distance
+			dist := get_air_distance(gc, src_land, target.territory)
+			if dist > 3 {
+				continue  // Can't reach and return
+			}
+			
+			// Check if bomber can safely land after attack
+			if !can_bomber_land_after_attack(gc, src_land, target.territory) {
+				continue
+			}
+			
+			if dist < best_dist {
+				best_dist = dist
+				best_src = src_land
+			}
+		}
+		
+		// If we found a bomber, execute the bombing raid
+		if src, ok := best_src.?; ok {
+			// Move bomber to target (for strategic bombing)
+			execute_strategic_bombing_move(gc, src, target.territory)
+			bombed_count += 1
+			
+			when ODIN_DEBUG {
+				fmt.printf("  Bomber from %v bombing factory at %v\n", src, target.territory)
+			}
+			
+			// For now, only bomb one target per call to avoid over-committing
+			// Could be extended to bomb multiple targets
+			break
+		}
+	}
+	// #endregion CMB-004
+	
+	when ODIN_DEBUG {
+		fmt.printf("[CMB-002] Assigned %d bombers to strategic bombing\n", bombed_count)
+	}
+	
+	return bombed_count
+}
+// #endregion CMB-002
+
+// Helper: Get air distance between two land territories
+get_air_distance :: proc(gc: ^Game_Cache, from: Land_ID, to: Land_ID) -> int {
+	// Use pre-computed air distances
+	// Bombers can fly over water and land
+	from_air := to_air(from)
+	to_air := to_air(to)
+	
+	// Simple distance calculation using BFS or pre-computed
+	// For now, use a simple approximation based on land distance
+	// (Real implementation would use mm.air_distances or similar)
+	
+	// Check 1-away
+	if from == to {
+		return 0
+	}
+	if to in mm.l2l_1away_via_land_bitset[from] {
+		return 1
+	}
+	
+	// Check 2-away
+	for mid in mm.l2l_1away_via_land_bitset[from] {
+		if to in mm.l2l_1away_via_land_bitset[mid] {
+			return 2
+		}
+	}
+	
+	// Check 3-away
+	for mid1 in mm.l2l_1away_via_land_bitset[from] {
+		for mid2 in mm.l2l_1away_via_land_bitset[mid1] {
+			if to in mm.l2l_1away_via_land_bitset[mid2] {
+				return 3
+			}
+		}
+	}
+	
+	// Further than 3 - return large number
+	return 999
+}
+
+// Helper: Check if bomber can land safely after bombing a target
+can_bomber_land_after_attack :: proc(gc: ^Game_Cache, src: Land_ID, target: Land_ID) -> bool {
+	player := gc.cur_player
+	dist_to_target := get_air_distance(gc, src, target)
+	remaining_moves := 6 - dist_to_target
+	
+	// Need to find a friendly territory within remaining moves
+	for landing in Land_ID {
+		if gc.owner[landing] != player {
+			continue
+		}
+		
+		dist_to_landing := get_air_distance(gc, target, landing)
+		if dist_to_landing <= remaining_moves {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// Execute a strategic bombing move - move bomber to target territory
+execute_strategic_bombing_move :: proc(gc: ^Game_Cache, src: Land_ID, dst: Land_ID) {
+	player := gc.cur_player
+	
+	// Remove bomber from source
+	gc.active_land_planes[src][.BOMBER_UNMOVED] -= 1
+	gc.idle_land_planes[src][player][.BOMBER] -= 1
+	gc.team_land_units[src][mm.team[player]] -= 1
+	
+	// Add bomber to destination (as attacking unit)
+	// Note: We use idle_land_planes because that's what resolve_strategic_bombing_raid checks
+	gc.idle_land_planes[dst][player][.BOMBER] += 1
+	gc.team_land_units[dst][mm.team[player]] += 1
+	
+	// Mark territory for combat (bombing raid)
+	gc.more_land_combat_needed += {dst}
+}
