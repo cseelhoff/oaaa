@@ -595,3 +595,24 @@ get_available_transport_capacity_for_current_player :: proc(gc: ^Game_Cache, sea
 	return get_available_transport_capacity_at_sea(gc, sea, gc.cur_player)
 }
 
+// TRN-026: Transport state classification helpers
+
+// is_transport_full checks if a transport type is at maximum capacity (cannot load more).
+is_transport_full :: proc(ship: Idle_Ship) -> bool {
+	return get_transport_remaining_capacity(ship) == 0
+}
+
+// is_transport_empty checks if a transport type has no cargo loaded.
+is_transport_empty :: proc(ship: Idle_Ship) -> bool {
+	return ship == .TRANS_EMPTY
+}
+
+// can_transport_load_infantry checks if a transport has room for infantry (needs 2 spaces).
+can_transport_load_infantry :: proc(ship: Idle_Ship) -> bool {
+	return get_transport_remaining_capacity(ship) >= 2
+}
+
+// can_transport_load_heavy checks if a transport has room for artillery/tank (needs 3 spaces).
+can_transport_load_heavy :: proc(ship: Idle_Ship) -> bool {
+	return get_transport_remaining_capacity(ship) >= 3
+}
