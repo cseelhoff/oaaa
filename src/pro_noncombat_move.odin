@@ -481,6 +481,10 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	}
 	// #endregion
 	
+	// #region NCM-066 to NCM-069: Move AA guns to protect valuable factories
+	move_aa_guns_noncombat(gc, &pro_data)
+	// #endregion
+	
 	debug_checks(gc)
 	when ODIN_DEBUG {
 		fmt.println("[PRO-AI] Completed non-combat move phase")
@@ -1906,6 +1910,144 @@ move_sea_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 		fmt.printf("[PRO-AI] Transport defense: %d sea units, %d air units moved\n", 
 		           sea_units_moved, air_units_moved)
 	}
+}
+
+// NCM-066 to NCM-069: Move AA guns to protect valuable factories
+// From ProNonCombatMoveAi.java moveInfraUnits() lines 2195-2250
+move_aa_guns_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
+	when ODIN_DEBUG {
+		fmt.println("[PRO-AI] Moving AA guns to protect factories")
+	}
+	
+	player := gc.cur_player
+	aa_moved := 0
+	
+	// #region NCM-067: Find AA guns that should move
+	// Java: Only move AA from territories that can't be held and don't have factories
+	for src_land in Land_ID {
+		// Check if we have AA guns with moves here
+		for gc.active_armies[src_land][.AAGUN_1_MOVES] > 0 {
+			// Check if this territory can be held
+			can_hold := can_territory_be_held(gc, pro_data, src_land)
+			has_factory := gc.factory_prod[src_land] > 0 && gc.owner[src_land] == player
+			
+			// Only move AA from territories that can't be held and don't have factories
+			// If territory has factory, AA should stay to protect it
+			if can_hold || has_factory {
+				// Skip this AA - territory is defensible or has factory
+				gc.active_armies[src_land][.AAGUN_1_MOVES] -= 1
+				gc.active_armies[src_land][.AAGUN_0_MOVES] += 1
+				continue
+			}
+			
+			// #region NCM-068: Find best factory to protect
+			best_dest: Maybe(Land_ID) = nil
+			best_value: f64 = 0.0
+			
+			// Check all territories within 1 move (AA has 1 movement)
+			for dst_land in mm.l2l_1away_via_land_bitset[src_land] {
+				// Must be owned by us
+				if gc.owner[dst_land] != player {
+					continue
+				}
+				
+				// Check if destination can be held
+				if !can_territory_be_held(gc, pro_data, dst_land) {
+					continue
+				}
+				
+				// Calculate value - prioritize factories without AA
+				dst_has_factory := gc.factory_prod[dst_land] > 0
+				dst_has_aa := gc.idle_armies[dst_land][player][.AAGUN] > 0
+				
+				value: f64 = f64(mm.value[dst_land])
+				
+				// Strong bonus for factories
+				if dst_has_factory {
+					value += 50.0
+				}
+				
+				// Penalty if already has AA (want to spread out AA coverage)
+				if dst_has_aa {
+					value *= 0.01
+				}
+				
+				// Check if this is better than current best
+				if value > best_value {
+					best_value = value
+					best_dest = dst_land
+				}
+			}
+			// #endregion NCM-068
+			
+			// #region NCM-069: Execute AA movement
+			if dest, ok := best_dest.?; ok {
+				// Move AA to destination
+				move_aa_to_land(gc, src_land, dest)
+				aa_moved += 1
+				
+				when ODIN_DEBUG {
+					fmt.printf("  AA gun moved from %v to %v (value=%.1f)\n", src_land, dest, best_value)
+				}
+			} else {
+				// No good destination - skip to 0 moves
+				gc.active_armies[src_land][.AAGUN_1_MOVES] -= 1
+				gc.active_armies[src_land][.AAGUN_0_MOVES] += 1
+			}
+			// #endregion NCM-069
+		}
+	}
+	// #endregion NCM-067
+	
+	when ODIN_DEBUG {
+		fmt.printf("[PRO-AI] Moved %d AA guns\n", aa_moved)
+	}
+}
+
+// NCM-067 Helper: Check if territory can be held
+can_territory_be_held :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, land: Land_ID) -> bool {
+	// Simple check: territory is owned by us and not overwhelmingly threatened
+	player := gc.cur_player
+	
+	if gc.owner[land] != player {
+		return false
+	}
+	
+	my_team := mm.team[player]
+	enemy_team := mm.enemy_team[player]
+	
+	// Count our units
+	my_units: u8 = 0
+	for army in gc.idle_armies[land][player] {
+		my_units += army
+	}
+	for plane in gc.idle_land_planes[land][player] {
+		my_units += plane
+	}
+	
+	// Count enemy threat from adjacent
+	enemy_threat: u8 = 0
+	for adj_land in mm.l2l_1away_via_land_bitset[land] {
+		enemy_threat += gc.team_land_units[adj_land][enemy_team]
+	}
+	
+	// Can hold if we have defenders or minimal threat
+	return my_units > 0 || enemy_threat < 5
+}
+
+// NCM-067 Helper: Move AA gun from source to destination
+move_aa_to_land :: proc(gc: ^Game_Cache, src_land: Land_ID, dst_land: Land_ID) {
+	player := gc.cur_player
+	
+	// Remove from source
+	gc.active_armies[src_land][.AAGUN_1_MOVES] -= 1
+	gc.idle_armies[src_land][player][.AAGUN] -= 1
+	gc.team_land_units[src_land][mm.team[player]] -= 1
+	
+	// Add to destination  
+	gc.active_armies[dst_land][.AAGUN_0_MOVES] += 1
+	gc.idle_armies[dst_land][player][.AAGUN] += 1
+	gc.team_land_units[dst_land][mm.team[player]] += 1
 }
 
 // NCM-046 Helper: Check if sea zone has transports

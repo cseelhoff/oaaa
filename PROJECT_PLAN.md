@@ -294,10 +294,10 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-063 | └─ └─ `for (Unit air)` | 2125-2155 | Final pass ensuring all air units have legal landing spots. | `#region NCM-063` | ✅ DONE | 80% | |
 | NCM-064 | `moveCarrierFighters()` | 2165-2175 | Special handling for fighters on carriers - ensures carrier moves with its fighters. | ❌ MISSING | ❌ MISSING | 0% | |
 | NCM-065 | └─ `for (fighter)` on carriers | 2168-2173 | Coordinates carrier and fighter movement. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-066 | `moveInfraUnits()` | 2177-2475 | Moves infrastructure units (AA guns, mobile factories) to optimal locations. | ❌ MISSING | ❌ MISSING | 0% | Infrastructure |
-| NCM-067 | └─ `moveInfrastructure()` AA guns | 2185-2300 | Moves AA guns to protect valuable factories from strategic bombing. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-068 | └─ └─ `for (Unit aa)` | 2195-2295 | Iterates through AA guns to find best destinations. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-069 | └─ └─ └─ Find best factory to protect | 2210-2280 | Evaluates factories by bombing vulnerability and current AA coverage. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-066 | `moveInfraUnits()` | 2177-2475 | Moves infrastructure units (AA guns, mobile factories) to optimal locations. | `move_aa_guns_noncombat()` | ✅ DONE | 85% | Infrastructure |
+| NCM-067 | └─ `moveInfrastructure()` AA guns | 2185-2300 | Moves AA guns to protect valuable factories from strategic bombing. | `#region NCM-067` | ✅ DONE | 85% | |
+| NCM-068 | └─ └─ `for (Unit aa)` | 2195-2295 | Iterates through AA guns to find best destinations. | `#region NCM-068` | ✅ DONE | 85% | |
+| NCM-069 | └─ └─ └─ Find best factory to protect | 2210-2280 | Evaluates factories by bombing vulnerability and current AA coverage. | `#region NCM-069` | ✅ DONE | 85% | |
 | NCM-070 | └─ `moveFactoriesIfMobile()` | 2305-2400 | For maps with mobile factories, moves them to optimal production locations. | ❌ MISSING | ❌ MISSING | N/A | Mobile factories N/A |
 | NCM-071 | └─ └─ `for (Unit factory)` mobile | 2315-2395 | Iterates through mobile factories. | ❌ MISSING | ❌ MISSING | N/A | |
 | NCM-072 | └─ `checkNeedToConsumeUnits()` | 2405-2440 | Checks if any units need to be consumed for production (some map mechanics). | ❌ MISSING | ❌ MISSING | N/A | N/A for 1942 SE |
