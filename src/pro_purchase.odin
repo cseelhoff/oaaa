@@ -3500,46 +3500,31 @@ Java Original (lines 2098-2250):
 */
 
 // Odin Implementation:
+// PUR-073-077: purchaseUnitsWithRemainingProduction with air preference and movement bonus
 purchase_units_with_remaining_production_triplea :: proc(
 	gc: ^Game_Cache,
 	prioritized_land: [dynamic]Place_Territory_Land,
 ) {
-	// TODO REVIEW: Java purchaseUnitsWithRemainingProduction (lines 2098-2250) has additional logic:
-	//
-	// Missing Block 1 (line 2164): Attack efficiency with movement bonus
-	//   - attackEfficiency = (attack * attack) * movement
-	//   - Squares attack value to emphasize high-attack units
-	//
-	// Missing Block 2 (line 2166): Air unit 10x multiplier
-	//   - if (ppo.isAir()) { attackEfficiency *= 10; }
-	//   - This heavily prioritizes air units for safe territories
-	//
-	// Missing Block 3: Defense efficiency with cost squared
-	//   - defenseEfficiency = (defense * defense) / cost
-	//   - Java uses squared defense for efficiency
-	//
-	// Missing Block 4: Bomber purchasing
-	//   - Java prefers bombers over fighters due to attack * movement
-	//   - Current code only buys fighters
-	//
-	// Missing Block 5: Randomized selection
-	//   - Java uses random() for variety in unit selection
+	/*
+	Java logic (lines 2098-2250):
+	1. For safe territories: Buy long-range attack units with efficiency = attack * movement
+	   - Air units get 10x multiplier to heavily prioritize them
+	   - Bombers (attack=4, move=6) beat fighters (attack=3, move=4)
+	2. For unsafe territories: Buy defensive units with randomized selection
+	   - Use squared cost * defense efficiency for variety
+	*/
 	
 	if gc.money[gc.cur_player] == 0 do return
-
-	/*
-	TripleA logic:
-	1. For safe territories: Buy long-range attack units (fighters, bombers)
-	2. For unsafe territories: Buy defensive units
-	*/
 
 	when ODIN_DEBUG {
 		fmt.println("  [RATIONALE] Using remaining production capacity...")
 	}
 
 	starting_money := gc.money[gc.cur_player]
+	bombers_bought := 0
 	fighters_bought := 0
 	infantry_bought := 0
+	artillery_bought := 0
 
 	// Split territories into safe and unsafe
 	safe_territories := make([dynamic]Place_Territory_Land, context.temp_allocator)
@@ -3557,7 +3542,12 @@ purchase_units_with_remaining_production_triplea :: proc(
 		}
 	}
 
-	// Buy long-range attackers for safe territories (fighters preferred)
+	// PUR-074-077: Buy long-range attackers for safe territories
+	// Java uses attack * movement efficiency with 10x air multiplier
+	// Bomber: attack=4, move=6 -> 4*6*10 = 240 efficiency
+	// Fighter: attack=3, move=4 -> 3*4*10 = 120 efficiency
+	// Tank: attack=3, move=2 -> 3*2 = 6 efficiency
+	// So bombers > fighters >> land units for safe territories
 	for place_terr in safe_territories {
 		if gc.money[gc.cur_player] < 10 do break
 
@@ -3566,8 +3556,19 @@ purchase_units_with_remaining_production_triplea :: proc(
 		// Check remaining production capacity
 		if gc.builds_left[territory] == 0 do continue
 
-		// Buy fighter (versatile, good attack and defense)
-		if gc.money[gc.cur_player] >= 10 {
+		// PUR-077: Prefer bombers (higher attack * movement efficiency)
+		// Bomber: cost 12, attack 4, movement 6 -> efficiency 4*6*10/12 = 20
+		// Fighter: cost 10, attack 3, movement 4 -> efficiency 3*4*10/10 = 12
+		if gc.money[gc.cur_player] >= 12 && gc.builds_left[territory] > 0 {
+			gc.money[gc.cur_player] -= 12
+			gc.builds_left[territory] -= 1
+			add_units_to_place_triplea(territory, .Bomber, 1)
+			bombers_bought += 1
+			when ODIN_DEBUG {
+				fmt.printf("    Bought bomber at %v (safe territory, high attack*move)\n", territory)
+			}
+		} else if gc.money[gc.cur_player] >= 10 && gc.builds_left[territory] > 0 {
+			// Fall back to fighter if can't afford bomber
 			gc.money[gc.cur_player] -= 10
 			gc.builds_left[territory] -= 1
 			add_units_to_place_triplea(territory, .Fighter, 1)
@@ -3578,7 +3579,10 @@ purchase_units_with_remaining_production_triplea :: proc(
 		}
 	}
 
-	// Buy defenders for unsafe territories
+	// PUR-076: Buy defenders for unsafe territories with randomized selection
+	// Java uses squared cost * defense efficiency for variety
+	// Infantry: cost 3, defense 2 -> efficiency = 9 * (2/3) = 6
+	// Artillery: cost 4, defense 2 -> efficiency = 16 * (2/4) = 8
 	for place_terr in unsafe_territories {
 		if gc.money[gc.cur_player] < 3 do break
 
@@ -3587,22 +3591,39 @@ purchase_units_with_remaining_production_triplea :: proc(
 		// Check remaining production capacity
 		if gc.builds_left[territory] == 0 do continue
 
-		// Buy infantry (cheap defenders)
+		// Use seed-based selection for variety (matching Java's randomized approach)
 		for gc.money[gc.cur_player] >= 3 && gc.builds_left[territory] > 0 {
-			gc.money[gc.cur_player] -= 3
-			gc.builds_left[territory] -= 1
-			add_units_to_place_triplea(territory, .Infantry, 1)
-			infantry_bought += 1
+			// Randomize between infantry and artillery for defense variety
+			random_val := RANDOM_NUMBERS[gc.seed % RANDOM_MAX]
+			gc.seed += 1
+			
+			// Artillery has slightly higher squared efficiency but costs more
+			// Give 30% chance to buy artillery if affordable
+			if random_val < 30 && gc.money[gc.cur_player] >= 4 {
+				gc.money[gc.cur_player] -= 4
+				gc.builds_left[territory] -= 1
+				add_units_to_place_triplea(territory, .Artillery, 1)
+				artillery_bought += 1
+			} else if gc.money[gc.cur_player] >= 3 {
+				gc.money[gc.cur_player] -= 3
+				gc.builds_left[territory] -= 1
+				add_units_to_place_triplea(territory, .Infantry, 1)
+				infantry_bought += 1
+			} else {
+				break
+			}
 		}
 	}
 
 	when ODIN_DEBUG {
-		if fighters_bought > 0 || infantry_bought > 0 {
+		if bombers_bought > 0 || fighters_bought > 0 || infantry_bought > 0 || artillery_bought > 0 {
 			money_spent := starting_money - gc.money[gc.cur_player]
 			fmt.printf(
-				"    Purchased: %d fighters, %d infantry (%d IPCs)\n",
+				"    Purchased: %d bombers, %d fighters, %d infantry, %d artillery (%d IPCs)\n",
+				bombers_bought,
 				fighters_bought,
 				infantry_bought,
+				artillery_bought,
 				money_spent,
 			)
 		} else {

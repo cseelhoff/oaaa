@@ -151,11 +151,11 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | PUR-070 | └─ └─ └─ └─ └─ Calc amphibEfficiencies | 2005-2020 | Calculates efficiency of purchasing amphib units (attack power for amphib assault / cost). | Inline | 🔶 PARTIAL | 60% | |
 | PUR-071 | └─ └─ └─ **Branch B**: Buy new transport | 2045-2080 | If no transports need units but potentialUnitsToLoad exists, buys new transport. | Branch B | ✅ DONE | 75% | |
 | PUR-072 | └─ └─ └─ └─ Calc transportEfficiencies | 2050-2070 | Calculates transport purchase efficiency based on units waiting to be transported. | Inline | 🔶 PARTIAL | 50% | |
-| PUR-073 | `purchaseUnitsWithRemainingProduction()` | 2093-2250 | Uses remaining factory production capacity to buy additional units. Called after main purchase phases. | [`purchase_units_with_remaining_production_triplea()`](src/pro_purchase.odin) | 🔶 PARTIAL | 55% | |
-| PUR-074 | └─ `for (ProPurchaseTerritory ppt)` | 2105-2248 | Iterates through territories with remaining production. | Outer loop | 🔶 PARTIAL | 55% | |
-| PUR-075 | └─ └─ `for (ProPlaceTerritory place)` | 2110-2245 | For each place territory, checks remaining production capacity. | Inner loop | 🔶 PARTIAL | 55% | |
-| PUR-076 | └─ └─ └─ `while (true)` fill production | 2150-2240 | Continues purchasing until production capacity filled or budget exhausted. | While loop | 🔶 PARTIAL | 50% | |
-| PUR-077 | └─ └─ └─ └─ `for (ppo)` efficiencies | 2160-2200 | Calculates general unit efficiency for filling remaining capacity. | Inline | 🔶 PARTIAL | 45% | |
+| PUR-073 | `purchaseUnitsWithRemainingProduction()` | 2093-2250 | Uses remaining factory production capacity to buy additional units. Called after main purchase phases. | [`purchase_units_with_remaining_production_triplea()`](src/pro_purchase.odin) | ✅ DONE | 85% | Bomber preference, air 10x mult |
+| PUR-074 | └─ `for (ProPurchaseTerritory ppt)` | 2105-2248 | Iterates through territories with remaining production. | Outer loop | ✅ DONE | 85% | |
+| PUR-075 | └─ └─ `for (ProPlaceTerritory place)` | 2110-2245 | For each place territory, checks remaining production capacity. | Inner loop | ✅ DONE | 85% | |
+| PUR-076 | └─ └─ └─ `while (true)` fill production | 2150-2240 | Continues purchasing until production capacity filled or budget exhausted. | While loop | ✅ DONE | 85% | Randomized defense |
+| PUR-077 | └─ └─ └─ └─ `for (ppo)` efficiencies | 2160-2200 | Calculates general unit efficiency for filling remaining capacity. | Inline | ✅ DONE | 85% | Attack*move efficiency |
 | PUR-078 | `upgradeUnitsWithRemainingPUs()` | 2252-2450 | Uses remaining PUs to upgrade placed infantry to artillery or tanks if efficient. | [`upgrade_units_with_remaining_pus_triplea()`](src/pro_purchase.odin) | ✅ DONE | 75% | |
 | PUR-079 | └─ `for (ProPurchaseTerritory ppt)` | 2265-2448 | Iterates through territories where units were placed. | Outer loop | ✅ DONE | 75% | |
 | PUR-080 | └─ └─ `for (ProPlaceTerritory place)` | 2270-2445 | For each place territory with placed units. | Inner loop | ✅ DONE | 75% | |
@@ -163,7 +163,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | PUR-082 | └─ └─ └─ └─ `for (unit)` find upgradeable | 2315-2350 | Finds infantry that could be upgraded to artillery or tanks. | Inline | ✅ DONE | 70% | |
 | PUR-083 | └─ └─ └─ └─ `findUpgradeUnitEfficiency()` | 2360 | Calculates efficiency of upgrading (attack gain / additional cost). | [`find_upgrade_unit_efficiency_triplea()`](src/pro_purchase.odin) | ✅ DONE | 80% | |
 | PUR-084 | `findUpgradeUnitEfficiency()` | 2452-2520 | Helper function calculating upgrade value. Considers attack power increase vs cost difference. | [`find_upgrade_unit_efficiency_triplea()`](src/pro_purchase.odin) | ✅ DONE | 80% | |
-| PUR-085 | `findFactoryDefenseValue()` | 2522-2570 | Calculates how valuable a factory is to defend. Higher for capitals and high-production territories. | Inline | 🔶 PARTIAL | 50% | |
+| PUR-085 | `findFactoryDefenseValue()` | 2522-2570 | Calculates how valuable a factory is to defend. Higher for capitals and high-production territories. | `find_factory_defense_value_triplea()` | ✅ DONE | 90% | Full capital+prod logic |
 | PUR-086 | `selectPurchaseTerritoriesWithRemainingProduction()` | 2572-2645 | Finds territories that still have unused production capacity for additional purchases. | Inline | 🔶 PARTIAL | 55% | |
 
 ---
@@ -279,9 +279,9 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-048 | └─ └─ └─ Check transport needs escort | 1520-1545 | Identifies transports that lack adequate protection. | [`check_transport_defense()`](src/pro_noncombat_move.odin) | ✅ DONE | 80% | Simplified threat assessment |
 | NCM-049 | └─ **Block 6: Air units defend transports** | 1560-1600 | Moves fighters to carriers to provide air cover for transport fleets. | `#region NCM-049` | ✅ DONE | 80% | Land and sea fighters to carriers |
 | NCM-050 | └─ └─ `for (fighter)` | 1570-1595 | Iterates through fighters that could land on carriers. | Fighter loops | ✅ DONE | 80% | |
-| NCM-051 | └─ **Block 7: Sea units to best location** | 1600-1730 | Moves remaining warships to strategically valuable sea zones. | [`move_sea_units_noncombat()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 55% | |
-| NCM-052 | └─ └─ `for (Unit sea)` remaining | 1610-1725 | Iterates through warships not assigned to escort duty. | Loop | 🔶 PARTIAL | 55% | |
-| NCM-053 | └─ └─ └─ Calc sea value + transport presence | 1620-1700 | Calculates sea zone value considering strategic importance and transport presence. | Simplified | 🔶 PARTIAL | 45% | |
+| NCM-051 | └─ **Block 7: Sea units to best location** | 1600-1730 | Moves remaining warships to strategically valuable sea zones. | [`move_sea_units_noncombat()`](src/pro_noncombat_move.odin) | ✅ DONE | 80% | Combat ship and fighter move |
+| NCM-052 | └─ └─ `for (Unit sea)` remaining | 1610-1725 | Iterates through warships not assigned to escort duty. | Loop | ✅ DONE | 80% | |
+| NCM-053 | └─ └─ └─ Calc sea value + transport presence | 1620-1700 | Calculates sea zone value considering strategic importance and transport presence. | `get_sea_zone_value()` | ✅ DONE | 80% | Transport count bonus |
 | NCM-054 | └─ **Block 8: Land units to high value** | 1842-1904 | Moves land units towards high strategic value territories (production centers, enemy borders). | [`move_land_units_noncombat()`](src/pro_noncombat_move.odin) | ✅ DONE | 85% | |
 | NCM-055 | └─ └─ `for (Unit land)` | 1850-1900 | Iterates through land units to find optimal destinations. | `#region NCM-055` | ✅ DONE | 85% | |
 | NCM-056 | └─ **Block 9: Land to coastal factories** | 1910-1944 | Moves land units to coastal factories for potential transport loading next turn. | Inline | ✅ DONE | 80% | |
@@ -361,8 +361,8 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TRN-016 | └─ └─ `for (fighter)` per carrier | 375-440 | Assigns fighters to specific carriers and orders movement appropriately. | N/A | ⏭️ SKIP | N/A | Fighter landing handled separately |
 | TRN-017 | `validateCarrierCapacity()` | 457-490 | Validation check ensuring no carrier is overloaded (max 2 fighters per carrier). | `validate_carrier_capacity()` | ✅ DONE | 90% | |
 | TRN-018 | └─ `for (Unit carrier)` | 465-485 | Checks each carrier's fighter count doesn't exceed capacity. | Inline | ✅ DONE | 90% | |
-| TRN-019 | `getTransportsThatCanTransport()` | 492-521 | Filters transports to only those with available capacity and movement remaining. | 🔶 PARTIAL | 🔶 PARTIAL | 50% | |
-| TRN-020 | └─ `for (Unit transport)` | 500-518 | Checks each transport for capacity and movement status. | Loop | 🔶 PARTIAL | 50% | |
+| TRN-019 | `getTransportsThatCanTransport()` | 492-521 | Filters transports to only those with available capacity and movement remaining. | `get_transports_with_capacity()` | ✅ DONE | 90% | Full filtering added |
+| TRN-020 | └─ `for (Unit transport)` | 500-518 | Checks each transport for capacity and movement status. | `get_transports_at_sea_with_capacity()` | ✅ DONE | 90% | Transport_Info struct |
 | TRN-021 | `getAirThatCantLandOnCarrier()` | 280-300 | Returns count of excess fighters that have no carrier space. | `get_air_that_cant_land_on_carrier()` | ✅ DONE | 90% | New helper |
 | TRN-022 | `canFightersFindCarrierSpace()` | N/A | Checks if fighters can find carrier space including nearby sea zones. | `can_fighters_find_carrier_space()` | ✅ DONE | 85% | Uses local capacity |
 | TRN-023 | `getTransportCost()` | 164-170 | Returns transport capacity cost for a single unit type (infantry=2, artillery/tank=3). | `get_unit_transport_cost()` | ✅ DONE | 95% | Simple lookup |

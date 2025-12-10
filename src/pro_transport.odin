@@ -616,3 +616,127 @@ can_transport_load_infantry :: proc(ship: Idle_Ship) -> bool {
 can_transport_load_heavy :: proc(ship: Idle_Ship) -> bool {
 	return get_transport_remaining_capacity(ship) >= 3
 }
+
+// ===== TRN-019/20: Transport Filtering Functions =====
+// These functions filter transports by capacity and movement status
+
+// Transport_Info represents a transport's state for filtering
+Transport_Info :: struct {
+	sea_zone:           Sea_ID,
+	transport_type:     Idle_Ship,
+	count:              u8,
+	remaining_capacity: int,
+	has_movement:       bool,  // True if transport has moves remaining
+}
+
+// get_transports_with_capacity finds all transports that can transport units
+// TRN-019: Filters to only those with available capacity and movement remaining
+// Returns a list of Transport_Info structs with transport details
+get_transports_with_capacity :: proc(
+	gc: ^Game_Cache,
+	player: Player_ID,
+	require_empty: bool = false,  // If true, only return completely empty transports
+) -> [dynamic]Transport_Info {
+	result := make([dynamic]Transport_Info, context.temp_allocator)
+	
+	for sea in Sea_ID {
+		for trans in Idle_Transports {
+			count := gc.idle_ships[sea][player][trans]
+			if count == 0 do continue
+			
+			remaining := get_transport_remaining_capacity(trans)
+			
+			// TRN-020: Check capacity and movement status
+			if require_empty && trans != .TRANS_EMPTY do continue
+			if remaining == 0 do continue  // Skip full transports
+			
+			// Idle ships have movement remaining by definition
+			// (Active ships are tracked separately)
+			info := Transport_Info{
+				sea_zone           = sea,
+				transport_type     = trans,
+				count              = count,
+				remaining_capacity = remaining,
+				has_movement       = true,
+			}
+			append(&result, info)
+		}
+	}
+	
+	return result
+}
+
+// get_transports_at_sea_with_capacity finds transports at a specific sea zone with available capacity
+get_transports_at_sea_with_capacity :: proc(
+	gc: ^Game_Cache,
+	sea: Sea_ID,
+	player: Player_ID,
+) -> [dynamic]Transport_Info {
+	result := make([dynamic]Transport_Info, context.temp_allocator)
+	
+	for trans in Idle_Transports {
+		count := gc.idle_ships[sea][player][trans]
+		if count == 0 do continue
+		
+		remaining := get_transport_remaining_capacity(trans)
+		if remaining == 0 do continue  // Skip full transports
+		
+		info := Transport_Info{
+			sea_zone           = sea,
+			transport_type     = trans,
+			count              = count,
+			remaining_capacity = remaining,
+			has_movement       = true,
+		}
+		append(&result, info)
+	}
+	
+	return result
+}
+
+// count_transports_with_capacity returns total count of transports that can load more units
+count_transports_with_capacity :: proc(gc: ^Game_Cache, player: Player_ID) -> int {
+	total := 0
+	for sea in Sea_ID {
+		for trans in Idle_Transports {
+			if get_transport_remaining_capacity(trans) > 0 {
+				total += int(gc.idle_ships[sea][player][trans])
+			}
+		}
+	}
+	return total
+}
+
+// get_transports_that_need_units finds transports with space for more units (for purchase planning)
+// This is the Odin equivalent of Java's transportsThatNeedUnits tracking
+get_transports_that_need_units :: proc(
+	gc: ^Game_Cache,
+	player: Player_ID,
+	near_factories: bool = false,  // If true, only count transports near factories
+) -> int {
+	total := 0
+	
+	for sea in Sea_ID {
+		// If filtering by factory proximity, check adjacent lands for factories
+		if near_factories {
+			has_nearby_factory := false
+			for land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
+				if gc.owner[land] == player && gc.factory_prod[land] > 0 {
+					has_nearby_factory = true
+					break
+				}
+			}
+			if !has_nearby_factory do continue
+		}
+		
+		// Count transports with remaining capacity
+		for trans in Idle_Transports {
+			remaining := get_transport_remaining_capacity(trans)
+			if remaining >= 2 {  // Can load at least infantry
+				total += int(gc.idle_ships[sea][player][trans])
+			}
+		}
+	}
+	
+	return total
+}
