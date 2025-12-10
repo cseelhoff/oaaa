@@ -439,21 +439,9 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	}
 	
 	// Capital defense loop - ensures capital has local superiority
+	// Java: defenseRange starts at -1, only set if capital lacks superiority AFTER first move attempt
 	defense_range := -1
 	max_iterations := 3  // Prevent infinite loop
-	
-	// CRITICAL: Check if capital defense boost is needed BEFORE any movement
-	// If enemy is within 1-3 moves, ALWAYS boost capital to ensure units consolidate
-	// This prevents the AI from dispersing forces when under threat
-	if enemy_distance_to_capital >= 1 && enemy_distance_to_capital <= 3 {
-		// Always boost when enemy is close, regardless of superiority calculation
-		// The value-based movement would otherwise send units to coastal territories
-		defense_range = max(1, enemy_distance_to_capital)
-		when ODIN_DEBUG {
-			fmt.printf("[PRO-AI] DEFENSE: Enemy within %d of capital - boosting capital value\n", 
-				enemy_distance_to_capital)
-		}
-	}
 	
 	for iteration := 0; iteration < max_iterations; iteration += 1 {
 		// If defense_range > 0, boost values of territories near capital
@@ -468,9 +456,10 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		// Move land units to consolidate
 		move_land_units_noncombat(gc, &pro_data)
 		
-		// Check if capital now has superiority after moves
-		// Only recheck if we didn't already set defense_range
-		if enemy_distance_to_capital >= 1 && enemy_distance_to_capital <= 3 {
+		// Check if capital has local land superiority AFTER moves
+		// Java: if (enemyDistanceToMyCapital >= 2 && enemyDistanceToMyCapital <= 3 
+		//           && defenseRange == -1 && !territoryHasLocalLandSuperiorityAfterMoves(...))
+		if enemy_distance_to_capital >= 2 && enemy_distance_to_capital <= 3 && defense_range == -1 {
 			has_superiority := territory_has_local_land_superiority(
 				gc, capital, enemy_distance_to_capital, gc.cur_player)
 			
@@ -478,17 +467,17 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 				fmt.printf("[PRO-AI] Post-move capital superiority check: %v\n", has_superiority)
 			}
 			
-			if !has_superiority && defense_range == -1 {
-				// Still no superiority - set defense range and retry
-				defense_range = max(1, enemy_distance_to_capital - 1)
+			if !has_superiority {
+				// Capital doesn't have superiority - set defense range and retry
+				defense_range = enemy_distance_to_capital - 1
 				when ODIN_DEBUG {
-					fmt.println("[PRO-AI] Capital still lacks superiority - entering defensive stance")
+					fmt.println("[PRO-AI] Capital doesn't have local land superiority - entering defensive stance")
 				}
 				continue
 			}
 		}
 		
-		// Capital is safe or boost already applied - exit loop
+		// Capital is safe or already tried with boost - exit loop
 		break
 	}
 	// #endregion
