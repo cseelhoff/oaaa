@@ -2409,6 +2409,67 @@ move_combat_ship_to_sea :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_I
 	gc.active_ships[dst_sea][moved_type] += 1
 	gc.idle_ships[dst_sea][player][idle_type] += 1
 	gc.team_sea_units[dst_sea][mm.team[player]] += 1
+	
+	// #region NCM-064/065: If this is a carrier, move fighters with it
+	// From ProNonCombatMoveAi.java moveAlliedCarriedFighters() lines 2161-2171
+	// When a carrier moves, any fighters on it must move too
+	if ship_type == .CARRIER_2_MOVES {
+		move_carrier_fighters(gc, src_sea, dst_sea)
+	}
+	// #endregion NCM-064/065
+}
+
+// NCM-064/065: Move fighters that are on a carrier when the carrier moves
+// Ensures fighters don't get stranded when their carrier moves away
+move_carrier_fighters :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) {
+	player := gc.cur_player
+	
+	// Count carriers remaining at source after this move
+	carriers_at_src := int(gc.idle_ships[src_sea][player][.CARRIER])
+	
+	// Count allied carriers too
+	for ally in sa.slice(&mm.allies[player]) {
+		if ally == player do continue
+		carriers_at_src += int(gc.idle_ships[src_sea][ally][.CARRIER])
+	}
+	
+	// Calculate capacity at source after carrier left
+	remaining_capacity := carriers_at_src * 2
+	
+	// Count fighters at source
+	fighters_at_src: int = 0
+	fighters_at_src += int(gc.idle_sea_planes[src_sea][player][.FIGHTER])
+	for ally in sa.slice(&mm.allies[player]) {
+		if ally == player do continue
+		fighters_at_src += int(gc.idle_sea_planes[src_sea][ally][.FIGHTER])
+	}
+	
+	// Move excess fighters to destination (they were on the moving carrier)
+	excess_fighters := fighters_at_src - remaining_capacity
+	if excess_fighters > 0 {
+		// Move our fighters first (up to the excess count)
+		my_fighters := int(gc.idle_sea_planes[src_sea][player][.FIGHTER])
+		fighters_to_move := min(excess_fighters, my_fighters)
+		
+		if fighters_to_move > 0 {
+			// Update active planes (convert to 0_MOVES since they moved with carrier)
+			gc.active_sea_planes[src_sea][.FIGHTER_0_MOVES] -= u8(fighters_to_move)
+			gc.active_sea_planes[dst_sea][.FIGHTER_0_MOVES] += u8(fighters_to_move)
+			
+			// Update idle planes
+			gc.idle_sea_planes[src_sea][player][.FIGHTER] -= u8(fighters_to_move)
+			gc.idle_sea_planes[dst_sea][player][.FIGHTER] += u8(fighters_to_move)
+			
+			// Update team counts
+			gc.team_sea_units[src_sea][mm.team[player]] -= u8(fighters_to_move)
+			gc.team_sea_units[dst_sea][mm.team[player]] += u8(fighters_to_move)
+			
+			when ODIN_DEBUG {
+				fmt.printf("  [NCM-064] %d fighters moved with carrier from Sea_%d to Sea_%d\n",
+					fighters_to_move, int(src_sea), int(dst_sea))
+			}
+		}
+	}
 }
 
 // NCM-047 Helper: Convert combat ship to 0_MOVES (stayed in place)
