@@ -14,6 +14,17 @@ This document provides a comprehensive project plan for completing the conversio
 
 ---
 
+## Known Regressions
+
+| Commit | Date | Issue | Suspected Cause |
+|--------|------|-------|-----------------|
+| `3e00286` | 2025-12-10 | Germany loses capital to Russia before round 60 | Naval superiority purchase loop (PUR-060) may be over-spending on naval units, weakening land defense |
+| `04b71c2` | 2025-12-10 | (same session) | territory_has_local_naval_superiority() implementation (PUR-056 to PUR-059) |
+
+**Last known good commit**: `6c2e3ca` (NCM-014 Capital Defense Loop)
+
+---
+
 ## Navigation
 
 To jump to a region ID in the codebase:
