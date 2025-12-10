@@ -2845,15 +2845,7 @@ get_my_capital :: proc(gc: ^Game_Cache) -> Land_ID {
 	return mm.capital[gc.cur_player]
 }
 
-// Helper: Check if territory has factory
-has_factory :: proc(gc: ^Game_Cache, t: Land_ID) -> bool {
-	for factory in gc.factory_locations[gc.cur_player].data {
-		if factory == t {
-			return true
-		}
-	}
-	return false
-}
+// Note: has_factory moved to pro_matches.odin (MATCH-016)
 
 // Helper: Check if free-for-all mode (more than 2 teams)
 is_free_for_all :: proc(gc: ^Game_Cache) -> bool {
@@ -3165,17 +3157,7 @@ is_unit_already_used :: proc(unit: Unit_Info, used: ^[dynamic]Unit_Info) -> bool
 	return false
 }
 
-// Helper: Check if has AA gun
-has_aa_gun :: proc(gc: ^Game_Cache, t: Land_ID) -> bool {
-	owner := gc.owner[t]
-	// Check if any player has AA guns here
-	for player in Player_ID {
-		if gc.idle_armies[t][player][.AAGUN] > 0 {
-			return true
-		}
-	}
-	return false
-}
+// Note: has_aa_gun moved to pro_matches.odin (MATCH-017)
 
 // Helper: Assign units by priority
 assign_units_by_priority :: proc(

@@ -633,19 +633,7 @@ find_noncombat_defense_targets :: proc(
 	return targets
 }
 
-// Check if territory has enemy neighbors (territories with enemy units)
-has_enemy_neighbors :: proc(gc: ^Game_Cache, land_id: Land_ID) -> bool {
-	my_team := mm.team[gc.cur_player]
-
-	for adj in sa.slice(&mm.l2l_1away_via_land[land_id]) {
-		if mm.team[gc.owner[adj]] != my_team {
-			// Enemy or neutral territory adjacent
-			return true
-		}
-	}
-
-	return false
-}
+// Note: has_enemy_neighbors moved to pro_matches.odin (MATCH-021)
 
 // Calculate enemy threat to a territory
 calculate_enemy_threat :: proc(gc: ^Game_Cache, air_id: Air_ID, pro_data: ^Pro_Data) -> f64 {

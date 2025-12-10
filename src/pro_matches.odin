@@ -177,3 +177,113 @@ is_canal_sea :: proc(sea: Sea_ID) -> bool {
 	return mm.s2s_1away_via_sea[0][sea] != mm.s2s_1away_via_sea[1][sea]
 }
 
+// ===== Territory Infrastructure Predicates =====
+// These predicates check for factories, AA guns, and other infrastructure.
+
+// MATCH-016: has_factory checks if territory has a factory (production capacity > 0).
+// Factories are high-value targets and defensive priorities.
+has_factory :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	return gc.factory_prod[land] > 0
+}
+
+// MATCH-017: has_aa_gun checks if territory has at least one AA gun.
+// AA guns provide defense against strategic bombing and air attacks.
+has_aa_gun :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	for player in Player_ID {
+		if gc.idle_armies[land][player][.AAGUN] > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// MATCH-018: is_coastal checks if land territory borders any sea zone.
+// Coastal territories can be loaded from/unloaded to via transports.
+is_coastal :: proc(land: Land_ID) -> bool {
+	return sa.len(mm.l2s_1away_via_land[land]) > 0
+}
+
+// MATCH-019: can_produce_at checks if player can produce units at territory.
+// Requires: owned factory, not conquered this turn (factory_prod > 0 implies not conquered).
+can_produce_at :: proc(gc: ^Game_Cache, land: Land_ID, player: Player_ID) -> bool {
+	return gc.owner[land] == player && gc.factory_prod[land] > 0
+}
+
+// MATCH-020: get_production_value returns IPC value of territory.
+// This is the base production value from the map, not factory capacity.
+get_production_value :: proc(land: Land_ID) -> u8 {
+	return mm.value[land]
+}
+
+// ===== Neighbor Analysis Predicates =====
+// These predicates analyze neighboring territories for strategic assessment.
+
+// MATCH-021: has_enemy_neighbors checks if any adjacent land is enemy-owned.
+// Territories with enemy neighbors are on the front line and need defense.
+has_enemy_neighbors :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	cur_team := mm.team[gc.cur_player]
+	for neighbor in sa.slice(&mm.l2l_1away_via_land[land]) {
+		if mm.team[gc.owner[neighbor]] != cur_team {
+			return true
+		}
+	}
+	return false
+}
+
+// MATCH-022: has_allied_neighbors checks if any adjacent land is owned by ally (not self).
+// Useful for finding reinforcement routes and coordination opportunities.
+has_allied_neighbors :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	cur_team := mm.team[gc.cur_player]
+	for neighbor in sa.slice(&mm.l2l_1away_via_land[land]) {
+		owner := gc.owner[neighbor]
+		if owner != gc.cur_player && mm.team[owner] == cur_team {
+			return true
+		}
+	}
+	return false
+}
+
+// ===== Unit Counting Predicates =====
+// These predicates count units at locations for strength assessment.
+
+// MATCH-023: count_enemy_units_at returns total enemy army units at a land territory.
+// Counts all unit types (inf, arty, tank, aa) for all enemy players.
+count_enemy_units_at :: proc(gc: ^Game_Cache, land: Land_ID) -> int {
+	cur_team := mm.team[gc.cur_player]
+	count := 0
+	for player in Player_ID {
+		if mm.team[player] != cur_team {
+			for army in Idle_Army {
+				count += int(gc.idle_armies[land][player][army])
+			}
+		}
+	}
+	return count
+}
+
+// MATCH-024: count_allied_units_at returns total allied army units at a land territory.
+// Counts all unit types for current player and allies.
+count_allied_units_at :: proc(gc: ^Game_Cache, land: Land_ID) -> int {
+	cur_team := mm.team[gc.cur_player]
+	count := 0
+	for player in Player_ID {
+		if mm.team[player] == cur_team {
+			for army in Idle_Army {
+				count += int(gc.idle_armies[land][player][army])
+			}
+		}
+	}
+	return count
+}
+
+// MATCH-025: is_capital checks if territory is any player's capital.
+// Capitals have special significance for victory conditions and income capture.
+is_capital :: proc(land: Land_ID) -> bool {
+	for player in Player_ID {
+		if mm.capital[player] == land {
+			return true
+		}
+	}
+	return false
+}
+

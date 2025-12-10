@@ -421,6 +421,16 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | MATCH-013 | `getAdjacentSeaCount(sea)` | N/A | Returns count of sea zones connected to this one. | `get_adjacent_sea_count()` | ✅ DONE | 95% | Naval mobility |
 | MATCH-014 | `isCanalSea(sea)` | N/A | Checks if sea zone's connectivity depends on canal status. | `is_canal_sea()` | ✅ DONE | 95% | Chokepoint detection |
 | MATCH-015 | `isEnemyTerritory()` | N/A | Checks if territory is owned by enemy player. | `is_enemy_territory()` | ✅ DONE | 95% | Attack targets |
+| MATCH-016 | `territoryHasFactory()` | N/A | Checks if territory has a factory. | `has_factory()` | ✅ DONE | 95% | Consolidated from combat_move |
+| MATCH-017 | `territoryHasAaGun()` | N/A | Checks if territory has at least one AA gun. | `has_aa_gun()` | ✅ DONE | 95% | Consolidated from combat_move |
+| MATCH-018 | `territoryIsCoastal()` | N/A | Checks if land territory borders any sea zone. | `is_coastal()` | ✅ DONE | 95% | Transport accessibility |
+| MATCH-019 | `canProduceAt()` | N/A | Checks if player can produce at territory. | `can_produce_at()` | ✅ DONE | 95% | Factory + ownership check |
+| MATCH-020 | `getProductionValue()` | N/A | Returns IPC value of territory. | `get_production_value()` | ✅ DONE | 95% | Base production lookup |
+| MATCH-021 | `hasEnemyNeighbors()` | N/A | Checks if any adjacent land is enemy-owned. | `has_enemy_neighbors()` | ✅ DONE | 95% | Consolidated from noncombat_move |
+| MATCH-022 | `hasAlliedNeighbors()` | N/A | Checks if any adjacent land is ally-owned. | `has_allied_neighbors()` | ✅ DONE | 95% | Reinforcement routes |
+| MATCH-023 | `countEnemyUnitsAt()` | N/A | Returns total enemy army units at territory. | `count_enemy_units_at()` | ✅ DONE | 95% | Strength assessment |
+| MATCH-024 | `countAlliedUnitsAt()` | N/A | Returns total allied army units at territory. | `count_allied_units_at()` | ✅ DONE | 95% | Defense counting |
+| MATCH-025 | `isCapital()` | N/A | Checks if territory is any player's capital. | `is_capital()` | ✅ DONE | 95% | Victory condition check |
 
 ---
 
