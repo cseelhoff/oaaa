@@ -431,6 +431,16 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | MATCH-023 | `countEnemyUnitsAt()` | N/A | Returns total enemy army units at territory. | `count_enemy_units_at()` | ✅ DONE | 95% | Strength assessment |
 | MATCH-024 | `countAlliedUnitsAt()` | N/A | Returns total allied army units at territory. | `count_allied_units_at()` | ✅ DONE | 95% | Defense counting |
 | MATCH-025 | `isCapital()` | N/A | Checks if territory is any player's capital. | `is_capital()` | ✅ DONE | 95% | Victory condition check |
+| MATCH-026 | `hasEnemyLandUnits()` | N/A | Checks if land has enemy ground forces. | `has_enemy_land_units()` | ✅ DONE | 95% | O(1) team lookup |
+| MATCH-027 | `hasAlliedLandUnits()` | N/A | Checks if land has allied ground forces. | `has_allied_land_units()` | ✅ DONE | 95% | O(1) team lookup |
+| MATCH-028 | `hasEnemySeaUnits()` | N/A | Checks if sea zone has enemy naval forces. | `has_enemy_sea_units()` | ✅ DONE | 95% | O(1) team lookup |
+| MATCH-029 | `hasAlliedSeaUnits()` | N/A | Checks if sea zone has allied naval forces. | `has_allied_sea_units()` | ✅ DONE | 95% | O(1) team lookup |
+| MATCH-030 | `isContestedSea()` | N/A | Checks if sea zone has both allied and enemy. | `is_contested_sea()` | ✅ DONE | 95% | Combat resolution |
+| MATCH-031 | `getPlayerCapital()` | N/A | Returns capital territory for a player. | `get_player_capital()` | ✅ DONE | 95% | Map data lookup |
+| MATCH-032 | `isOwnCapital()` | N/A | Checks if territory is current player's capital. | `is_own_capital()` | ✅ DONE | 95% | Capital defense |
+| MATCH-033 | `ownsCapital()` | N/A | Checks if player owns their capital. | `owns_capital()` | ✅ DONE | 95% | Income/surrender |
+| MATCH-034 | `getEnemyDistanceToLand()` | N/A | Min distance from any enemy land to target. | `get_enemy_distance_to_land()` | ✅ DONE | 90% | Threat assessment |
+| MATCH-035 | `getLandDistance()` | N/A | BFS distance between two land territories. | `get_land_distance()` | ✅ DONE | 90% | Pathfinding helper |
 
 ---
 

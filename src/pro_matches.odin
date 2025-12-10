@@ -287,3 +287,123 @@ is_capital :: proc(land: Land_ID) -> bool {
 	return false
 }
 
+// ===== Enemy Presence Predicates =====
+// These predicates check for enemy units at various locations.
+
+// MATCH-026: has_enemy_land_units checks if land territory has any enemy ground forces.
+// Uses team_land_units for efficient O(1) lookup.
+has_enemy_land_units :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	enemy_team := mm.enemy_team[gc.cur_player]
+	return gc.team_land_units[land][enemy_team] > 0
+}
+
+// MATCH-027: has_allied_land_units checks if land territory has any allied ground forces.
+// Includes current player's units.
+has_allied_land_units :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	my_team := mm.team[gc.cur_player]
+	return gc.team_land_units[land][my_team] > 0
+}
+
+// MATCH-028: has_enemy_sea_units checks if sea zone has any enemy naval forces.
+// Uses team_sea_units for efficient O(1) lookup.
+has_enemy_sea_units :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	enemy_team := mm.enemy_team[gc.cur_player]
+	return gc.team_sea_units[sea][enemy_team] > 0
+}
+
+// MATCH-029: has_allied_sea_units checks if sea zone has any allied naval forces.
+// Includes current player's units.
+has_allied_sea_units :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	my_team := mm.team[gc.cur_player]
+	return gc.team_sea_units[sea][my_team] > 0
+}
+
+// MATCH-030: is_contested_sea checks if sea zone has both allied and enemy units.
+// Contested zones may require combat resolution.
+is_contested_sea :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	my_team := mm.team[gc.cur_player]
+	enemy_team := mm.enemy_team[gc.cur_player]
+	return gc.team_sea_units[sea][my_team] > 0 && gc.team_sea_units[sea][enemy_team] > 0
+}
+
+// ===== Capital Utilities =====
+// These predicates work with player capitals.
+
+// MATCH-031: get_player_capital returns the capital territory for a player.
+// Returns the capital Land_ID from map data.
+get_player_capital :: proc(player: Player_ID) -> Land_ID {
+	return mm.capital[player]
+}
+
+// MATCH-032: is_own_capital checks if territory is current player's capital.
+is_own_capital :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	return mm.capital[gc.cur_player] == land
+}
+
+// MATCH-033: owns_capital checks if player currently owns their capital.
+// Important for income collection and surrender conditions.
+owns_capital :: proc(gc: ^Game_Cache, player: Player_ID) -> bool {
+	return gc.owner[mm.capital[player]] == player
+}
+
+// ===== Distance Utilities =====
+// These helpers provide distance-related information.
+
+// MATCH-034: get_enemy_distance_to_land returns minimum distance from any enemy land to target.
+// Returns 0 if enemy is at target, max_int if no path exists.
+get_enemy_distance_to_land :: proc(gc: ^Game_Cache, target: Land_ID) -> int {
+	cur_team := mm.team[gc.cur_player]
+	min_dist := max(int)
+	
+	// Check each land territory for enemy ownership
+	for land in Land_ID {
+		if mm.team[gc.owner[land]] != cur_team {
+			// This is enemy territory - calculate distance
+			dist := get_land_distance(target, land)
+			if dist < min_dist {
+				min_dist = dist
+			}
+		}
+	}
+	return min_dist
+}
+
+// MATCH-035: get_land_distance returns BFS distance between two land territories.
+// Returns max_int if no land path exists (islands).
+get_land_distance :: proc(from: Land_ID, to: Land_ID) -> int {
+	if from == to {
+		return 0
+	}
+	
+	// BFS through land connections
+	visited: [Land_ID]bool
+	queue: [128]Land_ID  // Fixed-size queue
+	distances: [128]int
+	front, back := 0, 0
+	
+	queue[back] = from
+	distances[back] = 0
+	back += 1
+	visited[from] = true
+	
+	for front < back {
+		current := queue[front]
+		current_dist := distances[front]
+		front += 1
+		
+		for neighbor in sa.slice(&mm.l2l_1away_via_land[current]) {
+			if neighbor == to {
+				return current_dist + 1
+			}
+			if !visited[neighbor] && back < 128 {
+				visited[neighbor] = true
+				queue[back] = neighbor
+				distances[back] = current_dist + 1
+				back += 1
+			}
+		}
+	}
+	
+	return max(int)  // No path found
+}
+
