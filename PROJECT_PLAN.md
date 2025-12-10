@@ -343,10 +343,10 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 
 | ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
 |----|------------------|-------|-------------|-----------------|--------|-------|-------|
-| TRN-001 | `getUnusedCarrierCapacity()` | 45-80 | Returns total available fighter slots across all carriers in a sea zone (2 per carrier minus loaded fighters). | ❌ MISSING | ❌ MISSING | 0% | |
-| TRN-002 | └─ `for (Unit carrier)` | 55-75 | Iterates through carriers counting capacity and subtracting already-landed fighters. | ❌ MISSING | ❌ MISSING | 0% | |
-| TRN-003 | `getUnusedLocalCarrierCapacity()` | 82-120 | Similar to above but only counts carriers that haven't moved yet (can still pick up fighters). | ❌ MISSING | ❌ MISSING | 0% | |
-| TRN-004 | └─ `for (Unit carrier)` local | 92-115 | Checks carrier movement status before counting capacity. | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-001 | `getUnusedCarrierCapacity()` | 45-80 | Returns total available fighter slots across all carriers in a sea zone (2 per carrier minus loaded fighters). | `get_unused_carrier_capacity()` | ✅ DONE | 85% | |
+| TRN-002 | └─ `for (Unit carrier)` | 55-75 | Iterates through carriers counting capacity and subtracting already-landed fighters. | `#region TRN-002` | ✅ DONE | 85% | |
+| TRN-003 | `getUnusedLocalCarrierCapacity()` | 82-120 | Similar to above but only counts carriers that haven't moved yet (can still pick up fighters). | `get_unused_local_carrier_capacity()` | ✅ DONE | 85% | Checks 2-away |
+| TRN-004 | └─ `for (Unit carrier)` local | 92-115 | Checks carrier movement status before counting capacity. | `#region TRN-004` | ✅ DONE | 85% | |
 | TRN-005 | `getUnitsToTransportThatCantMoveToHigherValue()` | 122-200 | **KEY**: Finds units stranded on low-value territories (islands) that need transport evacuation. | `count_stranded_units` | 🔶 PARTIAL | 70% | Recently improved |
 | TRN-006 | └─ `for (Territory neighbor)` | 135-195 | Checks if any adjacent land has higher strategic value - if not, units are "stranded". | Inline | 🔶 PARTIAL | 65% | Low-value check |
 | TRN-007 | └─ └─ `for (Unit unit)` | 145-190 | Identifies specific units that should be transported out due to lack of land route to battle. | Inline | 🔶 PARTIAL | 60% | |
@@ -359,8 +359,8 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TRN-014 | `interleaveUnitsCarriersAndPlanes()` | 342-455 | Complex movement ordering for carrier+fighter fleets. Ensures fighters don't move before their carrier, and carriers don't strand fighters. | ❌ MISSING | ❌ MISSING | 0% | 115 lines |
 | TRN-015 | └─ `while (carriers.hasNext())` | 360-450 | Pairs carriers with fighters for coordinated movement. | ❌ MISSING | ❌ MISSING | 0% | |
 | TRN-016 | └─ └─ `for (fighter)` per carrier | 375-440 | Assigns fighters to specific carriers and orders movement appropriately. | ❌ MISSING | ❌ MISSING | 0% | |
-| TRN-017 | `validateCarrierCapacity()` | 457-490 | Validation check ensuring no carrier is overloaded (max 2 fighters per carrier). | ❌ MISSING | ❌ MISSING | 0% | |
-| TRN-018 | └─ `for (Unit carrier)` | 465-485 | Checks each carrier's fighter count doesn't exceed capacity. | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-017 | `validateCarrierCapacity()` | 457-490 | Validation check ensuring no carrier is overloaded (max 2 fighters per carrier). | `validate_carrier_capacity()` | ✅ DONE | 90% | |
+| TRN-018 | └─ `for (Unit carrier)` | 465-485 | Checks each carrier's fighter count doesn't exceed capacity. | Inline | ✅ DONE | 90% | |
 | TRN-019 | `getTransportsThatCanTransport()` | 492-521 | Filters transports to only those with available capacity and movement remaining. | 🔶 PARTIAL | 🔶 PARTIAL | 50% | |
 | TRN-020 | └─ `for (Unit transport)` | 500-518 | Checks each transport for capacity and movement status. | Loop | 🔶 PARTIAL | 50% | |
 

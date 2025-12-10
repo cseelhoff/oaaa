@@ -2190,6 +2190,128 @@ has_carrier_capacity :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	return carrier_capacity > fighter_count
 }
 
+// TRN-001: Get unused carrier capacity in a sea zone
+// Returns: number of additional fighters that can land (can be negative if overcrowded)
+// From ProTransportUtils.java getUnusedCarrierCapacity() lines 363-377
+get_unused_carrier_capacity :: proc(gc: ^Game_Cache, sea: Sea_ID) -> int {
+	player := gc.cur_player
+	
+	// #region TRN-002: Count carriers (each has 2 capacity)
+	carrier_capacity: int = 0
+	carrier_capacity += int(gc.idle_ships[sea][player][.CARRIER]) * 2
+	
+	// Count allied carriers
+	for ally in sa.slice(&mm.allies[player]) {
+		if ally == player {
+			continue
+		}
+		carrier_capacity += int(gc.idle_ships[sea][ally][.CARRIER]) * 2
+	}
+	
+	// Count fighters already on carriers
+	fighter_count: int = 0
+	fighter_count += int(gc.idle_sea_planes[sea][player][.FIGHTER])
+	
+	// Also count allied fighters
+	for ally in sa.slice(&mm.allies[player]) {
+		if ally == player {
+			continue
+		}
+		fighter_count += int(gc.idle_sea_planes[sea][ally][.FIGHTER])
+	}
+	// #endregion TRN-002
+	
+	return carrier_capacity - fighter_count
+}
+
+// TRN-003: Get unused carrier capacity within 2 sea zones
+// Useful for checking if fighters can find a carrier to land on
+// From ProTransportUtils.java getUnusedLocalCarrierCapacity() lines 327-360
+get_unused_local_carrier_capacity :: proc(gc: ^Game_Cache, sea: Sea_ID) -> int {
+	player := gc.cur_player
+	canal_state := transmute(u8)gc.canals_open
+	
+	total_capacity: int = 0
+	total_fighters: int = 0
+	
+	// #region TRN-004: Check current sea zone and 2-away neighbors
+	// Current sea zone
+	total_capacity += get_carrier_capacity_at_sea(gc, sea, player)
+	total_fighters += get_fighter_count_at_sea(gc, sea, player)
+	
+	// 1-away sea zones
+	for adj_sea in mm.s2s_1away_via_sea[canal_state][sea] {
+		total_capacity += get_carrier_capacity_at_sea(gc, adj_sea, player)
+		total_fighters += get_fighter_count_at_sea(gc, adj_sea, player)
+	}
+	
+	// 2-away sea zones
+	for mid_sea in mm.s2s_1away_via_sea[canal_state][sea] {
+		for far_sea in mm.s2s_1away_via_sea[canal_state][mid_sea] {
+			if far_sea == sea {
+				continue  // Already counted
+			}
+			// Check if already counted as 1-away
+			already_counted := false
+			for adj_sea in mm.s2s_1away_via_sea[canal_state][sea] {
+				if far_sea == adj_sea {
+					already_counted = true
+					break
+				}
+			}
+			if !already_counted {
+				total_capacity += get_carrier_capacity_at_sea(gc, far_sea, player)
+				total_fighters += get_fighter_count_at_sea(gc, far_sea, player)
+			}
+		}
+	}
+	// #endregion TRN-004
+	
+	return total_capacity - total_fighters
+}
+
+// TRN-003/004 Helper: Get carrier capacity at a specific sea zone
+get_carrier_capacity_at_sea :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	capacity: int = 0
+	capacity += int(gc.idle_ships[sea][player][.CARRIER]) * 2
+	
+	for ally in sa.slice(&mm.allies[player]) {
+		if ally == player {
+			continue
+		}
+		capacity += int(gc.idle_ships[sea][ally][.CARRIER]) * 2
+	}
+	
+	return capacity
+}
+
+// TRN-003/004 Helper: Get fighter count at a specific sea zone
+get_fighter_count_at_sea :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	count: int = 0
+	count += int(gc.idle_sea_planes[sea][player][.FIGHTER])
+	
+	for ally in sa.slice(&mm.allies[player]) {
+		if ally == player {
+			continue
+		}
+		count += int(gc.idle_sea_planes[sea][ally][.FIGHTER])
+	}
+	
+	return count
+}
+
+// TRN-017: Validate if carrier has capacity for additional fighter
+// Returns true if there's room for one more fighter
+// From ProTransportUtils.java validateCarrierCapacity() lines 304-321
+validate_carrier_capacity :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	return get_unused_carrier_capacity(gc, sea) > 0
+}
+
+// TRN-017/018: Validate if carrier at sea zone can receive N more fighters
+validate_carrier_capacity_for_count :: proc(gc: ^Game_Cache, sea: Sea_ID, additional_fighters: int) -> bool {
+	return get_unused_carrier_capacity(gc, sea) >= additional_fighters
+}
+
 // NCM-047 Helper: Get distance between sea zones (BFS limited by max_distance)
 get_sea_distance :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID, max_distance: u8) -> u8 {
 	if src_sea == dst_sea {
