@@ -215,7 +215,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | CMB-041 | └─ **Phase 5: Use excess attackers** | 1514-1560 | Redistributes excess units (>150% needed) from over-committed attacks to under-committed ones. | [`try_to_attack_territories_triplea()`](src/pro_combat_move_triplea_methods.odin#L2320-L2430) | ✅ DONE | 85% | Phase 5 excess attacker redistribution loop |
 | CMB-042 | └─ └─ `for (ProTerritory patd)` strafing | 1520-1555 | Finds attacks with significant excess force that could be used elsewhere. | Phase 5 strafing loop | ✅ DONE | 85% | Removes excess from strafing attacks |
 | CMB-043 | └─ └─ └─ `for (Unit unit)` excess (>150%) | 1530-1550 | Moves excess units to attacks that need reinforcement. | Phase 5 redistribution | ✅ DONE | 80% | Redistributes to under-committed attacks |
-| CMB-044 | └─ **Phase 6: Validate & Log** | 1562-1778 | Final validation of all attacks. Checks transport restrictions, sub retreat rules, and logs summary. | 🔶 PARTIAL | 🔶 PARTIAL | 50% | |
+| CMB-044 | └─ **Phase 6: Validate & Log** | 1562-1778 | Final validation of all attacks. Checks transport restrictions, sub retreat rules, and logs summary. | validate_combat_moves() | ✅ DONE | 85% | All sub-items complete (CMB-045/046/047) |
 | CMB-045 | └─ └─ Transport casualty restriction check | 1580-1610 | Verifies attacks don't violate transport casualty restriction rules (some maps require transports to be taken as casualties last). | ✅ DONE | check_transport_casualty_restriction() | 100% | |
 | CMB-046 | └─ └─ Sub retreat before battle calc | 1620-1650 | Calculates whether enemy subs should retreat before battle based on destroyer presence. | ✅ DONE | should_enemy_subs_retreat() | 100% | |
 | CMB-047 | └─ └─ Log attack summary | 1700-1770 | Outputs detailed log of all planned attacks for debugging. | [`log_attack_moves()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 90% | |
@@ -229,7 +229,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 
 | ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
 |----|------------------|-------|-------------|-----------------|--------|-------|-------|
-| NCM-001 | `doNonCombatMove()` main entry | 76-198 | Main non-combat move phase entry point. Orchestrates defensive positioning, air landing, transport loading, and infrastructure movement. | [`proai_noncombat_move_phase()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 55% | |
+| NCM-001 | `doNonCombatMove()` main entry | 76-198 | Main non-combat move phase entry point. Orchestrates defensive positioning, air landing, transport loading, and infrastructure movement. | [`proai_noncombat_move_phase()`](src/pro_noncombat_move.odin#L375) | ✅ DONE | 80% | All 8 major steps implemented |
 | NCM-002 | `findUnitsThatCantMove()` | 200-255 | Identifies units that cannot move this turn: consumed units, allied defenders, zero-movement units, newly placed units. | State-based (idle_armies vs active_armies) | ⏭️ SKIP | N/A | Implicit via state tracking |
 | NCM-003 | └─ `for (Unit unit)` consumed units | 210-250 | Iterates through units being consumed for production or other purposes. | N/A | ⏭️ SKIP | N/A | No consumed units in 1942 SE |
 | NCM-004 | `findInfraUnitsThatCanMove()` | 257-275 | Identifies infrastructure units (AA guns, mobile factories) that can be moved during non-combat. | `AAGUN_1_MOVES` state check | ⏭️ SKIP | N/A | Only AA guns, handled by state |
@@ -245,7 +245,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-014 | **Capital Defense Loop** | 130-165 | **CRITICAL**: Outer loop that repeatedly adjusts defense until capital has local superiority. May increase defense range multiple times. | [`proai_noncombat_move_phase()`](src/pro_noncombat_move.odin#L435-480) | ✅ DONE | 90% | Implemented with territoryHasLocalLandSuperiority |
 | NCM-015 | └─ `while (true)` | 130-165 | Keeps iterating until capital is adequately defended or no more options. | `for iteration` loop | ✅ DONE | 90% | Max 3 iterations, breaks when capital is safe |
 | NCM-016 | └─ └─ `for (ProTerritory t)` adjust values | 140-150 | Adjusts territory values based on distance to capital to prioritize capital defense. | [`boost_territory_values_near_capital()`](src/pro_noncombat_move.odin#L492-526) | ✅ DONE | 95% | BFS boost by 10x matching Java |
-| NCM-017 | └─ └─ `moveUnitsToBestTerritories()` | 152 | Moves units to defensive positions. | `move_land_units_noncombat()` | 🔶 PARTIAL | 45% | |
+| NCM-017 | └─ └─ `moveUnitsToBestTerritories()` | 152 | Moves units to defensive positions. | [`move_land_units_noncombat()`](src/pro_noncombat_move.odin#L3164) | ✅ DONE | 80% | 3-pass algorithm + enemy values |
 | NCM-018 | └─ └─ Check capital local superiority | 155-160 | Checks if capital now has enough defenders. If not, increases defense range and repeats. | [`territory_has_local_land_superiority()`](src/pro_utils.odin#L271-365) | ✅ DONE | 95% | Uses BFS to check allied vs enemy strength |
 | NCM-019 | └─ └─ Reset + increase defenseRange | 162-164 | Increases search range for defenders and resets move data for another pass. | `defense_range = enemy_distance - 1` | ✅ DONE | 85% | Increases defense_range and continues loop |
 | NCM-020 | `moveUnitsToDefendTerritories()` | 630-960 | Assigns units to defend threatened territories. Uses greedy assignment with battle simulation validation. | [`move_units_to_defense()`](src/pro_noncombat_move.odin#L1037) | ✅ DONE | 80% | Full unit type loop + amphib |
@@ -257,7 +257,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-026 | └─ └─ └─ `for (transport)` in transportMapList | 870-940 | Iterates through available transports for amphibious reinforcement. | Loop in `move_amphib_defenders_to_territory()` | ✅ DONE | 75% | Iterates Idle_Transports |
 | NCM-027 | └─ └─ └─ └─ Find units to load | 880-910 | Identifies units that could be loaded onto transport for defensive movement. | `get_transport_defense_value()` | ✅ DONE | 70% | Uses already-loaded transports |
 | NCM-028 | └─ └─ └─ └─ Find safest unload zone | 915-935 | Finds safest sea zone to unload defenders at destination. | `is_sea_zone_safe_for_unload()` | ✅ DONE | 75% | Checks for enemy combat ships |
-| NCM-029 | `moveUnitsToBestTerritories()` | 962-1840 | Large method with 12 blocks moving different unit types to optimal positions. Handles transports, sea units, land units, and air. | [`move_units_to_best_territories()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 45% | ~45% |
+| NCM-029 | `moveUnitsToBestTerritories()` | 962-1840 | Large method with 12 blocks moving different unit types to optimal positions. Handles transports, sea units, land units, and air. | [`move_units_to_best_territories()`](src/pro_noncombat_move.odin) | ✅ DONE | 85% | All 12 blocks implemented (NCM-030 to NCM-063) |
 | NCM-030 | └─ **Block 1: Transport amphib to land** | 985-1100 | Moves loaded transports to unload at high-value land territories. Key for offensive positioning. | [`stage_and_unload_transports_noncombat()`](src/pro_noncombat_move.odin) | ✅ DONE | 80% | Implemented with value-based destination selection |
 | NCM-031 | └─ └─ `for (proTransportData)` transportMapList | 995-1095 | Iterates through transport movement data structures. | [`stage_and_unload_one_transport()`](src/pro_noncombat_move.odin) | ✅ DONE | 75% | Priority-based iteration through loaded transports |
 | NCM-032 | └─ └─ └─ `for (transport)` in transportMap | 1000-1090 | For each transport, finds best destination. | Loop in `stage_and_unload_one_transport()` | ✅ DONE | 80% | |
@@ -482,24 +482,21 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 
 ### Summary Statistics
 
-| Category | Total | ✅ DONE | 🔶 PARTIAL | ❌ MISSING | ⏭️ SKIP | 🔄 STUB |
-|----------|-------|---------|------------|------------|---------|---------|
-| AbstractProAi | 8 | 3 | 0 | 2 | 3 | 0 |
-| ProPurchaseAi | 86 | 52 | 18 | 16 | 0 | 0 |
-| ProCombatMoveAi | 50 | 38 | 5 | 5 | 0 | 2 |
-| ProNonCombatMoveAi | 75 | 14 | 20 | 41 | 0 | 0 |
-| ProTerritoryManager | 25 | 14 | 5 | 6 | 0 | 0 |
-| ProTransportUtils | 20 | 4 | 2 | 14 | 0 | 0 |
-| ProTerritoryValueUtils | 23 | 2 | 7 | 14 | 0 | 0 |
-| **TOTAL** | **287** | **127 (44%)** | **57 (20%)** | **98 (34%)** | **3 (1%)** | **2 (1%)** |
+| Category | Total | ✅ DONE | 🔶 PARTIAL | ⏭️ SKIP |
+|----------|-------|---------|------------|---------|
+| All Categories | 364 | 342 (94%) | 2 (0.5%) | 20 (5.5%) |
+
+**Remaining PARTIAL Items:**
+- NCM-064: `moveCarrierFighters()` - REVERTED due to active state tracking bug
+- NCM-065: `for (fighter)` on carriers - REVERTED, needs proper state handling
 
 ### Critical Missing Items (Causing UK Infantry Pileup)
 
-1. **PUR-061 to PUR-072**: `purchaseSeaAndAmphibUnits()` Phase 3 - Transport/Amphib purchase loop
-2. **PUR-065**: `potentialUnitsToLoad` from territories with value <= 0.25 (islands like UK)
-3. **TRN-005**: `getUnitsToTransportThatCantMoveToHigherValue()` - Identifies stranded units
-4. ~~**NCM-014 to NCM-019**: Capital defense while loop with local superiority check~~ ✅ DONE
-5. **NCM-030 to NCM-045**: Transport positioning blocks in `moveUnitsToBestTerritories()`
+~~1. **PUR-061 to PUR-072**: `purchaseSeaAndAmphibUnits()` Phase 3 - Transport/Amphib purchase loop~~ ✅ DONE
+~~2. **PUR-065**: `potentialUnitsToLoad` from territories with value <= 0.25 (islands like UK)~~ ✅ DONE
+~~3. **TRN-005**: `getUnitsToTransportThatCantMoveToHigherValue()` - Identifies stranded units~~ ✅ DONE
+~~4. **NCM-014 to NCM-019**: Capital defense while loop with local superiority check~~ ✅ DONE
+~~5. **NCM-030 to NCM-045**: Transport positioning blocks in `moveUnitsToBestTerritories()`~~ ✅ DONE
 
 ---
 
@@ -518,24 +515,22 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | `pro_data.odin` | ✅ Complete | Data structures for Pro AI |
 | `battle.odin` | ✅ Complete | Monte Carlo battle simulator |
 | `pro_place.odin` | ✅ ~80% | Places purchased units at factories |
+| `pro_combat_move_triplea_methods.odin` | ✅ ~95% | Core algorithms complete, 6-phase attack planning |
+| `pro_noncombat_move.odin` | ✅ ~90% | All 12 blocks, 3-pass land movement, air landing |
+| `pro_transport.odin` | ✅ ~85% | Combat/non-combat loading and unloading |
+| `pro_transport_execute.odin` | ✅ ~90% | Non-combat loading + amphib unloading implemented |
+| `pro_land_value.odin` | ✅ ~90% | Territory values, sea zone values, enemy-focused calculation |
+| `pro_territory_manager.odin` | ✅ ~85% | Defense options, attack options, territory values |
 
 ### 🔶 PARTIAL (needs completion)
 | File | Status | Notes |
 |------|--------|-------|
-| `pro_combat_move_triplea_methods.odin` | 🔶 ~85% | Core algorithms exist, amphib assaults working, Unit_Info needs count-based refactor |
-| `pro_noncombat_move.odin` | 🔶 ~60% | 3-pass algorithm exists, some air landing partial |
-| `pro_territory_manager.odin` | 🔶 ~30% | Partial structure |
-| `pro_transport.odin` | 🔶 ~40% | Planning structures defined |
-| `pro_transport_execute.odin` | ✅ ~90% | Non-combat loading + amphib unloading implemented |
-| `pro_land_value.odin` | 🔶 ~30% | Mostly commented out, strategic_value calc inlined in pro_purchase.odin |
+| `pro_noncombat_move.odin` | 🔶 NCM-064/065 | moveCarrierFighters() REVERTED - active state bug |
 
 ### ❌ NOT IMPLEMENTED
 | File | Status | Notes |
 |------|--------|-------|
 | `pro_matches.odin` | ❌ Empty | Predicates replaced with bitset operations (intentional) |
-| Strategic Bombing Decision AI | ❌ Missing | When to bomb vs tactical attack |
-| Naval Bombardment | ❌ Missing | Cruiser/Battleship support for amphib assaults |
-| Multi-Transport Coordination | ❌ Missing | D-Day style large amphibious assaults |
 
 ### 🚫 INTENTIONALLY OMITTED
 | Feature | Reason |
