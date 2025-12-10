@@ -292,8 +292,8 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-061 | └─ └─ `for (Unit air)` | 2010-2105 | Iterates through air units needing landing locations. | `#region NCM-061` | ✅ DONE | 85% | |
 | NCM-062 | └─ **Block 12: Air to safest** | 2115-2160 | Lands remaining air units at safest available territory (carriers or defended land). | Inline | ✅ DONE | 80% | |
 | NCM-063 | └─ └─ `for (Unit air)` | 2125-2155 | Final pass ensuring all air units have legal landing spots. | `#region NCM-063` | ✅ DONE | 80% | |
-| NCM-064 | `moveCarrierFighters()` | 2165-2175 | Special handling for fighters on carriers - ensures carrier moves with its fighters. | `move_carrier_fighters()` | ✅ DONE | 90% | |
-| NCM-065 | └─ `for (fighter)` on carriers | 2168-2173 | Coordinates carrier and fighter movement. | `#region NCM-064/065` | ✅ DONE | 90% | |
+| NCM-064 | `moveCarrierFighters()` | 2165-2175 | Special handling for fighters on carriers - ensures carrier moves with its fighters. | ❌ REVERTED | 🔶 PARTIAL | 10% | Bug in active state tracking |
+| NCM-065 | └─ `for (fighter)` on carriers | 2168-2173 | Coordinates carrier and fighter movement. | ❌ REVERTED | 🔶 PARTIAL | 10% | Needs proper state handling |
 | NCM-066 | `moveInfraUnits()` | 2177-2475 | Moves infrastructure units (AA guns, mobile factories) to optimal locations. | `move_aa_guns_noncombat()` | ✅ DONE | 85% | Infrastructure |
 | NCM-067 | └─ `moveInfrastructure()` AA guns | 2185-2300 | Moves AA guns to protect valuable factories from strategic bombing. | `#region NCM-067` | ✅ DONE | 85% | |
 | NCM-068 | └─ └─ `for (Unit aa)` | 2195-2295 | Iterates through AA guns to find best destinations. | `#region NCM-068` | ✅ DONE | 85% | |
