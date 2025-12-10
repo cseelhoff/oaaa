@@ -407,3 +407,371 @@ get_land_distance :: proc(from: Land_ID, to: Land_ID) -> int {
 	return max(int)  // No path found
 }
 
+// ===== Neutral/Enemy Territory Predicates =====
+// These predicates classify territory ownership states.
+
+// MATCH-036: is_enemy_or_can_attack checks if territory is not friendly.
+// Combines enemy check for attack targeting.
+// Note: In A&A 1942 SE, all territories are player-owned (no neutral mechanic like newer games)
+is_enemy_or_can_attack :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	return mm.team[gc.owner[land]] != mm.team[gc.cur_player]
+}
+
+// MATCH-037: is_enemy_not_allied checks if territory is enemy-owned.
+// For targeting player-owned enemy territories specifically.
+is_enemy_not_allied :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	return mm.team[gc.owner[land]] != mm.team[gc.cur_player]
+}
+
+// ===== Factory Predicates =====
+// These predicates analyze factory status and bombing targets.
+
+// MATCH-039: get_factory_capacity returns production capacity of territory.
+// Returns 0 if no factory or factory is destroyed.
+get_factory_capacity :: proc(gc: ^Game_Cache, land: Land_ID) -> u8 {
+	return gc.factory_prod[land]
+}
+
+// MATCH-040: has_bombable_factory checks if territory can be strategically bombed.
+// Territory must have factory and be enemy-owned.
+has_bombable_factory :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	if gc.factory_prod[land] == 0 {
+		return false
+	}
+	owner := gc.owner[land]
+	return mm.team[owner] != mm.team[gc.cur_player]
+}
+
+// MATCH-041: is_factory_damaged checks if factory has any damage.
+is_factory_damaged :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	return gc.factory_dmg[land] > 0
+}
+
+// MATCH-042: get_factory_damage returns current damage on factory.
+get_factory_damage :: proc(gc: ^Game_Cache, land: Land_ID) -> u8 {
+	return gc.factory_dmg[land]
+}
+
+// MATCH-043: can_build_units checks if player can build units at territory.
+// Must own factory with remaining build capacity.
+can_build_units :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	return gc.owner[land] == gc.cur_player && gc.builds_left[land] > 0
+}
+
+// MATCH-044: get_builds_left returns remaining production at territory.
+get_builds_left :: proc(gc: ^Game_Cache, land: Land_ID) -> u8 {
+	return gc.builds_left[land]
+}
+
+// ===== Sea Zone Factory Adjacency =====
+// These predicates check factory-sea relationships.
+
+// MATCH-045: is_adjacent_to_owned_factory checks if sea zone is next to owned factory.
+// Important for naval production placement.
+is_adjacent_to_owned_factory :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	for land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
+		if gc.owner[land] == gc.cur_player && gc.factory_prod[land] > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// MATCH-046: is_adjacent_to_allied_factory checks if sea zone is next to any allied factory.
+is_adjacent_to_allied_factory :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	my_team := mm.team[gc.cur_player]
+	for land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
+		if mm.team[gc.owner[land]] == my_team && gc.factory_prod[land] > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// MATCH-046: is_adjacent_to_enemy_factory checks if sea zone is next to enemy factory.
+is_adjacent_to_enemy_factory :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	my_team := mm.team[gc.cur_player]
+	for land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
+		owner := gc.owner[land]
+		if mm.team[owner] != my_team && gc.factory_prod[land] > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// ===== Naval Unit Counting =====
+// These helpers count specific ship types at sea zones.
+// Note: count_transports_at_sea is defined in pro_noncombat_move.odin
+
+// MATCH-047: count_empty_transports_at_sea returns empty transports at sea zone.
+count_empty_transports_at_sea :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	return int(gc.idle_ships[sea][player][.TRANS_EMPTY])
+}
+
+// MATCH-048: count_loaded_transports_at_sea returns loaded transports at sea zone.
+count_loaded_transports_at_sea :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	count := 0
+	count += int(gc.idle_ships[sea][player][.TRANS_1I])
+	count += int(gc.idle_ships[sea][player][.TRANS_1A])
+	count += int(gc.idle_ships[sea][player][.TRANS_1T])
+	count += int(gc.idle_ships[sea][player][.TRANS_2I])
+	count += int(gc.idle_ships[sea][player][.TRANS_1I_1A])
+	count += int(gc.idle_ships[sea][player][.TRANS_1I_1T])
+	return count
+}
+
+// MATCH-049: count_combat_ships_at_sea returns warships (not transports) at sea zone.
+count_combat_ships_at_sea :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	count := 0
+	count += int(gc.idle_ships[sea][player][.SUB])
+	count += int(gc.idle_ships[sea][player][.DESTROYER])
+	count += int(gc.idle_ships[sea][player][.CARRIER])
+	count += int(gc.idle_ships[sea][player][.CRUISER])
+	count += int(gc.idle_ships[sea][player][.BATTLESHIP])
+	count += int(gc.idle_ships[sea][player][.BS_DAMAGED])
+	return count
+}
+
+// MATCH-050: has_destroyer checks if player has destroyer at sea zone.
+// Destroyers are essential for attacking submarines.
+has_destroyer :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> bool {
+	return gc.idle_ships[sea][player][.DESTROYER] > 0
+}
+
+// MATCH-051: has_carrier checks if player has carrier at sea zone.
+has_carrier :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> bool {
+	return gc.idle_ships[sea][player][.CARRIER] > 0
+}
+
+// MATCH-052: has_submarine checks if player has submarine at sea zone.
+has_submarine :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> bool {
+	return gc.idle_ships[sea][player][.SUB] > 0
+}
+
+// MATCH-053: count_carriers_at_sea returns carrier count at sea zone.
+count_carriers_at_sea :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	return int(gc.idle_ships[sea][player][.CARRIER])
+}
+
+// MATCH-054: get_carrier_capacity returns total fighter capacity at sea zone.
+// Each carrier holds 2 fighters.
+get_carrier_capacity :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	return int(gc.idle_ships[sea][player][.CARRIER]) * 2
+}
+
+// ===== Bombardment Predicates =====
+// These predicates check for shore bombardment capability.
+
+// MATCH-055: has_bombard_ships checks if player has cruisers or battleships at sea zone.
+// These ships can provide shore bombardment for amphibious assaults.
+has_bombard_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> bool {
+	return gc.idle_ships[sea][player][.CRUISER] > 0 ||
+	       gc.idle_ships[sea][player][.BATTLESHIP] > 0 ||
+	       gc.idle_ships[sea][player][.BS_DAMAGED] > 0
+}
+
+// MATCH-056: count_bombard_ships returns total bombardment-capable ships.
+count_bombard_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	count := 0
+	count += int(gc.idle_ships[sea][player][.CRUISER])
+	count += int(gc.idle_ships[sea][player][.BATTLESHIP])
+	count += int(gc.idle_ships[sea][player][.BS_DAMAGED])
+	return count
+}
+
+// MATCH-057: get_bombard_power returns total bombardment attack power at sea zone.
+// Cruiser=3, Battleship=4
+get_bombard_power :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	power := 0
+	power += int(gc.idle_ships[sea][player][.CRUISER]) * 3     // Cruiser attack 3
+	power += int(gc.idle_ships[sea][player][.BATTLESHIP]) * 4  // Battleship attack 4
+	power += int(gc.idle_ships[sea][player][.BS_DAMAGED]) * 4  // Damaged BB still attack 4
+	return power
+}
+
+// ===== Air Unit Predicates =====
+// These predicates work with air units.
+
+// MATCH-058: count_fighters_at_land returns fighters at land territory for player.
+count_fighters_at_land :: proc(gc: ^Game_Cache, land: Land_ID, player: Player_ID) -> int {
+	return int(gc.idle_land_planes[land][player][.FIGHTER])
+}
+
+// MATCH-059: count_bombers_at_land returns bombers at land territory for player.
+count_bombers_at_land :: proc(gc: ^Game_Cache, land: Land_ID, player: Player_ID) -> int {
+	return int(gc.idle_land_planes[land][player][.BOMBER])
+}
+
+// MATCH-060: count_fighters_at_sea returns fighters at sea zone for player.
+count_fighters_at_sea :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	return int(gc.idle_sea_planes[sea][player][.FIGHTER])
+}
+
+// MATCH-061: has_enemy_fighters_in_range checks if enemy fighters can reach land territory.
+// Uses cached bitset to check territories within fighter range (4 moves).
+has_enemy_fighters_in_range :: proc(gc: ^Game_Cache, target: Land_ID) -> bool {
+	enemy_team := mm.enemy_team[gc.cur_player]
+	target_air := to_air(target)
+	
+	// Check all land territories for enemy fighters within range
+	for land in Land_ID {
+		air_id := to_air(land)
+		// Check if this air territory can reach target in 4 moves
+		if target_air in mm.a2a_within_4_moves[air_id] {
+			for player in Player_ID {
+				if mm.team[player] == enemy_team {
+					if gc.idle_land_planes[land][player][.FIGHTER] > 0 {
+						return true
+					}
+				}
+			}
+		}
+	}
+	// Also check sea-based fighters on carriers
+	for sea in Sea_ID {
+		air_id := to_air_from_sea(sea)
+		if target_air in mm.a2a_within_4_moves[air_id] {
+			for player in Player_ID {
+				if mm.team[player] == enemy_team {
+					if gc.idle_sea_planes[sea][player][.FIGHTER] > 0 {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+// ===== Territory Value Helpers =====
+// These helpers provide territory value information.
+
+// MATCH-062: get_territory_value returns base IPC value of territory.
+get_territory_value :: proc(land: Land_ID) -> int {
+	return int(mm.value[land])
+}
+
+// MATCH-063: get_total_adjacent_land_value returns sum of IPC values of adjacent lands.
+get_total_adjacent_land_value :: proc(land: Land_ID) -> int {
+	total := 0
+	for neighbor in sa.slice(&mm.l2l_1away_via_land[land]) {
+		total += int(mm.value[neighbor])
+	}
+	return total
+}
+
+// MATCH-064: get_total_adjacent_sea_land_value returns sum of land values touching a sea zone.
+get_total_adjacent_sea_land_value :: proc(sea: Sea_ID) -> int {
+	total := 0
+	for land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
+		total += int(mm.value[land])
+	}
+	return total
+}
+
+// ===== Movement Validation Helpers =====
+// These predicates help with movement validation.
+
+// MATCH-065: can_land_move_through checks if land unit can move through territory.
+// Must be friendly (owned by self or ally) or empty enemy.
+can_land_move_through :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	owner := gc.owner[land]
+	if mm.team[owner] == mm.team[gc.cur_player] {
+		return true  // Friendly territory
+	}
+	// Enemy territory - can only move through if empty (blitz)
+	return gc.team_land_units[land][mm.enemy_team[gc.cur_player]] == 0
+}
+
+// MATCH-066: can_sea_move_through checks if sea unit can move through sea zone.
+// Can move through if no enemy combat ships (subs can sneak).
+can_sea_move_through :: proc(gc: ^Game_Cache, sea: Sea_ID, has_destroyer: bool) -> bool {
+	enemy_team := mm.enemy_team[gc.cur_player]
+	enemy_units := gc.team_sea_units[sea][enemy_team]
+	if enemy_units == 0 {
+		return true
+	}
+	// If we have destroyer, enemy subs don't block
+	// For simplicity, if any enemy units, consider blocked (conservative)
+	return false
+}
+
+// MATCH-067: is_blitzable checks if territory can be blitzed through.
+// Must be enemy with no units and have tank or mech to blitz.
+is_blitzable :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	owner := gc.owner[land]
+	// Can't blitz friendly territory
+	if mm.team[owner] == mm.team[gc.cur_player] {
+		return false
+	}
+	// Enemy territory - blitzable if no units
+	return gc.team_land_units[land][mm.enemy_team[gc.cur_player]] == 0
+}
+
+// ===== Combat Helpers =====
+// These predicates help with combat decisions.
+
+// MATCH-068: has_aa_threat checks if territory has AA guns that threaten air.
+has_aa_threat :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
+	// AA guns belong to the territory owner's team
+	owner := gc.owner[land]
+	if mm.team[owner] == mm.team[gc.cur_player] {
+		return false  // Friendly AA doesn't shoot our planes
+	}
+	return has_aa_gun(gc, land)
+}
+
+// MATCH-069: count_aa_guns_at returns number of AA guns at territory.
+count_aa_guns_at :: proc(gc: ^Game_Cache, land: Land_ID) -> int {
+	count := 0
+	for player in Player_ID {
+		count += int(gc.idle_armies[land][player][.AAGUN])
+	}
+	return count
+}
+
+// MATCH-070: get_defense_power_at_land returns total defense power at territory.
+// Sums defense values of all defending units.
+get_defense_power_at_land :: proc(gc: ^Game_Cache, land: Land_ID) -> int {
+	power := 0
+	owner := gc.owner[land]
+	owner_team := mm.team[owner]
+	
+	// Count army defense
+	for player in Player_ID {
+		if mm.team[player] == owner_team {
+			power += int(gc.idle_armies[land][player][.INF]) * 2   // Infantry defense 2
+			power += int(gc.idle_armies[land][player][.ARTY]) * 2  // Artillery defense 2
+			power += int(gc.idle_armies[land][player][.TANK]) * 3  // Tank defense 3
+		}
+	}
+	
+	// Count air defense (fighters and bombers on land)
+	for player in Player_ID {
+		if mm.team[player] == owner_team {
+			power += int(gc.idle_land_planes[land][player][.FIGHTER]) * 4  // Fighter defense 4
+			power += int(gc.idle_land_planes[land][player][.BOMBER]) * 1   // Bomber defense 1
+		}
+	}
+	
+	return power
+}
+
+// MATCH-071: get_attack_power_at_land returns total attack power at territory.
+// Sums attack values of all units that could attack from this territory.
+get_attack_power_at_land :: proc(gc: ^Game_Cache, land: Land_ID, player: Player_ID) -> int {
+	power := 0
+	
+	// Count army attack
+	power += int(gc.idle_armies[land][player][.INF]) * 1   // Infantry attack 1
+	power += int(gc.idle_armies[land][player][.ARTY]) * 2  // Artillery attack 2
+	power += int(gc.idle_armies[land][player][.TANK]) * 3  // Tank attack 3
+	
+	// Count air attack (fighters and bombers on land)
+	power += int(gc.idle_land_planes[land][player][.FIGHTER]) * 3  // Fighter attack 3
+	power += int(gc.idle_land_planes[land][player][.BOMBER]) * 4   // Bomber attack 4
+	
+	return power
+}
+

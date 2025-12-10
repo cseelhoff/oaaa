@@ -441,6 +441,42 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | MATCH-033 | `ownsCapital()` | N/A | Checks if player owns their capital. | `owns_capital()` | ✅ DONE | 95% | Income/surrender |
 | MATCH-034 | `getEnemyDistanceToLand()` | N/A | Min distance from any enemy land to target. | `get_enemy_distance_to_land()` | ✅ DONE | 90% | Threat assessment |
 | MATCH-035 | `getLandDistance()` | N/A | BFS distance between two land territories. | `get_land_distance()` | ✅ DONE | 90% | Pathfinding helper |
+| MATCH-036 | `isEnemyOrCanAttack()` | N/A | Checks if territory is enemy or player can attack from it. | `is_enemy_or_can_attack()` | ✅ DONE | 90% | Territory classification |
+| MATCH-037 | `isEnemyNotAllied()` | N/A | Checks if territory is enemy to player. | `is_enemy_not_allied()` | ✅ DONE | 95% | Team-based check |
+| MATCH-038 | `getFactoryCapacity()` | N/A | Returns production capacity of factory at territory. | `get_factory_capacity()` | ✅ DONE | 95% | Factory utility |
+| MATCH-039 | `hasBombableFactory()` | N/A | Checks if territory has factory that can be bombed. | `has_bombable_factory()` | ✅ DONE | 95% | SBR planning |
+| MATCH-040 | `isFactoryDamaged()` | N/A | Checks if factory has damage. | `is_factory_damaged()` | ✅ DONE | 95% | Repair logic |
+| MATCH-041 | `canBuildUnits()` | N/A | Checks if player can build at factory. | `can_build_units()` | ✅ DONE | 95% | Placement logic |
+| MATCH-042 | `isAdjacentToOwnedFactory()` | N/A | Checks if sea zone is next to owned factory. | `is_adjacent_to_owned_factory()` | ✅ DONE | 95% | Naval placement |
+| MATCH-043 | `isAdjacentToAlliedFactory()` | N/A | Checks if sea zone is next to allied factory. | `is_adjacent_to_allied_factory()` | ✅ DONE | 95% | Naval support |
+| MATCH-044 | `isAdjacentToEnemyFactory()` | N/A | Checks if sea zone is next to enemy factory. | `is_adjacent_to_enemy_factory()` | ✅ DONE | 95% | Attack targets |
+| MATCH-045 | `hasFactory()` | N/A | Checks if territory has factory. | `has_factory()` | ✅ DONE | 95% | Factory utility |
+| MATCH-046 | `isOwnedFactory()` | N/A | Checks if player owns factory at territory. | `is_owned_factory()` | ✅ DONE | 95% | Purchase logic |
+| MATCH-047 | `countEmptyTransports()` | N/A | Returns empty transports at sea zone. | `count_empty_transports_at_sea()` | ✅ DONE | 95% | Transport tracking |
+| MATCH-048 | `countLoadedTransports()` | N/A | Returns loaded transports at sea zone. | `count_loaded_transports_at_sea()` | ✅ DONE | 95% | Transport tracking |
+| MATCH-049 | `countCombatShips()` | N/A | Returns warships (not transports) at sea. | `count_combat_ships_at_sea()` | ✅ DONE | 95% | Naval strength |
+| MATCH-050 | `hasDestroyer()` | N/A | Checks if player has destroyer at sea zone. | `has_destroyer()` | ✅ DONE | 95% | Sub combat |
+| MATCH-051 | `hasCarrier()` | N/A | Checks if player has carrier at sea zone. | `has_carrier()` | ✅ DONE | 95% | Fighter landing |
+| MATCH-052 | `hasSubmarine()` | N/A | Checks if player has submarine at sea zone. | `has_submarine()` | ✅ DONE | 95% | Sub detection |
+| MATCH-053 | `countCarriers()` | N/A | Returns carrier count at sea zone. | `count_carriers_at_sea()` | ✅ DONE | 95% | Capacity calc |
+| MATCH-054 | `getCarrierCapacity()` | N/A | Returns total fighter capacity at sea. | `get_carrier_capacity()` | ✅ DONE | 95% | Fighter placement |
+| MATCH-055 | `hasBombardShips()` | N/A | Checks if player has cruisers/battleships. | `has_bombard_ships()` | ✅ DONE | 95% | Amphib support |
+| MATCH-056 | `countBombardShips()` | N/A | Returns bombardment-capable ships count. | `count_bombard_ships()` | ✅ DONE | 95% | Shore bombardment |
+| MATCH-057 | `getBombardPower()` | N/A | Returns total bombardment attack power. | `get_bombard_power()` | ✅ DONE | 95% | Amphib assault |
+| MATCH-058 | `countFightersAtLand()` | N/A | Returns fighters at land territory. | `count_fighters_at_land()` | ✅ DONE | 95% | Air unit tracking |
+| MATCH-059 | `countBombersAtLand()` | N/A | Returns bombers at land territory. | `count_bombers_at_land()` | ✅ DONE | 95% | Air unit tracking |
+| MATCH-060 | `countFightersAtSea()` | N/A | Returns fighters at sea zone. | `count_fighters_at_sea()` | ✅ DONE | 95% | Carrier fighters |
+| MATCH-061 | `hasEnemyFightersInRange()` | N/A | Checks if enemy fighters can reach territory. | `has_enemy_fighters_in_range()` | ✅ DONE | 85% | Threat assessment |
+| MATCH-062 | `getTerritoryValue()` | N/A | Returns base IPC value of territory. | `get_territory_value()` | ✅ DONE | 95% | Value lookup |
+| MATCH-063 | `getTotalAdjacentLandValue()` | N/A | Returns sum of adjacent land IPC values. | `get_total_adjacent_land_value()` | ✅ DONE | 95% | Strategic value |
+| MATCH-064 | `getTotalAdjacentSeaLandValue()` | N/A | Returns sum of land values touching sea. | `get_total_adjacent_sea_land_value()` | ✅ DONE | 95% | Sea value |
+| MATCH-065 | `canLandMoveThrough()` | N/A | Checks if land unit can move through. | `can_land_move_through()` | ✅ DONE | 90% | Movement validation |
+| MATCH-066 | `canSeaMoveThrough()` | N/A | Checks if sea unit can move through. | `can_sea_move_through()` | ✅ DONE | 85% | Movement validation |
+| MATCH-067 | `isBlitzable()` | N/A | Checks if territory can be blitzed. | `is_blitzable()` | ✅ DONE | 90% | Tank movement |
+| MATCH-068 | `hasAaThreat()` | N/A | Checks if territory has enemy AA. | `has_aa_threat()` | ✅ DONE | 95% | Air attack planning |
+| MATCH-069 | `countAaGunsAt()` | N/A | Returns AA gun count at territory. | `count_aa_guns_at()` | ✅ DONE | 95% | AA defense |
+| MATCH-070 | `getDefensePowerAtLand()` | N/A | Returns total defense power at territory. | `get_defense_power_at_land()` | ✅ DONE | 85% | Battle estimation |
+| MATCH-071 | `getAttackPowerAtLand()` | N/A | Returns total attack power at territory. | `get_attack_power_at_land()` | ✅ DONE | 85% | Battle estimation |
 
 ---
 
