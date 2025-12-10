@@ -389,14 +389,14 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | VAL-011 | └─ └─ Naval choke point | 265-275 | Narrow passages or canal-adjacent zones get bonus value. | `num_connections` check | ✅ DONE | 80% | 30% for ≤2 connections |
 | VAL-012 | `findLandValue()` | 282-400 | Detailed land territory valuation using BFS from production centers. | 🔶 PARTIAL | 🔶 PARTIAL | 45% | |
 | VAL-013 | └─ BFS from production centers | 295-395 | Breadth-first search radiating value outward from factories, decaying with distance. | Simplified | 🔶 PARTIAL | 40% | |
-| VAL-014 | `findAttackValue()` | 402-520 | Evaluates territories from offensive perspective - how valuable to capture. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-015 | └─ `for (Territory t)` | 415-515 | Iterates enemy territories calculating attack priority. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-016 | └─ └─ TUV swing calc | 430-480 | Expected TUV gain from successful attack (enemy losses minus our losses). | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-017 | └─ └─ Post-conquest defensibility | 485-510 | Can we hold territory after capture? Factors in enemy counter-attack potential. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-018 | `findDefenseValue()` | 522-640 | Evaluates territories from defensive perspective - how important to hold. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-019 | └─ `for (Territory t)` | 535-635 | Iterates friendly territories calculating defense priority. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-020 | └─ └─ Capital proximity | 550-580 | Territories closer to capital are more critical to defend. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-021 | └─ └─ Factory presence | 585-620 | Territories with factories are high defense priority. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-014 | `findAttackValue()` | 402-520 | Evaluates territories from offensive perspective - how valuable to capture. | ✅ DONE | find_attack_value() in pro_land_value.odin | 100% | |
+| VAL-015 | └─ `for (Territory t)` | 415-515 | Iterates enemy territories calculating attack priority. | ✅ DONE | Part of find_attack_value() | 100% | |
+| VAL-016 | └─ └─ TUV swing calc | 430-480 | Expected TUV gain from successful attack (enemy losses minus our losses). | ✅ DONE | calculate_land_defense_strength() | 100% | |
+| VAL-017 | └─ └─ Post-conquest defensibility | 485-510 | Can we hold territory after capture? Factors in enemy counter-attack potential. | ✅ DONE | estimate_enemy_counterattack_strength() | 100% | |
+| VAL-018 | `findDefenseValue()` | 522-640 | Evaluates territories from defensive perspective - how important to hold. | ✅ DONE | find_defense_value() in pro_land_value.odin | 100% | |
+| VAL-019 | └─ `for (Territory t)` | 535-635 | Iterates friendly territories calculating defense priority. | ✅ DONE | Part of find_defense_value() | 100% | |
+| VAL-020 | └─ └─ Capital proximity | 550-580 | Territories closer to capital are more critical to defend. | ✅ DONE | Uses mm.land_distances to capital | 100% | |
+| VAL-021 | └─ └─ Factory presence | 585-620 | Territories with factories are high defense priority. | ✅ DONE | Factory bonus in find_defense_value() | 100% | |
 | VAL-022 | `findUnitValue()` | 642-721 | Returns combat efficiency value for each unit type (attack/defense power relative to cost). | Hardcoded values | 🔶 PARTIAL | 60% | |
 | VAL-023 | └─ `for (UnitType type)` | 655-715 | Iterates unit types calculating value ratios. | N/A | 🔶 PARTIAL | 60% | Hardcoded |
 

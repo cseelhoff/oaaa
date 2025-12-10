@@ -235,3 +235,170 @@ find_nearby_enemy_capitals_and_factories :: proc(
 	}
 	return result
 }
+
+// =============================================================================
+// VAL-014 to VAL-017: Attack Value Calculation
+// =============================================================================
+
+// VAL-014: findAttackValue() - Evaluates territories from offensive perspective
+// Returns how valuable it is to capture an enemy territory
+find_attack_value :: proc(
+	gc: ^Game_Cache,
+	territory: Land_ID,
+	pro_data: ^Pro_Data,
+) -> f64 {
+	/*
+	From Java ProTerritoryValueUtils.findAttackValue():
+	
+	VAL-015: Iterate enemy territories calculating attack priority
+	VAL-016: TUV swing calc - expected TUV gain from attack
+	VAL-017: Post-conquest defensibility - can we hold after capture?
+	
+	Attack value formula:
+	- Base production value (IPC income)
+	- TUV swing bonus (enemy losses > our losses)
+	- Defensibility bonus (can we hold it?)
+	- Capital bonus (very high for enemy capitals)
+	- Factory bonus (enemy factories are valuable)
+	*/
+	
+	value: f64 = 0.0
+	
+	// Base: IPC production value
+	value += f64(mm.value[territory]) * 2.0
+	
+	// Factory bonus: enemy factories are high priority
+	if gc.factory_prod[territory] > 0 {
+		value += f64(gc.factory_prod[territory]) * 5.0
+	}
+	
+	// Capital bonus: enemy capitals are very high priority
+	for player in Player_ID {
+		if mm.capital[player] == territory && mm.team[player] != mm.team[gc.cur_player] {
+			value += 50.0  // Very high bonus for enemy capital
+		}
+	}
+	
+	// VAL-016: TUV swing estimate (simplified)
+	// Estimate based on defender strength vs attacker capability
+	enemy_defense := calculate_land_defense_strength(gc, territory)
+	if enemy_defense > 0 {
+		// Lower defense = easier to capture = higher value
+		value += 10.0 / (1.0 + enemy_defense/10.0)
+	} else {
+		// Undefended territory is very valuable to take
+		value += 20.0
+	}
+	
+	// VAL-017: Post-conquest defensibility
+	// Check if we can hold it after capture
+	can_hold_multiplier := 1.0
+	enemy_threat := estimate_enemy_counterattack_strength(gc, territory)
+	if enemy_threat > 20 {
+		can_hold_multiplier = 0.5  // Hard to hold, reduce value
+	} else if enemy_threat > 10 {
+		can_hold_multiplier = 0.75
+	}
+	value *= can_hold_multiplier
+	
+	return value
+}
+
+// VAL-016 Helper: Calculate defense strength of a territory
+calculate_land_defense_strength :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
+	strength: f64 = 0.0
+	owner := gc.owner[territory]
+	
+	// Count defending units
+	strength += f64(gc.idle_armies[territory][owner][.INF]) * 2.0    // Infantry defense = 2
+	strength += f64(gc.idle_armies[territory][owner][.ARTY]) * 2.0   // Artillery defense = 2
+	strength += f64(gc.idle_armies[territory][owner][.TANK]) * 3.0   // Tank defense = 3
+	strength += f64(gc.idle_armies[territory][owner][.AAGUN]) * 0.0  // AA guns don't defend
+	
+	// Count defending planes
+	strength += f64(gc.idle_land_planes[territory][owner][.FIGHTER]) * 4.0  // Fighter defense = 4
+	strength += f64(gc.idle_land_planes[territory][owner][.BOMBER]) * 1.0   // Bomber defense = 1
+	
+	return strength
+}
+
+// VAL-017 Helper: Estimate enemy counter-attack strength
+estimate_enemy_counterattack_strength :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
+	strength: f64 = 0.0
+	
+	// Check adjacent territories for enemy forces
+	for adj in sa.slice(&mm.l2l_1away_via_land[territory]) {
+		owner := gc.owner[adj]
+		if mm.team[owner] == mm.team[gc.cur_player] {
+			continue  // Skip friendly
+		}
+		
+		// Add enemy units that could counter-attack
+		strength += f64(gc.idle_armies[adj][owner][.INF]) * 1.0    // Infantry attack = 1
+		strength += f64(gc.idle_armies[adj][owner][.ARTY]) * 2.0   // Artillery attack = 2
+		strength += f64(gc.idle_armies[adj][owner][.TANK]) * 3.0   // Tank attack = 3
+		strength += f64(gc.idle_land_planes[adj][owner][.FIGHTER]) * 3.0
+		strength += f64(gc.idle_land_planes[adj][owner][.BOMBER]) * 4.0
+	}
+	
+	return strength
+}
+
+// =============================================================================
+// VAL-018 to VAL-021: Defense Value Calculation  
+// =============================================================================
+
+// VAL-018: findDefenseValue() - Evaluates territories from defensive perspective
+// Returns how important it is to hold a friendly territory
+find_defense_value :: proc(
+	gc: ^Game_Cache,
+	territory: Land_ID,
+	pro_data: ^Pro_Data,
+) -> f64 {
+	/*
+	From Java ProTerritoryValueUtils.findDefenseValue():
+	
+	VAL-019: Iterate friendly territories calculating defense priority
+	VAL-020: Capital proximity - closer to capital = more critical
+	VAL-021: Factory presence - factories must be defended
+	
+	Defense value formula:
+	- Base production value (IPC loss if captured)
+	- Capital bonus (capital is critical)
+	- Factory bonus (don't lose production)
+	- Capital proximity bonus (buffer zones matter)
+	*/
+	
+	value: f64 = 0.0
+	
+	// Base: IPC production value
+	value += f64(mm.value[territory]) * 2.0
+	
+	// VAL-021: Factory bonus
+	if gc.factory_prod[territory] > 0 {
+		value += f64(gc.factory_prod[territory]) * 10.0  // Very high - don't lose factories
+	}
+	
+	// Capital check - is this our capital?
+	capital := mm.capital[gc.cur_player]
+	if territory == capital {
+		value += 100.0  // Capital is critical - must defend
+	}
+	
+	// VAL-020: Capital proximity
+	// Territories closer to capital are buffer zones - defend them
+	distance_to_capital := mm.land_distances[territory][capital]
+	if distance_to_capital > 0 && distance_to_capital <= 3 {
+		value += 20.0 / f64(distance_to_capital)  // Closer = more valuable
+	}
+	
+	// Bonus for territories bordering enemy (front line defense)
+	for adj in sa.slice(&mm.l2l_1away_via_land[territory]) {
+		if mm.team[gc.owner[adj]] != mm.team[gc.cur_player] {
+			value += 5.0  // Front line territories need defense
+			break
+		}
+	}
+	
+	return value
+}
