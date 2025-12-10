@@ -523,3 +523,42 @@ return false
 
 return true
 }
+
+// ===== Transport Cost Utility Functions =====
+// TRN-023: From ProTransportUtils.java getTransportCost (lines 164-170)
+
+// get_unit_transport_cost returns the transport capacity cost for a single unit type.
+// Infantry costs 2 spaces, Artillery and Tanks cost 3 spaces each.
+// Total transport capacity is 5 spaces (allowing 1I+1T, 1I+1A, 2I+small space waste, etc.)
+get_unit_transport_cost :: proc(army: Idle_Army) -> int {
+	#partial switch army {
+	case .INF:
+		return 2  // Infantry is small, costs 2 transport spaces
+	case .ARTY:
+		return 3  // Artillery is medium, costs 3 transport spaces
+	case .TANK:
+		return 3  // Tanks are medium, costs 3 transport spaces
+	case:
+		return 0  // Non-transportable units (AA guns, etc.) or invalid
+	}
+}
+
+// TRN-024: From ProTransportUtils.java findUnitsTransportCost (lines 177-182)
+
+// find_units_transport_cost calculates the total transport capacity needed for all
+// friendly units in a territory. Used for evacuation planning and transport allocation.
+find_units_transport_cost :: proc(gc: ^Game_Cache, land: Land_ID, player: Player_ID) -> int {
+	total_cost := 0
+	for army in Idle_Army {
+		count := int(gc.idle_armies[land][player][army])
+		if count > 0 {
+			total_cost += count * get_unit_transport_cost(army)
+		}
+	}
+	return total_cost
+}
+
+// find_units_transport_cost_for_current_player is a convenience wrapper for the current player.
+find_units_transport_cost_for_current_player :: proc(gc: ^Game_Cache, land: Land_ID) -> int {
+	return find_units_transport_cost(gc, land, gc.cur_player)
+}
