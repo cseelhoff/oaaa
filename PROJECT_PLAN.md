@@ -69,8 +69,8 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | ABST-003 | `move()` main entry | 109-142 | Main movement phase entry point. Dispatches to combat or non-combat move based on phase. Handles maps with only combat move phase. | [`proai_combat_move_phase()`](src/pro_turn.odin) / [`proai_noncombat_move_phase()`](src/pro_noncombat_move.odin) | ✅ DONE | 90% | |
 | ABST-004 | `place()` main entry | 284-295 | Main placement phase entry point. Places units purchased during purchase phase at factories. | [`proai_place_units_phase()`](src/pro_place.odin) | ✅ DONE | 95% | |
 | ABST-005 | `tech()` | 297-300 | Technology research phase. Decides whether to spend IPCs on tech dice. | [`proai_tech_phase()`](src/pro_turn.odin) | ⏭️ SKIP | N/A | N/A for A&A 1942 SE |
-| ABST-006 | `retreatQuery()` | 302-348 | Called during battles to decide whether to retreat. Considers strength difference, strafing status, and battle type (land vs sea). | N/A | ❌ MISSING | 0% | Retreat AI not implemented |
-| ABST-007 | `selectCasualties()` | 371-410 | Called during battles to choose which units die first. Optimizes casualty selection based on unit value and situation. | N/A | ❌ MISSING | 0% | Uses default casualty selection |
+| ABST-006 | `retreatQuery()` | 302-348 | Called during battles to decide whether to retreat. Considers strength difference, strafing status, and battle type (land vs sea). | [`should_retreat_land()`](src/pro_matches.odin), [`should_retreat_sea()`](src/pro_matches.odin) | ✅ DONE | 80% | RETREAT-001 to RETREAT-006 |
+| ABST-007 | `selectCasualties()` | 371-410 | Called during battles to choose which units die first. Optimizes casualty selection based on unit value and situation. | [`should_optimize_casualties()`](src/pro_matches.odin), [`get_unit_cost()`](src/pro_matches.odin) | 🔶 PARTIAL | 60% | CASUALTY-001 to CASUALTY-004 helpers added; static ordering already cost-optimized |
 | ABST-008 | `getGameStepsForPlayer()` loop | 270-280 | Iterates through game sequence to find all steps belonging to current player. Used for simulation planning. | N/A | ⏭️ SKIP | N/A | Part of simulation |
 
 ---

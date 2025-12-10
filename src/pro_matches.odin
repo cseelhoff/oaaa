@@ -618,7 +618,7 @@ has_enemy_fighters_in_range :: proc(gc: ^Game_Cache, target: Land_ID) -> bool {
 	for land in Land_ID {
 		air_id := to_air(land)
 		// Check if this air territory can reach target in 4 moves
-		if target_air in mm.a2a_within_4_moves[air_id] {
+		if contains_air(mm.a2a_within_4_moves[air_id], target_air) {
 			for player in Player_ID {
 				if mm.team[player] == enemy_team {
 					if gc.idle_land_planes[land][player][.FIGHTER] > 0 {
@@ -630,8 +630,8 @@ has_enemy_fighters_in_range :: proc(gc: ^Game_Cache, target: Land_ID) -> bool {
 	}
 	// Also check sea-based fighters on carriers
 	for sea in Sea_ID {
-		air_id := to_air_from_sea(sea)
-		if target_air in mm.a2a_within_4_moves[air_id] {
+		air_id := sea_to_air(sea)
+		if contains_air(mm.a2a_within_4_moves[air_id], target_air) {
 			for player in Player_ID {
 				if mm.team[player] == enemy_team {
 					if gc.idle_sea_planes[sea][player][.FIGHTER] > 0 {
@@ -775,3 +775,312 @@ get_attack_power_at_land :: proc(gc: ^Game_Cache, land: Land_ID, player: Player_
 	return power
 }
 
+// ===== Retreat Decision Logic (ABST-006) =====
+// These functions implement the Pro AI retreat decision algorithm.
+// Maps to Java AbstractProAi.retreatQuery()
+
+// RETREAT-001: should_retreat_land decides if attacker should retreat from land battle.
+// Returns true if retreat is recommended.
+// Called during combat resolution after each round.
+should_retreat_land :: proc(gc: ^Game_Cache, land: Land_ID, is_strafing: bool) -> bool {
+	/*
+	AI NOTE: Land Combat Retreat Logic (from Java AbstractProAi.retreatQuery)
+	
+	The Pro AI uses these rules for retreat decisions:
+	1. Never retreat if amphibious attack (can't retreat from beach)
+	2. Never retreat if strafing (intentional hit-and-run)
+	3. Retreat if strength difference <= 50 (losing battle)
+	4. Consider retreating if only air units remain (land battle)
+	
+	Strength difference formula:
+	- > 50 means attacker advantage
+	- < 50 means defender advantage
+	- 50 is roughly even
+	*/
+	
+	// Rule 1: Check if this was an amphibious attack - can't retreat
+	// (Amphib attacks are marked in gc during combat move)
+	// For now, we don't track amphib sources per-territory, so skip this check
+	
+	// Rule 2: If strafing attack, don't retreat yet (will retreat after inflicting damage)
+	if is_strafing {
+		return false
+	}
+	
+	// Calculate current strength on both sides
+	attacker_land_units := count_active_attackers_land(gc, land)
+	defender_land_units := count_defenders_land(gc, land)
+	
+	// Rule 3: Calculate strength difference
+	strength_diff := calculate_strength_difference_land(gc, land)
+	
+	// Rule 4: If only air left on land, should retreat (air can't hold territory)
+	if attacker_land_units == 0 {
+		return true  // Only planes left, should retreat to avoid losing them
+	}
+	
+	// Main retreat decision: if losing (strength_diff <= 50), retreat
+	if strength_diff <= 50.0 && defender_land_units > 0 {
+		return true
+	}
+	
+	return false
+}
+
+// RETREAT-002: should_retreat_sea decides if attacker should retreat from sea battle.
+should_retreat_sea :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	/*
+	AI NOTE: Sea Combat Retreat Logic
+	
+	Sea retreats are simpler than land:
+	1. Can always retreat (no amphib restriction at sea)
+	2. Retreat if strength difference indicates losing
+	3. Consider submarine submerge as alternative to retreat
+	*/
+	
+	// Calculate strength difference at sea
+	strength_diff := calculate_strength_difference_sea(gc, sea)
+	
+	// If losing significantly, retreat
+	if strength_diff <= 45.0 {
+		return true
+	}
+	
+	return false
+}
+
+// RETREAT-003: count_active_attackers_land returns number of attacking land units.
+count_active_attackers_land :: proc(gc: ^Game_Cache, land: Land_ID) -> int {
+	count := 0
+	for army in Active_Army {
+		count += int(gc.active_armies[land][army])
+	}
+	return count
+}
+
+// RETREAT-004: count_defenders_land returns number of defending land units.
+count_defenders_land :: proc(gc: ^Game_Cache, land: Land_ID) -> int {
+	count := 0
+	enemy_team := mm.enemy_team[gc.cur_player]
+	for player in Player_ID {
+		if mm.team[player] == enemy_team {
+			count += int(gc.idle_armies[land][player][.INF])
+			count += int(gc.idle_armies[land][player][.ARTY])
+			count += int(gc.idle_armies[land][player][.TANK])
+		}
+	}
+	return count
+}
+
+// RETREAT-005: calculate_strength_difference_land for current battle state.
+// Returns > 50 if attacker advantage, < 50 if defender advantage.
+calculate_strength_difference_land :: proc(gc: ^Game_Cache, land: Land_ID) -> f64 {
+	// Attacker units (active armies attacking)
+	att_inf, att_art, att_tank: u8 = 0, 0, 0
+	att_fighter, att_bomber: u8 = 0, 0
+	
+	// Count active armies (attackers) - use Active_Army_To_Idle to classify
+	for army in Active_Army {
+		count := gc.active_armies[land][army]
+		idle_type := Active_Army_To_Idle[army]
+		#partial switch idle_type {
+		case .INF:
+			att_inf += count
+		case .ARTY:
+			att_art += count
+		case .TANK:
+			att_tank += count
+		}
+	}
+	
+	// Count active planes (attackers) - use Active_Plane_To_Idle to classify
+	for plane in Active_Plane {
+		count := gc.active_land_planes[land][plane]
+		idle_type := Active_Plane_To_Idle[plane]
+		#partial switch idle_type {
+		case .FIGHTER:
+			att_fighter += count
+		case .BOMBER:
+			att_bomber += count
+		}
+	}
+	
+	// Defender units (enemy idle armies)
+	def_inf, def_art, def_tank, def_aa: u8 = 0, 0, 0, 0
+	def_fighter, def_bomber: u8 = 0, 0
+	
+	enemy_team := mm.enemy_team[gc.cur_player]
+	for player in Player_ID {
+		if mm.team[player] == enemy_team {
+			def_inf += gc.idle_armies[land][player][.INF]
+			def_art += gc.idle_armies[land][player][.ARTY]
+			def_tank += gc.idle_armies[land][player][.TANK]
+			def_aa += gc.idle_armies[land][player][.AAGUN]
+			def_fighter += gc.idle_land_planes[land][player][.FIGHTER]
+			def_bomber += gc.idle_land_planes[land][player][.BOMBER]
+		}
+	}
+	
+	return estimate_strength_difference(
+		att_inf, att_art, att_tank, att_fighter, att_bomber,
+		def_inf, def_art, def_tank, def_aa, def_fighter, def_bomber,
+	)
+}
+
+// RETREAT-006: calculate_strength_difference_sea for naval battle.
+calculate_strength_difference_sea :: proc(gc: ^Game_Cache, sea: Sea_ID) -> f64 {
+	// Count attacker strength (active ships)
+	att_strength: f64 = 0
+	for ship in Active_Ship {
+		count := gc.active_ships[sea][ship]
+		// Active ships are attackers
+		att_strength += f64(count) * get_ship_attack_power(ship)
+	}
+	
+	// Count defender strength (enemy idle ships)
+	def_strength: f64 = 0
+	enemy_team := mm.enemy_team[gc.cur_player]
+	for player in Player_ID {
+		if mm.team[player] == enemy_team {
+			for ship in Idle_Ship {
+				count := gc.idle_ships[sea][player][ship]
+				def_strength += f64(count) * get_ship_defense_power(ship)
+			}
+		}
+	}
+	
+	// Also count fighters on carriers
+	for player in Player_ID {
+		if mm.team[player] == enemy_team {
+			def_strength += f64(gc.idle_sea_planes[sea][player][.FIGHTER]) * 4.0  // Fighter defense
+		}
+	}
+	
+	// Convert to strength difference (50 = even)
+	if def_strength == 0 {
+		return 100.0  // Overwhelming attacker advantage
+	}
+	
+	total := att_strength + def_strength
+	return (att_strength / total) * 100.0
+}
+
+// Helper: Get ship attack power based on active ship type
+get_ship_attack_power :: proc(ship: Active_Ship) -> f64 {
+	idle_type := Active_Ship_To_Idle[ship]
+	#partial switch idle_type {
+	case .SUB:
+		return 2.0
+	case .DESTROYER:
+		return 2.0
+	case .CARRIER:
+		return 1.0
+	case .CRUISER:
+		return 3.0
+	case .BATTLESHIP, .BS_DAMAGED:
+		return 4.0
+	case:
+		return 0.0  // Transports have no attack
+	}
+}
+
+// Helper: Get ship defense power
+get_ship_defense_power :: proc(ship: Idle_Ship) -> f64 {
+	#partial switch ship {
+	case .SUB:
+		return 1.0
+	case .DESTROYER:
+		return 2.0
+	case .CARRIER:
+		return 2.0
+	case .CRUISER:
+		return 3.0
+	case .BATTLESHIP, .BS_DAMAGED:
+		return 4.0
+	case:
+		return 0.0  // Transports have no defense
+	}
+}
+
+// ===== Casualty Selection Logic (ABST-007) =====
+// These functions help optimize casualty selection during combat.
+// Maps to Java AbstractProAi.selectCasualties()
+//
+// NOTE: The Odin codebase uses static casualty orders defined in combat.odin:
+// - Attacker_Land_Casualty_Order_1: INF → ARTY → TANK (cheapest first)
+// - Defender_Land_Casualty_Order_2: INF → ARTY → TANK
+// - Air_Casualty_Order: Fighters before Bombers
+//
+// This is already cost-optimized (lose cheap units first).
+// The Java logic also considers:
+// 1. Battle state (if losing, don't optimize - just survive)
+// 2. Unit cost ratios (swap if cost > 1.5x)
+// 3. Carrier-fighter interleaving
+//
+// For now, the static ordering is sufficient. Future enhancements could:
+// - Use should_optimize_casualties() to decide when to apply cost logic
+// - Implement dynamic casualty ordering based on battle state
+
+// CASUALTY-001: should_optimize_casualties determines if we should try to save expensive units.
+// Returns false if we're likely to lose (just try to survive).
+should_optimize_casualties :: proc(gc: ^Game_Cache, land: Land_ID, is_attacker: bool) -> bool {
+	strength_diff := calculate_strength_difference_land(gc, land)
+	
+	if is_attacker {
+		// Attackers optimize if winning (strength > 50)
+		return strength_diff > 50.0
+	} else {
+		// Defenders optimize only if clearly winning (strength < 40 = defender advantage)
+		// When strength_diff > 60, defender is losing - don't optimize, just survive
+		return strength_diff < 40.0
+	}
+}
+
+// CASUALTY-002: get_unit_cost returns the IPC cost of a unit type.
+get_unit_cost :: proc(unit_type: Idle_Army) -> int {
+	#partial switch unit_type {
+	case .INF:
+		return 3
+	case .ARTY:
+		return 4
+	case .TANK:
+		return 6
+	case .AAGUN:
+		return 5
+	case:
+		return 0
+	}
+}
+
+// CASUALTY-003: get_plane_cost returns the IPC cost of a plane type.
+get_plane_cost :: proc(plane_type: Idle_Plane) -> int {
+	#partial switch plane_type {
+	case .FIGHTER:
+		return 10
+	case .BOMBER:
+		return 12
+	case:
+		return 0
+	}
+}
+
+// CASUALTY-004: get_ship_cost returns the IPC cost of a ship type.
+get_ship_cost :: proc(ship_type: Idle_Ship) -> int {
+	#partial switch ship_type {
+	case .TRANS_EMPTY, .TRANS_1I, .TRANS_1A, .TRANS_1T,
+	     .TRANS_2I, .TRANS_1I_1A, .TRANS_1I_1T:
+		return 7
+	case .SUB:
+		return 6
+	case .DESTROYER:
+		return 8
+	case .CARRIER:
+		return 14
+	case .CRUISER:
+		return 12
+	case .BATTLESHIP, .BS_DAMAGED:
+		return 20
+	case:
+		return 0
+	}
+}

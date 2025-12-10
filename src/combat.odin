@@ -397,13 +397,18 @@ resolve_sea_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			combat_rounds_counter += 1
 			if sea in gc.sea_combat_started {
 				gc.current_territory = to_air(sea)
-				build_sea_retreat_options(gc)
-				load_dyn_arr_actions(gc)
-				if len(gc.dyn_arr_valid_actions) > 0 {
-					dst_action := get_action_input(gc) or_return
-					if dst_action != .Skip_Action && sea_retreat(gc, sea, dst_action) {
-						debug_checks(gc)
-						break
+				// RETREAT PHASE - AI decides whether to retreat
+				if should_retreat_sea(gc, sea) {
+					build_sea_retreat_options(gc)
+					load_dyn_arr_actions(gc)
+					if len(gc.dyn_arr_valid_actions) > 0 {
+						// AI chooses first valid retreat destination
+						dst_action := gc.dyn_arr_valid_actions[0]
+						if sea_retreat(gc, sea, dst_action) {
+							fmt.println("AI retreating from sea ", sea, " to ", dst_action)
+							debug_checks(gc)
+							break
+						}
 					}
 				}
 			}
@@ -732,10 +737,20 @@ resolve_land_battles :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			}
 			if land in gc.land_combat_started {
 				gc.current_territory = to_air(land)
-				// RETREAT PHASE DISABLED
-				// add_valid_land_retreat_destinations(gc)
-				// dst_action := get_action_input(gc) or_return
-				// if retreat_land_units(gc, dst_action) do break
+				// RETREAT PHASE - AI decides whether to retreat
+				// Check if retreat is recommended based on battle state
+				is_strafing := false  // TODO: Track strafing attacks from combat move phase
+				if should_retreat_land(gc, land, is_strafing) {
+					add_valid_land_retreat_destinations(gc)
+					if len(gc.dyn_arr_valid_actions) > 0 {
+						// AI chooses first valid retreat destination
+						dst_action := gc.dyn_arr_valid_actions[0]
+						if retreat_land_units(gc, dst_action) {
+							fmt.println("AI retreating from ", land, " to ", dst_action)
+							break
+						}
+					}
+				}
 			}
 			gc.land_combat_started += {land}
 			attacker_hits := calculate_attacker_hits_low_luck(
