@@ -3608,40 +3608,110 @@ is_land_adjacent_to_sea :: proc(land: Land_ID) -> bool {
 }
 
 // Calculate distance between two land territories
+// NCM-073: Uses precomputed BFS distances from mm.land_distances
 calculate_land_distance :: proc(gc: ^Game_Cache, from: Land_ID, to: Land_ID) -> i32 {
 	/*
-	Simplified distance calculation using BFS-style traversal
+	NCM-073/074: BFS pathfinding using precomputed distance matrix
 	
-	In full implementation, would use:
-	- mm.land_distances[from][to] if available
-	- Or implement proper pathfinding considering team ownership
+	mm.land_distances is computed at map load time using Floyd-Warshall:
+	- 0 = same territory
+	- 1 = adjacent
+	- 2+ = multi-hop distance
+	- 127 = unreachable (different landmass)
 	
-	For now, use approximation:
-	- Adjacent = 1
-	- 2-away = 2
-	- Otherwise = high value
+	For ownership-aware pathfinding, we could add a secondary check,
+	but for most AI purposes the raw distance is sufficient.
 	*/
+	
+	LAND_INFINITY :: 127  // From land.odin
+	dist := mm.land_distances[from][to]
+	
+	if dist == LAND_INFINITY {
+		return 127  // Unreachable
+	}
+	
+	return i32(dist)
+}
+
+// NCM-073: Find best path to territory using land routes (BFS)
+// Returns the distance, or -1 if unreachable through friendly territory
+find_best_path_to_territory :: proc(gc: ^Game_Cache, from: Land_ID, to: Land_ID) -> i32 {
+	/*
+	From Java ProAI.findBestPathToTerritoryUsingLandRoutes():
+	
+	NCM-074: BFS loop with distance tracking
+	
+	This version respects territory ownership - can only traverse
+	territories owned by self or allies.
+	
+	Returns:
+	- Distance if reachable through friendly territory
+	- -1 if unreachable (blocked by enemy)
+	*/
+	
+	LAND_INFINITY :: 127  // From land.odin
 	
 	if from == to {
 		return 0
 	}
 	
-	// Check if adjacent
-	for adj in sa.slice(&mm.l2l_1away_via_land[from]) {
-		if adj == to {
-			return 1
+	// Check if territories are on different landmasses
+	if mm.land_distances[from][to] == LAND_INFINITY {
+		return -1  // Different landmass - unreachable
+	}
+	
+	// BFS to find shortest path through friendly territories
+	visited: [len(Land_ID)]bool = {}
+	distances: [len(Land_ID)]i32 = {}
+	
+	// Initialize distances to max
+	for i in 0..<len(Land_ID) {
+		distances[i] = 127
+	}
+	
+	// Queue for BFS (use simple array as circular buffer)
+	queue: [len(Land_ID)]Land_ID
+	queue_head := 0
+	queue_tail := 0
+	
+	// Start BFS from 'from'
+	queue[queue_tail] = from
+	queue_tail += 1
+	visited[from] = true
+	distances[from] = 0
+	
+	for queue_head != queue_tail {
+		current := queue[queue_head]
+		queue_head += 1
+		
+		// Check if we reached destination
+		if current == to {
+			return distances[current]
+		}
+		
+		// Explore neighbors
+		for adj in sa.slice(&mm.l2l_1away_via_land[current]) {
+			if visited[adj] {
+				continue
+			}
+			
+			// Can only traverse friendly or allied territories
+			// (or neutral territories we can pass through)
+			owner := gc.owner[adj]
+			if mm.team[owner] != mm.team[gc.cur_player] && adj != to {
+				// Can't pass through enemy territory (except destination)
+				continue
+			}
+			
+			visited[adj] = true
+			distances[adj] = distances[current] + 1
+			queue[queue_tail] = adj
+			queue_tail += 1
 		}
 	}
 	
-	// Check if 2-away
-	for land_2 in mm.l2l_2away_via_land_bitset[from] {
-		if land_2 == to {
-			return 2
-		}
-	}
-	
-	// Otherwise return high value (unreachable or far)
-	return 10
+	// Couldn't reach destination through friendly territory
+	return -1
 }
 
 // Check if destination can be held

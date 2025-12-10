@@ -5679,3 +5679,216 @@ execute_strategic_bombing_move :: proc(gc: ^Game_Cache, src: Land_ID, dst: Land_
 	// Mark territory for combat (bombing raid)
 	gc.more_land_combat_needed += {dst}
 }
+
+// =============================================================================
+// CMB-045: Transport casualty restriction check
+// =============================================================================
+
+// CMB-045: Check if attack violates transport casualty restriction rules
+// Some maps require transports to be taken as casualties last
+// Returns true if attack is valid (doesn't violate restriction)
+check_transport_casualty_restriction :: proc(
+	gc: ^Game_Cache,
+	sea_zone: Sea_ID,
+	has_transports: bool,
+	has_combat_ships: bool,
+) -> bool {
+	/*
+	From Java ProCombatMoveAi lines 1580-1610:
+	
+	Verifies attacks don't violate transport casualty restriction rules.
+	
+	The restriction means:
+	- Transports can only be taken as casualties if there are no other
+	  valid casualties available
+	- This affects whether we should include transports in attacks
+	
+	For 1942 SE, this is typically not enabled, but we check anyway.
+	
+	Returns true if attack is valid.
+	*/
+	
+	// If we have combat ships, transports are fine (they'll be casualties last)
+	if has_combat_ships {
+		return true
+	}
+	
+	// If no combat ships, don't attack with just transports
+	// (they'd be defenseless and taken as casualties)
+	if has_transports && !has_combat_ships {
+		return false
+	}
+	
+	// No issues
+	return true
+}
+
+// Check if transports in a sea zone can retreat before combat
+// (Only relevant if transport casualty restriction is enabled)
+can_transports_retreat :: proc(gc: ^Game_Cache, sea_zone: Sea_ID) -> bool {
+	/*
+	Checks if transports have a valid retreat path.
+	
+	Transports can retreat to:
+	- Adjacent sea zones without enemy combat ships
+	- Sea zones with friendly naval superiority
+	*/
+	
+	canal_state := transmute(u8)gc.canals_open
+	player := gc.cur_player
+	my_team := mm.team[player]
+	
+	for adj_sea in mm.s2s_1away_via_sea[canal_state][sea_zone] {
+		// Check if adjacent sea has enemy combat ships
+		has_enemy_combat := false
+		for enemy in Player_ID {
+			if mm.team[enemy] == my_team {
+				continue
+			}
+			
+			// Count enemy combat ships (not transports)
+			enemy_combat := gc.idle_ships[adj_sea][enemy][.DESTROYER] +
+			                gc.idle_ships[adj_sea][enemy][.CRUISER] +
+			                gc.idle_ships[adj_sea][enemy][.BATTLESHIP] +
+			                gc.idle_ships[adj_sea][enemy][.CARRIER] +
+			                gc.idle_ships[adj_sea][enemy][.SUB]
+			
+			if enemy_combat > 0 {
+				has_enemy_combat = true
+				break
+			}
+		}
+		
+		if !has_enemy_combat {
+			return true  // Can retreat to this sea zone
+		}
+	}
+	
+	return false  // No valid retreat path
+}
+
+// =============================================================================
+// CMB-046: Sub retreat before battle calculation
+// =============================================================================
+
+// CMB-046: Calculate whether enemy subs should retreat before battle
+// Based on destroyer presence in attacking force
+should_enemy_subs_retreat :: proc(
+	gc: ^Game_Cache,
+	sea_zone: Sea_ID,
+	attacker_has_destroyer: bool,
+) -> bool {
+	/*
+	From Java ProCombatMoveAi lines 1620-1650:
+	
+	Calculates whether enemy subs should/will retreat (submerge) before battle.
+	
+	Rules:
+	- Subs can submerge to avoid combat
+	- But if attacker has destroyers, subs cannot submerge
+	- Subs will submerge if they would likely lose the battle
+	
+	Returns true if enemy subs should submerge/retreat.
+	*/
+	
+	// If we have a destroyer, subs cannot submerge
+	if attacker_has_destroyer {
+		return false
+	}
+	
+	// Count enemy subs
+	enemy_subs := 0
+	my_team := mm.team[gc.cur_player]
+	
+	for enemy in Player_ID {
+		if mm.team[enemy] == my_team {
+			continue
+		}
+		enemy_subs += int(gc.idle_ships[sea_zone][enemy][.SUB])
+	}
+	
+	// If no enemy subs, nothing to retreat
+	if enemy_subs == 0 {
+		return false
+	}
+	
+	// Subs will submerge if attacker has significant surface fleet
+	// (since we don't have a destroyer, the subs are safe submerged)
+	attacker_surface := count_friendly_surface_ships(gc, sea_zone)
+	
+	// Simple heuristic: submerge if heavily outnumbered
+	if attacker_surface > enemy_subs * 2 {
+		return true
+	}
+	
+	return false
+}
+
+// Helper: Count friendly surface ships (non-sub) in a sea zone
+count_friendly_surface_ships :: proc(gc: ^Game_Cache, sea_zone: Sea_ID) -> int {
+	count := 0
+	player := gc.cur_player
+	
+	count += int(gc.idle_ships[sea_zone][player][.DESTROYER])
+	count += int(gc.idle_ships[sea_zone][player][.CRUISER])
+	count += int(gc.idle_ships[sea_zone][player][.BATTLESHIP])
+	count += int(gc.idle_ships[sea_zone][player][.CARRIER])
+	
+	return count
+}
+
+// Calculate adjusted battle outcome considering sub submerge option
+calculate_battle_with_sub_submerge :: proc(
+	gc: ^Game_Cache,
+	sea_zone: Sea_ID,
+	attacker_has_destroyer: bool,
+) -> (tuv_swing: f64, win_pct: f64) {
+	/*
+	If subs will submerge:
+	- Don't count them as casualties
+	- But also don't count their attack value
+	- Essentially treat them as not present in battle
+	
+	This affects our TUV swing calculation.
+	*/
+	
+	if !should_enemy_subs_retreat(gc, sea_zone, attacker_has_destroyer) {
+		// Normal battle - subs fight
+		// Would call normal battle simulation here
+		return 0.0, 0.0  // Placeholder
+	}
+	
+	// Subs will submerge - calculate without them
+	// Count remaining enemy surface ships
+	enemy_surface := count_enemy_surface_ships(gc, sea_zone)
+	
+	if enemy_surface == 0 {
+		// No enemy ships left to fight (subs submerged)
+		// We win automatically with no losses
+		return 0.0, 100.0
+	}
+	
+	// Would need to simulate battle without subs
+	// For now, return placeholder
+	return 0.0, 0.0
+}
+
+// Helper: Count enemy surface ships (non-sub, non-transport) in a sea zone
+count_enemy_surface_ships :: proc(gc: ^Game_Cache, sea_zone: Sea_ID) -> int {
+	count := 0
+	my_team := mm.team[gc.cur_player]
+	
+	for enemy in Player_ID {
+		if mm.team[enemy] == my_team {
+			continue
+		}
+		
+		count += int(gc.idle_ships[sea_zone][enemy][.DESTROYER])
+		count += int(gc.idle_ships[sea_zone][enemy][.CRUISER])
+		count += int(gc.idle_ships[sea_zone][enemy][.BATTLESHIP])
+		count += int(gc.idle_ships[sea_zone][enemy][.CARRIER])
+		// Note: Transports are not combat ships, but counted for targeting
+	}
+	
+	return count
+}

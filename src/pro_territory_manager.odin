@@ -441,3 +441,165 @@ find_naval_defend_destinations :: proc(gc: ^Game_Cache, options: ^Pro_My_Move_Op
 find_transport_defend_destinations :: proc(gc: ^Game_Cache, options: ^Pro_My_Move_Options, cleared_territories: Land_Bitset) {
 	// TODO: Implement transport loading and unloading for non-combat reinforcement
 }
+
+// =============================================================================
+// TM-021: findEnemyDefendOptions() - Enemy reinforcement potential
+// =============================================================================
+
+// TM-021: Calculate enemy units that could reinforce a territory on enemy's turn
+// Used for determining if conquered territories can be held
+find_enemy_defend_options :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
+	/*
+	From Java ProTerritoryManager.findEnemyDefendOptions():
+	
+	Calculates how much defensive strength the enemy could bring to
+	defend a territory on their next turn. This includes:
+	- Adjacent land units that could move in
+	- Air units within range
+	- Naval units that could bombard (for coastal territories)
+	
+	Used to determine if we can hold a territory after conquering it.
+	*/
+	
+	total_reinforcement: f64 = 0.0
+	my_team := mm.team[gc.cur_player]
+	
+	// Check adjacent land territories for enemy units
+	for adj in sa.slice(&mm.l2l_1away_via_land[territory]) {
+		owner := gc.owner[adj]
+		if mm.team[owner] == my_team {
+			continue  // Skip friendly
+		}
+		
+		// Add enemy units that could reinforce (1-move infantry/artillery)
+		total_reinforcement += f64(gc.idle_armies[adj][owner][.INF]) * 2.0    // Defense value
+		total_reinforcement += f64(gc.idle_armies[adj][owner][.ARTY]) * 2.0   // Defense value
+		
+		// Tanks have 2 movement, check 2-away as well
+		total_reinforcement += f64(gc.idle_armies[adj][owner][.TANK]) * 3.0
+	}
+	
+	// Check 2-away territories for tank reinforcements
+	for adj_2 in mm.l2l_2away_via_land_bitset[territory] {
+		owner := gc.owner[adj_2]
+		if mm.team[owner] == my_team {
+			continue
+		}
+		// Only tanks can reach from 2 away
+		total_reinforcement += f64(gc.idle_armies[adj_2][owner][.TANK]) * 3.0
+	}
+	
+	// Check enemy air units (fighters have 4 range, bombers have 6)
+	// Simplified: check territories within 2 land distance for fighters
+	for land in Land_ID {
+		if mm.land_distances[territory][land] > 2 {
+			continue
+		}
+		for player in Player_ID {
+			if mm.team[player] == my_team {
+				continue  // Skip friendly
+			}
+			// Fighters can defend
+			total_reinforcement += f64(gc.idle_land_planes[land][player][.FIGHTER]) * 4.0
+		}
+	}
+	
+	return total_reinforcement
+}
+
+// =============================================================================
+// TM-025: Strafing check for allies
+// =============================================================================
+
+// TM-025: Check if a strafing attack is worthwhile
+// Strafing = attack and retreat to weaken enemy without conquering
+check_strafing_attack_worthwhile :: proc(
+	gc: ^Game_Cache,
+	territory: Land_ID,
+	attack_strength: f64,
+	defense_strength: f64,
+) -> bool {
+	/*
+	From Java ProTerritoryManager lines 210-280:
+	
+	For allies (not the main attacker), checks if strafing attack 
+	(attack and retreat) is worthwhile when conquest isn't possible.
+	
+	Strafing is worthwhile when:
+	1. We can inflict significant casualties
+	2. We won't take too many losses
+	3. An ally can follow up to capture
+	4. The territory is strategically valuable
+	
+	Returns true if strafing attack should be attempted.
+	*/
+	
+	// Don't strafe if we're too weak
+	if attack_strength < defense_strength * 0.5 {
+		return false
+	}
+	
+	// Estimate TUV exchange
+	// Simplified: favorable if attack strength > defense * 0.75
+	if attack_strength < defense_strength * 0.75 {
+		return false
+	}
+	
+	// Check if there are allied units nearby that could follow up
+	my_team := mm.team[gc.cur_player]
+	allied_follow_up := false
+	
+	for adj in sa.slice(&mm.l2l_1away_via_land[territory]) {
+		owner := gc.owner[adj]
+		// Check for allied (same team but different player) units
+		if mm.team[owner] == my_team && owner != gc.cur_player {
+			// Check if ally has units there
+			for army in Idle_Army {
+				if gc.idle_armies[adj][owner][army] > 0 {
+					allied_follow_up = true
+					break
+				}
+			}
+		}
+		if allied_follow_up {
+			break
+		}
+	}
+	
+	// Only strafe if an ally can follow up
+	return allied_follow_up
+}
+
+// Check if we should strafe or attack to conquer
+should_strafe_instead_of_conquer :: proc(
+	gc: ^Game_Cache,
+	territory: Land_ID,
+	can_hold: bool,
+) -> bool {
+	/*
+	Determines if strafing is better than conquering.
+	
+	Strafe when:
+	- We can't hold the territory after capture
+	- But we can still inflict good casualties
+	- Territory isn't critical (not a capital or factory)
+	*/
+	
+	// If we can hold, always try to conquer
+	if can_hold {
+		return false
+	}
+	
+	// If it's a capital or factory, try to conquer anyway (high value)
+	if gc.factory_prod[territory] > 0 {
+		return false
+	}
+	for player in Player_ID {
+		if mm.capital[player] == territory {
+			return false
+		}
+	}
+	
+	// Otherwise, strafe if we can't hold
+	return true
+}

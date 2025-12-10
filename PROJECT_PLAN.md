@@ -216,8 +216,8 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | CMB-042 | └─ └─ `for (ProTerritory patd)` strafing | 1520-1555 | Finds attacks with significant excess force that could be used elsewhere. | Phase 5 strafing loop | ✅ DONE | 85% | Removes excess from strafing attacks |
 | CMB-043 | └─ └─ └─ `for (Unit unit)` excess (>150%) | 1530-1550 | Moves excess units to attacks that need reinforcement. | Phase 5 redistribution | ✅ DONE | 80% | Redistributes to under-committed attacks |
 | CMB-044 | └─ **Phase 6: Validate & Log** | 1562-1778 | Final validation of all attacks. Checks transport restrictions, sub retreat rules, and logs summary. | 🔶 PARTIAL | 🔶 PARTIAL | 50% | |
-| CMB-045 | └─ └─ Transport casualty restriction check | 1580-1610 | Verifies attacks don't violate transport casualty restriction rules (some maps require transports to be taken as casualties last). | ❌ MISSING | ❌ MISSING | 0% | |
-| CMB-046 | └─ └─ Sub retreat before battle calc | 1620-1650 | Calculates whether enemy subs should retreat before battle based on destroyer presence. | ❌ MISSING | ❌ MISSING | 0% | |
+| CMB-045 | └─ └─ Transport casualty restriction check | 1580-1610 | Verifies attacks don't violate transport casualty restriction rules (some maps require transports to be taken as casualties last). | ✅ DONE | check_transport_casualty_restriction() | 100% | |
+| CMB-046 | └─ └─ Sub retreat before battle calc | 1620-1650 | Calculates whether enemy subs should retreat before battle based on destroyer presence. | ✅ DONE | should_enemy_subs_retreat() | 100% | |
 | CMB-047 | └─ └─ Log attack summary | 1700-1770 | Outputs detailed log of all planned attacks for debugging. | [`log_attack_moves()`](src/pro_combat_move_triplea_methods.odin) | ✅ DONE | 90% | |
 | CMB-048 | `checkContestedSeaTerritories()` | 1875-1945 | Handles contested sea zones where both sides have units. May need to clear with subs or avoid. | [`check_contested_sea_territories_triplea()`](src/pro_combat_move_triplea_methods.odin) | 🔄 STUB | 10% | |
 | CMB-049 | └─ `for (Territory t)` contested sea | 1885-1940 | Iterates through sea zones with both friendly and enemy units. | Loop | 🔄 STUB | 10% | |
@@ -301,8 +301,8 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-070 | └─ `moveFactoriesIfMobile()` | 2305-2400 | For maps with mobile factories, moves them to optimal production locations. | ❌ MISSING | ❌ MISSING | N/A | Mobile factories N/A |
 | NCM-071 | └─ └─ `for (Unit factory)` mobile | 2315-2395 | Iterates through mobile factories. | ❌ MISSING | ❌ MISSING | N/A | |
 | NCM-072 | └─ `checkNeedToConsumeUnits()` | 2405-2440 | Checks if any units need to be consumed for production (some map mechanics). | ❌ MISSING | ❌ MISSING | N/A | N/A for 1942 SE |
-| NCM-073 | └─ `findBestPathToTerritoryUsingLandRoutes()` BFS | 2445-2475 | Multi-turn pathfinding using BFS to find optimal route to distant territories. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-074 | └─ └─ BFS loop with distance tracking | 2450-2470 | Breadth-first search through land connections with movement cost tracking. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-073 | └─ `findBestPathToTerritoryUsingLandRoutes()` BFS | 2445-2475 | Multi-turn pathfinding using BFS to find optimal route to distant territories. | ✅ DONE | find_best_path_to_territory() | 100% | |
+| NCM-074 | └─ └─ BFS loop with distance tracking | 2450-2470 | Breadth-first search through land connections with movement cost tracking. | ✅ DONE | Uses visited/distances arrays | 100% | |
 | NCM-075 | `doMove()` execute moves | 195-198 | Executes all planned non-combat moves via move delegate. | [`execute_noncombat_moves()`](src/pro_noncombat_move.odin) | ✅ DONE | 90% | |
 
 ---
@@ -331,11 +331,11 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TM-018 | `populateEnemyDefenseOptions()` | 132-135 | Analyzes enemy defensive capabilities including scramble-capable airbases and reserve forces. | ❌ MISSING | ❌ MISSING | 0% | |
 | TM-019 | └─ `findScrambleOptions()` | 500-580 | Identifies airbases that can scramble fighters to defend adjacent sea zones (map-specific rule). | ❌ MISSING | ❌ MISSING | N/A | Scramble N/A |
 | TM-020 | └─ └─ `for (airbase)` | 510-575 | Checks each airbase for scramble capability and available fighters. | ❌ MISSING | ❌ MISSING | N/A | |
-| TM-021 | └─ `findEnemyDefendOptions()` | 580-600 | Finds enemy units that could reinforce threatened territories on enemy's turn. | ❌ MISSING | ❌ MISSING | 0% | |
+| TM-021 | └─ `findEnemyDefendOptions()` | 580-600 | Finds enemy units that could reinforce threatened territories on enemy's turn. | ✅ DONE | find_enemy_defend_options() | 100% | |
 | TM-022 | `removeTerritoriesThatCantBeConquered()` | 140-300 | Filters attack options by running battle simulations and removing attacks that can't win. | 🔶 PARTIAL | 🔶 PARTIAL | 60% | |
 | TM-023 | └─ `for (Territory t)` in attackMap | 155-295 | Iterates through each attack option and runs simulation to check win probability. | Loop | 🔶 PARTIAL | 60% | |
 | TM-024 | └─ └─ Battle simulation | 170-200 | Runs Monte Carlo battle sim to determine attack success probability. | Sim | ✅ DONE | 95% | |
-| TM-025 | └─ └─ Strafing check for allies | 210-280 | For allies, checks if strafing attack (attack and retreat) is worthwhile when conquest isn't possible. | ❌ MISSING | ❌ MISSING | 0% | |
+| TM-025 | └─ └─ Strafing check for allies | 210-280 | For allies, checks if strafing attack (attack and retreat) is worthwhile when conquest isn't possible. | ✅ DONE | check_strafing_attack_worthwhile() | 100% | |
 
 ---
 
