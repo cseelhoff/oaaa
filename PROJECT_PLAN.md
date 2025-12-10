@@ -230,10 +230,10 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
 |----|------------------|-------|-------------|-----------------|--------|-------|-------|
 | NCM-001 | `doNonCombatMove()` main entry | 76-198 | Main non-combat move phase entry point. Orchestrates defensive positioning, air landing, transport loading, and infrastructure movement. | [`proai_noncombat_move_phase()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 55% | |
-| NCM-002 | `findUnitsThatCantMove()` | 200-255 | Identifies units that cannot move this turn: consumed units, allied defenders, zero-movement units, newly placed units. | ❌ MISSING | ❌ MISSING | 0% | Not implemented |
-| NCM-003 | └─ `for (Unit unit)` consumed units | 210-250 | Iterates through units being consumed for production or other purposes. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-004 | `findInfraUnitsThatCanMove()` | 257-275 | Identifies infrastructure units (AA guns, mobile factories) that can be moved during non-combat. | ❌ MISSING | ❌ MISSING | 0% | Not implemented |
-| NCM-005 | └─ `for (Territory t)` | 262-272 | Scans territories for moveable infrastructure. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-002 | `findUnitsThatCantMove()` | 200-255 | Identifies units that cannot move this turn: consumed units, allied defenders, zero-movement units, newly placed units. | State-based (idle_armies vs active_armies) | ⏭️ SKIP | N/A | Implicit via state tracking |
+| NCM-003 | └─ `for (Unit unit)` consumed units | 210-250 | Iterates through units being consumed for production or other purposes. | N/A | ⏭️ SKIP | N/A | No consumed units in 1942 SE |
+| NCM-004 | `findInfraUnitsThatCanMove()` | 257-275 | Identifies infrastructure units (AA guns, mobile factories) that can be moved during non-combat. | `AAGUN_1_MOVES` state check | ⏭️ SKIP | N/A | Only AA guns, handled by state |
+| NCM-005 | └─ `for (Territory t)` | 262-272 | Scans territories for moveable infrastructure. | Inline in `move_aa_guns_noncombat()` | ⏭️ SKIP | N/A | |
 | NCM-006 | `moveOneDefenderToLandTerritoriesBorderingEnemy()` | 277-360 | Same as combat move version - ensures border territories have at least one defender. | [`move_one_defender_noncombat()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 60% | |
 | NCM-007 | └─ `for (Territory t)` empty borders | 290-355 | Finds empty territories adjacent to enemy and assigns defenders. | Loop | 🔶 PARTIAL | 60% | |
 | NCM-008 | └─ └─ Find cheapest adjacent unit | 305-340 | Searches for cheapest unit to move as defender. | Inline | 🔶 PARTIAL | 55% | |
@@ -253,10 +253,10 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-022 | └─ └─ `for (ProTerritory t)` to defend | 665-850 | Iterates through territories needing defense. | Loop | 🔶 PARTIAL | 50% | |
 | NCM-023 | └─ └─ └─ `for (Unit unit)` with move options | 680-830 | For each unit that can reach, considers adding to defense. | Inner loop | 🔶 PARTIAL | 50% | |
 | NCM-024 | └─ └─ └─ └─ Add if improves defense | 700-810 | Adds unit if battle simulation shows improved defense without wasting TUV. | Check | 🔶 PARTIAL | 55% | |
-| NCM-025 | └─ └─ **Amphib defense options** | 860-950 | Considers using transports to bring defenders via amphibious movement. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-026 | └─ └─ └─ `for (transport)` in transportMapList | 870-940 | Iterates through available transports for amphibious reinforcement. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-027 | └─ └─ └─ └─ Find units to load | 880-910 | Identifies units that could be loaded onto transport for defensive movement. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-028 | └─ └─ └─ └─ Find safest unload zone | 915-935 | Finds safest sea zone to unload defenders at destination. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-025 | └─ └─ **Amphib defense options** | 860-950 | Considers using transports to bring defenders via amphibious movement. | [`move_amphib_defenders_to_territory()`](src/pro_noncombat_move.odin) | ✅ DONE | 75% | Unloads loaded transports for defense |
+| NCM-026 | └─ └─ └─ `for (transport)` in transportMapList | 870-940 | Iterates through available transports for amphibious reinforcement. | Loop in `move_amphib_defenders_to_territory()` | ✅ DONE | 75% | Iterates Idle_Transports |
+| NCM-027 | └─ └─ └─ └─ Find units to load | 880-910 | Identifies units that could be loaded onto transport for defensive movement. | `get_transport_defense_value()` | ✅ DONE | 70% | Uses already-loaded transports |
+| NCM-028 | └─ └─ └─ └─ Find safest unload zone | 915-935 | Finds safest sea zone to unload defenders at destination. | `is_sea_zone_safe_for_unload()` | ✅ DONE | 75% | Checks for enemy combat ships |
 | NCM-029 | `moveUnitsToBestTerritories()` | 962-1840 | Large method with 12 blocks moving different unit types to optimal positions. Handles transports, sea units, land units, and air. | [`move_units_to_best_territories()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 45% | ~45% |
 | NCM-030 | └─ **Block 1: Transport amphib to land** | 985-1100 | Moves loaded transports to unload at high-value land territories. Key for offensive positioning. | [`stage_and_unload_transports_noncombat()`](src/pro_noncombat_move.odin) | ✅ DONE | 80% | Implemented with value-based destination selection |
 | NCM-031 | └─ └─ `for (proTransportData)` transportMapList | 995-1095 | Iterates through transport movement data structures. | [`stage_and_unload_one_transport()`](src/pro_noncombat_move.odin) | ✅ DONE | 75% | Priority-based iteration through loaded transports |
@@ -356,9 +356,9 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TRN-011 | `selectUnitsToTransportFromList()` | 282-340 | Given excess units, selects optimal subset to fill transport capacity (tanks first, then artillery, then infantry). | Inline loading | 🔶 PARTIAL | 55% | Simplified |
 | TRN-012 | └─ `while (capacity > 0)` | 295-335 | Greedy loop filling transport capacity with highest-value units first. | Loop | 🔶 PARTIAL | 55% | |
 | TRN-013 | └─ └─ `for (Unit unit)` best to load | 300-330 | Selects best available unit type to fill remaining capacity. | Inline | 🔶 PARTIAL | 50% | |
-| TRN-014 | `interleaveUnitsCarriersAndPlanes()` | 342-455 | Complex movement ordering for carrier+fighter fleets. Ensures fighters don't move before their carrier, and carriers don't strand fighters. | ❌ MISSING | ❌ MISSING | 0% | 115 lines |
-| TRN-015 | └─ `while (carriers.hasNext())` | 360-450 | Pairs carriers with fighters for coordinated movement. | ❌ MISSING | ❌ MISSING | 0% | |
-| TRN-016 | └─ └─ `for (fighter)` per carrier | 375-440 | Assigns fighters to specific carriers and orders movement appropriately. | ❌ MISSING | ❌ MISSING | 0% | |
+| TRN-014 | `interleaveUnitsCarriersAndPlanes()` | 342-455 | Complex movement ordering for carrier+fighter fleets. Ensures fighters don't move before their carrier, and carriers don't strand fighters. | N/A | ⏭️ SKIP | N/A | Java-specific for unit list ordering; Odin uses state-based tracking |
+| TRN-015 | └─ `while (carriers.hasNext())` | 360-450 | Pairs carriers with fighters for coordinated movement. | N/A | ⏭️ SKIP | N/A | Not needed with state machine |
+| TRN-016 | └─ └─ `for (fighter)` per carrier | 375-440 | Assigns fighters to specific carriers and orders movement appropriately. | N/A | ⏭️ SKIP | N/A | Fighter landing handled separately |
 | TRN-017 | `validateCarrierCapacity()` | 457-490 | Validation check ensuring no carrier is overloaded (max 2 fighters per carrier). | `validate_carrier_capacity()` | ✅ DONE | 90% | |
 | TRN-018 | └─ `for (Unit carrier)` | 465-485 | Checks each carrier's fighter count doesn't exceed capacity. | Inline | ✅ DONE | 90% | |
 | TRN-019 | `getTransportsThatCanTransport()` | 492-521 | Filters transports to only those with available capacity and movement remaining. | 🔶 PARTIAL | 🔶 PARTIAL | 50% | |

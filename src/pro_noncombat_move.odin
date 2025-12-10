@@ -917,6 +917,7 @@ move_units_to_defense :: proc(
 	2. For each high-priority target needing defense
 	3. Find nearby units that can reach
 	4. Move units until defense requirement met
+	5. NCM-025: For coastal territories, also consider amphib defense
 	*/
 
 	// Initialize movement tracker
@@ -929,13 +930,28 @@ move_units_to_defense :: proc(
 			continue
 		}
 
-		// Find units that can reach this territory
+		// Find land units that can reach this territory
 		units_moved := move_nearby_units_to_defense(
 			gc,
 			target.territory,
 			target.defense_needed,
 			&moved,
 		)
+		
+		// Track remaining defense needed after land reinforcement
+		remaining_defense := target.defense_needed - f64(units_moved) * 2.0  // Approximate
+
+		// NCM-025: If still need defense and territory is coastal, try amphib defense
+		if remaining_defense > 0 && is_land_adjacent_to_sea(target.territory) {
+			amphib_units := move_amphib_defenders_to_territory(
+				gc,
+				target.territory,
+				remaining_defense,
+				&moved,
+				pro_data,
+			)
+			units_moved += amphib_units
+		}
 
 		when ODIN_DEBUG {
 			if units_moved > 0 {
@@ -1081,6 +1097,215 @@ move_nearby_units_to_defense :: proc(
 	}
 
 	return units_moved
+}
+
+// ============================================================================
+// NCM-025 to NCM-028: AMPHIBIOUS DEFENSE
+// ============================================================================
+
+// NCM-025: Consider using transports to bring defenders via amphibious movement
+// Called after land unit defense to consider transport-based reinforcement
+move_amphib_defenders_to_territory :: proc(
+	gc: ^Game_Cache,
+	territory: Land_ID,
+	defense_needed: f64,
+	moved: ^Moved_Units,
+	pro_data: ^Pro_Data,
+) -> int {
+	/*
+	NCM-025: Amphibious Defense Options
+	From Java ProNonCombatMoveAi.java lines 860-950:
+	
+	1. Find transports that can reach sea zones adjacent to territory
+	2. For each transport, find units that could be loaded
+	3. Check if amphib landing would improve defense
+	4. Execute amphib defense if beneficial
+	
+	This is used to reinforce threatened territories via sea when
+	land reinforcement isn't sufficient.
+	*/
+	
+	units_moved := 0
+	defense_provided := f64(0)
+	
+	// Get sea zones adjacent to the territory (where transports can unload)
+	adjacent_seas := sa.slice(&mm.l2s_1away_via_land[territory])
+	if len(adjacent_seas) == 0 {
+		return 0  // Not coastal, can't amphib defend
+	}
+	
+	when ODIN_DEBUG {
+		fmt.printf("  [AMPHIB-DEFENSE] Checking amphib defense for %v (need %.1f defense)\n",
+			territory, defense_needed)
+	}
+	
+	// NCM-026: Loop through sea zones and find transports
+	for unload_sea in adjacent_seas {
+		// Check if we control this sea zone (or can safely unload)
+		if !is_sea_zone_safe_for_unload(gc, unload_sea) {
+			continue
+		}
+		
+		// Find loaded transports that can reach this sea zone
+		for source_sea in Sea_ID {
+			// Check if transport can reach unload_sea this turn
+			can_reach := (source_sea == unload_sea) ||
+				(unload_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][source_sea])
+			
+			if !can_reach {
+				continue
+			}
+			
+			// NCM-027: Find loaded transports at source_sea
+			for trans_type in Idle_Transports {
+				// Skip empty transports - they can't deliver defenders
+				if trans_type == .TRANS_EMPTY {
+					continue
+				}
+				
+				count := gc.idle_ships[source_sea][gc.cur_player][trans_type]
+				if count == 0 {
+					continue
+				}
+				
+				// This transport has units loaded - check if we should unload for defense
+				defense_value := get_transport_defense_value(trans_type)
+				
+				if defense_value > 0 && defense_provided < defense_needed {
+					// NCM-028: Execute amphib defense move
+					// Move transport to unload_sea and unload at territory
+					success := execute_amphib_defense_unload(
+						gc, source_sea, unload_sea, territory, trans_type, moved)
+					
+					if success {
+						units_moved += get_transport_unit_count(trans_type)
+						defense_provided += defense_value
+						
+						when ODIN_DEBUG {
+							fmt.printf("    [AMPHIB-DEFENSE] Moved transport %v from %v to unload at %v (defense: %.1f)\n",
+								trans_type, source_sea, territory, defense_value)
+						}
+						
+						if defense_provided >= defense_needed {
+							return units_moved
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	return units_moved
+}
+
+// NCM-028 Helper: Check if sea zone is safe for unloading defenders
+is_sea_zone_safe_for_unload :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
+	// Check if there are enemy combat ships that would block unloading
+	for enemy in Player_ID {
+		if mm.team[enemy] == mm.team[gc.cur_player] {
+			continue
+		}
+		
+		// Check for enemy combat ships (subs can't block unloads)
+		for ship in Idle_Ship {
+			if ship == .SUB {
+				continue  // Subs don't block
+			}
+			if gc.idle_ships[sea][enemy][ship] > 0 {
+				return false  // Enemy combat ship present
+			}
+		}
+	}
+	return true
+}
+
+// NCM-027 Helper: Get defense value of units on a transport
+get_transport_defense_value :: proc(trans_type: Idle_Ship) -> f64 {
+	#partial switch trans_type {
+	case .TRANS_1I:
+		return 2.0  // 1 infantry = 2 defense
+	case .TRANS_1A:
+		return 2.0  // 1 artillery = 2 defense
+	case .TRANS_1T:
+		return 3.0  // 1 tank = 3 defense
+	case .TRANS_2I:
+		return 4.0  // 2 infantry = 4 defense
+	case .TRANS_1I_1A:
+		return 4.0  // 1 infantry + 1 artillery = 4 defense
+	case .TRANS_1I_1T:
+		return 5.0  // 1 infantry + 1 tank = 5 defense
+	case:
+		return 0.0  // Empty or unknown
+	}
+}
+
+// NCM-027 Helper: Get number of units on a transport
+get_transport_unit_count :: proc(trans_type: Idle_Ship) -> int {
+	#partial switch trans_type {
+	case .TRANS_1I, .TRANS_1A, .TRANS_1T:
+		return 1
+	case .TRANS_2I, .TRANS_1I_1A, .TRANS_1I_1T:
+		return 2
+	case:
+		return 0
+	}
+}
+
+// NCM-028 Helper: Execute an amphibious defense unload
+execute_amphib_defense_unload :: proc(
+	gc: ^Game_Cache,
+	source_sea: Sea_ID,
+	unload_sea: Sea_ID,
+	target_land: Land_ID,
+	trans_type: Idle_Ship,
+	moved: ^Moved_Units,
+) -> bool {
+	/*
+	Execute the amphib defense:
+	1. Move transport from source_sea to unload_sea (if different)
+	2. Unload units at target_land
+	3. Convert transport to empty state
+	*/
+	
+	// Validate we have the transport
+	if gc.idle_ships[source_sea][gc.cur_player][trans_type] == 0 {
+		return false
+	}
+	
+	// Validate target land is friendly
+	if mm.team[gc.owner[target_land]] != mm.team[gc.cur_player] {
+		return false
+	}
+	
+	// Decrement transport at source
+	gc.idle_ships[source_sea][gc.cur_player][trans_type] -= 1
+	
+	// Determine what units are on transport and add them to target
+	#partial switch trans_type {
+	case .TRANS_1I:
+		gc.idle_armies[target_land][gc.cur_player][.INF] += 1
+	case .TRANS_1A:
+		gc.idle_armies[target_land][gc.cur_player][.ARTY] += 1
+	case .TRANS_1T:
+		gc.idle_armies[target_land][gc.cur_player][.TANK] += 1
+	case .TRANS_2I:
+		gc.idle_armies[target_land][gc.cur_player][.INF] += 2
+	case .TRANS_1I_1A:
+		gc.idle_armies[target_land][gc.cur_player][.INF] += 1
+		gc.idle_armies[target_land][gc.cur_player][.ARTY] += 1
+	case .TRANS_1I_1T:
+		gc.idle_armies[target_land][gc.cur_player][.INF] += 1
+		gc.idle_armies[target_land][gc.cur_player][.TANK] += 1
+	case:
+		// Not a loaded transport
+		gc.idle_ships[source_sea][gc.cur_player][trans_type] += 1  // Rollback
+		return false
+	}
+	
+	// Add empty transport to destination sea zone
+	gc.idle_ships[unload_sea][gc.cur_player][.TRANS_EMPTY] += 1
+	
+	return true
 }
 
 // ============================================================================
