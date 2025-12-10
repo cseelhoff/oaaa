@@ -129,6 +129,8 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		}
 		fmt.print(mm.color[gc.owner[land]])
 		fmt.print(land)
+		// print current owner name
+		fmt.print(" (Units: ", gc.owner[land], ")")
 		if land in gc.more_land_combat_needed do fmt.print(" more-combat")
 		if land in gc.land_combat_started do fmt.print(" combat-started")
 		if gc.builds_left[land] > 0 do fmt.print(" builds:", gc.builds_left[land])
@@ -137,26 +139,46 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		if gc.max_bombards[land] > 0 do fmt.print(" bombards:", gc.max_bombards[land])
 		fmt.println()
 		fmt.print(mm.color[gc.cur_player])
+		//print owner name in header, but only if at least one unit present
+		owner_printed := false
 		for army in Active_Army {
 			if gc.active_armies[land][army] > 0 {
+				if !owner_printed {
+					fmt.println(" (Units: ", gc.cur_player, ")")
+					owner_printed = true
+				}
 				fmt.println(fmt.tprint(army), ":", gc.active_armies[land][army])
 			}
 		}
 		for plane in Active_Plane {
 			if gc.active_land_planes[land][plane] > 0 {
+				if !owner_printed {
+					fmt.println(" (Units: ", gc.cur_player, ")")
+					owner_printed = true
+				}
 				fmt.println(fmt.tprint(plane), ":", gc.active_land_planes[land][plane])
 			}
 		}
 		for player in Player_ID {
+			//print owner name in header, but only if at least one idle unit present
+			owner_printed := false
 			if player == gc.cur_player do continue
 			fmt.print(mm.color[player])
 			for army in Idle_Army {
 				if gc.idle_armies[land][player][army] > 0 {
+					if !owner_printed {
+						fmt.println(" (Units: ", player, ")")
+						owner_printed = true
+					}
 					fmt.println(Idle_Army_Names[army], ":", gc.idle_armies[land][player][army])
 				}
 			}
 			for plane in Idle_Plane {
 				if gc.idle_land_planes[land][player][plane] > 0 {
+					if !owner_printed {
+						fmt.println(" (Units: ", player, ")")
+						owner_printed = true
+					}
 					fmt.println(
 						Idle_Plane_Names[plane],
 						":",
@@ -177,25 +199,44 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		if sea in gc.sea_combat_started do fmt.print(" combat-started")
 		fmt.println()
 		fmt.print(mm.color[gc.cur_player])
+		owner_printed := false
 		for ship in Active_Ship {
 			if gc.active_ships[sea][ship] > 0 {
+				if !owner_printed {
+					fmt.println(" (Units: ", gc.cur_player, ")")
+					owner_printed = true
+				}
 				fmt.println(fmt.tprint(ship), ":", gc.active_ships[sea][ship])
 			}
 		}
 		for plane in Active_Plane {
 			if gc.active_sea_planes[sea][plane] > 0 {
+				if !owner_printed {
+					fmt.println(" (Units: ", gc.cur_player, ")")
+					owner_printed = true
+				}
 				fmt.println(fmt.tprint(plane), ":", gc.active_sea_planes[sea][plane])
 			}
 		}
 		for player in Player_ID {
+			//print owner name in header, but only if at least one idle unit present
+			owner_printed := false
 			if player == gc.cur_player do continue
 			fmt.print(mm.color[player])
 			for ship in Idle_Ship {
 				if gc.idle_ships[sea][player][ship] > 0 {
+					if !owner_printed {
+						fmt.println(" (Units: ", player, ")")
+						owner_printed = true
+					}
 					fmt.println(ship, ":", gc.idle_ships[sea][player][ship])
 				}
 			}
 			if gc.idle_sea_planes[sea][player][.FIGHTER] > 0 {
+				if !owner_printed {
+					fmt.println(" (Units: ", player, ")")
+					owner_printed = true
+				}
 				fmt.println(
 					Idle_Plane_Names[.FIGHTER],
 					":",

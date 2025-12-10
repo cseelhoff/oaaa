@@ -2655,16 +2655,87 @@ count_all_transports_triplea :: proc(gc: ^Game_Cache, sea_id: Sea_ID) -> u8 {
 }
 
 // Count empty/partially loaded transports that need cargo
+// PUR-062/63: Improved to use transport capacity filtering
 count_empty_transports_triplea :: proc(gc: ^Game_Cache, sea_id: Sea_ID) -> u8 {
 	player := gc.cur_player
 	count := u8(0)
-	// Only count empty transports (they need units)
+	// TRN-019/20: Count transports by remaining capacity
+	// Empty transports need 5 capacity worth of units
 	count += gc.idle_ships[sea_id][player][.TRANS_EMPTY]
-	// Partially loaded transports also need units
-	count += gc.idle_ships[sea_id][player][.TRANS_1I]  // Has space for 3 more
-	count += gc.idle_ships[sea_id][player][.TRANS_1A]  // Has space for 2 more
-	count += gc.idle_ships[sea_id][player][.TRANS_1T]  // Has space for 2 more
+	// Partially loaded transports also need units based on remaining capacity:
+	// TRANS_1I: 1 infantry loaded (2 used), 3 capacity remaining
+	count += gc.idle_ships[sea_id][player][.TRANS_1I]
+	// TRANS_1A: 1 artillery loaded (3 used), 2 capacity remaining (can fit 1 infantry)
+	count += gc.idle_ships[sea_id][player][.TRANS_1A]
+	// TRANS_1T: 1 tank loaded (3 used), 2 capacity remaining (can fit 1 infantry)
+	count += gc.idle_ships[sea_id][player][.TRANS_1T]
 	return count
+}
+
+// PUR-062/63: Find transports within range of a factory that have capacity
+// Returns total transport capacity available for loading
+find_transports_needing_units_near_factory :: proc(
+	gc: ^Game_Cache,
+	factory_loc: Land_ID,
+	max_range: int = 2,
+) -> int {
+	player := gc.cur_player
+	total_capacity := 0
+	
+	// Check all sea zones adjacent to factory (range 1)
+	for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+		total_capacity += get_transport_capacity_at_sea_inline(gc, adj_sea, player)
+	}
+	
+	// Check sea zones 2 away if requested (range 2)
+	if max_range >= 2 {
+		for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+			canal_state := transmute(u8)gc.canals_open
+			for adj_sea_2 in mm.s2s_1away_via_sea[canal_state][adj_sea] {
+				// Avoid double counting
+				is_adjacent_to_factory := false
+				for check_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+					if check_sea == adj_sea_2 {
+						is_adjacent_to_factory = true
+						break
+					}
+				}
+				if !is_adjacent_to_factory {
+					total_capacity += get_transport_capacity_at_sea_inline(gc, adj_sea_2, player)
+				}
+			}
+		}
+	}
+	
+	return total_capacity
+}
+
+// Inline transport capacity function to avoid import issues
+get_transport_capacity_at_sea_inline :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	total := 0
+	for trans in Idle_Transports {
+		count := int(gc.idle_ships[sea][player][trans])
+		if count > 0 {
+			total += count * get_transport_remaining_capacity_inline(trans)
+		}
+	}
+	return total
+}
+
+// Inline version to avoid circular imports
+get_transport_remaining_capacity_inline :: proc(ship: Idle_Ship) -> int {
+	#partial switch ship {
+	case .TRANS_EMPTY:
+		return 5
+	case .TRANS_1I:
+		return 3  // 5 - 2 (infantry cost)
+	case .TRANS_1A, .TRANS_1T:
+		return 2  // 5 - 3 (arty/tank cost)
+	case .TRANS_2I, .TRANS_1I_1A, .TRANS_1I_1T:
+		return 0  // Full
+	case:
+		return 0
+	}
 }
 
 // Count units stranded on low-value territories adjacent to a sea zone
