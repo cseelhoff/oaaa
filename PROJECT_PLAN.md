@@ -230,12 +230,12 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | NCM-011 | └─ └─ Battle simulation | 390-420 | Simulates enemy attack to determine if territory is defensible. | Sim | 🔶 PARTIAL | 70% | |
 | NCM-012 | `prioritizeDefendOptions()` | 442-510 | Ranks territories by defense priority based on production, capital proximity, and strategic value. | [`prioritize_defend_options()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 55% | |
 | NCM-013 | └─ `for (ProTerritory t)` calc priority | 455-505 | Calculates defense priority score for each territory. | Loop | 🔶 PARTIAL | 55% | |
-| NCM-014 | **Capital Defense Loop** | 130-165 | **CRITICAL**: Outer loop that repeatedly adjusts defense until capital has local superiority. May increase defense range multiple times. | ❌ MISSING | ❌ MISSING | 0% | **CRITICAL** |
-| NCM-015 | └─ `while (true)` | 130-165 | Keeps iterating until capital is adequately defended or no more options. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-016 | └─ └─ `for (ProTerritory t)` adjust values | 140-150 | Adjusts territory values based on distance to capital to prioritize capital defense. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-017 | └─ └─ `moveUnitsToBestTerritories()` | 152 | Moves units to defensive positions. | Partial | 🔶 PARTIAL | 45% | |
-| NCM-018 | └─ └─ Check capital local superiority | 155-160 | Checks if capital now has enough defenders. If not, increases defense range and repeats. | ❌ MISSING | ❌ MISSING | 0% | |
-| NCM-019 | └─ └─ Reset + increase defenseRange | 162-164 | Increases search range for defenders and resets move data for another pass. | ❌ MISSING | ❌ MISSING | 0% | |
+| NCM-014 | **Capital Defense Loop** | 130-165 | **CRITICAL**: Outer loop that repeatedly adjusts defense until capital has local superiority. May increase defense range multiple times. | [`proai_noncombat_move_phase()`](src/pro_noncombat_move.odin#L435-480) | ✅ DONE | 90% | Implemented with territoryHasLocalLandSuperiority |
+| NCM-015 | └─ `while (true)` | 130-165 | Keeps iterating until capital is adequately defended or no more options. | `for iteration` loop | ✅ DONE | 90% | Max 3 iterations, breaks when capital is safe |
+| NCM-016 | └─ └─ `for (ProTerritory t)` adjust values | 140-150 | Adjusts territory values based on distance to capital to prioritize capital defense. | [`boost_territory_values_near_capital()`](src/pro_noncombat_move.odin#L492-526) | ✅ DONE | 95% | BFS boost by 10x matching Java |
+| NCM-017 | └─ └─ `moveUnitsToBestTerritories()` | 152 | Moves units to defensive positions. | `move_land_units_noncombat()` | 🔶 PARTIAL | 45% | |
+| NCM-018 | └─ └─ Check capital local superiority | 155-160 | Checks if capital now has enough defenders. If not, increases defense range and repeats. | [`territory_has_local_land_superiority()`](src/pro_utils.odin#L271-365) | ✅ DONE | 95% | Uses BFS to check allied vs enemy strength |
+| NCM-019 | └─ └─ Reset + increase defenseRange | 162-164 | Increases search range for defenders and resets move data for another pass. | `defense_range = enemy_distance - 1` | ✅ DONE | 85% | Increases defense_range and continues loop |
 | NCM-020 | `moveUnitsToDefendTerritories()` | 630-960 | Assigns units to defend threatened territories. Uses greedy assignment with battle simulation validation. | [`move_units_to_defend_territories()`](src/pro_noncombat_move.odin) | 🔶 PARTIAL | 50% | |
 | NCM-021 | └─ `while` decreasing territories loop | 650-955 | Outer loop that reduces number of defended territories if not enough units to defend all. | Outer while | 🔶 PARTIAL | 45% | |
 | NCM-022 | └─ └─ `for (ProTerritory t)` to defend | 665-850 | Iterates through territories needing defense. | Loop | 🔶 PARTIAL | 50% | |
@@ -402,7 +402,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 1. **PUR-061 to PUR-072**: `purchaseSeaAndAmphibUnits()` Phase 3 - Transport/Amphib purchase loop
 2. **PUR-065**: `potentialUnitsToLoad` from territories with value <= 0.25 (islands like UK)
 3. **TRN-005**: `getUnitsToTransportThatCantMoveToHigherValue()` - Identifies stranded units
-4. **NCM-014 to NCM-019**: Capital defense while loop with local superiority check
+4. ~~**NCM-014 to NCM-019**: Capital defense while loop with local superiority check~~ ✅ DONE
 5. **NCM-030 to NCM-045**: Transport positioning blocks in `moveUnitsToBestTerritories()`
 
 ---

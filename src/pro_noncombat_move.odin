@@ -391,17 +391,15 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		}
 	}
 
-	// if len(defense_targets) == 0 {
-	// 	return true
-	// }
-
 	// Step 2: Prioritize defense targets by strategic value
 	prioritize_defense_targets(&defense_targets, gc, &pro_data)
 	
-	fmt.println("[PRO-AI] Prioritized defense targets:")
-	for target in defense_targets {
-		fmt.printf("  - %s: priority=%.1f, defense_needed=%.1f\n",
-			target.territory, target.priority, target.defense_needed)
+	when ODIN_DEBUG {
+		fmt.println("[PRO-AI] Prioritized defense targets:")
+		for target in defense_targets {
+			fmt.printf("  - %s: priority=%.1f, defense_needed=%.1f\n",
+				target.territory, target.priority, target.defense_needed)
+		}
 	}
 
 	// Step 3: Move units to defend priority territories
@@ -429,8 +427,59 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// Step 7: Move remaining sea units to safe positions
 	move_sea_units_noncombat(gc, &pro_data)
 
-	// Step 8: Move remaining land units to consolidate (units on transports won't move)
-	move_land_units_noncombat(gc, &pro_data)
+	// #region NCM-014 Capital Defense Loop
+	// Step 8: Move land units with capital defense check
+	// Java loops to ensure capital has local land superiority
+	// If not, increases defenseRange and repeats unit movement
+	capital := mm.capital[gc.cur_player]
+	enemy_distance_to_capital := get_closest_enemy_land_distance(gc, capital)
+	
+	when ODIN_DEBUG {
+		fmt.printf("[PRO-AI] Capital %v, enemy distance: %d\n", capital, enemy_distance_to_capital)
+	}
+	
+	// Capital defense loop - ensures capital has local superiority
+	defense_range := -1
+	max_iterations := 3  // Prevent infinite loop
+	
+	for iteration := 0; iteration < max_iterations; iteration += 1 {
+		// If defense_range > 0, boost values of territories near capital
+		if defense_range > 0 {
+			boost_territory_values_near_capital(gc, &pro_data, capital, defense_range)
+			when ODIN_DEBUG {
+				fmt.printf("[PRO-AI] Iteration %d: Boosted territory values within %d of capital\n",
+					iteration, defense_range)
+			}
+		}
+		
+		// Move land units to consolidate
+		move_land_units_noncombat(gc, &pro_data)
+		
+		// Check if capital has local land superiority
+		// Only check if enemy is within 2-3 moves (critical distance)
+		if enemy_distance_to_capital >= 2 && enemy_distance_to_capital <= 3 && defense_range == -1 {
+			has_superiority := territory_has_local_land_superiority(
+				gc, capital, enemy_distance_to_capital, gc.cur_player)
+			
+			when ODIN_DEBUG {
+				fmt.printf("[PRO-AI] Capital local superiority check: %v\n", has_superiority)
+			}
+			
+			if !has_superiority {
+				// Capital doesn't have superiority - increase defense range and retry
+				defense_range = enemy_distance_to_capital - 1
+				when ODIN_DEBUG {
+					fmt.println("[PRO-AI] Capital doesn't have local land superiority - entering defensive stance")
+				}
+				// Continue loop to retry with boosted values
+				continue
+			}
+		}
+		
+		// Capital is safe or not under immediate threat - exit loop
+		break
+	}
+	// #endregion
 	
 	debug_checks(gc)
 	when ODIN_DEBUG {
@@ -440,12 +489,41 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-
-
-
-
-
-
+// Boost territory values near capital to prioritize capital defense
+// Java: ProNonCombatMoveAi.java - multiplies territoryValue by 10 for territories within range
+boost_territory_values_near_capital :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, capital: Land_ID, defense_range: int) {
+	// Use BFS to find all territories within defense_range of capital
+	visited: Land_Bitset = {capital}
+	current_frontier: Land_Bitset = {capital}
+	
+	// Boost capital itself
+	pro_data.land_territories[capital].value *= 10.0
+	
+	// BFS outward from capital
+	for dist := 1; dist <= defense_range; dist += 1 {
+		next_frontier: Land_Bitset = {}
+		
+		// For each territory in current frontier
+		for land_id in current_frontier {
+			// Check adjacent land territories
+			adjacent := mm.l2l_1away_via_land_bitset[land_id] - visited
+			for adj_land in adjacent {
+				visited += {adj_land}
+				next_frontier += {adj_land}
+				
+				// Boost territory value by 10x (matching Java)
+				pro_data.land_territories[adj_land].value *= 10.0
+				
+				when ODIN_DEBUG {
+					fmt.printf("[PRO-AI] Boosted territory %v value by 10x (dist %d from capital)\n",
+						adj_land, dist)
+				}
+			}
+		}
+		
+		current_frontier = next_frontier
+	}
+}
 
 // Defense_Target represents a territory that needs defensive units
 Defense_Target :: struct {

@@ -18,8 +18,7 @@ Key functions:
 TODO REVIEW: Missing Java utility methods:
 
 From ProBattleUtils.java:
-- territoryHasLocalLandSuperiority() - NOT IMPLEMENTED
-  * Critical for checking if we can hold territory
+- territoryHasLocalLandSuperiority() - IMPLEMENTED (NCM-014)
   * Calculates strength ratio vs nearby enemies
 - territoryHasLocalNavalSuperiority() - NOT IMPLEMENTED
   * Same for sea zones
@@ -268,3 +267,210 @@ find_best_factory_location :: proc(gc: ^Game_Cache) -> Maybe(Land_ID) {
 	
 	return best_territory
 }
+
+// #region NCM-014 territoryHasLocalLandSuperiority
+// Check if player has local land superiority around a territory
+// Based on Java's ProBattleUtils.territoryHasLocalLandSuperiority()
+//
+// Algorithm:
+// - For each distance level from 2 to max_distance:
+//   - Gather enemy land units within distance i
+//   - Gather allied land units within distance i-1 (closer = can defend)
+//   - Calculate strength difference
+//   - If enemy > 50% stronger at any distance, return false
+// Returns true if we have local superiority at all distance levels
+territory_has_local_land_superiority :: proc(
+	gc: ^Game_Cache,
+	territory: Land_ID,
+	max_distance: int,
+	player: Player_ID,
+) -> bool {
+	if max_distance < 2 {
+		return true
+	}
+	
+	// For each distance level
+	for dist := 2; dist <= max_distance; dist += 1 {
+		// Calculate enemy strength within dist moves
+		enemy_strength := calculate_land_strength_within_distance(gc, territory, dist, player, false)
+		
+		// Calculate allied strength within dist-1 moves (they can move to defend)
+		allied_strength := calculate_land_strength_within_distance(gc, territory, dist - 1, player, true)
+		
+		// Calculate strength difference (positive = enemy stronger)
+		// Java formula: (enemy - allied) / allied^0.85 * 50 + 50
+		// If result > 50, enemy has advantage
+		if allied_strength <= 0 {
+			if enemy_strength > 0 {
+				when ODIN_DEBUG {
+					fmt.printf("  [LOCAL-SUP] %v: dist=%d, NO allies vs enemy=%.1f -> false\n",
+						territory, dist, enemy_strength)
+				}
+				return false
+			}
+			continue
+		}
+		
+		strength_diff := (enemy_strength - allied_strength) / math.pow(allied_strength, 0.85) * 50.0 + 50.0
+		
+		when ODIN_DEBUG {
+			fmt.printf("  [LOCAL-SUP] %v: dist=%d, allied=%.1f, enemy=%.1f, diff=%.1f\n",
+				territory, dist, allied_strength, enemy_strength, strength_diff)
+		}
+		
+		// Java returns false if strengthDifference > 50
+		if strength_diff > 50 {
+			return false
+		}
+	}
+	
+	return true
+}
+
+// Calculate combined land strength within a certain distance
+// Uses BFS to find all reachable territories
+calculate_land_strength_within_distance :: proc(
+	gc: ^Game_Cache,
+	center: Land_ID,
+	max_dist: int,
+	player: Player_ID,
+	allied: bool, // true = count allies, false = count enemies
+) -> f64 {
+	if max_dist < 0 {
+		return 0
+	}
+	
+	// Use bitset to track visited territories
+	visited: Land_Bitset = {}
+	visited += {center}
+	
+	strength: f64 = 0
+	
+	// BFS by expanding distance levels
+	current_ring: Land_Bitset = {center}
+	
+	for dist := 0; dist <= max_dist; dist += 1 {
+		// Count units in current ring
+		for land in current_ring {
+			strength += count_land_units_at_territory(gc, land, player, allied)
+		}
+		
+		if dist < max_dist {
+			// Expand to next ring
+			next_ring: Land_Bitset = {}
+			for land in current_ring {
+				// Add adjacent lands
+				for adj_land in sa.slice(&mm.l2l_1away_via_land[land]) {
+					if adj_land not_in visited {
+						// Only count passable land (can move through)
+						// For now, allow all non-water territories
+						next_ring += {adj_land}
+						visited += {adj_land}
+					}
+				}
+			}
+			current_ring = next_ring
+		}
+	}
+	
+	return strength
+}
+
+// Count land unit strength at a specific territory
+count_land_units_at_territory :: proc(
+	gc: ^Game_Cache,
+	territory: Land_ID,
+	player: Player_ID,
+	allied: bool,
+) -> f64 {
+	strength: f64 = 0
+	
+	for other_player in Player_ID {
+		// Determine if this player counts
+		is_ally := mm.team[other_player] == mm.team[player]
+		if allied && !is_ally {
+			continue
+		}
+		if !allied && is_ally {
+			continue
+		}
+		
+		// Count idle armies
+		for army_type in Idle_Army {
+			count := gc.idle_armies[territory][other_player][army_type]
+			if count > 0 {
+				// Use attack value for enemies, defense value for allies
+				if allied {
+					strength += f64(count) * get_army_defense_value_for_sup(army_type)
+				} else {
+					strength += f64(count) * get_army_attack_value_for_sup(army_type)
+				}
+			}
+		}
+		
+		// Count planes on land
+		for plane_type in Idle_Plane {
+			count := gc.idle_land_planes[territory][other_player][plane_type]
+			if count > 0 {
+				if allied {
+					strength += f64(count) * get_plane_defense_value_for_sup(plane_type)
+				} else {
+					strength += f64(count) * get_plane_attack_value_for_sup(plane_type)
+				}
+			}
+		}
+	}
+	
+	return strength
+}
+
+// Attack values for superiority calculation (combined power + HP)
+get_army_attack_value_for_sup :: proc(army_type: Idle_Army) -> f64 {
+	// Combined: 2*HP + attack power (matches Java estimateStrengthDifference)
+	switch army_type {
+	case .INF:
+		return 2.0 + 1.0  // 2 HP + 1 attack
+	case .ARTY:
+		return 2.0 + 2.0  // 2 HP + 2 attack
+	case .TANK:
+		return 2.0 + 3.0  // 2 HP + 3 attack
+	case .AAGUN:
+		return 2.0 + 0.0  // 2 HP + 0 attack
+	}
+	return 3.0
+}
+
+get_army_defense_value_for_sup :: proc(army_type: Idle_Army) -> f64 {
+	switch army_type {
+	case .INF:
+		return 2.0 + 2.0  // 2 HP + 2 defense
+	case .ARTY:
+		return 2.0 + 2.0  // 2 HP + 2 defense
+	case .TANK:
+		return 2.0 + 3.0  // 2 HP + 3 defense
+	case .AAGUN:
+		return 2.0 + 0.0  // 2 HP + 0 defense (but shoots planes)
+	}
+	return 4.0
+}
+
+get_plane_attack_value_for_sup :: proc(plane_type: Idle_Plane) -> f64 {
+	switch plane_type {
+	case .FIGHTER:
+		return 2.0 + 3.0  // 2 HP + 3 attack
+	case .BOMBER:
+		return 2.0 + 4.0  // 2 HP + 4 attack
+	}
+	return 5.0
+}
+
+get_plane_defense_value_for_sup :: proc(plane_type: Idle_Plane) -> f64 {
+	switch plane_type {
+	case .FIGHTER:
+		return 2.0 + 4.0  // 2 HP + 4 defense
+	case .BOMBER:
+		return 2.0 + 1.0  // 2 HP + 1 defense
+	}
+	return 5.0
+}
+// #endregion
