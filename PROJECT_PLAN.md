@@ -85,7 +85,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | PUR-004 | `bid()` | 138-175 | Handles bid placement at game start. Places bid units in territories where player started with units. | N/A | ⏭️ SKIP | N/A | Bidding not used |
 | PUR-005 | └─ `while (true)` bid loop | 170-270 | Iteratively places bid units one at a time, prioritizing threatened territories and strategic value. | N/A | ⏭️ SKIP | N/A | |
 | PUR-006 | `purchase()` main entry | 277-380 | Main purchase logic coordinator. Calls defenders, land units, AA, factories, sea/amphib, and remaining production purchases in sequence. | [`purchase_triplea()`](src/pro_purchase.odin) | ✅ DONE | 90% | |
-| PUR-007 | └─ `shouldSaveUpForAFleet()` | 381-443 | Checks if player is landlocked and needs to save PUs for a fleet. Returns true if enemy is only reachable by sea and we can't afford ships yet. | `#region PUR-007` | 🔶 PARTIAL | 40% | Simplified |
+| PUR-007 | └─ `shouldSaveUpForAFleet()` | 381-443 | Checks if player is landlocked and needs to save PUs for a fleet. Returns true if enemy is only reachable by sea and we can't afford ships yet. | [`should_save_up_for_fleet_triplea()`](src/pro_purchase.odin) | ✅ DONE | 85% | BFS sea search |
 | PUR-008 | `place()` | 445-575 | Places all purchased units at factories. Land units placed first (reduces failed placements), then sea units. Handles remaining unplaced units. | [`place_defenders_triplea()`](src/pro_purchase.odin) | ✅ DONE | 85% | |
 | PUR-009 | └─ `for (ProPurchaseTerritory t)` land placement | 461-480 | Iterates through purchase territories to place land units at each factory location. | [`place_units_triplea()`](src/pro_purchase.odin) | ✅ DONE | 85% | |
 | PUR-010 | └─ └─ `for (ProPlaceTerritory ppt)` | 462-479 | For each place territory under a purchase territory, collects units to place. | Inline | ✅ DONE | 85% | |
@@ -321,7 +321,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TM-008 | └─ `findDefendOptions()` | 400-580 | Core defense method - finds all units that could potentially move to defend each territory. | Called | 🔶 PARTIAL | 65% | |
 | TM-009 | └─ └─ `for (Unit land)` friendly | 420-480 | For each land unit, calculates which friendly territories it can reach to provide defense. | Loop | ✅ DONE | 80% | |
 | TM-010 | └─ └─ `for (Unit air)` | 490-540 | For each fighter/bomber, identifies territories within range that could use air defense. | Loop | ✅ DONE | 80% | |
-| TM-011 | └─ └─ `for (transport)` reinforcement | 550-575 | Identifies transports that could bring amphibious reinforcements to threatened coastal territories. | Loop | 🔶 PARTIAL | 40% | |
+| TM-011 | └─ └─ `for (transport)` reinforcement | 550-575 | Identifies transports that could bring amphibious reinforcements to threatened coastal territories. | [`find_transport_defend_destinations()`](src/pro_territory_manager.odin) | ✅ DONE | 85% | BFS to 2 moves |
 | TM-012 | `populateEnemyAttackOptions()` | 125-131 | Entry for enemy threat analysis. Generates attack options for each enemy player separately for accurate threat assessment. | [`generate_all_enemy_attack_options()`](src/pro_enemy_attacks.odin) | ✅ DONE | 90% | |
 | TM-013 | └─ `findEnemyAttackOptions()` | 300-400 | Per-enemy version of findAttackOptions. Tracks what each enemy can attack independently. | [`generate_single_enemy_attack_options()`](src/pro_enemy_attacks.odin) | ✅ DONE | 90% | |
 | TM-014 | └─ └─ `for (enemy player)` | 310-395 | Iterates through each enemy player to generate separate attack option sets. | `#region TM-014` | ✅ DONE | 90% | |
@@ -388,7 +388,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | VAL-010 | └─ └─ Transport route value | 235-260 | Sea zones on key transport routes (factory to front line) are valuable. | Factory-adjacent bonus | ✅ DONE | 75% | 3x factory prod bonus |
 | VAL-011 | └─ └─ Naval choke point | 265-275 | Narrow passages or canal-adjacent zones get bonus value. | `num_connections` check | ✅ DONE | 80% | 30% for ≤2 connections |
 | VAL-012 | `findLandValue()` | 282-400 | Detailed land territory valuation using BFS from production centers. | 🔶 PARTIAL | 🔶 PARTIAL | 45% | |
-| VAL-013 | └─ BFS from production centers | 295-395 | Breadth-first search radiating value outward from factories, decaying with distance. | Simplified | 🔶 PARTIAL | 40% | |
+| VAL-013 | └─ BFS from production centers | 295-395 | Breadth-first search radiating value outward from factories, decaying with distance. | [`find_land_value()`](src/pro_land_value.odin) | ✅ DONE | 85% | Uses sorted decay |
 | VAL-014 | `findAttackValue()` | 402-520 | Evaluates territories from offensive perspective - how valuable to capture. | ✅ DONE | find_attack_value() in pro_land_value.odin | 100% | |
 | VAL-015 | └─ `for (Territory t)` | 415-515 | Iterates enemy territories calculating attack priority. | ✅ DONE | Part of find_attack_value() | 100% | |
 | VAL-016 | └─ └─ TUV swing calc | 430-480 | Expected TUV gain from successful attack (enemy losses minus our losses). | ✅ DONE | calculate_land_defense_strength() | 100% | |

@@ -438,8 +438,65 @@ find_naval_defend_destinations :: proc(gc: ^Game_Cache, options: ^Pro_My_Move_Op
 }
 
 // Helper: Find transport defend destinations for reinforcement
+// TM-011: Identifies transports that could bring amphibious reinforcements to threatened coastal territories
 find_transport_defend_destinations :: proc(gc: ^Game_Cache, options: ^Pro_My_Move_Options, cleared_territories: Land_Bitset) {
-	// TODO: Implement transport loading and unloading for non-combat reinforcement
+	player := gc.cur_player
+	canal_state := transmute(u8)gc.canals_open
+	
+	// Find all sea zones with our transports
+	for sea in Sea_ID {
+		// Count transports (any transport state indicates a transport is present)
+		transport_count := gc.idle_ships[sea][player][.TRANS_EMPTY] +
+		                   gc.idle_ships[sea][player][.TRANS_1I] +
+		                   gc.idle_ships[sea][player][.TRANS_1A] +
+		                   gc.idle_ships[sea][player][.TRANS_1T] +
+		                   gc.idle_ships[sea][player][.TRANS_2I] +
+		                   gc.idle_ships[sea][player][.TRANS_1I_1A] +
+		                   gc.idle_ships[sea][player][.TRANS_1I_1T]
+		
+		if transport_count == 0 do continue
+		
+		// Find land territories adjacent to sea zones our transports can reach
+		// Transports have 2 movement
+		reachable_seas: Sea_Bitset = {sea}  // Can stay in place
+		
+		// 1 move away
+		for adj_sea in mm.s2s_1away_via_sea[canal_state][sea] {
+			// Check if sea is safe (no enemy combat ships)
+			enemy_combat := gc.team_sea_units[adj_sea][mm.enemy_team[player]]
+			enemy_subs := u8(0)
+			for p in Player_ID {
+				if mm.team[p] != mm.team[player] {
+					enemy_subs += gc.idle_ships[adj_sea][p][.SUB]
+				}
+			}
+			// Can pass if no enemies or only subs
+			if enemy_combat == 0 || enemy_combat == enemy_subs {
+				reachable_seas += {adj_sea}
+			}
+		}
+		
+		// 2 moves away (through safe intermediates)
+		for mid_sea in mm.s2s_1away_via_sea[canal_state][sea] {
+			if mid_sea not_in reachable_seas do continue
+			for far_sea in mm.s2s_1away_via_sea[canal_state][mid_sea] {
+				if far_sea == sea do continue
+				enemy_combat := gc.team_sea_units[far_sea][mm.enemy_team[player]]
+				enemy_subs := u8(0)
+				for p in Player_ID {
+					if mm.team[p] != mm.team[player] {
+						enemy_subs += gc.idle_ships[far_sea][p][.SUB]
+					}
+				}
+				if enemy_combat == 0 || enemy_combat == enemy_subs {
+					reachable_seas += {far_sea}
+				}
+			}
+		}
+		
+		// Mark all reachable seas in transport_destinations
+		options.transport_destinations[sea] = reachable_seas
+	}
 }
 
 // =============================================================================

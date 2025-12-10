@@ -172,7 +172,9 @@ find_land_value :: proc(
 			)
 		}
 	}
-	// slice.reverse_sort(values[:])
+	// VAL-013: Sort values in descending order before applying cumulative decay
+	// This ensures the highest-value factories contribute most
+	slice.reverse_sort(values[:])
 	capital_or_factory_value: f64 = 0
 	for i in 0 ..< len(values) {
 		capital_or_factory_value += values[i] / math.pow(2.0, f64(i)) // Decrease each additional factory value by half

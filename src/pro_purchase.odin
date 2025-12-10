@@ -517,10 +517,14 @@ Java Original (lines 389-445):
   }
 */
 
-// Odin Implementation:
+// PUR-007: shouldSaveUpForAFleet() - Enhanced implementation
+// Checks if player is landlocked and needs to save PUs for a fleet.
+// Returns true if enemy is only reachable by sea and we can't afford ships yet.
 should_save_up_for_fleet_triplea :: proc(gc: ^Game_Cache) -> bool {
+	player := gc.cur_player
+	
 	// If no money, don't save
-	if gc.money[gc.cur_player] == 0 do return false
+	if gc.money[player] == 0 do return false
 
 	// Check if we can reach enemy by land
 	enemy_reachable_by_land := can_reach_enemy_by_land_triplea(gc)
@@ -529,61 +533,124 @@ should_save_up_for_fleet_triplea :: proc(gc: ^Game_Cache) -> bool {
 		return false
 	}
 
-	// Check if we already have enough PUs for a significant fleet
-	// A "significant fleet" is destroyer (8) + transport (7) + cruiser (12) = 27 IPCs minimum
-	max_ship_cost := u8(27)
+	// Find sea placement territories and max production
+	max_sea_units_that_can_be_placed := 0
+	has_sea_placement := false
+	
+	for factory_loc in sa.slice(&gc.factory_locations[player]) {
+		if gc.owner[factory_loc] != player do continue
+		
+		// Check if this factory is coastal (can produce sea units)
+		for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+			has_sea_placement = true
+			max_sea_units_that_can_be_placed += int(gc.factory_prod[factory_loc])
+			break  // Only count each factory once
+		}
+	}
+	
+	if !has_sea_placement {
+		// No coastal factories, can't build a fleet anyway
+		return false
+	}
 
-	// Also consider carrier (14) + 2 fighters (20) = 34 for air cover
-	max_fleet_cost := u8(50)
+	// Check if we can reach enemy land by sea
+	enemy_reachable_by_sea := can_reach_enemy_by_sea_triplea(gc)
+	if !enemy_reachable_by_sea {
+		// Can't reach enemy by sea either
+		return false
+	}
 
-	if gc.money[gc.cur_player] >= max_fleet_cost {
+	// Calculate max ship cost we could spend
+	// Most expensive useful fleet: transport(7) + destroyer(8) + cruiser(12) = 27 each
+	// For full production, multiply by slots available
+	max_ship_cost := u8(27)  // Minimum effective fleet
+	max_fleet_cost := u8(max_ship_cost) * u8(min(max_sea_units_that_can_be_placed, 3))
+
+	if gc.money[player] >= max_fleet_cost {
 		// We have enough, don't save more
 		return false
 	}
 
 	// Enemy only reachable by sea and we don't have enough yet - save up
+	when ODIN_DEBUG {
+		fmt.printf("  [FLEET SAVE] Enemy only reachable by sea, saving up (have %d, need ~%d)\n",
+		          gc.money[player], max_fleet_cost)
+	}
 	return true
 }
 
 // Helper: Check if we can reach any enemy territory by land
 can_reach_enemy_by_land_triplea :: proc(gc: ^Game_Cache) -> bool {
-	/*
-	Java Original (from ProPurchaseAi.java lines 397-407):
+	player := gc.cur_player
+	my_team := mm.team[player]
 	
-	Optional<Territory> enemyTerritoryReachableByLand =
-		territoryManager.findClosestTerritory(
-			purchaseTerritories.keySet(),
-			ProMatches.territoryCanPotentiallyMoveLandUnits(player),
-			Matches.isTerritoryEnemy(player).and(Matches.territoryIsLand()));
-	if (enemyTerritoryReachableByLand.isPresent()) {
-		return false;
-	}
-	*/
-
-	// Check if any enemy land territory is adjacent to our territories
+	// Check if any of our territories are adjacent to enemy by land
 	for territory in Land_ID {
-		if gc.owner[territory] == gc.cur_player {
-			// Check adjacent territories
-			for adj_id in sa.slice(&mm.l2l_1away_via_land[territory]) {
-				adj := adj_id
-				if gc.owner[adj] != gc.cur_player {
-					// Check if this is an enemy (not an ally)
-					is_ally := false
-					for ally_id in sa.slice(&mm.allies[gc.cur_player]) {
-						if gc.owner[adj] == ally_id {
-							is_ally = true
-							break
-						}
-					}
-					if !is_ally {
-						// Found enemy territory adjacent by land
-						return true
-					}
-				}
+		if gc.owner[territory] != player do continue
+		
+		// Check adjacent territories
+		for adj in sa.slice(&mm.l2l_1away_via_land[territory]) {
+			owner := gc.owner[adj]
+			if mm.team[owner] != my_team {
+				// Found enemy territory adjacent by land
+				return true
+			}
+		}
+		
+		// Also check 2-away territories (tanks can reach)
+		for adj in mm.l2l_2away_via_land_bitset[territory] {
+			owner := gc.owner[adj]
+			if mm.team[owner] != my_team {
+				return true
 			}
 		}
 	}
 
+	return false
+}
+
+// Helper: Check if we can reach any enemy land territory by sea
+can_reach_enemy_by_sea_triplea :: proc(gc: ^Game_Cache) -> bool {
+	player := gc.cur_player
+	my_team := mm.team[player]
+	canal_state := transmute(u8)gc.canals_open
+	
+	// Find sea zones adjacent to our factories
+	for factory_loc in sa.slice(&gc.factory_locations[player]) {
+		if gc.owner[factory_loc] != player do continue
+		
+		for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+			// BFS from this sea zone to find reachable enemy land
+			visited: Sea_Bitset = {adj_sea}
+			frontier: Sea_Bitset = {adj_sea}
+			
+			// Search up to 6 sea zones away (transport range)
+			for distance in 0..<6 {
+				next_frontier: Sea_Bitset = {}
+				
+				for sea in frontier {
+					// Check if this sea is adjacent to enemy land
+					for land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
+						if mm.team[gc.owner[land]] != my_team {
+							return true
+						}
+					}
+					
+					// Expand frontier
+					for next_sea in mm.s2s_1away_via_sea[canal_state][sea] {
+						if next_sea not_in visited {
+							next_frontier += {next_sea}
+							visited += {next_sea}
+						}
+					}
+				}
+				
+				frontier = next_frontier
+				if card(frontier) == 0 do break
+			}
+		}
+	}
+	
 	return false
 }
 
