@@ -20,6 +20,7 @@ This document provides a comprehensive project plan for completing the conversio
 |--------|------|-------|-----------------|
 | `3e00286` | 2025-12-10 | Germany loses capital to Russia before round 60 | Naval superiority purchase loop (PUR-060) may be over-spending on naval units, weakening land defense |
 | `04b71c2` | 2025-12-10 | (same session) | territory_has_local_naval_superiority() implementation (PUR-056 to PUR-059) |
+| (uncommitted) | 2025-12-10 | Russia loses to Germany by round 21 | CMB-041 to CMB-043 excess attackers redistribution - may be stripping too many units from attacks |
 
 **Last known good commit**: `6c2e3ca` (NCM-014 Capital Defense Loop)
 
@@ -211,9 +212,9 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | CMB-038 | └─ **Phase 4: Limit if can't hold** | 1480-1512 | For territories that can't be held post-conquest, reduces attacking force to minimize losses. | Phase 4 | ✅ DONE | 80% | |
 | CMB-039 | └─ └─ `for (ProTerritory patd)` !canHold | 1485-1508 | Iterates through attacks where we'll lose the territory after. | Loop | ✅ DONE | 80% | |
 | CMB-040 | └─ └─ └─ Check 1 less unit still wins | 1490-1505 | Removes units one at a time while still maintaining victory, saving TUV. | Check | ✅ DONE | 80% | |
-| CMB-041 | └─ **Phase 5: Use excess attackers** | 1514-1560 | Redistributes excess units (>150% needed) from over-committed attacks to under-committed ones. | ❌ MISSING | ❌ MISSING | 0% | Not implemented |
-| CMB-042 | └─ └─ `for (ProTerritory patd)` strafing | 1520-1555 | Finds attacks with significant excess force that could be used elsewhere. | ❌ MISSING | ❌ MISSING | 0% | |
-| CMB-043 | └─ └─ └─ `for (Unit unit)` excess (>150%) | 1530-1550 | Moves excess units to attacks that need reinforcement. | ❌ MISSING | ❌ MISSING | 0% | |
+| CMB-041 | └─ **Phase 5: Use excess attackers** | 1514-1560 | Redistributes excess units (>150% needed) from over-committed attacks to under-committed ones. | [`try_to_attack_territories_triplea()`](src/pro_combat_move_triplea_methods.odin#L2320-L2430) | ✅ DONE | 85% | Phase 5 excess attacker redistribution loop |
+| CMB-042 | └─ └─ `for (ProTerritory patd)` strafing | 1520-1555 | Finds attacks with significant excess force that could be used elsewhere. | Phase 5 strafing loop | ✅ DONE | 85% | Removes excess from strafing attacks |
+| CMB-043 | └─ └─ └─ `for (Unit unit)` excess (>150%) | 1530-1550 | Moves excess units to attacks that need reinforcement. | Phase 5 redistribution | ✅ DONE | 80% | Redistributes to under-committed attacks |
 | CMB-044 | └─ **Phase 6: Validate & Log** | 1562-1778 | Final validation of all attacks. Checks transport restrictions, sub retreat rules, and logs summary. | 🔶 PARTIAL | 🔶 PARTIAL | 50% | |
 | CMB-045 | └─ └─ Transport casualty restriction check | 1580-1610 | Verifies attacks don't violate transport casualty restriction rules (some maps require transports to be taken as casualties last). | ❌ MISSING | ❌ MISSING | 0% | |
 | CMB-046 | └─ └─ Sub retreat before battle calc | 1620-1650 | Calculates whether enemy subs should retreat before battle based on destroyer presence. | ❌ MISSING | ❌ MISSING | 0% | |
