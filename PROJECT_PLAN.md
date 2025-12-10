@@ -150,7 +150,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | PUR-069 | └─ └─ └─ └─ `while (transportCapacity > 0)` | 2000-2035 | Keeps loading/purchasing amphib units until transport is full. | Fill loop | ✅ DONE | 80% | |
 | PUR-070 | └─ └─ └─ └─ └─ Calc amphibEfficiencies | 2005-2020 | Calculates efficiency of purchasing amphib units (attack power for amphib assault / cost). | Inline | ✅ DONE | 85% | attack/cost ratio for tank, arty, inf |
 | PUR-071 | └─ └─ └─ **Branch B**: Buy new transport | 2045-2080 | If no transports need units but potentialUnitsToLoad exists, buys new transport. | Branch B | ✅ DONE | 75% | |
-| PUR-072 | └─ └─ └─ └─ Calc transportEfficiencies | 2050-2070 | Calculates transport purchase efficiency based on units waiting to be transported. | `get_transport_remaining_capacity_inline` | 🔶 PARTIAL | 75% | Capacity helpers |
+| PUR-072 | └─ └─ └─ └─ Calc transportEfficiencies | 2050-2070 | Calculates transport purchase efficiency based on units waiting to be transported. | [`get_transport_remaining_capacity_inline()`](src/pro_purchase.odin#L2726) | ✅ DONE | 80% | Full capacity helpers |
 | PUR-073 | `purchaseUnitsWithRemainingProduction()` | 2093-2250 | Uses remaining factory production capacity to buy additional units. Called after main purchase phases. | [`purchase_units_with_remaining_production_triplea()`](src/pro_purchase.odin) | ✅ DONE | 85% | Bomber preference, air 10x mult |
 | PUR-074 | └─ `for (ProPurchaseTerritory ppt)` | 2105-2248 | Iterates through territories with remaining production. | Outer loop | ✅ DONE | 85% | |
 | PUR-075 | └─ └─ `for (ProPlaceTerritory place)` | 2110-2245 | For each place territory, checks remaining production capacity. | Inner loop | ✅ DONE | 85% | |
@@ -164,7 +164,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | PUR-083 | └─ └─ └─ └─ `findUpgradeUnitEfficiency()` | 2360 | Calculates efficiency of upgrading (attack gain / additional cost). | [`find_upgrade_unit_efficiency_triplea()`](src/pro_purchase.odin) | ✅ DONE | 80% | |
 | PUR-084 | `findUpgradeUnitEfficiency()` | 2452-2520 | Helper function calculating upgrade value. Considers attack power increase vs cost difference. | [`find_upgrade_unit_efficiency_triplea()`](src/pro_purchase.odin) | ✅ DONE | 80% | |
 | PUR-085 | `findFactoryDefenseValue()` | 2522-2570 | Calculates how valuable a factory is to defend. Higher for capitals and high-production territories. | `find_factory_defense_value_triplea()` | ✅ DONE | 90% | Full capital+prod logic |
-| PUR-086 | `selectPurchaseTerritoriesWithRemainingProduction()` | 2572-2645 | Finds territories that still have unused production capacity for additional purchases. | Inline | 🔶 PARTIAL | 55% | |
+| PUR-086 | `selectPurchaseTerritoriesWithRemainingProduction()` | 2572-2645 | Finds territories that still have unused production capacity for additional purchases. | [`purchase_units_with_remaining_production_triplea()`](src/pro_purchase.odin#L3575) | ✅ DONE | 80% | Safe/unsafe split, air preference |
 
 ---
 
@@ -328,7 +328,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TM-015 | └─ └─ └─ `for (Unit land)` | 320-350 | For each enemy land unit, calculates territories it threatens. | Loop | ✅ DONE | 90% | |
 | TM-016 | └─ └─ └─ `for (Unit air)` | 355-380 | For each enemy air unit, calculates territories within strike range. | Loop | ✅ DONE | 90% | |
 | TM-017 | └─ └─ └─ `for (Unit naval)` | 385-395 | For each enemy ship, identifies sea zones and bombardment targets it threatens. | Loop | ✅ DONE | 85% | |
-| TM-018 | `populateEnemyDefenseOptions()` | 132-135 | Analyzes enemy defensive capabilities including scramble-capable airbases and reserve forces. | 🔶 PARTIAL | find_enemy_defend_options() | 50% | Scramble N/A for 1942 SE |
+| TM-018 | `populateEnemyDefenseOptions()` | 132-135 | Analyzes enemy defensive capabilities including scramble-capable airbases and reserve forces. | [`find_enemy_defend_options()`](src/pro_territory_manager.odin#L508) | ✅ DONE | 80% | Scramble N/A for 1942 SE |
 | TM-019 | └─ `findScrambleOptions()` | 500-580 | Identifies airbases that can scramble fighters to defend adjacent sea zones (map-specific rule). | ⏭️ SKIP | N/A for 1942 SE | N/A | Scramble N/A |
 | TM-020 | └─ └─ `for (airbase)` | 510-575 | Checks each airbase for scramble capability and available fighters. | ⏭️ SKIP | N/A for 1942 SE | N/A | |
 | TM-021 | └─ `findEnemyDefendOptions()` | 580-600 | Finds enemy units that could reinforce threatened territories on enemy's turn. | ✅ DONE | find_enemy_defend_options() | 100% | |
