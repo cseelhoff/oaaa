@@ -442,6 +442,19 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	defense_range := -1
 	max_iterations := 3  // Prevent infinite loop
 	
+	// CRITICAL: Check if capital defense boost is needed BEFORE any movement
+	// If enemy is within 1-3 moves, ALWAYS boost capital to ensure units consolidate
+	// This prevents the AI from dispersing forces when under threat
+	if enemy_distance_to_capital >= 1 && enemy_distance_to_capital <= 3 {
+		// Always boost when enemy is close, regardless of superiority calculation
+		// The value-based movement would otherwise send units to coastal territories
+		defense_range = max(1, enemy_distance_to_capital)
+		when ODIN_DEBUG {
+			fmt.printf("[PRO-AI] DEFENSE: Enemy within %d of capital - boosting capital value\n", 
+				enemy_distance_to_capital)
+		}
+	}
+	
 	for iteration := 0; iteration < max_iterations; iteration += 1 {
 		// If defense_range > 0, boost values of territories near capital
 		if defense_range > 0 {
@@ -455,28 +468,27 @@ proai_noncombat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		// Move land units to consolidate
 		move_land_units_noncombat(gc, &pro_data)
 		
-		// Check if capital has local land superiority
-		// Only check if enemy is within 2-3 moves (critical distance)
-		if enemy_distance_to_capital >= 2 && enemy_distance_to_capital <= 3 && defense_range == -1 {
+		// Check if capital now has superiority after moves
+		// Only recheck if we didn't already set defense_range
+		if enemy_distance_to_capital >= 1 && enemy_distance_to_capital <= 3 {
 			has_superiority := territory_has_local_land_superiority(
 				gc, capital, enemy_distance_to_capital, gc.cur_player)
 			
 			when ODIN_DEBUG {
-				fmt.printf("[PRO-AI] Capital local superiority check: %v\n", has_superiority)
+				fmt.printf("[PRO-AI] Post-move capital superiority check: %v\n", has_superiority)
 			}
 			
-			if !has_superiority {
-				// Capital doesn't have superiority - increase defense range and retry
-				defense_range = enemy_distance_to_capital - 1
+			if !has_superiority && defense_range == -1 {
+				// Still no superiority - set defense range and retry
+				defense_range = max(1, enemy_distance_to_capital - 1)
 				when ODIN_DEBUG {
-					fmt.println("[PRO-AI] Capital doesn't have local land superiority - entering defensive stance")
+					fmt.println("[PRO-AI] Capital still lacks superiority - entering defensive stance")
 				}
-				// Continue loop to retry with boosted values
 				continue
 			}
 		}
 		
-		// Capital is safe or not under immediate threat - exit loop
+		// Capital is safe or boost already applied - exit loop
 		break
 	}
 	// #endregion
@@ -500,8 +512,13 @@ boost_territory_values_near_capital :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data
 	visited: Land_Bitset = {capital}
 	current_frontier: Land_Bitset = {capital}
 	
-	// Boost capital itself
-	pro_data.land_territories[capital].value *= 10.0
+	// Set capital to a very high value (1000) to ensure units consolidate there
+	// Using a fixed high value instead of multiplying (which would fail if value is 0)
+	pro_data.land_territories[capital].value = 1000.0
+	
+	when ODIN_DEBUG {
+		fmt.printf("[PRO-AI] Boosted capital %v value to 1000.0\n", capital)
+	}
 	
 	// BFS outward from capital
 	for dist := 1; dist <= defense_range; dist += 1 {
@@ -515,12 +532,14 @@ boost_territory_values_near_capital :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data
 				visited += {adj_land}
 				next_frontier += {adj_land}
 				
-				// Boost territory value by 10x (matching Java)
-				pro_data.land_territories[adj_land].value *= 10.0
+				// Set adjacent territory to high value (decreasing by distance)
+				// Distance 1 = 500, Distance 2 = 250, etc.
+				boost_value := 1000.0 / math.pow(2.0, f64(dist))
+				pro_data.land_territories[adj_land].value = boost_value
 				
 				when ODIN_DEBUG {
-					fmt.printf("[PRO-AI] Boosted territory %v value by 10x (dist %d from capital)\n",
-						adj_land, dist)
+					fmt.printf("[PRO-AI] Boosted territory %v value to %.1f (dist %d from capital)\n",
+						adj_land, boost_value, dist)
 				}
 			}
 		}
@@ -547,14 +566,17 @@ find_noncombat_defense_targets :: proc(
 	pro_data: ^Pro_Data,
 ) -> [dynamic]Defense_Target {
 	targets := make([dynamic]Defense_Target)
+	my_team := mm.team[gc.cur_player]
 
 	when ODIN_DEBUG {
-		fmt.println("  [NONCOMBAT] Scanning all friendly territories for defense needs...")
+		fmt.println("  [NONCOMBAT] Scanning all ALLIED territories for defense needs...")
 	}
 
-	// Check all friendly territories
+	// Check all ALLIED territories (not just player-owned)
+	// Java: findLandMoveOptions uses Matches.isTerritoryAllied(player)
 	for land_id in Land_ID {
-		if gc.owner[land_id] != gc.cur_player {
+		// Check if territory is allied (same team)
+		if mm.team[gc.owner[land_id]] != my_team {
 			continue
 		}
 
@@ -566,13 +588,16 @@ find_noncombat_defense_targets :: proc(
 
 		// Calculate strategic value
 		territory_value := calculate_territory_value(gc, land_id)
-		is_capital := is_player_capital(gc, land_id, gc.cur_player)
+		// Check if this is the CURRENT player's capital (for 11x boost)
+		is_my_capital := is_player_capital(gc, land_id, gc.cur_player)
+		// Check if this is ANY capital (for 5x boost) - matches Java's getProductionAndIsCapital
+		is_any_capital := is_any_players_capital_land(land_id)
 		has_factory := gc.factory_prod[land_id] > 0
 
 		strategic_value := territory_value
-		if is_capital {
-			strategic_value *= 10.0
-		}
+		// Apply Java's multipliers: (1 + 10*isMyCapital) * (1 + 4*isAnyCapital)
+		strategic_value *= (1.0 + 10.0 * (is_my_capital ? 1.0 : 0.0))
+		strategic_value *= (1.0 + 4.0 * is_any_capital)
 		if has_factory {
 			strategic_value *= 3.0
 		}
@@ -593,7 +618,7 @@ find_noncombat_defense_targets :: proc(
 
 		// CRITICAL FIX: Also defend strategically important empty territories
 		// This handles the case where all units moved out during combat phase
-		if current_defense < 4.0 && (has_factory || is_capital || territory_value >= 3) {
+		if current_defense < 4.0 && (has_factory || is_any_capital > 0 || territory_value >= 3) {
 			// Weak or empty strategic territory - check if enemy could attack next turn
 			if has_enemy_neighbors(gc, land_id) {
 				needs_defense = true
@@ -606,7 +631,7 @@ find_noncombat_defense_targets :: proc(
 						land_id,
 						current_defense,
 						has_factory,
-						is_capital,
+						is_any_capital > 0,
 						territory_value,
 					)
 				}
@@ -623,7 +648,7 @@ find_noncombat_defense_targets :: proc(
 			current_defense = current_defense,
 			defense_needed  = defense_gap,
 			strategic_value = strategic_value,
-			is_capital      = is_capital,
+			is_capital      = is_any_capital > 0,  // True if ANY player's capital
 			has_factory     = has_factory,
 		}
 
@@ -883,6 +908,17 @@ is_player_capital :: proc(gc: ^Game_Cache, territory: Land_ID, player: Player_ID
 	return capital_maybe.? == territory
 }
 
+// Check if territory is ANY player's capital (returns 1.0 or 0.0 for multiplier use)
+// Matches Java's TerritoryAttachment.isCapital() check in getProductionAndIsCapital
+is_any_players_capital_land :: proc(land: Land_ID) -> f64 {
+	for player in Player_ID {
+		if mm.capital[player] == land {
+			return 1.0
+		}
+	}
+	return 0.0
+}
+
 // Prioritize defense targets by strategic importance
 prioritize_defense_targets :: proc(
 	targets: ^[dynamic]Defense_Target,
@@ -925,15 +961,9 @@ prioritize_defense_targets :: proc(
 		// Determine if it is my capital
 		is_my_capital := target.is_capital ? 1.0 : 0.0
 		
-		// Determine if it is enemy capital
-		is_enemy_capital := 0.0
-		for player in Player_ID {
-			if mm.team[player] == my_team do continue
-			if is_player_capital(gc, land_id, player) {
-				is_enemy_capital = 1.0
-				break
-			}
-		}
+		// Determine if it is ANY capital (enemy OR allied) - matches Java's getProductionAndIsCapital
+		// Java uses ta.isCapital() which is true for ALL capitals regardless of owner
+		is_any_capital := is_any_players_capital_land(land_id)
 		
 		// Calculate neighbor value (sum of adjacent territory production)
 		neighbor_value := 0.0
@@ -957,7 +987,7 @@ prioritize_defense_targets :: proc(
 			0.5 * cant_move_unit_value + 
 			0.5 * neighbor_value) *
 			(1.0 + 10.0 * is_my_capital) *
-			(1.0 * 4.0 * is_enemy_capital)
+			(1.0 + 4.0 * is_any_capital)  // Fixed: Use is_any_capital (not just enemy) per Java
 		
 		target.priority = territory_value
 		target.strategic_value = territory_value
@@ -3273,6 +3303,24 @@ move_land_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 		territories_to_check,
 	)
 	defer delete(territory_value_map)
+	
+	// Apply capital defense boost if territories are marked as boosted in pro_data
+	// This handles the capital defense loop's value boosting (matches Java lines 150-157)
+	// Java: if (distance >= 0 && distance <= defenseRange) { value *= 10; }
+	capital := mm.capital[gc.cur_player]
+	for land in territories_to_check {
+		boosted_value := pro_data.land_territories[land].value
+		base_value := territory_value_map[land] or_else 0.0
+		// If the pro_data has a high boost value set (from capital defense), use it
+		// The boost sets values to 1000, 500, 250 etc. which are much higher than normal
+		if boosted_value >= 100.0 {
+			territory_value_map[land] = boosted_value
+			when ODIN_DEBUG {
+				fmt.printf("  [LAND] Applied capital defense boost to %v: %.1f -> %.1f\n",
+					land, base_value, boosted_value)
+			}
+		}
+	}
 	
 	when ODIN_DEBUG {
 		fmt.println("  [LAND] Territory values (based on enemy targets):")
