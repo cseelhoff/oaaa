@@ -402,6 +402,17 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 
 ---
 
+### ProMatches.java - Territory and Unit Predicates (Local Utilities)
+
+| ID | Java Method/Loop | Lines | Description | Odin Equivalent | Status | Equiv | Notes |
+|----|------------------|-------|-------------|-----------------|--------|-------|-------|
+| MATCH-001 | `territoryIsIsland()` | N/A | Checks if land territory is coastal but has no land neighbors. | `is_island()` | ✅ DONE | 95% | For stranded unit detection |
+| MATCH-002 | `territoryHasLandNeighbors()` | N/A | Checks if territory has adjacent land territories. | `has_land_neighbors()` | ✅ DONE | 95% | Map geometry helper |
+| MATCH-003 | `getLandNeighborCount()` | N/A | Returns count of adjacent land territories. | `get_land_neighbor_count()` | ✅ DONE | 95% | Connectivity metric |
+| MATCH-004 | `getSeaNeighborCount()` | N/A | Returns count of adjacent sea zones. | `get_sea_neighbor_count()` | ✅ DONE | 95% | Coastal access metric |
+
+---
+
 ### Summary Statistics
 
 | Category | Total | ✅ DONE | 🔶 PARTIAL | ❌ MISSING | ⏭️ SKIP | 🔄 STUB |

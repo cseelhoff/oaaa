@@ -60,4 +60,35 @@ improve code consistency and maintainability.
 */
 
 import "core:slice"
+import sa "core:container/small_array"
+
+// ===== Territory Geometry Predicates =====
+// These predicates classify territories based on map geometry (land/sea adjacency).
+
+// MATCH-001: is_island checks if a land territory is coastal but has no land neighbors.
+// Islands are important for stranded unit detection - units here can only leave by transport.
+// Examples: UK islands, Pacific islands, Madagascar
+is_island :: proc(land: Land_ID) -> bool {
+	has_sea := sa.len(mm.l2s_1away_via_land[land]) > 0
+	has_land := sa.len(mm.l2l_1away_via_land[land]) > 0
+	return has_sea && !has_land
+}
+
+// MATCH-002: has_land_neighbors checks if a territory has any adjacent land territories.
+// Territories without land neighbors require amphibious transport to reinforce.
+has_land_neighbors :: proc(land: Land_ID) -> bool {
+	return sa.len(mm.l2l_1away_via_land[land]) > 0
+}
+
+// MATCH-003: get_land_neighbor_count returns the number of adjacent land territories.
+// Used for evaluating territory connectivity and strategic importance.
+get_land_neighbor_count :: proc(land: Land_ID) -> int {
+	return sa.len(mm.l2l_1away_via_land[land])
+}
+
+// MATCH-004: get_sea_neighbor_count returns the number of adjacent sea zones.
+// Coastal territories with more sea access have more transport options.
+get_sea_neighbor_count :: proc(land: Land_ID) -> int {
+	return sa.len(mm.l2s_1away_via_land[land])
+}
 
