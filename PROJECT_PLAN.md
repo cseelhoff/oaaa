@@ -417,6 +417,9 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | MATCH-009 | Territory ownership: self | N/A | Checks if territory owned by current player. | `is_owned_by_current()` | ✅ DONE | 95% | Ownership check |
 | MATCH-010 | Territory ownership: ally | N/A | Checks if territory owned by ally (not self). | `is_owned_by_ally()` | ✅ DONE | 95% | Reinforcement targets |
 | MATCH-011 | Territory ownership: friendly | N/A | Checks if territory owned by self or ally. | `is_friendly_territory()` | ✅ DONE | 95% | Movement validation |
+| MATCH-012 | `getAdjacentLandCount(sea)` | N/A | Returns count of land territories touching a sea zone. | `get_adjacent_land_count()` | ✅ DONE | 95% | Transport value |
+| MATCH-013 | `getAdjacentSeaCount(sea)` | N/A | Returns count of sea zones connected to this one. | `get_adjacent_sea_count()` | ✅ DONE | 95% | Naval mobility |
+| MATCH-014 | `isCanalSea(sea)` | N/A | Checks if sea zone's connectivity depends on canal status. | `is_canal_sea()` | ✅ DONE | 95% | Chokepoint detection |
 
 ---
 

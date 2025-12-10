@@ -139,3 +139,35 @@ is_friendly_territory :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 	return mm.team[gc.owner[land]] == mm.team[gc.cur_player]
 }
 
+// ===== Sea Zone Geometry Predicates =====
+// These predicates analyze sea zone connectivity.
+
+// MATCH-012: get_adjacent_land_count returns number of land territories touching a sea zone.
+// Sea zones with more land connections have more strategic value for transport operations.
+get_adjacent_land_count :: proc(sea: Sea_ID) -> int {
+	return sa.len(mm.s2l_1away_via_sea[sea])
+}
+
+// MATCH-013: get_adjacent_sea_count returns number of sea zones connected to this one.
+// Higher connectivity means more naval movement options.
+get_adjacent_sea_count :: proc(sea: Sea_ID) -> int {
+	// Note: This depends on canal state, so we count potential connections
+	count := 0
+	for other_sea in Sea_ID {
+		if other_sea != sea {
+			// Check both open and closed canal states for max connectivity
+			if other_sea in mm.s2s_1away_via_sea[0][sea] || other_sea in mm.s2s_1away_via_sea[1][sea] {
+				count += 1
+			}
+		}
+	}
+	return count
+}
+
+// MATCH-014: is_canal_sea checks if a sea zone's connectivity depends on canal status.
+// Canal-dependent sea zones are strategically important chokepoints.
+is_canal_sea :: proc(sea: Sea_ID) -> bool {
+	// Compare adjacency with canals open vs closed
+	return mm.s2s_1away_via_sea[0][sea] != mm.s2s_1away_via_sea[1][sea]
+}
+
