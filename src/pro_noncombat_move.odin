@@ -2142,19 +2142,63 @@ check_transport_defense_with_fighter :: proc(gc: ^Game_Cache, pro_data: ^Pro_Dat
 	return has_transports_at_sea(gc, sea, gc.cur_player) && has_carrier_capacity(gc, sea)
 }
 
-// NCM-047 Helper: Get sea zone strategic value
+// NCM-047 / VAL-007 to VAL-011: Get sea zone strategic value
+// Maps to Java ProTerritoryValueUtils.findSeaTerritoryValues() and findWaterValue()
+// Calculates sea zone value based on adjacent land, convoy routes, and enemy presence
 get_sea_zone_value :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data, sea: Sea_ID) -> f64 {
-	// Value based on:
-	// 1. Adjacent land territory value
-	// 2. Transport staging value
-	// 3. Naval chokepoint value
+	player := gc.cur_player
 	
+	// #region VAL-008: Iterate through adjacent lands for base value
 	value: f64 = 0.0
 	
 	// Add value from adjacent land territories
 	for adj_land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
-		value += f64(mm.value[adj_land])
+		land_value := f64(mm.value[adj_land])
+		
+		// VAL-009: Higher value if adjacent to enemy land (attack staging)
+		if adj_land not_in gc.friendly_owner {
+			land_value *= 2.0
+		}
+		
+		// Higher value if adjacent to factories
+		if gc.factory_prod[adj_land] > 0 {
+			land_value += f64(gc.factory_prod[adj_land])
+		}
+		
+		value += land_value
 	}
+	// #endregion VAL-008
+	
+	// #region VAL-010: Transport route value - sea zones on key paths are valuable
+	// Value increases if our transports are present (staging area)
+	our_transports := count_transports_at_sea(gc, sea, player)
+	if our_transports > 0 {
+		value += f64(our_transports) * 5.0
+	}
+	
+	// Value increases if near factories for transport loading
+	for adj_land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
+		if gc.factory_prod[adj_land] > 0 && adj_land in gc.friendly_owner {
+			value += f64(gc.factory_prod[adj_land]) * 2.0
+		}
+	}
+	// #endregion VAL-010
+	
+	// #region VAL-011: Naval chokepoint / strategic position
+	// Sea zones with fewer neighbors are more valuable (chokepoints)
+	canal_state := transmute(u8)gc.canals_open
+	num_adjacent_seas := card(mm.s2s_1away_via_sea[canal_state][sea])
+	if num_adjacent_seas <= 3 {
+		value += 3.0  // Chokepoint bonus
+	}
+	
+	// Enemy naval presence makes zone important to contest
+	for enemy in sa.slice(&mm.enemies[player]) {
+		for ship in Idle_Ship {
+			value += f64(gc.idle_ships[sea][enemy][ship]) * 0.5
+		}
+	}
+	// #endregion VAL-011
 	
 	return value
 }

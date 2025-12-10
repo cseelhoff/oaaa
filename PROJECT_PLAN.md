@@ -376,11 +376,11 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | VAL-004 | └─ └─ Neighbor bonus calc | 95-120 | Adds bonus based on adjacent territory values (positions near good territories are worth more). | Inline | ✅ DONE | 80% | |
 | VAL-005 | └─ └─ Enemy factory/capital distance | 125-150 | Territories closer to enemy capitals/factories worth more for offensive staging. | ❌ MISSING | ❌ MISSING | 0% | |
 | VAL-006 | └─ └─ Sea zone accessibility | 155-170 | Coastal territories worth more for transport loading/unloading potential. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-007 | `findSeaValue()` | 182-280 | Calculates strategic value of sea zones for naval positioning decisions. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-008 | └─ `for (Sea zone)` | 195-275 | Iterates all sea zones calculating naval strategic value. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-009 | └─ └─ Adjacent land value sum | 205-230 | Sea zones adjacent to valuable land are worth controlling. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-010 | └─ └─ Transport route value | 235-260 | Sea zones on key transport routes (factory to front line) are valuable. | ❌ MISSING | ❌ MISSING | 0% | |
-| VAL-011 | └─ └─ Naval choke point | 265-275 | Narrow passages or canal-adjacent zones get bonus value. | ❌ MISSING | ❌ MISSING | 0% | |
+| VAL-007 | `findSeaValue()` | 182-280 | Calculates strategic value of sea zones for naval positioning decisions. | [`get_sea_zone_value()`](src/pro_noncombat_move.odin) | ✅ DONE | 80% | |
+| VAL-008 | └─ `for (Sea zone)` | 195-275 | Iterates all sea zones calculating naval strategic value. | `#region VAL-008` | ✅ DONE | 85% | Adjacent land value loop |
+| VAL-009 | └─ └─ Adjacent land value sum | 205-230 | Sea zones adjacent to valuable land are worth controlling. | `#region VAL-008` | ✅ DONE | 85% | Includes enemy bonus |
+| VAL-010 | └─ └─ Transport route value | 235-260 | Sea zones on key transport routes (factory to front line) are valuable. | `#region VAL-010` | ✅ DONE | 80% | Transport + factory bonus |
+| VAL-011 | └─ └─ Naval choke point | 265-275 | Narrow passages or canal-adjacent zones get bonus value. | `#region VAL-011` | ✅ DONE | 75% | Uses neighbor count + enemy ships |
 | VAL-012 | `findLandValue()` | 282-400 | Detailed land territory valuation using BFS from production centers. | 🔶 PARTIAL | 🔶 PARTIAL | 45% | |
 | VAL-013 | └─ BFS from production centers | 295-395 | Breadth-first search radiating value outward from factories, decaying with distance. | Simplified | 🔶 PARTIAL | 40% | |
 | VAL-014 | `findAttackValue()` | 402-520 | Evaluates territories from offensive perspective - how valuable to capture. | ❌ MISSING | ❌ MISSING | 0% | |
@@ -405,9 +405,9 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | ProCombatMoveAi | 50 | 38 | 5 | 5 | 0 | 2 |
 | ProNonCombatMoveAi | 75 | 14 | 20 | 41 | 0 | 0 |
 | ProTerritoryManager | 25 | 14 | 5 | 6 | 0 | 0 |
-| ProTransportUtils | 20 | 0 | 2 | 18 | 0 | 0 |
-| ProTerritoryValueUtils | 23 | 2 | 7 | 14 | 0 | 0 |
-| **TOTAL** | **287** | **123 (43%)** | **57 (20%)** | **102 (36%)** | **3 (1%)** | **2 (1%)** |
+| ProTransportUtils | 20 | 4 | 2 | 14 | 0 | 0 |
+| ProTerritoryValueUtils | 23 | 6 | 7 | 10 | 0 | 0 |
+| **TOTAL** | **287** | **131 (46%)** | **57 (20%)** | **94 (33%)** | **3 (1%)** | **2 (1%)** |
 
 ### Critical Missing Items (Causing UK Infantry Pileup)
 
