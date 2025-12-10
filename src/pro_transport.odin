@@ -562,3 +562,36 @@ find_units_transport_cost :: proc(gc: ^Game_Cache, land: Land_ID, player: Player
 find_units_transport_cost_for_current_player :: proc(gc: ^Game_Cache, land: Land_ID) -> int {
 	return find_units_transport_cost(gc, land, gc.cur_player)
 }
+
+// ===== Transport Capacity Analysis Functions =====
+// TRN-025: Transport capacity helpers for amphibious planning
+
+// get_total_transport_capacity_at_sea calculates total transport capacity (5 per transport) at a sea zone.
+// This counts all transports regardless of current load.
+get_total_transport_capacity_at_sea :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	total := 0
+	for trans in Idle_Transports {
+		total += int(gc.idle_ships[sea][player][trans]) * 5
+	}
+	return total
+}
+
+// get_available_transport_capacity_at_sea calculates remaining cargo space across all transports.
+// This accounts for units already loaded on transports.
+// Uses existing get_transport_remaining_capacity() helper.
+get_available_transport_capacity_at_sea :: proc(gc: ^Game_Cache, sea: Sea_ID, player: Player_ID) -> int {
+	total := 0
+	for trans in Idle_Transports {
+		count := int(gc.idle_ships[sea][player][trans])
+		if count > 0 {
+			total += count * get_transport_remaining_capacity(trans)
+		}
+	}
+	return total
+}
+
+// get_available_transport_capacity_for_current_player is a convenience wrapper.
+get_available_transport_capacity_for_current_player :: proc(gc: ^Game_Cache, sea: Sea_ID) -> int {
+	return get_available_transport_capacity_at_sea(gc, sea, gc.cur_player)
+}
+

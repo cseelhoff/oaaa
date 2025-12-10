@@ -367,6 +367,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TRN-022 | `canFightersFindCarrierSpace()` | N/A | Checks if fighters can find carrier space including nearby sea zones. | `can_fighters_find_carrier_space()` | ✅ DONE | 85% | Uses local capacity |
 | TRN-023 | `getTransportCost()` | 164-170 | Returns transport capacity cost for a single unit type (infantry=2, artillery/tank=3). | `get_unit_transport_cost()` | ✅ DONE | 95% | Simple lookup |
 | TRN-024 | `findUnitsTransportCost()` | 177-182 | Sums transport capacity needed for all units in a territory. | `find_units_transport_cost()` | ✅ DONE | 90% | For evacuation planning |
+| TRN-025 | `getTransportCapacity()` | N/A | Calculates remaining transport capacity at a sea zone. | `get_available_transport_capacity_at_sea()` | ✅ DONE | 90% | New helper for amphib planning |
 
 ---
 
