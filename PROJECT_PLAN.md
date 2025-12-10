@@ -332,8 +332,8 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TM-019 | └─ `findScrambleOptions()` | 500-580 | Identifies airbases that can scramble fighters to defend adjacent sea zones (map-specific rule). | ⏭️ SKIP | N/A for 1942 SE | N/A | Scramble N/A |
 | TM-020 | └─ └─ `for (airbase)` | 510-575 | Checks each airbase for scramble capability and available fighters. | ⏭️ SKIP | N/A for 1942 SE | N/A | |
 | TM-021 | └─ `findEnemyDefendOptions()` | 580-600 | Finds enemy units that could reinforce threatened territories on enemy's turn. | ✅ DONE | find_enemy_defend_options() | 100% | |
-| TM-022 | `removeTerritoriesThatCantBeConquered()` | 140-300 | Filters attack options by running battle simulations and removing attacks that can't win. | 🔶 PARTIAL | 🔶 PARTIAL | 60% | |
-| TM-023 | └─ `for (Territory t)` in attackMap | 155-295 | Iterates through each attack option and runs simulation to check win probability. | Loop | 🔶 PARTIAL | 60% | |
+| TM-022 | `removeTerritoriesThatCantBeConquered()` | 140-300 | Filters attack options by running battle simulations and removing attacks that can't win. | [`try_to_attack_territories_triplea()`](src/pro_combat_move_triplea_methods.odin#L2148) filters via 75% win threshold | ✅ DONE | 80% | Integrated into attack assignment phase |
+| TM-023 | └─ `for (Territory t)` in attackMap | 155-295 | Iterates through each attack option and runs simulation to check win probability. | Loop in attack phase | ✅ DONE | 80% | Iterative unit assignment until 75% win |
 | TM-024 | └─ └─ Battle simulation | 170-200 | Runs Monte Carlo battle sim to determine attack success probability. | Sim | ✅ DONE | 95% | |
 | TM-025 | └─ └─ Strafing check for allies | 210-280 | For allies, checks if strafing attack (attack and retreat) is worthwhile when conquest isn't possible. | ✅ DONE | check_strafing_attack_worthwhile() | 100% | |
 
