@@ -70,7 +70,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | ABST-004 | `place()` main entry | 284-295 | Main placement phase entry point. Places units purchased during purchase phase at factories. | [`proai_place_units_phase()`](src/pro_place.odin) | ✅ DONE | 95% | |
 | ABST-005 | `tech()` | 297-300 | Technology research phase. Decides whether to spend IPCs on tech dice. | [`proai_tech_phase()`](src/pro_turn.odin) | ⏭️ SKIP | N/A | N/A for A&A 1942 SE |
 | ABST-006 | `retreatQuery()` | 302-348 | Called during battles to decide whether to retreat. Considers strength difference, strafing status, and battle type (land vs sea). | [`should_retreat_land()`](src/pro_matches.odin), [`should_retreat_sea()`](src/pro_matches.odin) | ✅ DONE | 80% | RETREAT-001 to RETREAT-006 |
-| ABST-007 | `selectCasualties()` | 371-410 | Called during battles to choose which units die first. Optimizes casualty selection based on unit value and situation. | [`should_optimize_casualties()`](src/pro_matches.odin), [`get_unit_cost()`](src/pro_matches.odin) | 🔶 PARTIAL | 60% | CASUALTY-001 to CASUALTY-004 helpers added; static ordering already cost-optimized |
+| ABST-007 | `selectCasualties()` | 371-410 | Called during battles to choose which units die first. Optimizes casualty selection based on unit value and situation. | [`should_optimize_casualties()`](src/pro_matches.odin#L1026), [`get_unit_cost()`](src/pro_matches.odin#L1039) | ✅ DONE | 85% | CASUALTY-001 to CASUALTY-004 helpers; static cost-optimized ordering in combat.odin |
 | ABST-008 | `getGameStepsForPlayer()` loop | 270-280 | Iterates through game sequence to find all steps belonging to current player. Used for simulation planning. | N/A | ⏭️ SKIP | N/A | Part of simulation |
 
 ---
@@ -318,7 +318,7 @@ This table tracks every loop and sub-loop in the Java Pro AI code, mapped to Odi
 | TM-005 | └─ └─ `for (Unit transport)` amphib | 790-860 | For each loaded transport, finds coastal territories it can reach and adds cargo as potential amphibious attackers. | Loop | 🔶 PARTIAL | 70% | |
 | TM-006 | └─ └─ `for (Unit naval)` | 870-900 | For each warship, identifies enemy sea zones it can attack plus bombardment opportunities for coastal territories. | Loop | 🔶 PARTIAL | 65% | |
 | TM-007 | `populateDefendOptions()` | 86-120 | Entry point for defense analysis. Identifies which friendly units can reach each threatened territory as defenders. | [`populate_defend_options()`](src/pro_territory_manager.odin) | ✅ DONE | 80% | |
-| TM-008 | └─ `findDefendOptions()` | 400-580 | Core defense method - finds all units that could potentially move to defend each territory. | Called | 🔶 PARTIAL | 65% | |
+| TM-008 | └─ `findDefendOptions()` | 400-580 | Core defense method - finds all units that could potentially move to defend each territory. | [`find_land_defend_destinations()`](src/pro_territory_manager.odin#L321) | ✅ DONE | 80% | Full land/air/naval/transport defend destinations |
 | TM-009 | └─ └─ `for (Unit land)` friendly | 420-480 | For each land unit, calculates which friendly territories it can reach to provide defense. | Loop | ✅ DONE | 80% | |
 | TM-010 | └─ └─ `for (Unit air)` | 490-540 | For each fighter/bomber, identifies territories within range that could use air defense. | Loop | ✅ DONE | 80% | |
 | TM-011 | └─ └─ `for (transport)` reinforcement | 550-575 | Identifies transports that could bring amphibious reinforcements to threatened coastal territories. | [`find_transport_defend_destinations()`](src/pro_territory_manager.odin) | ✅ DONE | 85% | BFS to 2 moves |
