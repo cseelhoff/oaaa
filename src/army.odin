@@ -1,6 +1,5 @@
 package oaaa
 
-import sa "core:container/small_array"
 import "core:fmt"
 
 Idle_Army :: enum {
@@ -317,7 +316,7 @@ add_if_boat_available :: proc(
 }
 
 are_midlands_blocked :: proc(gc: ^Game_Cache, mid_lands: ^Mid_Lands) -> bool {
-	for mid_land in sa.slice(mid_lands) {
+	for mid_land in mid_lands[:] {
 		if mid_land in (gc.has_enemy_factory | gc.has_enemy_armies) do return false
 	}
 	return true
@@ -328,7 +327,7 @@ add_valid_army_moves_1 :: proc(gc: ^Game_Cache) {
     army := to_army(gc.current_active_unit)
     add_lands_to_valid_actions(gc, mm.l2l_1away_via_land_bitset[src_land], gc.active_armies[src_land][army])
 	//todo game_cache bitset for is_boat_available large, small
-	for dst_sea in sa.slice(&mm.l2s_1away_via_land[src_land]) {
+	for dst_sea in mm.l2s_1away_via_land[src_land][:] {
 		add_if_boat_available(gc, dst_sea)
 	}
 }

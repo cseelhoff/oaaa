@@ -1,7 +1,6 @@
 package oaaa
 
 import "base:intrinsics"
-import sa "core:container/small_array"
 
 // For a 1024-bit integer represented as 16 x i64 chunks
 Action_Bitset :: distinct [16]u64
@@ -48,7 +47,7 @@ set_valid_actions :: proc(gc: ^Game_Cache, air_bitset: Air_Bitset, qty: u8) {
 	air_array: Air_ID_Array
 	gc.valid_actions = {}
 	get_airs(air_bitset, &air_array)
-	for air in sa.slice(&air_array) {
+	for air in air_array[:] {
 		add_air_to_valid_actions(gc, air, qty)
 	}
 	//todo: use a bit shift instead for better performance
@@ -57,7 +56,7 @@ set_valid_actions :: proc(gc: ^Game_Cache, air_bitset: Air_Bitset, qty: u8) {
 add_valid_actions_multi :: proc(gc: ^Game_Cache, air_bitset: Air_Bitset, unit_count: u8) {
 	air_array: Air_ID_Array
 	get_airs(air_bitset, &air_array)
-	for air in sa.slice(&air_array) {
+	for air in air_array[:] {
 		add_valid_action(gc, Action_ID(air))
 	}
 	//todo: use a bit shift instead for better performance
@@ -116,7 +115,7 @@ add_land_to_valid_actions :: proc(gc: ^Game_Cache, dst_land: Land_ID, unit_count
 add_airs_to_valid_actions :: proc(gc: ^Game_Cache, dst_airs: Air_Bitset, unit_count: u8) {
 	air_array: Air_ID_Array
 	get_airs(dst_airs, &air_array)
-	for air in sa.slice(&air_array) {
+	for air in air_array[:] {
 		if unit_count >= 17 {
 			add_valid_action(gc, Action_ID(uint(air)))
 		}

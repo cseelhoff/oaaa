@@ -1,12 +1,11 @@
 package oaaa
-import sa "core:container/small_array"
 
 MAX_SEA_TO_LAND_CONNECTIONS :: 6
 MAX_SEA_TO_SEA_CONNECTIONS :: 7
 Canal_States :: 1 << len(Canal_ID)
-SA_Adjacent_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
+SA_Adjacent_S2S :: [dynamic; MAX_SEA_TO_SEA_CONNECTIONS]Sea_ID
 Canal_Paths :: [Canal_States]Sea_Distances
-Seas_2_Moves_Away :: sa.Small_Array(len(Sea_ID), Sea_2_Moves_Away)
+Seas_2_Moves_Away :: [dynamic; len(Sea_ID)]Sea_2_Moves_Away
 
 to_sea :: proc {
 	air_to_sea,
@@ -43,7 +42,7 @@ Sea_Distances :: struct {
 
 Sea_2_Moves_Away :: struct {
 	sea:      Sea_ID,
-	mid_seas: sa.Small_Array(MAX_PATHS_TO_SEA, Sea_ID),
+	mid_seas: [dynamic; MAX_PATHS_TO_SEA]Sea_ID,
 }
 
 Coastal_Connection :: struct {
@@ -95,7 +94,7 @@ initialize_sea_connections :: proc() {
 				if distance == 2 {
 					mm.s2s_2away_via_sea[canal_state][src_sea] += {dst_sea}
 					for mid_sea in (adjacent_seas & mm.s2s_1away_via_sea[canal_state][dst_sea]) {
-						sa.push(&mm.s2s_2away_via_midseas[canal_state][src_sea][dst_sea], mid_sea)
+						append(&mm.s2s_2away_via_midseas[canal_state][src_sea][dst_sea], mid_sea)
 					}
 				}
 			}

@@ -103,7 +103,6 @@ MAIN ENTRY: doNonCombatMove() lines 76-198
 =============================================================================
 */
 
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:math"
 import "core:slice"
@@ -633,7 +632,7 @@ find_noncombat_defense_targets :: proc(
 has_enemy_neighbors :: proc(gc: ^Game_Cache, land_id: Land_ID) -> bool {
 	my_team := mm.team[gc.cur_player]
 
-	for adj in sa.slice(&mm.l2l_1away_via_land[land_id]) {
+	for adj in mm.l2l_1away_via_land[land_id][:] {
 		if mm.team[gc.owner[adj]] != my_team {
 			// Enemy or neutral territory adjacent
 			return true
@@ -817,7 +816,7 @@ prioritize_defense_targets :: proc(
 		
 		// Calculate neighbor value (sum of adjacent territory production)
 		neighbor_value := 0.0
-		for neighbor in sa.slice(&mm.l2l_1away_via_land[land_id]) {
+		for neighbor in mm.l2l_1away_via_land[land_id][:] {
 			neighbor_production := f64(gc.factory_prod[neighbor])
 			if mm.team[gc.owner[neighbor]] == my_team {
 				// Allied territories count at 10%
@@ -976,7 +975,7 @@ move_nearby_units_to_defense :: proc(
 	defense_provided := f64(0)
 
 	// Check all adjacent land territories
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[territory]) {
+	for adjacent in mm.l2l_1away_via_land[territory][:] {
 		if gc.owner[adjacent] != gc.cur_player do continue
 		if adjacent == territory do continue
 
@@ -1857,7 +1856,7 @@ move_one_empty_transport_to_loading :: proc(
 		}
 		
 		// Must have sea neighbor (coastal territory)
-		if sa.len(mm.l2s_1away_via_land[land]) == 0 {
+		if len(mm.l2s_1away_via_land[land]) == 0 {
 			continue
 		}
 		
@@ -1876,7 +1875,7 @@ move_one_empty_transport_to_loading :: proc(
 		best_sea_neighbor: Maybe(Sea_ID) = nil
 		best_distance: u8 = 255
 		
-		for adj_sea in sa.slice(&mm.l2s_1away_via_land[land]) {
+		for adj_sea in mm.l2s_1away_via_land[land][:] {
 			// Calculate distance from src_sea to this adjacent sea
 			distance := mm.sea_distances[transmute(u8)gc.canals_open][src_sea][adj_sea]
 			
@@ -2212,7 +2211,7 @@ move_land_to_high_value_territories :: proc(
 			// Check all territories this unit can reach
 			//if army == .TANK_2_MOVES do add_valid_army_moves_2(gc)
 
-			for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
+			for dst_land in mm.l2l_1away_via_land[src_land][:] {
 				destinations_checked += 1
 				if !can_hold_destination(gc, pro_data, dst_land) {					
 					destinations_rejected += 1
@@ -2252,7 +2251,7 @@ move_land_to_high_value_territories :: proc(
 
 
 			//todo game_cache bitset for is_boat_available large, small
-			// for dst_sea in sa.slice(&mm.l2s_1away_via_land[src_land]) {
+			// for dst_sea in mm.l2s_1away_via_land[src_land][:] {
 			// 	idle_ships := &gc.idle_ships[dst_sea][gc.cur_player]
 			// 	transport_available := false
 			// 	for transport in Trans_Allowed_By_Army_Size[Army_Size[army]] {
@@ -2345,7 +2344,7 @@ move_land_towards_coastal_factories :: proc(
 	coastal_factories := make([dynamic]Land_ID)
 	defer delete(coastal_factories)
 	
-	for land_id in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for land_id in gc.factory_locations[gc.cur_player][:] {
 		// Adjacent to sea?
 		if is_land_adjacent_to_sea(land_id) {
 			append(&coastal_factories, land_id)
@@ -2385,7 +2384,7 @@ move_land_towards_coastal_factories :: proc(
 			
 			// Check all reachable territories
 
-			for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
+			for dst_land in mm.l2l_1away_via_land[src_land][:] {
 				
 				// Skip if can't hold
 				if !can_hold_destination(gc, pro_data, dst_land) {
@@ -2505,7 +2504,7 @@ move_land_to_safest_territories :: proc(
 			min_strength_diff := math.F64_MAX
 			best_territory:= src_land	
 			
-			for dst_land in sa.slice(&mm.l2l_1away_via_land[src_land]) {
+			for dst_land in mm.l2l_1away_via_land[src_land][:] {
 				// CRITICAL: Only consider FRIENDLY territories for non-combat move!
 				if mm.team[gc.owner[dst_land]] != mm.team[gc.cur_player] {
 					continue
@@ -2582,7 +2581,7 @@ calculate_amphib_value :: proc(gc: ^Game_Cache, land: Land_ID) -> f64 {
 	
 	// Simplified: Just count adjacent seas weighted by factory presence
 	// Full implementation would count transport capacity at those seas
-	amphib_value := factory_multiplier * f64(mm.l2s_1away_via_land[land].len)
+	amphib_value := factory_multiplier * f64(len(mm.l2s_1away_via_land[land]))
 	
 	// TODO: Count actual transports in adjacent/nearby seas
 	// For now, use simplified calculation
@@ -2592,7 +2591,7 @@ calculate_amphib_value :: proc(gc: ^Game_Cache, land: Land_ID) -> f64 {
 
 // Check if land territory is adjacent to sea
 is_land_adjacent_to_sea :: proc(land: Land_ID) -> bool {
-	return sa.len(mm.l2s_1away_via_land[land]) > 0
+	return len(mm.l2s_1away_via_land[land]) > 0
 }
 
 // Calculate distance between two land territories
@@ -2615,7 +2614,7 @@ calculate_land_distance :: proc(gc: ^Game_Cache, from: Land_ID, to: Land_ID) -> 
 	}
 	
 	// Check if adjacent
-	for adj in sa.slice(&mm.l2l_1away_via_land[from]) {
+	for adj in mm.l2l_1away_via_land[from][:] {
 		if adj == to {
 			return 1
 		}
@@ -2778,7 +2777,7 @@ load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 		best_unload_value: f64 = -999.0
 		
 		// Check adjacent lands (1 sea move)
-		for land in sa.slice(adjacent_lands) {
+		for land in adjacent_lands[:] {
 			if mm.team[gc.owner[land]] != mm.team[player] {
 				continue
 			}
@@ -2791,7 +2790,7 @@ load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 		
 		// Check 2 sea moves away
 		for sea_1 in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea] {
-			for land in sa.slice(&mm.s2l_1away_via_sea[sea_1]) {
+			for land in mm.s2l_1away_via_sea[sea_1][:] {
 				if mm.team[gc.owner[land]] != mm.team[player] {
 					continue
 				}
@@ -2816,7 +2815,7 @@ load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 			if best_unload_value >= 0.1 {
 				// Only exclude if dest is adjacent (lands that could actually load here)
 				// Don't exclude if destination is 2 moves away - those units can't walk there
-				for adj_land in sa.slice(adjacent_lands) {
+				for adj_land in adjacent_lands[:] {
 					if adj_land == dest {
 						lands_that_can_walk_to_dest += {dest}
 						break
@@ -2828,7 +2827,7 @@ load_transports_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 		// Check if any adjacent land has units we could load
 		// But EXCLUDE lands that can walk to the unload destination (Java landRoutesMap filtering)
 		has_loadable_units := false
-		for land in sa.slice(adjacent_lands) {
+		for land in adjacent_lands[:] {
 			if mm.team[gc.owner[land]] != mm.team[player] {
 				continue
 			}
@@ -2952,7 +2951,7 @@ load_noncombat_onto_empty_transport :: proc(
 	// Priority: Tank > Artillery > Infantry (for attack power)
 	
 	// Try tank first
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}
@@ -2971,7 +2970,7 @@ load_noncombat_onto_empty_transport :: proc(
 			gc.active_ships[sea][.TRANS_1T_UNMOVED] += 1
 			
 			// Try to add infantry too
-			for inf_land in sa.slice(adjacent_lands) {
+			for inf_land in adjacent_lands[:] {
 				if mm.team[gc.owner[inf_land]] != mm.team[player] {
 					continue
 				}
@@ -2995,7 +2994,7 @@ load_noncombat_onto_empty_transport :: proc(
 	}
 	
 	// Try artillery
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}
@@ -3011,7 +3010,7 @@ load_noncombat_onto_empty_transport :: proc(
 			gc.active_ships[sea][.TRANS_1A_UNMOVED] += 1
 			
 			// Try to add infantry
-			for inf_land in sa.slice(adjacent_lands) {
+			for inf_land in adjacent_lands[:] {
 				if mm.team[gc.owner[inf_land]] != mm.team[player] {
 					continue
 				}
@@ -3035,7 +3034,7 @@ load_noncombat_onto_empty_transport :: proc(
 	
 	// Try 2 infantry
 	infantry_loaded := 0
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}
@@ -3078,7 +3077,7 @@ load_noncombat_second_unit_onto_1i :: proc(
 	player := gc.cur_player
 	
 	// Prefer tank or artillery
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}
@@ -3131,7 +3130,7 @@ load_noncombat_second_unit_onto_1i :: proc(
 	}
 	
 	// Fallback to infantry
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}
@@ -3170,7 +3169,7 @@ load_noncombat_infantry_onto_partial :: proc(
 ) -> bool {
 	player := gc.cur_player
 	
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}
@@ -3391,7 +3390,7 @@ stage_and_unload_one_transport :: proc(
 	best_distance: u8 = 0
 	
 	// Check lands adjacent to current sea (distance 0)
-	for land in sa.slice(&mm.s2l_1away_via_sea[src_sea]) {
+	for land in mm.s2l_1away_via_sea[src_sea][:] {
 		if mm.team[gc.owner[land]] != my_team {
 			continue // Can only unload to friendly territory in noncombat
 		}
@@ -3413,7 +3412,7 @@ stage_and_unload_one_transport :: proc(
 			continue // Can't move to hostile sea without escort
 		}
 		
-		for land in sa.slice(&mm.s2l_1away_via_sea[sea_1]) {
+		for land in mm.s2l_1away_via_sea[sea_1][:] {
 			if mm.team[gc.owner[land]] != my_team {
 				continue
 			}
@@ -3438,7 +3437,7 @@ stage_and_unload_one_transport :: proc(
 		
 		// Also check mid-sea safety
 		path_blocked := true
-		for mid_sea in sa.slice(&mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][sea_2]) {
+		for mid_sea in mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][sea_2][:] {
 			if gc.enemy_blockade_total[mid_sea] == 0 {
 				path_blocked = false
 				break
@@ -3448,7 +3447,7 @@ stage_and_unload_one_transport :: proc(
 			continue
 		}
 		
-		for land in sa.slice(&mm.s2l_1away_via_sea[sea_2]) {
+		for land in mm.s2l_1away_via_sea[sea_2][:] {
 			if mm.team[gc.owner[land]] != my_team {
 				continue
 			}

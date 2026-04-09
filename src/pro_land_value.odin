@@ -1,5 +1,4 @@
 package oaaa
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:math"
 import "core:slice"
@@ -73,7 +72,7 @@ get_pro_value :: #force_inline proc(gc: ^Game_Cache, territory: Land_ID) -> f64 
 	return(
 		math.sqrt(f64(production) + math.sqrt(f64(production))) *
 		32 *
-		(1.0 + f64(mm.l2l_1away_via_land[territory].len)) /
+		(1.0 + f64(len(mm.l2l_1away_via_land[territory]))) /
 		f64(MAX_LAND_TO_LAND_CONNECTIONS) \
 	)
 }
@@ -109,7 +108,7 @@ find_enemy_capitals_and_factories_value :: proc(
 	if (card(enemy_capitals_and_factories) * 2 >= numPotentialEnemyTerritories) {
 		enemy_capitals_and_factories = {}
 	}
-	for enemy in sa.slice(&mm.enemies[player]) {
+	for enemy in mm.enemies[player][:] {
 		enemy_capitals_and_factories += {mm.capital[enemy]}
 	}
 	enemy_capitals_and_factories = enemy_capitals_and_factories & ~territoriesToAttack

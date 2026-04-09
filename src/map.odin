@@ -1,7 +1,5 @@
 package oaaa
 
-import sa "core:container/small_array"
-
 MAX_LAND_TO_LAND_CONNECTIONS :: 6
 MAX_AIR_TO_AIR_CONNECTIONS :: 7
 MAX_LAND_TO_SEA_CONNECTIONS :: 4
@@ -9,21 +7,21 @@ MAX_LAND_TO_LAND_2_AWAY :: min(20, len(Land_ID))
 MAX_SEA_TO_SEA_2_AWAY :: min(20, len(Sea_ID))
 
 MAX_PATHS_TO_LAND :: 2
-Mid_Lands :: sa.Small_Array(MAX_PATHS_TO_LAND, Land_ID)
+Mid_Lands :: [dynamic; MAX_PATHS_TO_LAND]Land_ID
 MAX_PATHS_TO_SEA :: 2
-Mid_Seas :: sa.Small_Array(MAX_PATHS_TO_SEA, Sea_ID)
+Mid_Seas :: [dynamic; MAX_PATHS_TO_SEA]Sea_ID
 
 L2S_2_Away :: struct {
 	mid_lands: Mid_Lands,
 	sea:       Sea_ID,
 }
 
-SA_Players :: sa.Small_Array(len(Player_ID), Player_ID)
-SA_L2L :: sa.Small_Array(MAX_LAND_TO_LAND_CONNECTIONS, Land_ID)
-SA_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
-SA_S2S :: sa.Small_Array(MAX_SEA_TO_SEA_CONNECTIONS, Sea_ID)
-SA_S2L :: sa.Small_Array(MAX_SEA_TO_LAND_CONNECTIONS, Land_ID)
-SA_A2A :: sa.Small_Array(MAX_AIR_TO_AIR_CONNECTIONS, Air_ID)
+SA_Players :: [dynamic; len(Player_ID)]Player_ID
+SA_L2L :: [dynamic; MAX_LAND_TO_LAND_CONNECTIONS]Land_ID
+SA_L2S :: [dynamic; MAX_LAND_TO_SEA_CONNECTIONS]Sea_ID
+SA_S2S :: [dynamic; MAX_SEA_TO_SEA_CONNECTIONS]Sea_ID
+SA_S2L :: [dynamic; MAX_SEA_TO_LAND_CONNECTIONS]Land_ID
+SA_A2A :: [dynamic; MAX_AIR_TO_AIR_CONNECTIONS]Air_ID
 
 MapData :: struct {
 	// teams:                     Teams,

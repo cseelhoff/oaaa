@@ -28,7 +28,6 @@ Architecture:
 
 import "core:fmt"
 import "base:intrinsics"
-import sa "core:container/small_array"
 
 // Moved_Units tracks which units have already moved this phase
 Moved_Units :: struct {

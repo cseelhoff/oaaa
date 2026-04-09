@@ -38,7 +38,6 @@ are being purchased for stranded units in low-value territories.
 Total: 25 methods mapped from Java, 13 fully implemented, 4 partial, 4 architectural N/A
 */
 
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:math"
 
@@ -140,7 +139,7 @@ repair_factories_triplea :: proc(gc: ^Game_Cache) {
 		}, context.temp_allocator)
 
 	// Collect damaged factories
-	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for factory_loc in gc.factory_locations[gc.cur_player][:] {
 		if gc.owner[factory_loc] != gc.cur_player do continue
 
 		damage := gc.factory_dmg[factory_loc]
@@ -564,12 +563,12 @@ can_reach_enemy_by_land_triplea :: proc(gc: ^Game_Cache) -> bool {
 	for territory in Land_ID {
 		if gc.owner[territory] == gc.cur_player {
 			// Check adjacent territories
-			for adj_id in sa.slice(&mm.l2l_1away_via_land[territory]) {
+			for adj_id in mm.l2l_1away_via_land[territory][:] {
 				adj := adj_id
 				if gc.owner[adj] != gc.cur_player {
 					// Check if this is an enemy (not an ally)
 					is_ally := false
-					for ally_id in sa.slice(&mm.allies[gc.cur_player]) {
+					for ally_id in mm.allies[gc.cur_player][:] {
 						if gc.owner[adj] == ally_id {
 							is_ally = true
 							break
@@ -621,7 +620,7 @@ find_defenders_in_place_territories_triplea :: proc(
 	defenders_map := make(map[Land_ID]Territory_Defenders)
 
 	// Check all territories where we can place (have factories)
-	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for factory_loc in gc.factory_locations[gc.cur_player][:] {
 		if gc.owner[factory_loc] != gc.cur_player do continue
 
 		defenders := Territory_Defenders{}
@@ -994,7 +993,7 @@ prioritize_territories_to_defend_triplea :: proc(
 
 		// Gather current defenders
 		initial_defenders: Land_Defenders = {}
-		for player in sa.slice(&mm.allies[gc.cur_player]) {
+		for player in mm.allies[gc.cur_player][:] {
 			initial_defenders.Infantry += gc.idle_armies[land_territory][player][.INF]
 			initial_defenders.Artillery += gc.idle_armies[land_territory][player][.ARTY]
 			initial_defenders.AntiAir += gc.idle_armies[land_territory][player][.AAGUN]
@@ -1235,7 +1234,7 @@ purchase_defenders_triplea :: proc(
 			threat_details := make([dynamic]string)
 			defer delete(threat_details)
 
-			for adjacent in sa.slice(&mm.l2l_1away_via_land[place_terr.territory]) {
+			for adjacent in mm.l2l_1away_via_land[place_terr.territory][:] {
 				adjacent_threat := f64(0)
 				enemy_count := 0
 
@@ -1395,7 +1394,7 @@ find_nearest_factory_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> May
 	*/
 
 	// First check if the territory itself is a factory with capacity
-	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for factory_loc in gc.factory_locations[gc.cur_player][:] {
 		if factory_loc == territory {
 			if gc.owner[factory_loc] == gc.cur_player && gc.builds_left[factory_loc] > 0 {
 				return territory // Place at the territory's own factory
@@ -1410,7 +1409,7 @@ find_nearest_factory_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> May
 	best_factory: Maybe(Land_ID) = nil
 	best_distance: u8 = 255  // Use high value for "no path"
 	
-	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for factory_loc in gc.factory_locations[gc.cur_player][:] {
 		if gc.owner[factory_loc] != gc.cur_player do continue
 		if gc.builds_left[factory_loc] == 0 do continue // Skip exhausted factories
 		
@@ -1442,12 +1441,12 @@ calculate_naval_budget_reserve :: proc(gc: ^Game_Cache) -> u8 {
 	
 	// Check if we have any coastal factories
 	has_coastal_factory := false
-	for factory_loc in sa.slice(&gc.factory_locations[player]) {
+	for factory_loc in gc.factory_locations[player][:] {
 		if gc.owner[factory_loc] != player do continue
 		if gc.builds_left[factory_loc] == 0 do continue
 		
 		// Check if factory is coastal (adjacent to sea)
-		if len(sa.slice(&mm.l2s_1away_via_land[factory_loc])) > 0 {
+		if len(mm.l2s_1away_via_land[factory_loc][:]) > 0 {
 			has_coastal_factory = true
 			break
 		}
@@ -1498,7 +1497,7 @@ gather_enemy_attackers_from_adjacent :: proc(gc: ^Game_Cache, t: Land_ID) -> Lan
 	attackers := Land_Attackers{}
 	
 	// Check adjacent territories for enemy units
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[t]) {
+	for adjacent in mm.l2l_1away_via_land[t][:] {
 		// Count enemy units that could attack from this adjacent territory
 		for player in Player_ID {
 			if mm.team[player] != mm.team[gc.cur_player] {
@@ -1545,7 +1544,7 @@ Ship_Counts :: struct {
 count_our_ships :: proc(gc: ^Game_Cache, sea: Sea_ID) -> Ship_Counts {
 	counts := Ship_Counts{}
 	
-	for player in sa.slice(&mm.allies[gc.cur_player]) {
+	for player in mm.allies[gc.cur_player][:] {
 		counts.subs += gc.idle_ships[sea][player][.SUB]
 		counts.destroyers += gc.idle_ships[sea][player][.DESTROYER]
 		counts.cruisers += gc.idle_ships[sea][player][.CRUISER]
@@ -1577,7 +1576,7 @@ count_our_ships :: proc(gc: ^Game_Cache, sea: Sea_ID) -> Ship_Counts {
 gather_sea_defenders :: proc(gc: ^Game_Cache, sea: Sea_ID) -> Sea_Defenders {
 	defenders := Sea_Defenders{}
 	
-	for player in sa.slice(&mm.allies[gc.cur_player]) {
+	for player in mm.allies[gc.cur_player][:] {
 		defenders.Subs += gc.idle_ships[sea][player][.SUB]
 		defenders.Destroyers += gc.idle_ships[sea][player][.DESTROYER]
 		defenders.Cruisers += gc.idle_ships[sea][player][.CRUISER]
@@ -1616,7 +1615,7 @@ calculate_sea_tuv :: proc(ships: Ship_Counts) -> f64 {
 // Find a factory adjacent to a sea zone for naval purchases
 find_factory_for_sea_defense :: proc(gc: ^Game_Cache, sea: Sea_ID) -> Maybe(Land_ID) {
 	// Check all coastal territories adjacent to this sea zone
-	for land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
+	for land in mm.s2l_1away_via_sea[sea][:] {
 		// Must be our territory with a factory
 		if gc.owner[land] != gc.cur_player do continue
 		if gc.factory_prod[land] == 0 do continue
@@ -2296,7 +2295,7 @@ purchase_factory_triplea :: proc(gc: ^Game_Cache, has_extra_pus: bool) -> bool {
 		value := territory_value * f64(production) + 0.1 * f64(production)
 
 		// Check if adjacent to sea (useful for naval production)
-		is_adjacent_to_sea := len(mm.l2s_1away_via_land[territory].data) > 0
+		is_adjacent_to_sea := len(mm.l2s_1away_via_land[territory]) > 0
 
 		// Count nearby enemy territories
 		nearby_enemies := count_nearby_enemy_territories_triplea(gc, territory)
@@ -2359,7 +2358,7 @@ count_nearby_enemy_territories_triplea :: proc(gc: ^Game_Cache, territory: Land_
 	count := 0
 
 	// Check adjacent territories
-	for adj_id in sa.slice(&mm.l2l_1away_via_land[territory]) {
+	for adj_id in mm.l2l_1away_via_land[territory][:] {
 		if is_enemy_territory_triplea(gc, adj_id) {
 			count += 1
 		}
@@ -2382,7 +2381,7 @@ is_enemy_territory_triplea :: proc(gc: ^Game_Cache, territory: Land_ID) -> bool 
 	if gc.owner[territory] == gc.cur_player do return false
 
 	// Check if ally
-	for ally_id in sa.slice(&mm.allies[gc.cur_player]) {
+	for ally_id in mm.allies[gc.cur_player][:] {
 		if gc.owner[territory] == ally_id do return true
 	}
 
@@ -2460,9 +2459,9 @@ prioritize_sea_territories_triplea :: proc(gc: ^Game_Cache) -> [dynamic]Place_Te
 	sea_territories := make([dynamic]Place_Territory_Sea, context.temp_allocator)
 
 	// Find all sea zones where we can place units (coastal factories)
-	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for factory_loc in gc.factory_locations[gc.cur_player][:] {
 		// Check if factory is coastal (adjacent to sea)
-		for sea_id in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+		for sea_id in mm.l2s_1away_via_land[factory_loc][:] {
 			// Calculate value for this sea zone
 			strategic_value := calculate_sea_strategic_value_triplea(gc, sea_id)
 
@@ -2520,7 +2519,7 @@ calculate_sea_strategic_value_triplea :: proc(gc: ^Game_Cache, sea_id: Sea_ID) -
 	// Base value from adjacent land territories
 	value := f64(0)
 
-	for land_id in sa.slice(&mm.s2l_1away_via_sea[sea_id]) {
+	for land_id in mm.s2l_1away_via_sea[sea_id][:] {
 		if gc.owner[land_id] == gc.cur_player {
 			value += calculate_territory_value(gc, land_id) * 0.5
 		}
@@ -2575,7 +2574,7 @@ count_stranded_units_for_sea :: proc(gc: ^Game_Cache, sea_id: Sea_ID, player: Pl
 	count := u8(0)
 	
 	// Check all land territories adjacent to this sea zone
-	for land_id in sa.slice(&mm.s2l_1away_via_sea[sea_id]) {
+	for land_id in mm.s2l_1away_via_sea[sea_id][:] {
 		// Only check our own territories
 		if gc.owner[land_id] != player do continue
 		
@@ -2642,7 +2641,7 @@ calculate_strategic_land_value_for_transport :: proc(gc: ^Game_Cache, land_id: L
 	// land_distances uses 127 (INFINITY) for unreachable territories
 	LAND_INFINITY :: 127
 	has_land_path_to_enemy := false
-	for enemy in sa.slice(&mm.enemies[player]) {
+	for enemy in mm.enemies[player][:] {
 		// Check if enemy has any territory we can reach by land
 		for land in Land_ID {
 			if gc.owner[land] != enemy do continue
@@ -2745,11 +2744,11 @@ purchase_sea_and_amphib_units_triplea :: proc(
 		
 		// Find the coastal factory that can build to this sea zone
 		factory_for_sea: Maybe(Land_ID) = nil
-		for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+		for factory_loc in gc.factory_locations[gc.cur_player][:] {
 			if gc.owner[factory_loc] != gc.cur_player do continue
 			if gc.builds_left[factory_loc] == 0 do continue
 			// Check if factory is adjacent to this sea zone
-			for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+			for adj_sea in mm.l2s_1away_via_land[factory_loc][:] {
 				if adj_sea == sea_id {
 					factory_for_sea = factory_loc
 					break
@@ -2954,10 +2953,10 @@ purchase_transports_and_amphib_units :: proc(
 		
 		// Find factory that can build to this sea zone
 		factory_for_sea: Maybe(Land_ID) = nil
-		for factory_loc in sa.slice(&gc.factory_locations[player]) {
+		for factory_loc in gc.factory_locations[player][:] {
 			if gc.owner[factory_loc] != player do continue
 			if gc.builds_left[factory_loc] == 0 do continue
-			for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+			for adj_sea in mm.l2s_1away_via_land[factory_loc][:] {
 				if adj_sea == sea_id {
 					factory_for_sea = factory_loc
 					break
@@ -3195,7 +3194,7 @@ get_my_sea_defenders :: proc(
 	for &purchase in g_purchased_units {
 		if purchase.territory == factory_loc {
 			// Check if this factory can build to this sea zone
-			for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+			for adj_sea in mm.l2s_1away_via_land[factory_loc][:] {
 				if adj_sea == sea_id {
 					def.Subs += purchase.sub
 					def.Destroyers += purchase.destroyer
@@ -3210,7 +3209,7 @@ get_my_sea_defenders :: proc(
 	}
 	
 	// Add allied ships
-	for ally in sa.slice(&mm.allies[player]) {
+	for ally in mm.allies[player][:] {
 		if ally == player do continue
 		def.Subs += gc.idle_ships[sea_id][ally][.SUB]
 		def.Destroyers += gc.idle_ships[sea_id][ally][.DESTROYER]
@@ -3848,7 +3847,7 @@ place_defenders_triplea :: proc(gc: ^Game_Cache) {
 		   purchase.battleship > 0 ||
 		   purchase.transport > 0 {
 			// Find first adjacent sea zone
-			for sea_id in sa.slice(&mm.l2s_1away_via_land[territory]) {
+			for sea_id in mm.l2s_1away_via_land[territory][:] {
 				if purchase.sub > 0 {
 					gc.active_ships[sea_id][.SUB_0_MOVES] += purchase.sub
 					gc.idle_ships[sea_id][gc.cur_player][.SUB] += purchase.sub
@@ -3975,7 +3974,7 @@ place_factory_triplea :: proc(gc: ^Game_Cache) {
 		gc.factory_dmg[factory_territory] = 0
 
 		// Add to factory locations
-		sa.push(&gc.factory_locations[gc.cur_player], factory_territory)
+		append(&gc.factory_locations[gc.cur_player], factory_territory)
 
 		when ODIN_DEBUG {
 			fmt.printf(

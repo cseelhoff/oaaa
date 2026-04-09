@@ -1,5 +1,4 @@
 package oaaa
-import sa "core:container/small_array"
 import "core:fmt"
 
 Fighter_After_Moves := [?]Active_Plane {
@@ -227,7 +226,7 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 			mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][sea],
 		)
 		get_airs(new_fighter_land_here, &air_array)
-		for air in sa.slice(&air_array) {
+		for air in air_array[:] {
 			add_air(&gc.can_fighter_land_here, air)
 		}
 		get_airs(gc.can_fighter_land_here, &air_array)
@@ -235,7 +234,7 @@ refresh_can_fighter_land_here :: proc(gc: ^Game_Cache) {
 	gc.can_fighter_land_in_1_move = {}
 
 	get_airs(gc.can_fighter_land_here, &air_array)
-	for air in sa.slice(&air_array) {
+	for air in air_array[:] {
 		gc.can_fighter_land_in_1_move += mm.a2a_within_1_moves[air]
 	}
 	gc.is_fighter_cache_current = true

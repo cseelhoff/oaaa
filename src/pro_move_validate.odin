@@ -1,7 +1,6 @@
 package oaaa
 
 import "core:fmt"
-import sa "core:container/small_array"
 
 /*
 Pro AI Movement Validation
@@ -42,7 +41,7 @@ can_land_units_move :: proc(
 ) -> bool {
 	if max_moves == 1 {
 		// Check adjacency using Small_Array
-		for adj in sa.slice(&mm.l2l_1away_via_land[src]) {
+		for adj in mm.l2l_1away_via_land[src][:] {
 			if adj == dst {
 				return true
 			}
@@ -338,7 +337,7 @@ can_sea_reach :: proc(
 		}
 
 		// Validate at least one unblocked path exists
-		for mid_sea in sa.slice(&mm.s2s_2away_via_midseas[canal_state][src][dst]) {
+		for mid_sea in mm.s2s_2away_via_midseas[canal_state][src][dst][:] {
 			if is_submarine {
 				// Submarines only blocked by destroyers
 				if gc.enemy_destroyer_total[mid_sea] > 0 {
@@ -404,7 +403,7 @@ can_transport_reach :: proc(
 		}
 
 		// Check intermediate seas for blockades
-		for mid_sea in sa.slice(&mm.s2s_2away_via_midseas[canal_state][src][dst]) {
+		for mid_sea in mm.s2s_2away_via_midseas[canal_state][src][dst][:] {
 			if gc.enemy_blockade_total[mid_sea] == 0 {
 				return true // Found valid path
 			}

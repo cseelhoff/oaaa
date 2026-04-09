@@ -1,5 +1,4 @@
 package oaaa
-import sa "core:container/small_array"
 import "core:fmt"
 
 move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {

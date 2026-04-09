@@ -1,6 +1,5 @@
 package oaaa
 
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:math"
 import "core:slice"
@@ -69,7 +68,7 @@ generate_my_attack_options :: proc(gc: ^Game_Cache, my_territory_targets: ^[Air_
 		gc.current_territory = to_air(src_land)
 		if gc.active_land_planes[src_land][.FIGHTER_UNMOVED] > 0 {
 			get_airs(get_valid_unmoved_fighter_moves(gc), &air_array)
-			for dst in sa.slice(&air_array) {
+			for dst in air_array[:] {
 				// check if dst is land or sea
 				if is_land(dst) {
 					dst_land := to_land(dst)
@@ -92,7 +91,7 @@ generate_my_attack_options :: proc(gc: ^Game_Cache, my_territory_targets: ^[Air_
 		}
 		if gc.active_land_planes[src_land][.BOMBER_UNMOVED] > 0 {
 			get_airs(get_valid_unmoved_bomber_moves(gc), &air_array)
-			for dst in sa.slice(&air_array) {
+			for dst in air_array[:] {
 
 				if is_land(dst) {
 					dst_land := to_land(dst)
@@ -169,7 +168,7 @@ prioritize_my_attack_options :: proc(
 		hold_value := 0.0
 		//calculate battle result
 		land_defenders: Land_Defenders = {}
-		for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
+		for enemy in mm.enemies[gc.cur_player][:] {
 			land_combatants.defenders.Infantry += gc.idle_armies[land_territory][enemy][.INF]
 			land_combatants.defenders.Artillery += gc.idle_armies[land_territory][enemy][.ARTY]
 			land_combatants.defenders.AntiAir += gc.idle_armies[land_territory][enemy][.AAGUN]

@@ -116,7 +116,6 @@ TODO REVIEW: Minor gaps in ProCombatMoveAi.java (2,031 lines):
 
 import "core:fmt"
 import "core:math"
-import sa "core:container/small_array"
 
 // Data structures for TripleA combat move methods
 
@@ -775,7 +774,7 @@ build_counter_attack_combatants :: proc(gc: ^Game_Cache, target: Land_ID, surviv
 	}
 	
 	// Build enemy counter-attack force from adjacent territories
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
+	for adjacent in mm.l2l_1away_via_land[target][:] {
 		// Check if enemy territory
 		if mm.team[gc.owner[adjacent]] == mm.team[gc.cur_player] {
 			continue // Skip friendly territories
@@ -1081,7 +1080,7 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 		
 		// Find enemy neighbors (that we're not attacking)
 		enemy_neighbor_count := 0
-		for adj in sa.slice(&mm.l2l_1away_via_land[land_tid]) {
+		for adj in mm.l2l_1away_via_land[land_tid][:] {
 			if mm.team[gc.owner[adj]] != mm.team[gc.cur_player] {
 				// Check if we're attacking this territory
 				is_attack_target := false
@@ -1111,7 +1110,7 @@ move_one_defender_to_land_territories_bordering_enemy_triplea :: proc(
 			cheapest_army := Active_Army.INF_1_MOVES
 			tracked_army :Unit_Type= .Infantry
 			
-			for adj in sa.slice(&mm.l2l_1away_via_land[land_tid]) {
+			for adj in mm.l2l_1away_via_land[land_tid][:] {
 				if mm.team[gc.owner[adj]] == mm.team[gc.cur_player] {
 					// Try infantry first (cheapest)
 					if gc.idle_armies[adj][gc.cur_player][.INF] > 0 {
@@ -1247,7 +1246,7 @@ remove_territories_where_transports_are_exposed_triplea :: proc(gc: ^Game_Cache,
 		
 		// Find which sea zones border the target land
 		target := option.territory
-		for sea_tid in sa.slice(&mm.l2s_1away_via_land[target]) {
+		for sea_tid in mm.l2s_1away_via_land[target][:] {
 			// Check if we have transports here
 			if gc.idle_ships[sea_tid][gc.cur_player][.TRANS_EMPTY] > 0 ||
 			   gc.idle_ships[sea_tid][gc.cur_player][.TRANS_1I] > 0 ||
@@ -1304,7 +1303,7 @@ remove_territories_where_transports_are_exposed_triplea :: proc(gc: ^Game_Cache,
 				owner := gc.owner[land_tid]
 				if mm.team[owner] != mm.team[gc.cur_player] {
 					// Check if this land is adjacent to the sea zone
-					for adj_sea in sa.slice(&mm.l2s_1away_via_land[land_tid]) {
+					for adj_sea in mm.l2s_1away_via_land[land_tid][:] {
 						if adj_sea == sea_tid {
 							// Fighters and bombers can reach from adjacent land (range 4 and 6)
 							enemy_attack += f64(gc.idle_land_planes[land_tid][owner][.FIGHTER]) * 3.0
@@ -1571,7 +1570,7 @@ assign_adjacent_land_units :: proc(
 	target_land := opt.territory
 	
 	// Find all adjacent friendly territories with units
-	for source_land in sa.slice(&mm.l2l_1away_via_land[target_land]) {
+	for source_land in mm.l2l_1away_via_land[target_land][:] {
 		if gc.owner[source_land] != gc.cur_player {
 			continue
 		}
@@ -1623,7 +1622,7 @@ assign_adjacent_land_units :: proc(
 	}
 	
 	// Tanks can also blitz from 2 territories away
-	for adj1 in sa.slice(&mm.l2l_1away_via_land[target_land]) {
+	for adj1 in mm.l2l_1away_via_land[target_land][:] {
 		if gc.owner[adj1] != gc.cur_player {
 			continue
 		}
@@ -1632,7 +1631,7 @@ assign_adjacent_land_units :: proc(
 			continue // Can't blitz through enemy units
 		}
 		
-		for source_land in sa.slice(&mm.l2l_1away_via_land[adj1]) {
+		for source_land in mm.l2l_1away_via_land[adj1][:] {
 			if source_land == target_land {
 				continue
 			}
@@ -1675,7 +1674,7 @@ assign_air_units_within_range :: proc(
 		
 		// Check if reachable in 1 move
 		can_reach_in_1 := false
-		for adj in sa.slice(&mm.l2l_1away_via_land[source_land]) {
+		for adj in mm.l2l_1away_via_land[source_land][:] {
 			if adj == target_land {
 				can_reach_in_1 = true
 				break
@@ -1685,8 +1684,8 @@ assign_air_units_within_range :: proc(
 		// Check if reachable in 2 moves
 		can_reach_in_2 := false
 		if !can_reach_in_1 {
-			for adj1 in sa.slice(&mm.l2l_1away_via_land[source_land]) {
-				for adj2 in sa.slice(&mm.l2l_1away_via_land[adj1]) {
+			for adj1 in mm.l2l_1away_via_land[source_land][:] {
+				for adj2 in mm.l2l_1away_via_land[adj1][:] {
 					if adj2 == target_land {
 						can_reach_in_2 = true
 						break
@@ -1759,7 +1758,7 @@ assign_amphibious_units :: proc(
 		is_one_away := false
 		
 		// Check if directly adjacent
-		for coastal_land in sa.slice(&mm.s2l_1away_via_sea[sea_id]) {
+		for coastal_land in mm.s2l_1away_via_sea[sea_id][:] {
 			if coastal_land == target_land {
 				is_adjacent = true
 				break
@@ -1773,7 +1772,7 @@ assign_amphibious_units :: proc(
 				if gc.enemy_blockade_total[adj_sea] > 0 {
 					continue
 				}
-				for land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+				for land in mm.s2l_1away_via_sea[adj_sea][:] {
 					if land == target_land {
 						is_one_away = true
 						break
@@ -2454,7 +2453,7 @@ check_contested_sea_territories_triplea :: proc(gc: ^Game_Cache, options: ^[dyna
 			for option in options {
 				if option.is_amphib {
 					// Check if this sea is used for the amphib
-					for adj_sea in sa.slice(&mm.l2s_1away_via_land[option.territory]) {
+					for adj_sea in mm.l2s_1away_via_land[option.territory][:] {
 						if adj_sea == sea {
 							is_critical = true
 							break
@@ -2619,7 +2618,7 @@ can_air_safely_land_after_attack_triplea :: proc(gc: ^Game_Cache, target: Land_I
 	*/
 	
 	// Check if adjacent to friendly factory
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
+	for adjacent in mm.l2l_1away_via_land[target][:] {
 		if gc.owner[adjacent] == gc.cur_player {
 			// Check if has factory
 			if has_factory(gc, adjacent) {
@@ -2709,7 +2708,7 @@ count_non_infantry_defenders :: proc(option: ^Attack_Option) -> int {
 // Helper: Check if territory is adjacent to my capital
 is_adjacent_to_my_capital :: proc(gc: ^Game_Cache, t: Land_ID) -> bool {
 	capital := get_my_capital(gc)
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[capital]) {
+	for adjacent in mm.l2l_1away_via_land[capital][:] {
 		if adjacent == t {
 			return true
 		}
@@ -2724,7 +2723,7 @@ get_my_capital :: proc(gc: ^Game_Cache) -> Land_ID {
 
 // Helper: Check if territory has factory
 has_factory :: proc(gc: ^Game_Cache, t: Land_ID) -> bool {
-	for factory in gc.factory_locations[gc.cur_player].data {
+	for factory in gc.factory_locations[gc.cur_player][:] {
 		if factory == t {
 			return true
 		}
@@ -2755,7 +2754,7 @@ calculate_distance :: proc(gc: ^Game_Cache, from: Land_ID, to: Land_ID) -> int {
 	}
 	
 	// Check if adjacent
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[from]) {
+	for adjacent in mm.l2l_1away_via_land[from][:] {
 		if adjacent == to {
 			return 1
 		}
@@ -2785,7 +2784,7 @@ calculate_available_attack_power :: proc(gc: ^Game_Cache, target: Land_ID) -> f6
 	my_team := mm.team[gc.cur_player]
 	
 	// Check adjacent territories for our units
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
+	for adjacent in mm.l2l_1away_via_land[target][:] {
 		if mm.team[gc.owner[adjacent]] == my_team {
 			// Count our units that could attack
 			for player in Player_ID {
@@ -2806,7 +2805,7 @@ calculate_available_attack_power :: proc(gc: ^Game_Cache, target: Land_ID) -> f6
 					// Fighters can reach 4 spaces, bombers 6 spaces
 					// Simplified: just count planes in adjacent territories for now
 					is_adjacent := false
-					for adj in sa.slice(&mm.l2l_1away_via_land[target]) {
+					for adj in mm.l2l_1away_via_land[target][:] {
 						if adj == land {
 							is_adjacent = true
 							break
@@ -2848,7 +2847,7 @@ calculate_enemy_counter_attack_power :: proc(gc: ^Game_Cache, t: Land_ID) -> f64
 	total := 0.0
 	
 	// Check adjacent territories for enemy units
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[t]) {
+	for adjacent in mm.l2l_1away_via_land[t][:] {
 		if gc.owner[adjacent] != gc.cur_player {
 			// Count enemy units that could counter-attack
 			for player in Player_ID {
@@ -2917,7 +2916,7 @@ has_any_units :: proc(gc: ^Game_Cache, t: Land_ID) -> bool {
 has_attackers_adjacent_to_enemy :: proc(gc: ^Game_Cache, option: ^Attack_Option) -> bool {
 	for unit in option.attackers {
 		from := unit.from_territory
-		for adjacent in sa.slice(&mm.l2l_1away_via_land[from]) {
+		for adjacent in mm.l2l_1away_via_land[from][:] {
 			// Check if enemy territory (not ours and has units)
 			if gc.owner[adjacent] != gc.cur_player && has_any_units(gc, adjacent) {
 				return true
@@ -2937,7 +2936,7 @@ has_friendly_land_units :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 // Helper: Count enemy neighbor territories
 count_enemy_neighbor_territories :: proc(gc: ^Game_Cache, land: Land_ID, exclude: []Land_ID) -> int {
 	count := 0
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[land]) {
+	for adjacent in mm.l2l_1away_via_land[land][:] {
 		// Skip if in exclude list
 		is_excluded := false
 		for excl in exclude {
@@ -2961,7 +2960,7 @@ count_enemy_neighbor_territories :: proc(gc: ^Game_Cache, land: Land_ID, exclude
 // Helper: Find cheapest unit to move
 find_cheapest_unit_to_move :: proc(gc: ^Game_Cache, to: Land_ID) -> Unit_Info {
 	// Look in adjacent territories for cheapest unit
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[to]) {
+	for adjacent in mm.l2l_1away_via_land[to][:] {
 		if gc.owner[adjacent] == gc.cur_player {
 			// Check for infantry (cheapest)
 			if gc.idle_armies[adjacent][gc.cur_player][.INF] > 0 {
@@ -2978,7 +2977,7 @@ find_cheapest_unit_to_move :: proc(gc: ^Game_Cache, to: Land_ID) -> Unit_Info {
 find_transport_sea_zones :: proc(gc: ^Game_Cache, option: ^Attack_Option) -> [dynamic]Sea_ID {
 	seas := make([dynamic]Sea_ID)
 	// Find all sea zones adjacent to target that have our transports
-	for sea in sa.slice(&mm.l2s_1away_via_land[option.territory]) {
+	for sea in mm.l2s_1away_via_land[option.territory][:] {
 		if has_friendly_transports(gc, sea) {
 			append(&seas, sea)
 		}
@@ -3166,7 +3165,7 @@ assign_destroyers_vs_subs :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_Opt
 		}
 		
 		// Find adjacent seas
-		for sea in sa.slice(&mm.l2s_1away_via_land[option.territory]) {
+		for sea in mm.l2s_1away_via_land[option.territory][:] {
 			// Count enemy subs in this sea
 			enemy_subs := 0
 			for player in Player_ID {
@@ -3248,7 +3247,7 @@ assign_land_units_to_attack :: proc(
 	}
 	
 	// Phase 1: Add infantry from adjacent territories
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
+	for adjacent in mm.l2l_1away_via_land[target][:] {
 		if gc.owner[adjacent] != gc.cur_player {
 			continue
 		}
@@ -3273,7 +3272,7 @@ assign_land_units_to_attack :: proc(
 	}
 	
 	// Phase 2: Add artillery
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
+	for adjacent in mm.l2l_1away_via_land[target][:] {
 		if gc.owner[adjacent] != gc.cur_player {
 			continue
 		}
@@ -3297,7 +3296,7 @@ assign_land_units_to_attack :: proc(
 	}
 	
 	// Phase 3: Add tanks (1 move from target)
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
+	for adjacent in mm.l2l_1away_via_land[target][:] {
 		if gc.owner[adjacent] != gc.cur_player {
 			continue
 		}
@@ -3491,7 +3490,7 @@ assign_transports_for_amphib :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 	transports_needed := (units_to_load + 1) / 2
 	
 	// Find transports in adjacent seas
-	for sea in sa.slice(&mm.l2s_1away_via_land[target]) {
+	for sea in mm.l2s_1away_via_land[target][:] {
 		available := gc.idle_ships[sea][gc.cur_player][.TRANS_EMPTY]
 		
 		if available > 0 {
@@ -3546,7 +3545,7 @@ assign_bombard_units :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 	target := option.territory
 	
 	// Find adjacent seas with bombard-capable ships
-	for sea in sa.slice(&mm.l2s_1away_via_land[target]) {
+	for sea in mm.l2s_1away_via_land[target][:] {
 		// Check for battleships
 		battleship_count := gc.idle_ships[sea][gc.cur_player][.BATTLESHIP]
 		for i := 0; i < int(battleship_count); i += 1 {
@@ -3768,7 +3767,7 @@ remove_attacks_until_capital_can_be_held_triplea :: proc(
 	}
 	
 	// Add units that could move to capital from adjacent territories
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[capital]) {
+	for adjacent in mm.l2l_1away_via_land[capital][:] {
 		if mm.team[gc.owner[adjacent]] == mm.team[gc.cur_player] {
 			for army in gc.idle_armies[adjacent][gc.cur_player] {
 				capital_defenders += f64(army) * 2.0
@@ -3807,7 +3806,7 @@ remove_attacks_until_capital_can_be_held_triplea :: proc(
 				if unit.from_territory == capital {
 					units_near_capital += 1
 				} else {
-					for adj in sa.slice(&mm.l2l_1away_via_land[capital]) {
+					for adj in mm.l2l_1away_via_land[capital][:] {
 						if unit.from_territory == adj {
 							units_near_capital += 1
 							break
@@ -4006,7 +4005,7 @@ populate_land_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_
 		
 		// Infantry and artillery: 1 movement - can reach adjacent territories
 		if has_infantry || has_artillery {
-			for adj in sa.slice(&mm.l2l_1away_via_land[land_tid]) {
+			for adj in mm.l2l_1away_via_land[land_tid][:] {
 				if mm.team[gc.owner[adj]] == enemy_team {
 					add_territory_to_attack_options(gc, options, adj)
 				}
@@ -4016,14 +4015,14 @@ populate_land_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_
 		// Tanks: 2 movement - can reach territories 1-2 away
 		if has_tanks {
 			// 1 away
-			for adj in sa.slice(&mm.l2l_1away_via_land[land_tid]) {
+			for adj in mm.l2l_1away_via_land[land_tid][:] {
 				if mm.team[gc.owner[adj]] == enemy_team {
 					add_territory_to_attack_options(gc, options, adj)
 				}
 			}
 			
 			// 2 away (blitzing through empty friendly)
-			for adj1 in sa.slice(&mm.l2l_1away_via_land[land_tid]) {
+			for adj1 in mm.l2l_1away_via_land[land_tid][:] {
 				if mm.team[gc.owner[adj1]] != my_team {
 					continue
 				}
@@ -4031,7 +4030,7 @@ populate_land_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_
 					continue  // Can't blitz through enemies
 				}
 				
-				for adj2 in sa.slice(&mm.l2l_1away_via_land[adj1]) {
+				for adj2 in mm.l2l_1away_via_land[adj1][:] {
 					if adj2 == land_tid { continue }
 					if mm.team[gc.owner[adj2]] == enemy_team {
 						add_territory_to_attack_options(gc, options, adj2)
@@ -4085,7 +4084,7 @@ populate_air_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_O
 		// For simplicity, we'll just check 1-2 away for now
 		if has_fighters {
 			// 1 away
-			for adj1 in sa.slice(&mm.l2l_1away_via_land[land_tid]) {
+			for adj1 in mm.l2l_1away_via_land[land_tid][:] {
 				if mm.team[gc.owner[adj1]] == enemy_team {
 					when ODIN_DEBUG {
 						fmt.printf("  [Air] Fighter from %v can reach %v (1 move)\n", land_tid, adj1)
@@ -4095,8 +4094,8 @@ populate_air_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_O
 			}
 			
 			// 2 away
-			for adj1 in sa.slice(&mm.l2l_1away_via_land[land_tid]) {
-				for adj2 in sa.slice(&mm.l2l_1away_via_land[adj1]) {
+			for adj1 in mm.l2l_1away_via_land[land_tid][:] {
+				for adj2 in mm.l2l_1away_via_land[adj1][:] {
 					if adj2 == land_tid { continue }
 					if mm.team[gc.owner[adj2]] == enemy_team {
 						when ODIN_DEBUG {
@@ -4111,15 +4110,15 @@ populate_air_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attack_O
 		// Bombers: 6 movement - for now, same as fighters but could go further
 		if has_bombers {
 			// 1 away
-			for adj1 in sa.slice(&mm.l2l_1away_via_land[land_tid]) {
+			for adj1 in mm.l2l_1away_via_land[land_tid][:] {
 				if mm.team[gc.owner[adj1]] == enemy_team {
 					add_territory_to_attack_options(gc, options, adj1)
 				}
 			}
 			
 			// 2 away
-			for adj1 in sa.slice(&mm.l2l_1away_via_land[land_tid]) {
-				for adj2 in sa.slice(&mm.l2l_1away_via_land[adj1]) {
+			for adj1 in mm.l2l_1away_via_land[land_tid][:] {
+				for adj2 in mm.l2l_1away_via_land[adj1][:] {
 					if adj2 == land_tid { continue }
 					if mm.team[gc.owner[adj2]] == enemy_team {
 						add_territory_to_attack_options(gc, options, adj2)
@@ -4174,7 +4173,7 @@ populate_amphib_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attac
 		}
 		
 		// Adjacent coastal territories (0 move reach - can unload directly)
-		for coastal_land in sa.slice(&mm.s2l_1away_via_sea[sea_tid]) {
+		for coastal_land in mm.s2l_1away_via_sea[sea_tid][:] {
 			if mm.team[gc.owner[coastal_land]] == enemy_team {
 				add_territory_to_attack_options(gc, options, coastal_land)
 			}
@@ -4188,7 +4187,7 @@ populate_amphib_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attac
 			}
 			
 			// Find coastal territories adjacent to the destination sea
-			for coastal_land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+			for coastal_land in mm.s2l_1away_via_sea[adj_sea][:] {
 				if mm.team[gc.owner[coastal_land]] == enemy_team {
 					add_territory_to_attack_options(gc, options, coastal_land)
 				}
@@ -4214,7 +4213,7 @@ populate_amphib_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attac
 		
 		// Check if there are units nearby to load
 		has_loadable_units := false
-		for adj_land in sa.slice(&mm.s2l_1away_via_sea[sea_tid]) {
+		for adj_land in mm.s2l_1away_via_sea[sea_tid][:] {
 			if gc.owner[adj_land] == gc.cur_player {
 				// Check for loadable units (infantry, artillery, tanks)
 				if gc.idle_armies[adj_land][gc.cur_player][.INF] > 0 ||
@@ -4235,7 +4234,7 @@ populate_amphib_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attac
 		// - Move 1: move 1 sea zone, unload to adjacent coastal enemy
 		
 		// Check coastal enemies adjacent to this sea zone (move 0)
-		for coastal_land in sa.slice(&mm.s2l_1away_via_sea[sea_tid]) {
+		for coastal_land in mm.s2l_1away_via_sea[sea_tid][:] {
 			if mm.team[gc.owner[coastal_land]] == enemy_team {
 				add_territory_to_attack_options(gc, options, coastal_land)
 			}
@@ -4247,7 +4246,7 @@ populate_amphib_attack_options :: proc(gc: ^Game_Cache, options: ^[dynamic]Attac
 				continue
 			}
 			
-			for coastal_land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+			for coastal_land in mm.s2l_1away_via_sea[adj_sea][:] {
 				if mm.team[gc.owner[coastal_land]] == enemy_team {
 					add_territory_to_attack_options(gc, options, coastal_land)
 				}
@@ -4349,7 +4348,7 @@ populate_potential_attackers :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 	
 	// Find all friendly ground units within 2 moves (simplified - tanks can move 2, inf/arty can move 1)
 	// 1 move away
-	for adj1 in sa.slice(&mm.l2l_1away_via_land[target]) {
+	for adj1 in mm.l2l_1away_via_land[target][:] {
 		if gc.owner[adj1] == gc.cur_player {
 			// Add all ground units from this territory
 			for army_type in Idle_Army {
@@ -4366,8 +4365,8 @@ populate_potential_attackers :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 	}
 	
 	// 2 moves away (for tanks)
-	for adj1 in sa.slice(&mm.l2l_1away_via_land[target]) {
-		for adj2 in sa.slice(&mm.l2l_1away_via_land[adj1]) {
+	for adj1 in mm.l2l_1away_via_land[target][:] {
+		for adj2 in mm.l2l_1away_via_land[adj1][:] {
 			if adj2 == target { continue }
 			if gc.owner[adj2] == gc.cur_player {
 				// Only add tanks (they can move 2)
@@ -4385,7 +4384,7 @@ populate_potential_attackers :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 	
 	// Add all friendly fighters within 4 moves (simplified - just add nearby)
 	// For now, add fighters from 1-2 territories away
-	for adj1 in sa.slice(&mm.l2l_1away_via_land[target]) {
+	for adj1 in mm.l2l_1away_via_land[target][:] {
 		if gc.owner[adj1] == gc.cur_player {
 			count := gc.idle_land_planes[adj1][gc.cur_player][.FIGHTER]
 			for i in 0..<count {
@@ -4399,7 +4398,7 @@ populate_potential_attackers :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 	}
 	
 	// Add all friendly bombers within 6 moves (simplified)
-	for adj1 in sa.slice(&mm.l2l_1away_via_land[target]) {
+	for adj1 in mm.l2l_1away_via_land[target][:] {
 		if gc.owner[adj1] == gc.cur_player {
 			count := gc.idle_land_planes[adj1][gc.cur_player][.BOMBER]
 			for i in 0..<count {
@@ -4431,7 +4430,7 @@ populate_potential_attackers :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 		is_one_away := false
 		
 		// Check if directly adjacent
-		for land in sa.slice(&mm.s2l_1away_via_sea[sea_id]) {
+		for land in mm.s2l_1away_via_sea[sea_id][:] {
 			if land == target {
 				is_adjacent = true
 				break
@@ -4445,7 +4444,7 @@ populate_potential_attackers :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 				if gc.enemy_blockade_total[adj_sea] > 0 {
 					continue
 				}
-				for land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+				for land in mm.s2l_1away_via_sea[adj_sea][:] {
 					if land == target {
 						is_one_away = true
 						break
@@ -4521,7 +4520,7 @@ update_amphib_attackers_only :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 		is_one_away := false
 		
 		// Check if directly adjacent
-		for land in sa.slice(&mm.s2l_1away_via_sea[sea_id]) {
+		for land in mm.s2l_1away_via_sea[sea_id][:] {
 			if land == target {
 				is_adjacent = true
 				break
@@ -4535,7 +4534,7 @@ update_amphib_attackers_only :: proc(gc: ^Game_Cache, option: ^Attack_Option) {
 				if gc.enemy_blockade_total[adj_sea] > 0 {
 					continue
 				}
-				for land in sa.slice(&mm.s2l_1away_via_sea[adj_sea]) {
+				for land in mm.s2l_1away_via_sea[adj_sea][:] {
 					if land == target {
 						is_one_away = true
 						break
@@ -5028,7 +5027,7 @@ get_total_available_units :: proc(
 ) -> int {
 	total := 0
 	
-	for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
+	for adjacent in mm.l2l_1away_via_land[target][:] {
 		if gc.owner[adjacent] != gc.cur_player {
 			continue
 		}
@@ -5091,7 +5090,7 @@ get_total_available_air_units :: proc(
 			can_reach = true
 		} else {
 			// Check 1-away via land (air can reach)
-			for adj in sa.slice(&mm.l2l_1away_via_land[target]) {
+			for adj in mm.l2l_1away_via_land[target][:] {
 				if adj == land_id {
 					can_reach = true
 					break
@@ -5150,7 +5149,7 @@ add_unit_to_attack :: proc(
 	
 	// For land units, check adjacent territories
 	if unit_type == .Infantry || unit_type == .Artillery || unit_type == .Tank {
-		for adjacent in sa.slice(&mm.l2l_1away_via_land[target]) {
+		for adjacent in mm.l2l_1away_via_land[target][:] {
 			if gc.owner[adjacent] != gc.cur_player {
 				continue
 			}
@@ -5218,7 +5217,7 @@ add_unit_to_attack :: proc(
 				can_reach = true
 			} else {
 				// Check 1-away via land
-				for adj in sa.slice(&mm.l2l_1away_via_land[target]) {
+				for adj in mm.l2l_1away_via_land[target][:] {
 					if adj == land_id {
 						can_reach = true
 						break

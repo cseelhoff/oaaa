@@ -84,7 +84,6 @@ TODO REVIEW: Missing from place() implementation:
 
 import "core:fmt"
 import "core:slice"
-import sa "core:container/small_array"
 
 // Main place units phase entry point
 proai_place_units_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -120,7 +119,7 @@ place_purchased_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		
 		// Show factory locations and their remaining production capacity
 		factory_count := 0
-		for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+		for factory_loc in gc.factory_locations[gc.cur_player][:] {
 			if gc.owner[factory_loc] == gc.cur_player {
 				fmt.printf("  Factory at %v: %d production capacity, %d units to place\n",
 					factory_loc, gc.factory_prod[factory_loc], gc.builds_left[factory_loc])
@@ -207,7 +206,7 @@ find_placement_options :: proc(gc: ^Game_Cache) -> [dynamic]Placement_Option {
 	options := make([dynamic]Placement_Option)
 	
 	// For each factory owned by current player
-	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for factory_loc in gc.factory_locations[gc.cur_player][:] {
 		if gc.owner[factory_loc] != gc.cur_player {
 			continue
 		}

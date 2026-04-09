@@ -1,6 +1,5 @@
 package oaaa
 
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:math"
 
@@ -75,7 +74,7 @@ generate_all_enemy_attack_options :: proc(
 	
 	// #region TM-014: for (enemy player) loop - generate attack options per enemy
 	// Generate attack options for each enemy separately
-	for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
+	for enemy in mm.enemies[gc.cur_player][:] {
 		generate_single_enemy_attack_options(gc, enemy, &all_enemies.per_enemy[enemy])
 		all_enemies.enemies_analyzed += {enemy}
 	}
@@ -173,10 +172,10 @@ is_sea_worth_defending :: proc(gc: ^Game_Cache, dst_sea: Sea_ID) -> bool {
 	// Check if this sea zone is adjacent to one of our coastal factories
 	// This is important for ship purchase decisions - we need to know threats
 	// to sea zones where we might want to build ships
-	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for factory_loc in gc.factory_locations[gc.cur_player][:] {
 		if gc.owner[factory_loc] != gc.cur_player do continue
 		// Check if factory is adjacent to this sea zone
-		for adj_sea in sa.slice(&mm.l2s_1away_via_land[factory_loc]) {
+		for adj_sea in mm.l2s_1away_via_land[factory_loc][:] {
 			if adj_sea == dst_sea {
 				return true
 			}
@@ -197,7 +196,7 @@ process_enemy_fighters :: proc(
 	fighter_count := enemy_gc.active_land_planes[src_land][.FIGHTER_UNMOVED]
 	
 	get_airs(get_valid_unmoved_fighter_moves(enemy_gc), air_array)
-	for dst in sa.slice(air_array) {
+	for dst in air_array[:] {
 		if is_land(dst) {
 			dst_land := to_land(dst)
 			if !is_land_worth_defending(gc, dst_land) {
@@ -225,7 +224,7 @@ process_enemy_bombers :: proc(
 	bomber_count := enemy_gc.active_land_planes[src_land][.BOMBER_UNMOVED]
 	
 	get_airs(get_valid_unmoved_bomber_moves(enemy_gc), air_array)
-	for dst in sa.slice(air_array) {
+	for dst in air_array[:] {
 		if is_land(dst) {
 			dst_land := to_land(dst)
 			if !is_land_worth_defending(gc, dst_land) {

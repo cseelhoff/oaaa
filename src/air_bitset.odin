@@ -1,18 +1,17 @@
 package oaaa
 
 import "base:intrinsics"
-import sa "core:container/small_array"
 
 // air_positions: [dynamic]Air_ID
 
 // Air_Bitset is a 256-bit bitset using [4]u64
 // Layout: [0] = bits 0-63, [1] = bits 64-127, [2] = bits 128-191, [3] = bits 192-255
 Air_Bitset :: distinct [4]u64
-Air_ID_Array :: sa.Small_Array(len(Air_ID), Air_ID)
+Air_ID_Array :: [dynamic; len(Air_ID)]Air_ID
 
 // Get all set bits from the bitset
 get_airs :: proc(air_bitset: Air_Bitset, air_array: ^Air_ID_Array) {
-	sa.clear(air_array)
+	clear(air_array)
 	for i in 0 ..< len(air_bitset) {
 		chunk := air_bitset[i]
 		if chunk == 0 do continue
@@ -22,7 +21,7 @@ get_airs :: proc(air_bitset: Air_Bitset, air_array: ^Air_ID_Array) {
 		temp_chunk := chunk
 		for temp_chunk != 0 {
 			trailing_zeros := intrinsics.count_trailing_zeros(temp_chunk)
-			sa.append(air_array, Air_ID(bit_offset + int(trailing_zeros)))
+			append(air_array, Air_ID(bit_offset + int(trailing_zeros)))
 			temp_chunk &= temp_chunk - 1 // Clear least significant set bit
 		}
 	}

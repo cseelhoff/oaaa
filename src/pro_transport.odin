@@ -43,7 +43,6 @@ PARTIAL (22%):
 
 import "core:fmt"
 import "core:slice"
-import sa "core:container/small_array"
 
 // Transport_Plan represents a complete amphibious assault plan
 Transport_Plan :: struct {
@@ -90,7 +89,7 @@ find_transports_for_target :: proc(
 	options := make([dynamic]Transport_Option)
 	
 	// Get adjacent seas to target
-	adjacent_seas := sa.slice(&mm.l2s_1away_via_land[target_land])
+	adjacent_seas := mm.l2s_1away_via_land[target_land][:]
 	if len(adjacent_seas) == 0 {
 		return options // Not coastal
 	}
@@ -206,7 +205,7 @@ find_loadable_units_near_sea :: proc(
 	units := make([dynamic]Unit_Load_Info)
 	
 	// Get lands adjacent to this sea
-	adjacent_lands := sa.slice(&mm.s2l_1away_via_sea[sea])
+	adjacent_lands := mm.s2l_1away_via_sea[sea][:]
 	
 	for land in adjacent_lands {
 		// Must be friendly or allied territory
@@ -356,7 +355,7 @@ create_transport_plan :: proc(
 	*/
 	
 	// Find adjacent sea to target where we'll unload
-	adjacent_seas := sa.slice(&mm.l2s_1away_via_land[target_land])
+	adjacent_seas := mm.l2s_1away_via_land[target_land][:]
 	if len(adjacent_seas) == 0 {
 		return nil  // Not coastal
 	}
@@ -447,7 +446,7 @@ calculate_transport_path :: proc(
 	if to_sea in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][from_sea] {
 		// Find intermediate sea
 		mid_seas := &mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][from_sea]
-		for mid_sea in sa.slice(&mid_seas[to_sea]) {
+		for mid_sea in mid_seas[to_sea][:] {
 			// Check if path is safe
 			if gc.enemy_blockade_total[mid_sea] == 0 {
 				append(&path, mid_sea)
@@ -507,7 +506,7 @@ return false
 }
 
 // Check all intermediate seas for enemy blockades/destroyers
-for mid_sea in sa.slice(&mm.s2s_2away_via_midseas[canal_state][from_sea][to_sea]) {
+for mid_sea in mm.s2s_2away_via_midseas[canal_state][from_sea][to_sea][:] {
 if gc.enemy_destroyer_total[mid_sea] > 0 {
 return false // Blocked by enemy destroyer
 }

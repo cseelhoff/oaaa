@@ -1,9 +1,8 @@
 package oaaa
-import sa "core:container/small_array"
 
 BUY_ACTIONS_COUNT :: len(Buy_Action)
 
-SA_Land :: sa.Small_Array(len(Land_ID), Land_ID)
+SA_Land :: [dynamic; len(Land_ID)]Land_ID
 Canals_Open :: bit_set[Canal_ID;u8]
 Unlucky_Teams :: bit_set[Team_ID;u8]
 Land_Bitset :: bit_set[Land_ID;u128]
@@ -97,7 +96,7 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	for land in Land_ID {
 		gc.income[gc.owner[land]] += mm.value[land]
 		if gc.factory_prod[land] > 0 {
-			sa.push(&gc.factory_locations[gc.owner[land]], land)
+			append(&gc.factory_locations[gc.owner[land]], land)
 		}
 		if mm.team[gc.owner[land]] == mm.team[gc.cur_player] {
 			gc.friendly_owner += {land}
@@ -143,7 +142,7 @@ resfresh_cache :: proc(gc: ^Game_Cache) {
 	gc.clear_history_needed = false
 	gc.use_selected_action = false
 	for player in Player_ID {
-		for factory_location in sa.slice(&gc.factory_locations[player]) {
+		for factory_location in gc.factory_locations[player][:] {
 			gc.has_factory += {factory_location}
 			if mm.team[player] != mm.team[gc.cur_player] {
 				gc.has_enemy_factory += {factory_location}
@@ -162,7 +161,7 @@ resfresh_cache :: proc(gc: ^Game_Cache) {
 
 count_sea_unit_totals :: proc(gc: ^Game_Cache) {
 	gc.possible_factory_carriers = {}
-	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for land in gc.factory_locations[gc.cur_player][:] {
 		gc.possible_factory_carriers += mm.l2s_1away_via_land_bitset[land]
 	}
 	for sea in Sea_ID {
@@ -171,7 +170,7 @@ count_sea_unit_totals :: proc(gc: ^Game_Cache) {
 		gc.enemy_destroyer_total[sea] = 0
 		gc.enemy_blockade_total[sea] = 0
 		gc.enemy_subvuln_ships_total[sea] = 0
-		for enemy in sa.slice(&mm.enemies[gc.cur_player]) {
+		for enemy in mm.enemies[gc.cur_player][:] {
 			gc.enemy_fighters_total[sea] += gc.idle_sea_planes[sea][enemy][.FIGHTER]
 			gc.enemy_subs_total[sea] += gc.idle_ships[sea][enemy][.SUB]
 			gc.enemy_destroyer_total[sea] += gc.idle_ships[sea][enemy][.DESTROYER]
@@ -202,7 +201,7 @@ count_sea_unit_totals :: proc(gc: ^Game_Cache) {
 		gc.allied_antifighter_ships_total[sea] = 0
 		gc.allied_sea_combatants_total[sea] = 0
 		gc.has_carrier_space = {}
-		for ally in sa.slice(&mm.allies[gc.cur_player]) {
+		for ally in mm.allies[gc.cur_player][:] {
 			gc.allied_fighters_total[sea] += gc.idle_sea_planes[sea][ally][.FIGHTER]
 			gc.allied_carriers_total[sea] += gc.idle_ships[sea][ally][.CARRIER]
 			gc.allied_destroyers_total[sea] += gc.idle_ships[sea][ally][.DESTROYER]

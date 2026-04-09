@@ -1,7 +1,5 @@
 package oaaa
 
-import sa "core:container/small_array"
-
 Player_Data :: struct {
 	player:   Player_ID,
 	team:     Team_ID,
@@ -12,7 +10,7 @@ Player_Data :: struct {
 
 DEF_COLOR :: "\033[1;0m"
 
-Factory_Locations :: sa.Small_Array(len(Land_ID), Land_ID)
+Factory_Locations :: [dynamic; len(Land_ID)]Land_ID
 
 Player_ID :: enum {
 	Rus,
@@ -38,9 +36,9 @@ initialize_player_data :: proc() {
 		// populate allies and enemies lists based on team
 		for other_player in Player_ID {
 			if mm.team[other_player] == mm.team[player] {
-				sa.push(&mm.allies[player], other_player)
+				append(&mm.allies[player], other_player)
 			} else {
-				sa.push(&mm.enemies[player], other_player)
+				append(&mm.enemies[player], other_player)
 			}
 		}
 	}

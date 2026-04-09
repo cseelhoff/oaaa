@@ -50,7 +50,6 @@ From ProSimulateTurnUtils.java - ENTIRE FILE MISSING:
 
 import "core:fmt"
 import "core:math"
-import sa "core:container/small_array"
 
 // Territory value calculation - how important is this territory?
 // Based on IPC value, strategic position, and tactical importance
@@ -248,7 +247,7 @@ find_best_factory_location :: proc(gc: ^Game_Cache) -> Maybe(Land_ID) {
 		
 		// Check if already has factory
 		has_factory := false
-		for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
+		for land in gc.factory_locations[gc.cur_player][:] {
 			if land == territory {
 				has_factory = true
 				break
@@ -360,7 +359,7 @@ calculate_land_strength_within_distance :: proc(
 			next_ring: Land_Bitset = {}
 			for land in current_ring {
 				// Add adjacent lands
-				for adj_land in sa.slice(&mm.l2l_1away_via_land[land]) {
+				for adj_land in mm.l2l_1away_via_land[land][:] {
 					if adj_land not_in visited {
 						// Only count passable land (can move through)
 						// For now, allow all non-water territories

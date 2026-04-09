@@ -1,5 +1,4 @@
 package oaaa
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:slice"
 
@@ -43,9 +42,9 @@ action_to_air :: #force_inline proc(act: Action_ID) -> Air_ID {
 
 initialize_coastal_connections :: proc() {
 	for connection in COASTAL_CONNECTIONS {
-		sa.push(&mm.l2s_1away_via_land[connection.land], connection.sea)
+		append(&mm.l2s_1away_via_land[connection.land], connection.sea)
 		mm.l2s_1away_via_land_bitset[connection.land] += {connection.sea}
-		sa.push(&mm.s2l_1away_via_sea[connection.sea], connection.land)
+		append(&mm.s2l_1away_via_sea[connection.sea], connection.land)
 	}
 	for src_land in Land_ID {
 		for dst_sea in Sea_ID {
@@ -53,16 +52,16 @@ initialize_coastal_connections :: proc() {
 			l2s_2_away := L2S_2_Away {
 				sea = dst_sea,
 			}
-			for mid_land in sa.slice(&mm.s2l_1away_via_sea[dst_sea]) {
+			for mid_land in mm.s2l_1away_via_sea[dst_sea][:] {
 				_ =
 				slice.linear_search(
-					sa.slice(&mm.l2l_1away_via_land[src_land]),
+					mm.l2l_1away_via_land[src_land][:],
 					mid_land,
 				) or_continue
-				sa.push(&l2s_2_away.mid_lands, mid_land)
+				append(&l2s_2_away.mid_lands, mid_land)
 			}
 			mm.l2s_2away_via_land_bitset[src_land] += {dst_sea}
-			// sa.push(&mm.l2s_2away_via_land[src_land], l2s_2_away)
+			// append(&mm.l2s_2away_via_land[src_land], l2s_2_away)
 		}
 	}
 }
@@ -78,17 +77,17 @@ initialize_air_connections :: proc() {
 		// Set initial distances based on adjacent lands
 	}
 	for land in Land_ID {
-		for adjacent_land in sa.slice(&mm.l2l_1away_via_land[land]) {
+		for adjacent_land in mm.l2l_1away_via_land[land][:] {
 			mm.air_distances[to_air(land)][to_air(adjacent_land)] = 1
 			add_air(&mm.a2a_within_1_moves[to_air(land)], to_air(adjacent_land))
 		}
-		for adjacent_sea in sa.slice(&mm.l2s_1away_via_land[land]) {
+		for adjacent_sea in mm.l2s_1away_via_land[land][:] {
 			mm.air_distances[to_air(land)][to_air(adjacent_sea)] = 1
 			add_air(&mm.a2a_within_1_moves[to_air(land)], to_air(adjacent_sea))
 		}
 	}
 	for sea in Sea_ID {
-		for adjacent_land in sa.slice(&mm.s2l_1away_via_sea[sea]) {
+		for adjacent_land in mm.s2l_1away_via_sea[sea][:] {
 			mm.air_distances[to_air(sea)][to_air(adjacent_land)] = 1
 			add_air(&mm.a2a_within_1_moves[to_air(sea)], to_air(adjacent_land))
 		}

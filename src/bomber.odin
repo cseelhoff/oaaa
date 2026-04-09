@@ -1,6 +1,5 @@
 package oaaa
 
-import sa "core:container/small_array"
 
 Bomber_After_Moves := [?]Active_Plane {
 	/*
@@ -91,20 +90,20 @@ max_bombers_can_attack_here :: proc(gc: ^Game_Cache, air: Air_ID) -> u8 {
 	max_bombers :u8= 0
 	if contains_air(gc.can_bomber_land_in_1_moves, air) {
 		get_airs(mm.a2a_within_5_moves[air], &air_array)
-		for bomber_src in sa.slice(&air_array) {
+		for bomber_src in air_array[:] {
 			max_bombers += gc.idle_land_planes[to_land(bomber_src)][gc.cur_player][.BOMBER]
 		}
 		return max_bombers
 	}
 	if contains_air(gc.can_bomber_land_in_2_moves, air) {
 		get_airs(mm.a2a_within_4_moves[air], &air_array)
-		for bomber_src in sa.slice(&air_array) {
+		for bomber_src in air_array[:] {
 			max_bombers += gc.idle_land_planes[to_land(bomber_src)][gc.cur_player][.BOMBER]
 		}
 		return max_bombers
 	}
 	get_airs(mm.a2a_within_3_moves[air], &air_array)
-	for bomber_src in sa.slice(&air_array) {
+	for bomber_src in air_array[:] {
 		max_bombers += gc.idle_land_planes[to_land(bomber_src)][gc.cur_player][.BOMBER]
 	}
 	return max_bombers

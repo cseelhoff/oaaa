@@ -1,6 +1,5 @@
 //#+feature global-context
 package oaaa
-import sa "core:container/small_array"
 import "core:fmt"
 
 MAX_TRANSPORT_MOVES :: 2
@@ -304,7 +303,7 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance
 			   gc.allied_sea_combatants_total[dst_sea_2_away] == 0 { 	// Transport needs combat ship escort
 			continue
 		}
-		for mid_sea in sa.slice(&mid_seas[dst_sea_2_away]) {
+		for mid_sea in mid_seas[dst_sea_2_away][:] {
 			if (gc.enemy_blockade_total[mid_sea] == 0) { 	// Path must be free of enemy blockades
 				add_valid_action(gc, to_action(dst_sea_2_away))
 				break
@@ -314,7 +313,7 @@ add_valid_transport_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID, max_distance
 }
 
 add_valid_unload_moves :: proc(gc: ^Game_Cache, src_sea: Sea_ID) {
-	for dst_land in sa.slice(&mm.s2l_1away_via_sea[src_sea]) {
+	for dst_land in mm.s2l_1away_via_sea[src_sea][:] {
 		add_valid_action(gc, to_action(dst_land))
 	}
 }

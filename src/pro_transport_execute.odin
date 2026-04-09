@@ -24,7 +24,6 @@ Architecture:
 */
 
 import "core:fmt"
-import sa "core:container/small_array"
 import "base:intrinsics"
 
 // Execute a complete transport plan (load -> move -> unload)

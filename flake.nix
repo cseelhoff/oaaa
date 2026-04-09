@@ -4,26 +4,35 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    odin-src = {
+      url = "github:odin-lang/Odin";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, odin-src }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        odin-dev = pkgs.odin.overrideAttrs (old: {
+          version = "dev-2026-04";
+          src = odin-src;
+          patches = [];
+        });
       in
       {
         devShells.default = pkgs.mkShell {
           buildInputs = [
-            pkgs.odin
+            odin-dev
           ];
 
           nativeBuildInputs = with pkgs; [
             git
             which
             clang
-            llvmPackages.llvm  # Match the LLVM version with clang_18
-            llvmPackages.bintools  # Match bintools version
-            odin  # Already included in buildInputs, no need to repeat unless required
+            llvmPackages.llvm
+            llvmPackages.bintools
+            odin-dev
             lldb
           ];
 

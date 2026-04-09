@@ -1,5 +1,4 @@
 package oaaa
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:time"
 import "base:intrinsics"
@@ -244,7 +243,7 @@ buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		gc.money[gc.cur_player] -= FACTORY_COST
 		factory_land := to_land(factory_land_action)
 		gc.factory_prod[factory_land] = mm.value[factory_land]
-		sa.push(&gc.factory_locations[gc.cur_player], factory_land)
+		append(&gc.factory_locations[gc.cur_player], factory_land)
 	}
 	return true
 }
@@ -347,10 +346,10 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 	// Evaluate the game state and return a score
 	allied_score := 1 // one helps prevent division by zero
 	enemy_score := 1
-	for ally in sa.slice(&mm.allies[gs.cur_player]) {
+	for ally in mm.allies[gs.cur_player][:] {
 		allied_score += int(gs.money[ally])
 	}
-	for enemy in sa.slice(&mm.enemies[gs.cur_player]) {
+	for enemy in mm.enemies[gs.cur_player][:] {
 		enemy_score += int(gs.money[enemy])
 	}
 	for player in Player_ID {

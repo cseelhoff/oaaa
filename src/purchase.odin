@@ -1,6 +1,5 @@
 //#+feature global-context
 package oaaa
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:slice"
 
@@ -148,14 +147,14 @@ FACTORY_COST :: 15
 // }
 buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 	air_array: Air_ID_Array
-	for dst_sea in sa.slice(&mm.l2s_1away_via_land[land]) {
+	for dst_sea in mm.l2s_1away_via_land[land][:] {
 		for (gc.builds_left[land] > 0 &&
 			    gc.smallest_allowable_action[to_air(dst_sea)] != .Skip_Action) {
 			repair_cost := u8(max(0, 1 + int(gc.factory_dmg[land]) - int(gc.builds_left[land])))
 			reset_valid_actions(gc)
 			if gc.money[gc.cur_player] >= Cost_Buy[.BUY_FIGHTER_ACTION] + repair_cost {
 				get_airs(gc.can_fighter_land_here, &air_array)
-				_, found := slice.linear_search(sa.slice(&air_array), to_air(dst_sea))
+				_, found := slice.linear_search(air_array[:], to_air(dst_sea))
 				if found {
 					add_valid_action(gc, .BUY_FIGHTER_ACTION)
 				}
@@ -204,7 +203,7 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 }
 
 // clear_buy_history :: proc(gc: ^Game_Cache, land: Land_ID) {
-// 	for sea in sa.slice(&mm.l2s_1away_via_land[land]) {
+// 	for sea in mm.l2s_1away_via_land[land][:] {
 // 		gc.skipped_buys[to_air(sea)] = {}
 // 		// mem.zero_slice(sea.skipped_buys[:])
 // 	}
@@ -249,7 +248,7 @@ buy_land_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 
 buy_units :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	reset_valid_actions(gc)
-	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for land in gc.factory_locations[gc.cur_player][:] {
 		if gc.builds_left[land] == 0 do continue
 		if gc.clear_history_needed do clear_move_history(gc)
 		buy_sea_units(gc, land) or_return

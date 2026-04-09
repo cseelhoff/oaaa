@@ -1,7 +1,6 @@
 package oaaa
 
 import "base:intrinsics"
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:math/rand"
 
@@ -1015,7 +1014,7 @@ load_best_units_onto_empty_transport :: proc(
 	player := gc.cur_player
 	
 	// Try to load tank first (best attacker)
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue // Not our territory
 		}
@@ -1025,7 +1024,7 @@ load_best_units_onto_empty_transport :: proc(
 			load_unit_onto_transport(gc, land, sea, .TANK_1_MOVES, .TRANS_EMPTY)
 			
 			// Now try to add infantry to fill remaining space
-			for inf_land in sa.slice(adjacent_lands) {
+			for inf_land in adjacent_lands[:] {
 				if mm.team[gc.owner[inf_land]] != mm.team[player] {
 					continue
 				}
@@ -1042,7 +1041,7 @@ load_best_units_onto_empty_transport :: proc(
 			load_unit_onto_transport(gc, land, sea, .TANK_2_MOVES, .TRANS_EMPTY)
 			
 			// Now try to add infantry
-			for inf_land in sa.slice(adjacent_lands) {
+			for inf_land in adjacent_lands[:] {
 				if mm.team[gc.owner[inf_land]] != mm.team[player] {
 					continue
 				}
@@ -1056,7 +1055,7 @@ load_best_units_onto_empty_transport :: proc(
 	}
 	
 	// No tanks - try artillery
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}
@@ -1065,7 +1064,7 @@ load_best_units_onto_empty_transport :: proc(
 			load_unit_onto_transport(gc, land, sea, .ARTY_1_MOVES, .TRANS_EMPTY)
 			
 			// Add infantry
-			for inf_land in sa.slice(adjacent_lands) {
+			for inf_land in adjacent_lands[:] {
 				if mm.team[gc.owner[inf_land]] != mm.team[player] {
 					continue
 				}
@@ -1080,7 +1079,7 @@ load_best_units_onto_empty_transport :: proc(
 	
 	// No tanks or artillery - load 2 infantry if possible
 	infantry_loaded := 0
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}
@@ -1111,7 +1110,7 @@ load_second_unit_onto_1i_transport :: proc(
 	player := gc.cur_player
 	
 	// Prefer tank or artillery first (better attack)
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}
@@ -1134,7 +1133,7 @@ load_second_unit_onto_1i_transport :: proc(
 	}
 	
 	// Fallback to infantry
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}
@@ -1157,7 +1156,7 @@ load_infantry_onto_partial_transport :: proc(
 ) -> bool {
 	player := gc.cur_player
 	
-	for land in sa.slice(adjacent_lands) {
+	for land in adjacent_lands[:] {
 		if mm.team[gc.owner[land]] != mm.team[player] {
 			continue
 		}

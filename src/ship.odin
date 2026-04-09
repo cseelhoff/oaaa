@@ -1,7 +1,6 @@
 //#+feature global-context
 package oaaa
 
-import sa "core:container/small_array"
 import "core:fmt"
 
 Idle_Ship :: enum {
@@ -298,15 +297,13 @@ skip_ship :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> bool {
 }
 
 add_valid_ship_moves :: proc(gc: ^Game_Cache) {
-	// for dst_sea in sa.slice(&src_sea.canal_paths[gc.canal_state].adjacent_seas) {
+	// for dst_sea in src_sea.canal_paths[gc.canal_state].adjacent_seas[:] {
 	src_sea := to_sea(gc.current_territory)
 	ship := to_ship(gc.current_active_unit)
 	add_seas_to_valid_actions(gc, mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][src_sea], gc.active_ships[src_sea][ship])
-	// for &dst_sea_2_away in sa.slice(&src_sea.canal_paths[gc.canal_state].seas_2_moves_away) {
+	// for &dst_sea_2_away in src_sea.canal_paths[gc.canal_state].seas_2_moves_away[:] {
 	for dst_sea_2_away in mm.s2s_2away_via_sea[transmute(u8)gc.canals_open][src_sea] {
-		for mid_sea in sa.slice(
-			&mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][dst_sea_2_away],
-		) {
+		for mid_sea in mm.s2s_2away_via_midseas[transmute(u8)gc.canals_open][src_sea][dst_sea_2_away][:] {
 			if gc.enemy_destroyer_total[mid_sea] > 0 do continue
 			if ship != .SUB_2_MOVES && gc.enemy_blockade_total[mid_sea] > 0 do continue
 			add_sea_to_valid_actions(gc, dst_sea_2_away, gc.active_ships[src_sea][ship])

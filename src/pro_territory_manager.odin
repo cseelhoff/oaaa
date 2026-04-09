@@ -1,5 +1,4 @@
 package oaaa
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:slice"
 
@@ -229,7 +228,7 @@ find_air_attack_destinations :: proc(gc: ^Game_Cache, options: ^Pro_My_Move_Opti
 		// Fighters
 		if gc.active_land_planes[src_land][.FIGHTER_UNMOVED] > 0 {
 			get_airs(get_valid_unmoved_fighter_moves(gc), &air_array)
-			for dst in sa.slice(&air_array) {
+			for dst in air_array[:] {
 				if is_land(dst) {
 					dst_land := to_land(dst)
 					// Attack enemy territories with units
@@ -254,7 +253,7 @@ find_air_attack_destinations :: proc(gc: ^Game_Cache, options: ^Pro_My_Move_Opti
 		// Bombers
 		if gc.active_land_planes[src_land][.BOMBER_UNMOVED] > 0 {
 			get_airs(get_valid_unmoved_bomber_moves(gc), &air_array)
-			for dst in sa.slice(&air_array) {
+			for dst in air_array[:] {
 				if is_land(dst) {
 					dst_land := to_land(dst)
 					if mm.team[gc.owner[dst_land]] != mm.team[gc.cur_player] &&
@@ -292,7 +291,7 @@ find_naval_attack_destinations :: proc(gc: ^Game_Cache, options: ^Pro_My_Move_Op
 		}
 		
 		// Bombard options - ships can bombard adjacent land
-		for dst_land in sa.slice(&mm.s2l_1away_via_sea[src_sea]) {
+		for dst_land in mm.s2l_1away_via_sea[src_sea][:] {
 			if mm.team[gc.owner[dst_land]] != mm.team[gc.cur_player] {
 				options.bombard_targets[src_sea] += {dst_land}
 			}
@@ -390,7 +389,7 @@ find_air_defend_destinations :: proc(gc: ^Game_Cache, options: ^Pro_My_Move_Opti
 		// Fighters - can land on friendly territories or carriers
 		if gc.active_land_planes[src_land][.FIGHTER_UNMOVED] > 0 {
 			get_airs(get_valid_unmoved_fighter_moves(gc), &air_array)
-			for dst in sa.slice(&air_array) {
+			for dst in air_array[:] {
 				if is_land(dst) {
 					dst_land := to_land(dst)
 					if mm.team[gc.owner[dst_land]] == mm.team[gc.cur_player] || dst_land in cleared_territories {
@@ -410,7 +409,7 @@ find_air_defend_destinations :: proc(gc: ^Game_Cache, options: ^Pro_My_Move_Opti
 		// Bombers
 		if gc.active_land_planes[src_land][.BOMBER_UNMOVED] > 0 {
 			get_airs(get_valid_unmoved_bomber_moves(gc), &air_array)
-			for dst in sa.slice(&air_array) {
+			for dst in air_array[:] {
 				if is_land(dst) {
 					dst_land := to_land(dst)
 					if mm.team[gc.owner[dst_land]] == mm.team[gc.cur_player] || dst_land in cleared_territories {

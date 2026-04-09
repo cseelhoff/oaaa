@@ -3,7 +3,6 @@ package oaaa
 import "core:fmt"
 import "core:math"
 import "core:slice"
-import sa "core:container/small_array"
 
 // Find all valid landing options for an air unit
 find_air_landing_options :: proc(
@@ -65,7 +64,7 @@ find_air_landing_options :: proc(
 	}
     sa_valid_landings: Air_ID_Array = {}
     get_airs(valid_landings, &sa_valid_landings)
-	for air_id in sa.slice(&sa_valid_landings) {
+	for air_id in sa_valid_landings[:] {
 		option := Air_Landing_Option{
 			territory = air_id,
 			is_water = false,

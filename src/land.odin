@@ -1,9 +1,8 @@
 package oaaa
 
-import sa "core:container/small_array"
 import "core:slice"
 
-SA_Adjacent_L2S :: sa.Small_Array(MAX_LAND_TO_SEA_CONNECTIONS, Sea_ID)
+SA_Adjacent_L2S :: [dynamic; MAX_LAND_TO_SEA_CONNECTIONS]Sea_ID
 
 to_land :: proc {
 	air_to_land,
@@ -55,8 +54,8 @@ initialize_land_connections :: proc() {
 		mm.land_distances[land][land] = 0
 	}
 	for connection in LAND_CONNECTIONS {
-		sa.push(&mm.l2l_1away_via_land[connection[0]],connection[1])
-		sa.push(&mm.l2l_1away_via_land[connection[1]],connection[0])
+		append(&mm.l2l_1away_via_land[connection[0]],connection[1])
+		append(&mm.l2l_1away_via_land[connection[1]],connection[0])
 		mm.l2l_1away_via_land_bitset[connection[0]] += {connection[1]}
 		mm.l2l_1away_via_land_bitset[connection[1]] += {connection[0]}
 		mm.land_distances[connection[0]][connection[1]] = 1
@@ -74,10 +73,10 @@ initialize_land_connections :: proc() {
 	}
 	// Initialize the l2l_2away_via_land array
 	for src_land in Land_ID {
-		adjacent_lands := sa.slice(&mm.l2l_1away_via_land[src_land])
+		adjacent_lands := mm.l2l_1away_via_land[src_land][:]
 		for distance, dst_land in mm.land_distances[src_land] {
 			if distance == 2 {
-				for adjacent_land in sa.slice(&mm.l2l_1away_via_land[dst_land]) {
+				for adjacent_land in mm.l2l_1away_via_land[dst_land][:] {
 					_ = slice.linear_search(adjacent_lands, adjacent_land) or_continue
 					mm.l2l_2away_via_midland_bitset[src_land][dst_land] += {adjacent_land}
 				}
@@ -105,10 +104,10 @@ transfer_land_ownership :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool
 	if gc.factory_prod[dst_land] == 0 {
 		return true
 	}
-	sa.push(&gc.factory_locations[new_owner], dst_land)
-	index, found := slice.linear_search(sa.slice(&gc.factory_locations[old_owner]), dst_land)
+	append(&gc.factory_locations[new_owner], dst_land)
+	index, found := slice.linear_search(gc.factory_locations[old_owner][:], dst_land)
 	assert(found, "factory conquered, but not found in owned factory locations")
-	sa.unordered_remove(&gc.factory_locations[old_owner], index)
+	unordered_remove(&gc.factory_locations[old_owner], index)
 	return true
 }
 
@@ -118,7 +117,7 @@ initialize_land_mass_size :: proc() {
 		airs_within_6 := mm.a2a_within_6_moves[to_air(land)]
 		get_airs(airs_within_6, &air_id_array)
 		mm.land_mass_size[land] = 1
-		for air in sa.slice(&air_id_array) {
+		for air in air_id_array[:] {
 			if is_air_land(air) {
 				mm.land_mass_size[land] += 1
 			}
