@@ -548,7 +548,7 @@ get_closest_enemy_land_distance_over_water :: proc(
 		
 		for sea_id in current_frontier {
 			// Check adjacent land territories
-			for land in mm.s2l_1away[sea_id] {
+			for land in mm.s2l_1away_via_sea[sea_id][:] {
 				if land not_in gc.friendly_owner {
 					// Found enemy or neutral land
 					return dist
@@ -556,8 +556,8 @@ get_closest_enemy_land_distance_over_water :: proc(
 			}
 			
 			// Expand to adjacent sea zones
-			for adj_sea in Sea_ID {
-				if adj_sea in mm.s2s_1away[sea_id] && adj_sea not_in visited_sea {
+			for adj_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea_id] {
+				if adj_sea not_in visited_sea {
 					visited_sea += {adj_sea}
 					next_frontier += {adj_sea}
 				}
@@ -592,8 +592,8 @@ calculate_allied_naval_strength :: proc(
 		next_frontier: Sea_Bitset = {}
 		
 		for sea_id in current_frontier {
-			for adj_sea in Sea_ID {
-				if adj_sea in mm.s2s_1away[sea_id] && adj_sea not_in visited {
+			for adj_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea_id] {
+				if adj_sea not_in visited {
 					visited += {adj_sea}
 					next_frontier += {adj_sea}
 					strength += count_naval_units_at_sea(gc, adj_sea, player, true)
@@ -626,8 +626,8 @@ calculate_enemy_naval_strength :: proc(
 		next_frontier: Sea_Bitset = {}
 		
 		for sea_id in current_frontier {
-			for adj_sea in Sea_ID {
-				if adj_sea in mm.s2s_1away[sea_id] && adj_sea not_in visited {
+			for adj_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea_id] {
+				if adj_sea not_in visited {
 					visited += {adj_sea}
 					next_frontier += {adj_sea}
 					strength += count_naval_units_at_sea(gc, adj_sea, player, false)
@@ -657,7 +657,7 @@ calculate_enemy_air_threat_from_land :: proc(
 	checked_lands: Land_Bitset = {}
 	
 	// Check lands adjacent to center sea
-	for land in mm.s2l_1away[center_sea] {
+	for land in mm.s2l_1away_via_sea[center_sea][:] {
 		if land not_in checked_lands {
 			checked_lands += {land}
 			strength += count_enemy_air_at_land(gc, land, player)
@@ -669,13 +669,13 @@ calculate_enemy_air_threat_from_land :: proc(
 		next_sea_frontier: Sea_Bitset = {}
 		
 		for sea_id in current_sea_frontier {
-			for adj_sea in Sea_ID {
-				if adj_sea in mm.s2s_1away[sea_id] && adj_sea not_in visited_sea {
+			for adj_sea in mm.s2s_1away_via_sea[transmute(u8)gc.canals_open][sea_id] {
+				if adj_sea not_in visited_sea {
 					visited_sea += {adj_sea}
 					next_sea_frontier += {adj_sea}
 					
 					// Check lands adjacent to this sea zone
-					for land in mm.s2l_1away[adj_sea] {
+					for land in mm.s2l_1away_via_sea[adj_sea][:] {
 						if land not_in checked_lands {
 							checked_lands += {land}
 							strength += count_enemy_air_at_land(gc, land, player)
@@ -717,14 +717,16 @@ count_naval_units_at_sea :: proc(
 			}
 		}
 		
-		// Count moving ships
-		for ship_type in Active_Ship {
-			count := gc.active_ships[sea_zone][other_player][ship_type]
-			if count > 0 {
-				if allied {
-					strength += f64(count) * get_active_ship_defense_value(ship_type)
-				} else {
-					strength += f64(count) * get_active_ship_attack_value(ship_type)
+		// Count moving ships (active_ships are only for cur_player)
+		if other_player == gc.cur_player {
+			for ship_type in Active_Ship {
+				count := gc.active_ships[sea_zone][ship_type]
+				if count > 0 {
+					if allied {
+						strength += f64(count) * get_active_ship_defense_value(ship_type)
+					} else {
+						strength += f64(count) * get_active_ship_attack_value(ship_type)
+					}
 				}
 			}
 		}
@@ -783,8 +785,10 @@ get_ship_attack_value_for_sup :: proc(ship_type: Idle_Ship) -> f64 {
 		return 4.0 + 4.0   // 4 HP (2 hits) + 4 attack
 	case .CARRIER:
 		return 2.0 + 1.0   // 2 HP + 1 attack
-	case .TRANS_EMPTY, .TRANS_1I, .TRANS_2I, .TRANS_1T, .TRANS_1I_1T:
+	case .TRANS_EMPTY, .TRANS_1I, .TRANS_1A, .TRANS_2I, .TRANS_1T, .TRANS_1I_1A, .TRANS_1I_1T:
 		return 2.0 + 0.0   // Transports can't attack
+	case .BS_DAMAGED:
+		return 4.0 + 4.0   // Same as battleship
 	}
 	return 2.0
 }
@@ -802,14 +806,16 @@ get_ship_defense_value_for_sup :: proc(ship_type: Idle_Ship) -> f64 {
 		return 4.0 + 4.0   // 4 HP (2 hits) + 4 defense
 	case .CARRIER:
 		return 2.0 + 2.0   // 2 HP + 2 defense
-	case .TRANS_EMPTY, .TRANS_1I, .TRANS_2I, .TRANS_1T, .TRANS_1I_1T:
+	case .TRANS_EMPTY, .TRANS_1I, .TRANS_1A, .TRANS_2I, .TRANS_1T, .TRANS_1I_1A, .TRANS_1I_1T:
 		return 2.0 + 0.0   // Transports can't defend
+	case .BS_DAMAGED:
+		return 4.0 + 4.0   // Same as battleship
 	}
 	return 2.0
 }
 
 get_active_ship_attack_value :: proc(ship_type: Active_Ship) -> f64 {
-	switch ship_type {
+	#partial switch ship_type {
 	case .SUB_2_MOVES:
 		return 2.0 + 2.0
 	case .DESTROYER_2_MOVES:
@@ -820,15 +826,15 @@ get_active_ship_attack_value :: proc(ship_type: Active_Ship) -> f64 {
 		return 4.0 + 4.0
 	case .CARRIER_2_MOVES:
 		return 2.0 + 1.0
-	case .TRANS_EMPTY_UNMOVED, .TRANS_1I_UNMOVED, .TRANS_2I_UNMOVED, 
-	     .TRANS_1T_UNMOVED, .TRANS_1I_1T_UNMOVED:
+	case .TRANS_EMPTY_UNMOVED, .TRANS_1I_UNMOVED,
+	     .TRANS_1A_UNMOVED, .TRANS_1T_UNMOVED:
 		return 2.0 + 0.0
 	}
 	return 2.0
 }
 
 get_active_ship_defense_value :: proc(ship_type: Active_Ship) -> f64 {
-	switch ship_type {
+	#partial switch ship_type {
 	case .SUB_2_MOVES:
 		return 2.0 + 1.0
 	case .DESTROYER_2_MOVES:
@@ -839,8 +845,8 @@ get_active_ship_defense_value :: proc(ship_type: Active_Ship) -> f64 {
 		return 4.0 + 4.0
 	case .CARRIER_2_MOVES:
 		return 2.0 + 2.0
-	case .TRANS_EMPTY_UNMOVED, .TRANS_1I_UNMOVED, .TRANS_2I_UNMOVED, 
-	     .TRANS_1T_UNMOVED, .TRANS_1I_1T_UNMOVED:
+	case .TRANS_EMPTY_UNMOVED, .TRANS_1I_UNMOVED,
+	     .TRANS_1A_UNMOVED, .TRANS_1T_UNMOVED:
 		return 2.0 + 0.0
 	}
 	return 2.0

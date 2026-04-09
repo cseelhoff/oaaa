@@ -35,7 +35,7 @@ Valid_Land_Buys := [?]Action_ID{.BUY_INF_ACTION, .BUY_ARTY_ACTION, .BUY_TANK_ACT
 Buy_Active_Ship: [Action_ID]Active_Ship
 
 @(init)
-init_buy_active_ship :: proc() {
+init_buy_active_ship :: proc "contextless" () {
 	Buy_Active_Ship[.BUY_TRANS_ACTION] = .TRANS_EMPTY_0_MOVES
 	Buy_Active_Ship[.BUY_SUB_ACTION] = .SUB_0_MOVES
 	Buy_Active_Ship[.BUY_DESTROYER_ACTION] = .DESTROYER_0_MOVES
@@ -47,7 +47,7 @@ init_buy_active_ship :: proc() {
 Buy_Active_Plane: [Action_ID]Active_Plane
 
 @(init)
-init_buy_active_plane :: proc() {
+init_buy_active_plane :: proc "contextless" () {
 	Buy_Active_Plane[.BUY_FIGHTER_ACTION] = .FIGHTER_0_MOVES
 	Buy_Active_Plane[.BUY_BOMBER_ACTION] = .BOMBER_0_MOVES
 }
@@ -55,7 +55,7 @@ init_buy_active_plane :: proc() {
 Buy_Active_Army: [Action_ID]Active_Army
 
 @(init)
-init_buy_active_army :: proc() {
+init_buy_active_army :: proc "contextless" () {
 	Buy_Active_Army[.BUY_INF_ACTION] = .INF_0_MOVES
 	Buy_Active_Army[.BUY_ARTY_ACTION] = .ARTY_0_MOVES
 	Buy_Active_Army[.BUY_TANK_ACTION] = .TANK_0_MOVES
@@ -65,7 +65,7 @@ init_buy_active_army :: proc() {
 Cost_Buy : [Action_ID]u8
 
 @(init)
-init_cost_buy :: proc() {
+init_cost_buy :: proc "contextless" () {
 	Cost_Buy[.Skip_Action] = 0
 	Cost_Buy[.BUY_INF_ACTION] = 3
 	Cost_Buy[.BUY_ARTY_ACTION] = 4

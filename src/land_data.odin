@@ -203,7 +203,7 @@ starting_armies : [Land_ID][Player_ID][Idle_Army]u8
 starting_land_planes : [Land_ID][Player_ID][Idle_Plane]u8
 
 @(init)
-init_starting_armies :: proc() {
+init_starting_armies :: proc "contextless" () {
     // Russian territories
     starting_armies[.Karelia_SSR][.Rus][.INF] = 4
     starting_armies[.Karelia_SSR][.Rus][.ARTY] = 1
@@ -309,7 +309,7 @@ init_starting_armies :: proc() {
 }
 
 @(init)
-init_starting_land_planes :: proc() {
+init_starting_land_planes :: proc "contextless" () {
     // Russian territories
     starting_land_planes[.Karelia_SSR][.Rus][.FIGHTER] = 1
     starting_land_planes[.Russia][.Rus][.FIGHTER] = 1

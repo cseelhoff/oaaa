@@ -47,7 +47,7 @@ get_user_input :: proc(gc: ^Game_Cache) -> (action: Action_ID) {
 		return
 	}
 	input_str := string(buffer[:n])
-	int_input := to_action(strconv.atoi(input_str))
+	int_input := to_action(strconv.parse_int(input_str) or_else 0)
 	// assert in input in valid_actions
 	return int_input
 }

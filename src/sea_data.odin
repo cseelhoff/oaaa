@@ -323,7 +323,7 @@ starting_ships: [Sea_ID][Player_ID][Idle_Ship]u8
 starting_sea_planes: [Sea_ID][Player_ID][Idle_Plane]u8
 
 @(init)
-init_starting_ships :: proc() {
+init_starting_ships :: proc "contextless" () {
 	// Russian ships
 	starting_ships[.Sea_4][.Rus][.SUB] = 1
 
@@ -374,7 +374,7 @@ init_starting_ships :: proc() {
 }
 
 @(init)
-init_starting_sea_planes :: proc() {
+init_starting_sea_planes :: proc "contextless" () {
 	// British sea-based planes
 	starting_sea_planes[.Sea_35][.Eng][.FIGHTER] = 1
 

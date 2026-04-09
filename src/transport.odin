@@ -89,7 +89,7 @@ Transports_Needing_Staging := [?]Active_Ship {
 Trans_After_Move_Used: [Active_Ship][MAX_TRANSPORT_MOVES + 1]Active_Ship
 
 @(init)
-init_trans_after_move_used :: proc() {
+init_trans_after_move_used :: proc "contextless" () {
 	Trans_After_Move_Used[.TRANS_EMPTY_UNMOVED][0] = .TRANS_EMPTY_2_MOVES
 	Trans_After_Move_Used[.TRANS_EMPTY_UNMOVED][1] = .TRANS_EMPTY_1_MOVES
 	Trans_After_Move_Used[.TRANS_EMPTY_UNMOVED][2] = .TRANS_EMPTY_0_MOVES
@@ -107,7 +107,7 @@ init_trans_after_move_used :: proc() {
 Trans_After_Loading: [Idle_Army][Active_Ship]Active_Ship
 
 @(init)
-init_transport_after_loading :: proc() {
+init_transport_after_loading :: proc "contextless" () {
     /*
     AI NOTE: Transport Loading State Machine
     
@@ -338,7 +338,7 @@ When a player explicitly chooses not to unload units from a transport that has t
 Trans_After_Rejecting_Unload: [Active_Ship]Active_Ship
 
 @(init)
-init_trans_after_rejecting_unload :: proc() {
+init_trans_after_rejecting_unload :: proc "contextless" () {
 	Trans_After_Rejecting_Unload[.TRANS_1I_0_MOVES] = .TRANS_1I_UNLOADED
 	Trans_After_Rejecting_Unload[.TRANS_1A_0_MOVES] = .TRANS_1A_UNLOADED
 	Trans_After_Rejecting_Unload[.TRANS_1T_0_MOVES] = .TRANS_1T_UNLOADED
@@ -403,7 +403,7 @@ Transport_Unload_Unit: [Active_Ship]Active_Army
     */
 
 @(init)
-init_transport_unload_unit :: proc() {
+init_transport_unload_unit :: proc "contextless" () {
 	Transport_Unload_Unit[.TRANS_1I_0_MOVES] = .INF_0_MOVES
 	Transport_Unload_Unit[.TRANS_1A_0_MOVES] = .ARTY_0_MOVES
 	Transport_Unload_Unit[.TRANS_1T_0_MOVES] = .TANK_0_MOVES
@@ -415,7 +415,7 @@ init_transport_unload_unit :: proc() {
 Trans_After_Unload: [Active_Ship]Active_Ship
 
 @(init)
-init_Trans_After_Unload :: proc() {
+init_Trans_After_Unload :: proc "contextless" () {
 	Trans_After_Unload[.TRANS_1I_0_MOVES] = .TRANS_EMPTY_0_MOVES
 	Trans_After_Unload[.TRANS_1A_0_MOVES] = .TRANS_EMPTY_0_MOVES
 	Trans_After_Unload[.TRANS_1T_0_MOVES] = .TRANS_EMPTY_0_MOVES

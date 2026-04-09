@@ -43,7 +43,7 @@ BATTLESHIP_ATTACK :: 4
 Active_Ship_Attack: [Active_Ship]int
 
 @(init)
-init_Active_Ship_Attack :: proc() {
+init_Active_Ship_Attack :: proc "contextless" () {
 	Active_Ship_Attack[.BATTLESHIP_0_MOVES] = BATTLESHIP_ATTACK
 	Active_Ship_Attack[.BS_DAMAGED_0_MOVES] = BATTLESHIP_ATTACK
 	Active_Ship_Attack[.CRUISER_0_MOVES] = CRUISER_ATTACK
@@ -52,7 +52,7 @@ init_Active_Ship_Attack :: proc() {
 Ship_After_Bombard: [Active_Ship]Active_Ship
 
 @(init)
-init_Ship_After_Bombard :: proc() {
+init_Ship_After_Bombard :: proc "contextless" () {
 	Ship_After_Bombard[.BATTLESHIP_0_MOVES] = .BATTLESHIP_BOMBARDED
 	Ship_After_Bombard[.BS_DAMAGED_0_MOVES] = .BS_DAMAGED_BOMBARDED
 	Ship_After_Bombard[.CRUISER_0_MOVES] = .CRUISER_BOMBARDED
@@ -174,7 +174,7 @@ Unmoved_Blockade_Ships := [?]Active_Ship {
 Ships_Moved: [Active_Ship]Active_Ship
 
 @(init)
-init_Ships_Moved :: proc() {
+init_Ships_Moved :: proc "contextless" () {
 	Ships_Moved[.TRANS_EMPTY_UNMOVED] = .TRANS_EMPTY_2_MOVES
 	Ships_Moved[.TRANS_1I_UNMOVED] = .TRANS_1I_2_MOVES
 	Ships_Moved[.TRANS_1I_2_MOVES] = .TRANS_1I_0_MOVES
@@ -202,7 +202,7 @@ init_Ships_Moved :: proc() {
 Ships_Moves: [Active_Ship]int
 
 @(init)
-init_Ships_Moves :: proc() {
+init_Ships_Moves :: proc "contextless" () {
 	Ships_Moves[.TRANS_1I_1_MOVES] = 1
 	Ships_Moves[.TRANS_1A_1_MOVES] = 1
 	Ships_Moves[.TRANS_1T_1_MOVES] = 1
@@ -235,7 +235,7 @@ Retreatable_Ships := [?]Active_Ship {
 Ships_After_Retreat: [Active_Ship]Active_Ship
 
 @(init)
-init_Ships_After_Retreat :: proc() {
+init_Ships_After_Retreat :: proc "contextless" () {
 	Ships_After_Retreat[.TRANS_EMPTY_0_MOVES] = .TRANS_EMPTY_0_MOVES
 	Ships_After_Retreat[.TRANS_1I_0_MOVES] = .TRANS_1I_UNLOADED
 	Ships_After_Retreat[.TRANS_1A_0_MOVES] = .TRANS_1A_UNLOADED
