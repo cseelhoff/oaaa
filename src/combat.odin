@@ -59,11 +59,11 @@ attacker_sea_casualty_order_4 := []Active_Ship {
 
 attacker_land_casualty_order_1 := []Active_Army{.Infantry_0_Moves, .Artillery_0_Moves, .Tank_0_Moves}
 
-defender_submarine_casualty := []Idle_Ship{.Submarine}
+defender_submarine_casualty := []Roster_Ship{.Submarine}
 
-Defender_Sea_Casualty_Order_1 := []Idle_Ship{.Destroyer, .Carrier, .Cruiser}
+Defender_Sea_Casualty_Order_1 := []Roster_Ship{.Destroyer, .Carrier, .Cruiser}
 
-Defender_Sea_Casualty_Order_2 := []Idle_Ship {
+Defender_Sea_Casualty_Order_2 := []Roster_Ship {
 	.Battleship_Damaged,
 	.Transport_Empty,
 	.Transport_Infantry,
@@ -74,8 +74,8 @@ Defender_Sea_Casualty_Order_2 := []Idle_Ship {
 	.Transport_Infantry_Tank,
 }
 
-Defender_Land_Casualty_Order_1 := []Idle_Army{.AAGun}
-Defender_Land_Casualty_Order_2 := []Idle_Army{.Infantry, .Artillery, .Tank}
+Defender_Land_Casualty_Order_1 := []Roster_Army{.AAGun}
+Defender_Land_Casualty_Order_2 := []Roster_Army{.Infantry, .Artillery, .Tank}
 
 no_defender_threat_exists :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	/*
@@ -102,8 +102,8 @@ no_defender_threat_exists :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 
 count_friendly_submarines :: proc(gc: ^Game_Cache, sea: Sea_ID) -> (friendly_submarines: u8) {
 	friendly_submarines = 0
-	for ally in mm.allies[gc.acting_nation] {
-		friendly_submarines += gc.idle_ships[sea][ally][.Submarine]
+	for ally in mm.friends[gc.acting_nation] {
+		friendly_submarines += gc.roster_ships[sea][ally][.Submarine]
 	}
 	return friendly_submarines
 }
@@ -217,17 +217,17 @@ sea_retreat :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_action: Action_ID) -> 
 	for active_ship in retreatable_ships {
 		number_of_ships := gc.active_ships[src_sea][active_ship]
 		gc.active_ships[dst_sea][ships_after_retreat[active_ship]] += number_of_ships
-		gc.idle_ships[dst_sea][gc.acting_nation][active_ship_to_idle[active_ship]] += number_of_ships
+		gc.roster_ships[dst_sea][gc.acting_nation][active_ship_to_roster[active_ship]] += number_of_ships
 		gc.team_sea_units[dst_sea][team] += number_of_ships
 		gc.active_ships[src_sea][active_ship] = 0
-		gc.idle_ships[src_sea][gc.acting_nation][active_ship_to_idle[active_ship]] = 0
+		gc.roster_ships[src_sea][gc.acting_nation][active_ship_to_roster[active_ship]] = 0
 		gc.team_sea_units[src_sea][team] -= number_of_ships
-		for ally in mm.allies[gc.acting_nation] {
+		for ally in mm.friends[gc.acting_nation] {
 			if ally == gc.acting_nation do continue
-			number_of_ships = gc.idle_ships[src_sea][ally][active_ship_to_idle[active_ship]]
-			gc.idle_ships[dst_sea][ally][active_ship_to_idle[active_ship]] += number_of_ships
+			number_of_ships = gc.roster_ships[src_sea][ally][active_ship_to_roster[active_ship]]
+			gc.roster_ships[dst_sea][ally][active_ship_to_roster[active_ship]] += number_of_ships
 			gc.team_sea_units[dst_sea][team] += number_of_ships
-			gc.idle_ships[src_sea][ally][active_ship_to_idle[active_ship]] = 0
+			gc.roster_ships[src_sea][ally][active_ship_to_roster[active_ship]] = 0
 			gc.team_sea_units[src_sea][team] -= number_of_ships
 		}
 	}
@@ -241,10 +241,10 @@ destroy_defender_transports :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 		// todo - we can use a SIMD 'AND' to zero out the transports
 		enemy_team := mm.enemy_team[gc.acting_nation]
 		for enemy in mm.enemies[gc.acting_nation] {
-			for transport in idle_transports {
-				gc.team_sea_units[sea][enemy_team] -= gc.idle_ships[sea][enemy][transport]
-				gc.enemy_subvuln_ships_total[sea] -= gc.idle_ships[sea][enemy][transport]
-				gc.idle_ships[sea][enemy][transport] = 0
+			for transport in roster_transports {
+				gc.team_sea_units[sea][enemy_team] -= gc.roster_ships[sea][enemy][transport]
+				gc.enemy_subvuln_ships_total[sea] -= gc.roster_ships[sea][enemy][transport]
+				gc.roster_ships[sea][enemy][transport] = 0
 			}
 		}
 	}
@@ -467,7 +467,7 @@ resolve_naval_bombardment :: proc(gc: ^Game_Cache, land: Land_ID) {
     
     Current Limitation:
     - active_ships track bombardment state (_BOMBARDED suffix)
-    - idle_ships (friendly ships) don't track bombardment state
+    - roster_ships (friendly ships) don't track bombardment state
     - This means friendly ships could theoretically bombard multiple times
     
     Impact Assessment:
@@ -477,22 +477,22 @@ resolve_naval_bombardment :: proc(gc: ^Game_Cache, land: Land_ID) {
        - Actual occurrence in gameplay is very rare
     
     Future Enhancement:
-    - Add bombardment state tracking to idle_ships
+    - Add bombardment state tracking to roster_ships
     - Would need new idle ship states like Cruiser_Bombarded
     - Consider memory/performance tradeoff of additional states
     */
 	//todo fix so friendly ships don't get unlimited bombards
-	//since idle_ship doesn't distinguish
+	//since roster_ship doesn't distinguish
 	for sea in mm.coastal_seas[land] {
 		if gc.max_bombardment_dice[land] == 0 do return
 		total_bombardment_value := 0
 		for ship in bombardment_ships {
 			ships_available_for_bombardment: u8 = 0
-			for ally in mm.allies[gc.acting_nation] {
+			for ally in mm.friends[gc.acting_nation] {
 				if ally == gc.acting_nation do continue
 				ships_available_for_bombardment = min(
 					gc.max_bombardment_dice[land],
-					gc.idle_ships[sea][ally][active_ship_to_idle[ship]],
+					gc.roster_ships[sea][ally][active_ship_to_roster[ship]],
 				)
 				gc.max_bombardment_dice[land] -= ships_available_for_bombardment
 				total_bombardment_value +=
@@ -539,11 +539,11 @@ resolve_tactical_aa_fire :: proc(gc: ^Game_Cache, land: Land_ID) {
     */
 	total_aaguns: u8 = 0
 	for enemy in mm.enemies[gc.acting_nation] {
-		total_aaguns += gc.idle_armies[land][enemy][.AAGun]
+		total_aaguns += gc.roster_armies[land][enemy][.AAGun]
 	}
 	total_air_targets :=
-		gc.idle_land_planes[land][gc.acting_nation][.Fighter] +
-		gc.idle_land_planes[land][gc.acting_nation][.Bomber]
+		gc.roster_land_planes[land][gc.acting_nation][.Fighter] +
+		gc.roster_land_planes[land][gc.acting_nation][.Bomber]
 	// Each AA gun can target up to 3 planes
 	total_defense_value := int(min(total_aaguns * 3, total_air_targets))
 	defender_hits := calculate_defender_hits_low_luck(gc, total_defense_value)
@@ -580,7 +580,7 @@ resolve_raid :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
        - Can't mix both in same battle
        - Strategic resolves first, if eligible
     */
-	bombers := gc.idle_land_planes[land][gc.acting_nation][.Bomber]
+	bombers := gc.roster_land_planes[land][gc.acting_nation][.Bomber]
 	if bombers == 0 || gc.team_land_units[land][mm.team[gc.acting_nation]] > bombers {
 		return false
 	}
@@ -593,7 +593,7 @@ resolve_raid :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
 		break
 	}
 	// Bombing damage
-	total_bombing_value := int(gc.idle_land_planes[land][gc.acting_nation][.Bomber]) * 21
+	total_bombing_value := int(gc.roster_land_planes[land][gc.acting_nation][.Bomber]) * 21
 	raid_hits := calculate_attacker_hits_low_luck(gc, total_bombing_value)
 	gc.factory_dmg[land] = max(
 		gc.factory_dmg[land] + raid_hits,
@@ -622,9 +622,9 @@ check_and_conquer_land :: proc(gc: ^Game_Cache, land: Land_ID) -> bool {
     */
 	if gc.team_land_units[land][mm.enemy_team[gc.acting_nation]] > 0 do return false
 	// Only check for combat units that can be present during conquest
-	if gc.idle_armies[land][gc.acting_nation][.Infantry] > 0 ||
-	   gc.idle_armies[land][gc.acting_nation][.Artillery] > 0 ||
-	   gc.idle_armies[land][gc.acting_nation][.Tank] > 0 {
+	if gc.roster_armies[land][gc.acting_nation][.Infantry] > 0 ||
+	   gc.roster_armies[land][gc.acting_nation][.Artillery] > 0 ||
+	   gc.roster_armies[land][gc.acting_nation][.Tank] > 0 {
 		transfer_land_ownership(gc, land)
 	}
 	return true
@@ -668,9 +668,9 @@ add_valid_land_retreat_destinations :: proc(gc: ^Game_Cache) {
 
 destroy_undefended_aaguns :: proc(gc: ^Game_Cache, land: Land_ID) {
 	for enemy in mm.enemies[gc.acting_nation] {
-		if gc.idle_armies[land][enemy][.AAGun] > 0 {
-			aaguns := gc.idle_armies[land][enemy][.AAGun]
-			gc.idle_armies[land][enemy][.AAGun] = 0
+		if gc.roster_armies[land][enemy][.AAGun] > 0 {
+			aaguns := gc.roster_armies[land][enemy][.AAGun]
+			gc.roster_armies[land][enemy][.AAGun] = 0
 			gc.team_land_units[land][mm.team[enemy]] -= aaguns
 		}
 	}
@@ -765,10 +765,10 @@ retreat_land_units :: proc(gc: ^Game_Cache, dst_action: Action_ID) -> bool {
 	for army in Active_Army {
 		number_of_armies := gc.active_armies[src_land][army]
 		gc.active_armies[dst_land][army] += number_of_armies
-		gc.idle_armies[dst_land][gc.acting_nation][active_army_to_idle[army]] += number_of_armies
+		gc.roster_armies[dst_land][gc.acting_nation][active_army_to_roster[army]] += number_of_armies
 		gc.team_land_units[dst_land][mm.team[gc.acting_nation]] += number_of_armies
 		gc.active_armies[src_land][army] = 0
-		gc.idle_armies[src_land][gc.acting_nation][active_army_to_idle[army]] = 0
+		gc.roster_armies[src_land][gc.acting_nation][active_army_to_roster[army]] = 0
 		gc.team_land_units[src_land][mm.team[gc.acting_nation]] -= number_of_armies
 	}
 	gc.more_land_battles_needed -= {src_land}
@@ -950,14 +950,14 @@ calculate_land_attack_value :: proc(gc: ^Game_Cache, land: Land_ID) -> (total_at
     has a chance to hit based on DICE_SIDES (simultaneous with defense rolls).
     */
 	player := gc.acting_nation
-	total_attack_value += int(gc.idle_armies[land][player][.Infantry]) * INFANTRY_ATTACK_VALUE
+	total_attack_value += int(gc.roster_armies[land][player][.Infantry]) * INFANTRY_ATTACK_VALUE
 	total_attack_value +=
-		int(min(gc.idle_armies[land][player][.Infantry], gc.idle_armies[land][player][.Artillery])) *
+		int(min(gc.roster_armies[land][player][.Infantry], gc.roster_armies[land][player][.Artillery])) *
 		INFANTRY_ATTACK_VALUE
-	total_attack_value += int(gc.idle_armies[land][player][.Artillery]) * ARTILLERY_ATTACK_VALUE
-	total_attack_value += int(gc.idle_armies[land][player][.Tank]) * TANK_ATTACK_VALUE
-	total_attack_value += int(gc.idle_land_planes[land][player][.Fighter]) * FIGHTER_ATTACK_VALUE
-	total_attack_value += int(gc.idle_land_planes[land][player][.Bomber]) * BOMBER_ATTACK_VALUE
+	total_attack_value += int(gc.roster_armies[land][player][.Artillery]) * ARTILLERY_ATTACK_VALUE
+	total_attack_value += int(gc.roster_armies[land][player][.Tank]) * TANK_ATTACK_VALUE
+	total_attack_value += int(gc.roster_land_planes[land][player][.Fighter]) * FIGHTER_ATTACK_VALUE
+	total_attack_value += int(gc.roster_land_planes[land][player][.Bomber]) * BOMBER_ATTACK_VALUE
 	return total_attack_value
 }
 
@@ -980,11 +980,11 @@ calculate_land_defense_value :: proc(gc: ^Game_Cache, land: Land_ID) -> (total_d
     They only fire in the special AA defense phase.
     */
 	for player in mm.enemies[gc.acting_nation] {
-		total_defense_value += int(gc.idle_armies[land][player][.Infantry]) * INFANTRY_DEFENSE_VALUE
-		total_defense_value += int(gc.idle_armies[land][player][.Artillery]) * ARTILLERY_DEFENSE_VALUE
-		total_defense_value += int(gc.idle_armies[land][player][.Tank]) * TANK_DEFENSE_VALUE
-		total_defense_value += int(gc.idle_land_planes[land][player][.Fighter]) * FIGHTER_DEFENSE_VALUE
-		total_defense_value += int(gc.idle_land_planes[land][player][.Bomber]) * BOMBER_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_armies[land][player][.Infantry]) * INFANTRY_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_armies[land][player][.Artillery]) * ARTILLERY_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_armies[land][player][.Tank]) * TANK_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_land_planes[land][player][.Fighter]) * FIGHTER_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_land_planes[land][player][.Bomber]) * BOMBER_DEFENSE_VALUE
 	}
 	return total_defense_value
 }
@@ -1004,9 +1004,9 @@ hit_my_battleship :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
     */
 	if gc.active_ships[sea][.Battleship_Bombarded] > 0 {
 		gc.active_ships[sea][.Battleship_Damaged_Bombarded] += 1
-		gc.idle_ships[sea][gc.acting_nation][.Battleship_Damaged] += 1
+		gc.roster_ships[sea][gc.acting_nation][.Battleship_Damaged] += 1
 		gc.active_ships[sea][.Battleship_Bombarded] -= 1
-		gc.idle_ships[sea][gc.acting_nation][.Battleship] -= 1
+		gc.roster_ships[sea][gc.acting_nation][.Battleship] -= 1
 		// Don't update combat totals - damaged battleship still counts
 		return true
 	}
@@ -1022,11 +1022,11 @@ hit_ally_battleship :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
     - Preserve combat totals
     - Only lose bombardment
     */
-	for ally in mm.allies[gc.acting_nation] {
+	for ally in mm.friends[gc.acting_nation] {
 		if ally == gc.acting_nation do continue
-		if gc.idle_ships[sea][ally][.Battleship] > 0 {
-			gc.idle_ships[sea][ally][.Battleship] -= 1
-			gc.idle_ships[sea][ally][.Battleship_Damaged] += 1
+		if gc.roster_ships[sea][ally][.Battleship] > 0 {
+			gc.roster_ships[sea][ally][.Battleship] -= 1
+			gc.roster_ships[sea][ally][.Battleship_Damaged] += 1
 			// Don't update combat totals - damaged battleship still counts
 			return true
 		}
@@ -1036,9 +1036,9 @@ hit_ally_battleship :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 
 hit_enemy_battleship :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	for enemy in mm.enemies[gc.acting_nation] {
-		if gc.idle_ships[sea][enemy][.Battleship] > 0 {
-			gc.idle_ships[sea][enemy][.Battleship] -= 1
-			gc.idle_ships[sea][enemy][.Battleship_Damaged] += 1
+		if gc.roster_ships[sea][enemy][.Battleship] > 0 {
+			gc.roster_ships[sea][enemy][.Battleship] -= 1
+			gc.roster_ships[sea][enemy][.Battleship_Damaged] += 1
 			return true
 		}
 	}
@@ -1052,7 +1052,7 @@ remove_my_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Active_S
     When ships are destroyed, we must update several totals:
     1. Basic Tracking:
        - active_ships (current player's ships)
-       - idle_ships (all players' ships)
+       - roster_ships (all players' ships)
        - team_sea_units (team unit counts)
        
     2. Combat Capability Totals:
@@ -1072,7 +1072,7 @@ remove_my_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Active_S
 	for ship in casualty_order {
 		if gc.active_ships[sea][ship] > 0 {
 			gc.active_ships[sea][ship] -= 1
-			gc.idle_ships[sea][gc.acting_nation][active_ship_to_idle[ship]] -= 1
+			gc.roster_ships[sea][gc.acting_nation][active_ship_to_roster[ship]] -= 1
 			gc.team_sea_units[sea][mm.team[gc.acting_nation]] -= 1
 
 			// Update combat totals
@@ -1098,10 +1098,10 @@ remove_my_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Active_S
 
 remove_ally_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Active_Ship) -> bool {
 	for ship in casualty_order {
-		for ally in mm.allies[gc.acting_nation] {
+		for ally in mm.friends[gc.acting_nation] {
 			if ally == gc.acting_nation do continue
-			if gc.idle_ships[sea][ally][active_ship_to_idle[ship]] > 0 {
-				gc.idle_ships[sea][ally][active_ship_to_idle[ship]] -= 1
+			if gc.roster_ships[sea][ally][active_ship_to_roster[ship]] > 0 {
+				gc.roster_ships[sea][ally][active_ship_to_roster[ship]] -= 1
 				gc.team_sea_units[sea][mm.team[ally]] -= 1
 				return true
 			}
@@ -1110,11 +1110,11 @@ remove_ally_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Active
 	return false
 }
 
-remove_enemy_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Idle_Ship) -> bool {
+remove_enemy_ships :: proc(gc: ^Game_Cache, sea: Sea_ID, casualty_order: []Roster_Ship) -> bool {
 	for ship in casualty_order {
 		for enemy in mm.enemies[gc.acting_nation] {
-			if gc.idle_ships[sea][enemy][ship] > 0 {
-				gc.idle_ships[sea][enemy][ship] -= 1
+			if gc.roster_ships[sea][enemy][ship] > 0 {
+				gc.roster_ships[sea][enemy][ship] -= 1
 				gc.team_sea_units[sea][mm.team[enemy]] -= 1
 				if ship == .Destroyer {
 					gc.enemy_destroyers_total[sea] -= 1
@@ -1142,7 +1142,7 @@ remove_my_land_planes :: proc(
 	for plane in casualty_order {
 		if gc.active_land_planes[land][plane] > 0 {
 			gc.active_land_planes[land][plane] -= 1
-			gc.idle_land_planes[land][gc.acting_nation][active_plane_to_idle[plane]] -= 1
+			gc.roster_land_planes[land][gc.acting_nation][active_plane_to_roster[plane]] -= 1
 			gc.team_land_units[land][mm.team[gc.acting_nation]] -= 1
 			return true
 		}
@@ -1168,7 +1168,7 @@ remove_my_sea_bombers :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
     When bombers are destroyed at sea, update:
     1. Basic Unit Counts:
        - active_sea_planes (current player's planes)
-       - idle_sea_planes (all players' planes)
+       - roster_sea_planes (all players' planes)
        - team_sea_units (team unit counts)
        
     2. Combat Totals:
@@ -1178,7 +1178,7 @@ remove_my_sea_bombers :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	for plane in air_casualty_order_bombers {
 		if gc.active_sea_planes[sea][plane] > 0 {
 			gc.active_sea_planes[sea][plane] -= 1
-			gc.idle_sea_planes[sea][gc.acting_nation][.Bomber] -= 1
+			gc.roster_sea_planes[sea][gc.acting_nation][.Bomber] -= 1
 			gc.team_sea_units[sea][mm.team[gc.acting_nation]] -= 1
 			gc.friendly_antifighter_ships_total[sea] -= 1
 			gc.friendly_sea_combatants_total[sea] -= 1
@@ -1188,11 +1188,11 @@ remove_my_sea_bombers :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	return false
 }
 
-hit_ally_land_planes :: proc(gc: ^Game_Cache, land: Land_ID, idle_plane: Idle_Plane) -> bool {
-	for ally in mm.allies[gc.acting_nation] {
+hit_ally_land_planes :: proc(gc: ^Game_Cache, land: Land_ID, roster_plane: Roster_Plane) -> bool {
+	for ally in mm.friends[gc.acting_nation] {
 		if ally == gc.acting_nation do continue
-		if gc.idle_land_planes[land][ally][idle_plane] > 0 {
-			gc.idle_land_planes[land][ally][idle_plane] -= 1
+		if gc.roster_land_planes[land][ally][roster_plane] > 0 {
+			gc.roster_land_planes[land][ally][roster_plane] -= 1
 			gc.team_land_units[land][mm.team[gc.acting_nation]] -= 1
 			return true
 		}
@@ -1202,11 +1202,11 @@ hit_ally_land_planes :: proc(gc: ^Game_Cache, land: Land_ID, idle_plane: Idle_Pl
 remove_ally_sea_fighters :: proc(
 	gc: ^Game_Cache,
 	sea: Sea_ID,
-	// idle_plane: Idle_Plane,
+	// roster_plane: Roster_Plane,
 ) -> bool {
-	for ally in mm.allies[gc.acting_nation] {
+	for ally in mm.friends[gc.acting_nation] {
 		if ally == gc.acting_nation do continue
-		if gc.idle_sea_planes[sea][ally][.Fighter] > 0 {
+		if gc.roster_sea_planes[sea][ally][.Fighter] > 0 {
 			remove_ally_fighters_from_sea(gc, sea, ally, 1)
 			return true
 		}
@@ -1220,7 +1220,7 @@ hit_enemy_sea_fighter :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
     
     When enemy fighters are destroyed, update:
     1. Basic Unit Counts:
-       - idle_sea_planes (all players' planes)
+       - roster_sea_planes (all players' planes)
        - team_sea_units (team unit counts)
        
     2. Combat Totals:
@@ -1228,8 +1228,8 @@ hit_enemy_sea_fighter :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
        - enemy_blockade_total (fighters can't blockade)
     */
 	for enemy in mm.enemies[gc.acting_nation] {
-		if gc.idle_sea_planes[sea][enemy][.Fighter] > 0 {
-			gc.idle_sea_planes[sea][enemy][.Fighter] -= 1
+		if gc.roster_sea_planes[sea][enemy][.Fighter] > 0 {
+			gc.roster_sea_planes[sea][enemy][.Fighter] -= 1
 			gc.team_sea_units[sea][mm.team[enemy]] -= 1
 			gc.enemy_fighters_total[sea] -= 1
 			return true
@@ -1238,13 +1238,13 @@ hit_enemy_sea_fighter :: proc(gc: ^Game_Cache, sea: Sea_ID) -> bool {
 	return false
 }
 
-remove_enemy_land_planes :: proc(gc: ^Game_Cache, land: Land_ID, idle_plane: Idle_Plane) -> bool {
+remove_enemy_land_planes :: proc(gc: ^Game_Cache, land: Land_ID, roster_plane: Roster_Plane) -> bool {
 	/*
     AI NOTE: Enemy Land Plane Removal
     
     When enemy planes are destroyed on land:
     1. Basic Unit Counts:
-       - idle_land_planes (all players' planes)
+       - roster_land_planes (all players' planes)
        - team_land_units (team unit counts)
        
     2. No Combat Totals:
@@ -1253,8 +1253,8 @@ remove_enemy_land_planes :: proc(gc: ^Game_Cache, land: Land_ID, idle_plane: Idl
        - Bombers/fighters treated equally
     */
 	for enemy in mm.enemies[gc.acting_nation] {
-		if gc.idle_land_planes[land][enemy][idle_plane] > 0 {
-			gc.idle_land_planes[land][enemy][idle_plane] -= 1
+		if gc.roster_land_planes[land][enemy][roster_plane] > 0 {
+			gc.roster_land_planes[land][enemy][roster_plane] -= 1
 			gc.team_land_units[land][mm.team[enemy]] -= 1
 			return true
 		}
@@ -1265,12 +1265,12 @@ remove_enemy_land_planes :: proc(gc: ^Game_Cache, land: Land_ID, idle_plane: Idl
 hit_enemy_sea_planes :: proc(
 	gc: ^Game_Cache,
 	sea: Sea_ID,
-	idle_plane: Idle_Plane,
+	roster_plane: Roster_Plane,
 	enemies: ^Nation_List,
 ) -> bool {
 	for enemy in enemies {
-		if gc.idle_sea_planes[sea][enemy][idle_plane] > 0 {
-			gc.idle_sea_planes[sea][enemy][idle_plane] -= 1
+		if gc.roster_sea_planes[sea][enemy][roster_plane] > 0 {
+			gc.roster_sea_planes[sea][enemy][roster_plane] -= 1
 			gc.team_sea_units[sea][mm.team[enemy]] -= 1
 			return true
 		}
@@ -1282,7 +1282,7 @@ remove_my_armies :: proc(gc: ^Game_Cache, land: Land_ID, casualty_order: []Activ
 	for army in casualty_order {
 		if gc.active_armies[land][army] > 0 {
 			gc.active_armies[land][army] -= 1
-			gc.idle_armies[land][gc.acting_nation][active_army_to_idle[army]] -= 1
+			gc.roster_armies[land][gc.acting_nation][active_army_to_roster[army]] -= 1
 			gc.team_land_units[land][mm.team[gc.acting_nation]] -= 1
 			return true
 		}
@@ -1290,11 +1290,11 @@ remove_my_armies :: proc(gc: ^Game_Cache, land: Land_ID, casualty_order: []Activ
 	return false
 }
 
-remove_enemy_armies :: proc(gc: ^Game_Cache, land: Land_ID, casualty_order: []Idle_Army) -> bool {
+remove_enemy_armies :: proc(gc: ^Game_Cache, land: Land_ID, casualty_order: []Roster_Army) -> bool {
 	for army in casualty_order {
 		for player in mm.enemies[gc.acting_nation] {
-			if gc.idle_armies[land][player][army] > 0 {
-				gc.idle_armies[land][player][army] -= 1
+			if gc.roster_armies[land][player][army] > 0 {
+				gc.roster_armies[land][player][army] -= 1
 				gc.team_land_units[land][mm.team[player]] -= 1
 				return true
 			}
@@ -1304,32 +1304,32 @@ remove_enemy_armies :: proc(gc: ^Game_Cache, land: Land_ID, casualty_order: []Id
 }
 
 get_total_attack_value_sea :: proc(gc: ^Game_Cache, sea: Sea_ID) -> (total_attack_value: int = 0) {
-	for ally in mm.allies[gc.acting_nation] {
-		total_attack_value += int(gc.idle_ships[sea][ally][.Destroyer]) * DESTROYER_ATTACK_VALUE
-		total_attack_value += int(gc.idle_ships[sea][ally][.Carrier]) * CARRIER_ATTACK_VALUE
-		total_attack_value += int(gc.idle_ships[sea][ally][.Cruiser]) * CRUISER_ATTACK_VALUE
-		total_attack_value += int(gc.idle_ships[sea][ally][.Battleship]) * BATTLESHIP_ATTACK_VALUE
-		total_attack_value += int(gc.idle_ships[sea][ally][.Battleship_Damaged]) * BATTLESHIP_ATTACK_VALUE
-		total_attack_value += int(gc.idle_sea_planes[sea][ally][.Fighter]) * FIGHTER_ATTACK_VALUE
+	for ally in mm.friends[gc.acting_nation] {
+		total_attack_value += int(gc.roster_ships[sea][ally][.Destroyer]) * DESTROYER_ATTACK_VALUE
+		total_attack_value += int(gc.roster_ships[sea][ally][.Carrier]) * CARRIER_ATTACK_VALUE
+		total_attack_value += int(gc.roster_ships[sea][ally][.Cruiser]) * CRUISER_ATTACK_VALUE
+		total_attack_value += int(gc.roster_ships[sea][ally][.Battleship]) * BATTLESHIP_ATTACK_VALUE
+		total_attack_value += int(gc.roster_ships[sea][ally][.Battleship_Damaged]) * BATTLESHIP_ATTACK_VALUE
+		total_attack_value += int(gc.roster_sea_planes[sea][ally][.Fighter]) * FIGHTER_ATTACK_VALUE
 	}
-	total_attack_value += int(gc.idle_sea_planes[sea][gc.acting_nation][.Bomber]) * BOMBER_ATTACK_VALUE
+	total_attack_value += int(gc.roster_sea_planes[sea][gc.acting_nation][.Bomber]) * BOMBER_ATTACK_VALUE
 	return total_attack_value
 }
 
 calculate_naval_defense_value :: proc(gc: ^Game_Cache, sea: Sea_ID) -> (total_defense_value: int = 0) {
 	for enemy in mm.enemies[gc.acting_nation] {
-		total_defense_value += int(gc.idle_ships[sea][enemy][.Destroyer]) * DESTROYER_DEFENSE_VALUE
-		total_defense_value += int(gc.idle_ships[sea][enemy][.Carrier]) * CARRIER_DEFENSE_VALUE
-		total_defense_value += int(gc.idle_ships[sea][enemy][.Cruiser]) * CRUISER_DEFENSE_VALUE
-		total_defense_value += int(gc.idle_ships[sea][enemy][.Battleship]) * BATTLESHIP_DEFENSE_VALUE
-		total_defense_value += int(gc.idle_ships[sea][enemy][.Battleship_Damaged]) * BATTLESHIP_DEFENSE_VALUE
-		total_defense_value += int(gc.idle_sea_planes[sea][enemy][.Fighter]) * FIGHTER_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_ships[sea][enemy][.Destroyer]) * DESTROYER_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_ships[sea][enemy][.Carrier]) * CARRIER_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_ships[sea][enemy][.Cruiser]) * CRUISER_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_ships[sea][enemy][.Battleship]) * BATTLESHIP_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_ships[sea][enemy][.Battleship_Damaged]) * BATTLESHIP_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_sea_planes[sea][enemy][.Fighter]) * FIGHTER_DEFENSE_VALUE
 	}
 	return total_defense_value
 }
 calculate_submarine_defense_value :: proc(gc: ^Game_Cache, sea: Sea_ID) -> (total_defense_value: int = 0) {
 	for enemy in mm.enemies[gc.acting_nation] {
-		total_defense_value += int(gc.idle_ships[sea][enemy][.Submarine]) * SUBMARINE_DEFENSE_VALUE
+		total_defense_value += int(gc.roster_ships[sea][enemy][.Submarine]) * SUBMARINE_DEFENSE_VALUE
 	}
 	return total_defense_value
 }

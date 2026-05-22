@@ -181,11 +181,11 @@ get_capital_territory :: proc(player: Nation_ID) -> Maybe(Land_ID) {
 
 count_friendly_units_in_territory :: proc(gc: ^Game_Cache, territory: Land_ID) -> int {
 	count := 0
-	count += int(gc.idle_armies[territory][gc.acting_nation][.Infantry])
-	count += int(gc.idle_armies[territory][gc.acting_nation][.Artillery])
-	count += int(gc.idle_armies[territory][gc.acting_nation][.Tank])
-	count += int(gc.idle_armies[territory][gc.acting_nation][.AAGun])
-	count += int(gc.idle_land_planes[territory][gc.acting_nation][.Fighter])
-	count += int(gc.idle_land_planes[territory][gc.acting_nation][.Bomber])
+	count += int(gc.roster_armies[territory][gc.acting_nation][.Infantry])
+	count += int(gc.roster_armies[territory][gc.acting_nation][.Artillery])
+	count += int(gc.roster_armies[territory][gc.acting_nation][.Tank])
+	count += int(gc.roster_armies[territory][gc.acting_nation][.AAGun])
+	count += int(gc.roster_land_planes[territory][gc.acting_nation][.Fighter])
+	count += int(gc.roster_land_planes[territory][gc.acting_nation][.Bomber])
 	return count
 }

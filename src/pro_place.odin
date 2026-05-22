@@ -159,14 +159,14 @@ calculate_placement_threat :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
 		}
 		
 		// Check for enemy land units
-		for army_type in Idle_Army {
-			count := gc.idle_armies[territory][player][army_type]
+		for army_type in Roster_Army {
+			count := gc.roster_armies[territory][player][army_type]
 			threat += f64(count) * get_army_placement_threat(army_type)
 		}
 		
 		// Check for enemy air units
-		for plane_type in Idle_Plane {
-			count := gc.idle_land_planes[territory][player][plane_type]
+		for plane_type in Roster_Plane {
+			count := gc.roster_land_planes[territory][player][plane_type]
 			threat += f64(count) * get_plane_placement_threat(plane_type)
 		}
 	}
@@ -175,7 +175,7 @@ calculate_placement_threat :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
 }
 
 // Get threat value for army types in placement
-get_army_placement_threat :: proc(army_type: Idle_Army) -> f64 {
+get_army_placement_threat :: proc(army_type: Roster_Army) -> f64 {
 	switch army_type {
 	case .Infantry: return 1.0
 	case .Artillery: return 2.0
@@ -186,7 +186,7 @@ get_army_placement_threat :: proc(army_type: Idle_Army) -> f64 {
 }
 
 // Get threat value for plane types in placement
-get_plane_placement_threat :: proc(plane_type: Idle_Plane) -> f64 {
+get_plane_placement_threat :: proc(plane_type: Roster_Plane) -> f64 {
 	switch plane_type {
 	case .Fighter: return 3.0
 	case .Bomber: return 4.0
@@ -307,7 +307,7 @@ place_units_at_territory :: proc(gc: ^Game_Cache, territory: Land_ID, unit_count
 	
 	// In full implementation, would:
 	// 1. Select unit types to place
-	// 2. Add to idle_armies arrays
+	// 2. Add to roster_armies arrays
 	// 3. Deduct from treasury
 	// 4. Update builds_left
 	

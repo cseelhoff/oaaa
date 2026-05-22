@@ -2,19 +2,19 @@ package oaaa
 
 MAX_PLANE_MOVES :: 6
 
-Idle_Plane :: enum {
+Roster_Plane :: enum {
 	Fighter,
 	Bomber,
 }
 
-idle_plane_names := [Idle_Plane]string {
-	Idle_Plane.Fighter = "Fighter",
-	Idle_Plane.Bomber  = "Bomber",
+roster_plane_names := [Roster_Plane]string {
+	Roster_Plane.Fighter = "Fighter",
+	Roster_Plane.Bomber  = "Bomber",
 }
 
-COST_IDLE_PLANE := [Idle_Plane]u8 {
-	Idle_Plane.Fighter = 10,
-	Idle_Plane.Bomber  = 12,
+COST_ROSTER_PLANE := [Roster_Plane]u8 {
+	Roster_Plane.Fighter = 10,
+	Roster_Plane.Bomber  = 12,
 }
 
 FIGHTER_ATTACK_VALUE :: 3
@@ -39,7 +39,7 @@ Active_Plane :: enum {
 	Bomber_0_Moves,
 }
 
-active_plane_to_idle := [Active_Plane]Idle_Plane {
+active_plane_to_roster := [Active_Plane]Roster_Plane {
 	.Fighter_Unmoved = .Fighter,
 	.Fighter_4_Moves = .Fighter,
 	.Fighter_3_Moves = .Fighter,

@@ -158,14 +158,14 @@ calculate_enemy_threat :: proc(gc: ^Game_Cache, territory: Land_ID, pro_data: ^P
 		}
 		
 		// Check for enemy land units
-		for army_type in Idle_Army {
-			count := gc.idle_armies[territory][player][army_type]
+		for army_type in Roster_Army {
+			count := gc.roster_armies[territory][player][army_type]
 			threat += f64(count) * get_army_threat_value(army_type)
 		}
 		
 		// Check for enemy air units
-		for plane_type in Idle_Plane {
-			count := gc.idle_land_planes[territory][player][plane_type]
+		for plane_type in Roster_Plane {
+			count := gc.roster_land_planes[territory][player][plane_type]
 			threat += f64(count) * get_plane_threat_value(plane_type)
 		}
 	}
@@ -174,7 +174,7 @@ calculate_enemy_threat :: proc(gc: ^Game_Cache, territory: Land_ID, pro_data: ^P
 }
 
 // Get threat value for army types
-get_army_threat_value :: proc(army_type: Idle_Army) -> f64 {
+get_army_threat_value :: proc(army_type: Roster_Army) -> f64 {
 	switch army_type {
 	case .Infantry: return 1.0
 	case .Artillery: return 2.0
@@ -185,7 +185,7 @@ get_army_threat_value :: proc(army_type: Idle_Army) -> f64 {
 }
 
 // Get threat value for plane types
-get_plane_threat_value :: proc(plane_type: Idle_Plane) -> f64 {
+get_plane_threat_value :: proc(plane_type: Roster_Plane) -> f64 {
 	switch plane_type {
 	case .Fighter: return 3.0
 	case .Bomber: return 4.0
@@ -198,13 +198,13 @@ calculate_current_defense :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
 	defense := 0.0
 	
 	// Count friendly units
-	for army_type in Idle_Army {
-		count := gc.idle_armies[territory][gc.acting_nation][army_type]
+	for army_type in Roster_Army {
+		count := gc.roster_armies[territory][gc.acting_nation][army_type]
 		defense += f64(count) * get_army_defense_value(army_type)
 	}
 	
-	for plane_type in Idle_Plane {
-		count := gc.idle_land_planes[territory][gc.acting_nation][plane_type]
+	for plane_type in Roster_Plane {
+		count := gc.roster_land_planes[territory][gc.acting_nation][plane_type]
 		defense += f64(count) * get_plane_defense_value(plane_type)
 	}
 	
@@ -212,7 +212,7 @@ calculate_current_defense :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
 }
 
 // Get defense value for army types
-get_army_defense_value :: proc(army_type: Idle_Army) -> f64 {
+get_army_defense_value :: proc(army_type: Roster_Army) -> f64 {
 	switch army_type {
 	case .Infantry: return 2.0
 	case .Artillery: return 2.0
@@ -223,7 +223,7 @@ get_army_defense_value :: proc(army_type: Idle_Army) -> f64 {
 }
 
 // Get defense value for plane types
-get_plane_defense_value :: proc(plane_type: Idle_Plane) -> f64 {
+get_plane_defense_value :: proc(plane_type: Roster_Plane) -> f64 {
 	switch plane_type {
 	case .Fighter: return 4.0
 	case .Bomber: return 1.0
@@ -368,8 +368,8 @@ move_sea_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	for sea_id in Sea_ID {
 		// Check if we have ships here
 		has_ships := false
-		for ship_type in Idle_Ship {
-			if gc.idle_ships[sea_id][gc.acting_nation][ship_type] > 0 {
+		for ship_type in Roster_Ship {
+			if gc.roster_ships[sea_id][gc.acting_nation][ship_type] > 0 {
 				has_ships = true
 				break
 			}
@@ -409,8 +409,8 @@ move_land_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 		
 		// Check if we have idle units here
 		has_units := false
-		for army_type in Idle_Army {
-			if gc.idle_armies[land_id][gc.acting_nation][army_type] > 0 {
+		for army_type in Roster_Army {
+			if gc.roster_armies[land_id][gc.acting_nation][army_type] > 0 {
 				has_units = true
 				break
 			}

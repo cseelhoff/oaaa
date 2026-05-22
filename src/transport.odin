@@ -22,7 +22,7 @@ RATIONALE FOR COMBINED STATES:
    - Separate: Would require runtime validation of cargo+movement combinations
    
 3. Game State Storage:
-   - Efficient bitset representation in game_state.idle_ships and active_ships
+   - Efficient bitset representation in game_state.roster_ships and active_ships
    - Perfect fit for Monte Carlo Tree Search (MCTS) state exploration
    - Minimal memory footprint for game state serialization
 
@@ -70,7 +70,7 @@ transports_with_moves := [?]Active_Ship {
 	.Transport_Infantry_Tank_2_Moves,
 }
 
-idle_transports := [?]Idle_Ship {
+roster_transports := [?]Roster_Ship {
 	.Transport_Empty,
 	.Transport_Infantry,
 	.Transport_Artillery,
@@ -104,7 +104,7 @@ init_transport_after_move_used :: proc() {
 	transport_after_move_used[.Transport_Tank_Unmoved][2] = .Transport_Tank_0_Moves
 }
 
-transport_after_loading: [Idle_Army][Active_Ship]Active_Ship
+transport_after_loading: [Roster_Army][Active_Ship]Active_Ship
 
 @(init)
 init_transport_after_loading :: proc() {
@@ -174,7 +174,7 @@ init_transport_after_loading :: proc() {
 	// AAGun has no valid transitions (all remain ERROR_INVALID_ACTIVE_SHIP)
 }
 
-transport_allowed_by_army_size := [Army_Sizes][]Idle_Ship {
+transport_allowed_by_army_size := [Army_Sizes][]Roster_Ship {
 	.SMALL = {.Transport_Empty, .Transport_Infantry, .Transport_Artillery, .Transport_Tank},
 	.LARGE = {.Transport_Empty, .Transport_Infantry},
 }
@@ -434,7 +434,7 @@ Unloads a unit from transport, updating:
 unload_unit :: proc(gc: ^Game_Cache, dst_land: Land_ID, ship: Active_Ship) {
 	army := transport_unload_unit[ship]
 	gc.active_armies[dst_land][army] += 1
-	gc.idle_armies[dst_land][gc.acting_nation][active_army_to_idle[army]] += 1
+	gc.roster_armies[dst_land][gc.acting_nation][active_army_to_roster[army]] += 1
 	gc.team_land_units[dst_land][mm.team[gc.acting_nation]] += 1
 	gc.max_bombardment_dice[dst_land] += 1
 	if !mark_land_for_combat_resolution(gc, dst_land) {
@@ -443,8 +443,8 @@ unload_unit :: proc(gc: ^Game_Cache, dst_land: Land_ID, ship: Active_Ship) {
 }
 
 replace_ship :: proc(gc: ^Game_Cache, src_sea: Sea_ID, ship: Active_Ship, new_ship: Active_Ship) {
-	gc.idle_ships[src_sea][gc.acting_nation][active_ship_to_idle[new_ship]] += 1
+	gc.roster_ships[src_sea][gc.acting_nation][active_ship_to_roster[new_ship]] += 1
 	gc.active_ships[src_sea][new_ship] += 1
-	gc.idle_ships[src_sea][gc.acting_nation][active_ship_to_idle[ship]] -= 1
+	gc.roster_ships[src_sea][gc.acting_nation][active_ship_to_roster[ship]] -= 1
 	gc.active_ships[src_sea][ship] -= 1
 }

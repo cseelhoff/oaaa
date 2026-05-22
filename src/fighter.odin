@@ -79,10 +79,10 @@ move_unmoved_fighter_from_land_to_land :: proc(gc: ^Game_Cache, dst_action: Acti
 		gc.active_land_planes[dst_land][fighter_after_moves[mm.air_distance[to_region(src_land)][to_region(dst_land)]]] +=
 		1
 	}
-	gc.idle_land_planes[dst_land][gc.acting_nation][.Fighter] += 1
+	gc.roster_land_planes[dst_land][gc.acting_nation][.Fighter] += 1
 	gc.team_land_units[dst_land][mm.team[gc.acting_nation]] += 1
 	gc.active_land_planes[src_land][.Fighter_Unmoved] -= 1
-	gc.idle_land_planes[src_land][gc.acting_nation][.Fighter] -= 1
+	gc.roster_land_planes[src_land][gc.acting_nation][.Fighter] -= 1
 	gc.team_land_units[src_land][mm.team[gc.acting_nation]] -= 1
 	return
 }
@@ -100,7 +100,7 @@ move_unmoved_fighter_from_land_to_sea :: proc(gc: ^Game_Cache, dst_action: Actio
 	}
 	add_ally_fighters_to_sea(gc, dst_sea, gc.acting_nation, 1)
 	gc.active_land_planes[src_land][.Fighter_Unmoved] -= 1
-	gc.idle_land_planes[src_land][gc.acting_nation][.Fighter] -= 1
+	gc.roster_land_planes[src_land][gc.acting_nation][.Fighter] -= 1
 	gc.team_land_units[src_land][mm.team[gc.acting_nation]] -= 1
 	return
 }
@@ -125,7 +125,7 @@ move_unmoved_fighter_from_sea_to_land :: proc(gc: ^Game_Cache, dst_action: Actio
 		gc.active_land_planes[dst_land][fighter_after_moves[mm.air_distance[gc.current_territory][to_region(dst_land)]]] +=
 			unit_count
 	}
-	gc.idle_land_planes[dst_land][gc.acting_nation][.Fighter] += unit_count
+	gc.roster_land_planes[dst_land][gc.acting_nation][.Fighter] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.acting_nation]] += unit_count
 	gc.active_sea_planes[src_sea][.Fighter_Unmoved] -= 1
 	remove_ally_fighters_from_sea(gc, src_sea, gc.acting_nation, 1)
@@ -263,7 +263,7 @@ land_fighter_from_land :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			// no where for the fighter to land, so remove fighters
 			gc.team_land_units[src_land][mm.team[gc.acting_nation]] -=
 				gc.active_land_planes[src_land][plane]
-			gc.idle_land_planes[src_land][gc.acting_nation][.Fighter] -=
+			gc.roster_land_planes[src_land][gc.acting_nation][.Fighter] -=
 				gc.active_land_planes[src_land][plane]
 			gc.active_land_planes[src_land][plane] = 0
 			debug_checks(gc)
@@ -274,7 +274,7 @@ land_fighter_from_land :: proc(gc: ^Game_Cache) -> (ok: bool) {
 			// no where for the fighter to land, so remove fighters
 			gc.team_land_units[src_land][mm.team[gc.acting_nation]] -=
 				gc.active_land_planes[src_land][plane]
-			gc.idle_land_planes[src_land][gc.acting_nation][.Fighter] -=
+			gc.roster_land_planes[src_land][gc.acting_nation][.Fighter] -=
 				gc.active_land_planes[src_land][plane]
 			gc.active_land_planes[src_land][plane] = 0
 			debug_checks(gc)
@@ -297,10 +297,10 @@ move_fighter_from_land_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	dst_land, unit_count := to_land_count(dst_action)
 	unit_count = min(unit_count, gc.active_land_planes[src_land][plane])
 	gc.active_land_planes[dst_land][.Fighter_0_Moves] += unit_count
-	gc.idle_land_planes[dst_land][gc.acting_nation][.Fighter] += unit_count
+	gc.roster_land_planes[dst_land][gc.acting_nation][.Fighter] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.acting_nation]] += unit_count
 	gc.active_land_planes[src_land][plane] -= unit_count
-	gc.idle_land_planes[src_land][gc.acting_nation][.Fighter] -= unit_count
+	gc.roster_land_planes[src_land][gc.acting_nation][.Fighter] -= unit_count
 	gc.team_land_units[src_land][mm.team[gc.acting_nation]] -= unit_count
 	return
 }
@@ -314,7 +314,7 @@ move_fighter_from_land_to_sea :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	gc.active_sea_planes[dst_sea][.Fighter_0_Moves] += unit_count
 	add_ally_fighters_to_sea(gc, dst_sea, gc.acting_nation, unit_count)
 	gc.active_land_planes[src_land][plane] -= unit_count
-	gc.idle_land_planes[src_land][gc.acting_nation][.Fighter] -= unit_count
+	gc.roster_land_planes[src_land][gc.acting_nation][.Fighter] -= unit_count
 	gc.team_land_units[src_land][mm.team[gc.acting_nation]] -= unit_count
 	//todo optimize recalculate carrier landings
 	if gc.friendly_carriers_total[dst_sea] * 2 <= gc.friendly_fighters_total[dst_sea] {
@@ -338,7 +338,7 @@ land_fighter_from_sea :: proc(gc: ^Game_Cache) -> (ok: bool) {
 		load_dyn_arr_actions(gc)
 		if len(gc.dyn_arr_valid_actions) == 0 {
 			// no where for the fighter to land, so remove fighters
-			gc.idle_sea_planes[src_sea][gc.acting_nation][.Fighter] -=
+			gc.roster_sea_planes[src_sea][gc.acting_nation][.Fighter] -=
 				gc.active_sea_planes[src_sea][plane]
 			gc.team_sea_units[src_sea][mm.team[gc.acting_nation]] -=
 				gc.active_sea_planes[src_sea][plane]
@@ -361,7 +361,7 @@ move_fighter_from_sea_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	src_sea := to_sea(gc.current_territory)
 	plane := to_plane(gc.current_active_unit)
 	gc.active_land_planes[dst_land][.Fighter_0_Moves] += 1
-	gc.idle_land_planes[dst_land][gc.acting_nation][.Fighter] += 1
+	gc.roster_land_planes[dst_land][gc.acting_nation][.Fighter] += 1
 	gc.team_land_units[dst_land][mm.team[gc.acting_nation]] += 1
 	gc.active_sea_planes[src_sea][plane] -= 1
 	remove_ally_fighters_from_sea(gc, src_sea, gc.acting_nation, 1)
@@ -417,7 +417,7 @@ add_ally_fighters_to_sea :: #force_inline proc(
 	player: Nation_ID,
 	qty: u8,
 ) {
-	gc.idle_sea_planes[sea][player][.Fighter] += qty
+	gc.roster_sea_planes[sea][player][.Fighter] += qty
 	gc.team_sea_units[sea][mm.team[player]] += qty
 	gc.friendly_fighters_total[sea] += qty
 	gc.friendly_antifighter_ships_total[sea] += qty
@@ -434,7 +434,7 @@ remove_ally_fighters_from_sea :: #force_inline proc(
 	player: Nation_ID,
 	qty: u8,
 ) {
-	gc.idle_sea_planes[sea][player][.Fighter] -= qty
+	gc.roster_sea_planes[sea][player][.Fighter] -= qty
 	gc.team_sea_units[sea][mm.team[player]] -= qty
 	gc.friendly_fighters_total[sea] -= qty
 	gc.friendly_antifighter_ships_total[sea] -= qty

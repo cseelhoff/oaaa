@@ -2,21 +2,21 @@ package oaaa
 
 import "core:fmt"
 
-Idle_Army :: enum {
+Roster_Army :: enum {
 	Infantry,
 	Artillery,
 	Tank,
 	AAGun,
 }
 
-COST_IDLE_ARMY := [Idle_Army]u8 {
+COST_ROSTER_ARMY := [Roster_Army]u8 {
 	.Infantry   = 3,
 	.Artillery  = 4,
 	.Tank  = 6,
 	.AAGun = 5,
 }
 
-idle_army_names := [Idle_Army]string {
+roster_army_names := [Roster_Army]string {
 	.Infantry   = "Infantry",
 	.Artillery  = "Artillery",
 	.Tank  = "Tank",
@@ -57,7 +57,7 @@ Active_Army :: enum {
     AAGun_0_Moves,
 }
 
-active_army_to_idle := [Active_Army]Idle_Army {
+active_army_to_roster := [Active_Army]Roster_Army {
 	.Infantry_1_Moves   = .Infantry,
 	.Infantry_0_Moves   = .Infantry,
 	.Artillery_1_Moves  = .Artillery,
@@ -178,15 +178,15 @@ move_armies :: proc(gc: ^Game_Cache) -> (ok: bool) {
                     dst_sea := to_sea(dst_action)
                     for transport in active_transport_by_army_size[army_size[army]] {
                         if gc.active_ships[dst_sea][transport] > 0 {
-                            idle_army := active_army_to_idle[army]
-                            new_ship := transport_after_loading[idle_army][transport]
+                            roster_army := active_army_to_roster[army]
+                            new_ship := transport_after_loading[roster_army][transport]
                             gc.active_ships[dst_sea][new_ship] += 1
-                            gc.idle_ships[dst_sea][gc.acting_nation][active_ship_to_idle[new_ship]] += 1
+                            gc.roster_ships[dst_sea][gc.acting_nation][active_ship_to_roster[new_ship]] += 1
                             gc.active_armies[src_land][army] -= 1
-                            gc.idle_armies[src_land][gc.acting_nation][idle_army] -= 1
+                            gc.roster_armies[src_land][gc.acting_nation][roster_army] -= 1
                             gc.team_land_units[src_land][mm.team[gc.acting_nation]] -= 1
                             gc.active_ships[dst_sea][transport] -= 1
-                            gc.idle_ships[dst_sea][gc.acting_nation][active_ship_to_idle[transport]] -= 1
+                            gc.roster_ships[dst_sea][gc.acting_nation][active_ship_to_roster[transport]] -= 1
                             break
                         }
                     }
@@ -260,7 +260,7 @@ move_single_army_land :: proc(
        - Tracks exact movement points remaining (e.g. Tank_2_Moves)
        - Used for movement validation and offering valid moves
     
-    2. idle_armies[land][player][type] - Units by base type and owner
+    2. roster_armies[land][player][type] - Units by base type and owner
        - Simplified view (e.g. just Tank)
        - Used for combat resolution and unit type counting
     
@@ -278,10 +278,10 @@ move_single_army_land :: proc(
     dst_land, unit_count := to_land_count(dst_action)
     unit_count = min(unit_count, gc.active_armies[src_land][src_unit])
 	gc.active_armies[dst_land][dst_unit] += unit_count
-	gc.idle_armies[dst_land][gc.acting_nation][active_army_to_idle[dst_unit]] += unit_count
+	gc.roster_armies[dst_land][gc.acting_nation][active_army_to_roster[dst_unit]] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.acting_nation]] += unit_count
 	gc.active_armies[src_land][src_unit] -= unit_count
-	gc.idle_armies[src_land][gc.acting_nation][active_army_to_idle[src_unit]] -= unit_count
+	gc.roster_armies[src_land][gc.acting_nation][active_army_to_roster[src_unit]] -= unit_count
 	gc.team_land_units[src_land][mm.team[gc.acting_nation]] -= unit_count
 }
 
@@ -290,9 +290,9 @@ is_boat_available :: proc(
 	dst_sea: Sea_ID,
 ) -> bool {
     army := to_army(gc.current_active_unit)
-	idle_ships := &gc.idle_ships[dst_sea][gc.acting_nation]
+	roster_ships := &gc.roster_ships[dst_sea][gc.acting_nation]
 	for transport in transport_allowed_by_army_size[army_size[army]] {
-		if idle_ships[transport] > 0 {
+		if roster_ships[transport] > 0 {
 			return true
 		}
 	}
@@ -347,14 +347,13 @@ add_valid_army_moves_2 :: proc(gc: ^Game_Cache) {
     */
     src_land := to_land(gc.current_territory)
     army := to_army(gc.current_active_unit)
-	for dst_land in (mm.lands_within_2_moves[src_land]) {
-		if (mm.lands_between[src_land][dst_land] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {
-			continue
-		}
-		add_land_to_valid_actions(gc, dst_land, gc.active_armies[src_land][army])
-        // load_dyn_arr_actions(gc)
-        // fmt.println(gc.dyn_arr_valid_actions)
-	}
+    blocked_lands : Land_Bitset = gc.has_enemy_factory | gc.has_enemy_units
+	unblocked_lands := get_unblocked_lands_within_2_moves(src_land, blocked_lands)
+    gc.valid_actions += airs_action_tiers(
+        unblocked_lands,
+        gc.active_armies[src_land][army],
+    )
+	// add_lands_to_valid_actions(gc, dst_lands, gc.active_armies[src_land][army])
 	// check for moving from land to sea (two moves away)
 	// for dst_sea in (mm.l2s_2away_via_land_bitset[src_land]) {
 	// 	if (mm.l2s_2away_via_midland_bitset[src_land][dst_sea] & ~gc.has_enemy_factory & ~gc.has_enemy_units) == {} {

@@ -195,16 +195,16 @@ is_adjacent_to_friendly :: proc(gc: ^Game_Cache, territory: Land_ID) -> bool {
 // Add defending units to attack option
 add_defenders :: proc(option: ^Attack_Option, gc: ^Game_Cache, territory: Land_ID) {
 	// Count active armies at this location (for current player)
-	// For enemies, use idle_armies
+	// For enemies, use roster_armies
 	for player in Nation_ID {
 		if player == gc.acting_nation {
 			continue
 		}
-		for army_type in Idle_Army {
-			count := gc.idle_armies[territory][player][army_type]
+		for army_type in Roster_Army {
+			count := gc.roster_armies[territory][player][army_type]
 			for i in 0..<count {
 				unit_info := Unit_Info{
-					unit_type = idle_army_to_unit_type(army_type),
+					unit_type = roster_army_to_unit_type(army_type),
 					from_territory = territory,
 				}
 				append(&option.defenders, unit_info)
@@ -217,11 +217,11 @@ add_defenders :: proc(option: ^Attack_Option, gc: ^Game_Cache, territory: Land_I
 		if player == gc.acting_nation {
 			continue
 		}
-		for plane_type in Idle_Plane {
-			count := gc.idle_land_planes[territory][player][plane_type]
+		for plane_type in Roster_Plane {
+			count := gc.roster_land_planes[territory][player][plane_type]
 			for i in 0..<count {
 				unit_info := Unit_Info{
-					unit_type = idle_plane_to_unit_type(plane_type),
+					unit_type = roster_plane_to_unit_type(plane_type),
 					from_territory = territory,
 				}
 				append(&option.defenders, unit_info)
@@ -230,8 +230,8 @@ add_defenders :: proc(option: ^Attack_Option, gc: ^Game_Cache, territory: Land_I
 		}
 }
 
-// Convert Idle_Army to Unit_Type
-idle_army_to_unit_type :: proc(army_type: Idle_Army) -> Unit_Type {
+// Convert Roster_Army to Unit_Type
+roster_army_to_unit_type :: proc(army_type: Roster_Army) -> Unit_Type {
 	switch army_type {
 	case .Infantry: return .Infantry
 	case .Artillery: return .Artillery
@@ -241,8 +241,8 @@ idle_army_to_unit_type :: proc(army_type: Idle_Army) -> Unit_Type {
 	}
 }
 
-// Convert Idle_Plane to Unit_Type
-idle_plane_to_unit_type :: proc(plane_type: Idle_Plane) -> Unit_Type {
+// Convert Roster_Plane to Unit_Type
+roster_plane_to_unit_type :: proc(plane_type: Roster_Plane) -> Unit_Type {
 	switch plane_type {
 	case .Fighter: return .Fighter
 	case .Bomber: return .Bomber

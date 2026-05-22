@@ -100,8 +100,8 @@ transfer_land_ownership :: proc(gc: ^Game_Cache, dst_land: Land_ID) -> (ok: bool
 	}
 	gc.income[old_owner] -= mm.value[dst_land]
 	new_owner := gc.acting_nation
-	if mm.team[gc.acting_nation] == mm.team[mm.orig_owner[dst_land]] {
-		new_owner = mm.orig_owner[dst_land]
+	if mm.team[gc.acting_nation] == mm.team[mm.original_owner[dst_land]] {
+		new_owner = mm.original_owner[dst_land]
 	}
 	gc.owner[dst_land] = new_owner
 	gc.income[new_owner] += mm.value[dst_land]

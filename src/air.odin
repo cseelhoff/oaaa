@@ -1,5 +1,4 @@
 package oaaa
-import "core:fmt"
 import "core:slice"
 
 to_region :: proc {
@@ -7,14 +6,6 @@ to_region :: proc {
 	land_to_region,
 	action_to_region,
 }
-
-// to_land_bitset :: proc {
-// 	air_to_land_bitset,
-// }
-
-// to_sea_bitset :: proc {
-// 	air_to_sea_bitset,
-// }
 
 sea_to_region :: #force_inline proc(sea: Sea_ID) -> Region_ID {
 	return Region_ID(u8(sea) + u8(len(Land_ID)))
@@ -27,18 +18,6 @@ land_to_region :: #force_inline proc(land: Land_ID) -> Region_ID {
 action_to_region :: #force_inline proc(act: Action_ID) -> Region_ID {
 	return Region_ID(act)
 }
-
-// sea_to_air_bitset :: #force_inline proc(sea: Sea_Bitset) -> Region_Bitset {
-// 	return transmute(Region_Bitset)(u128(transmute(u128)sea) << len(Land_ID))
-// }
-
-// air_to_land_bitset :: #force_inline proc(region: Region_Bitset) -> Land_Bitset {
-// 	return transmute(Land_Bitset)u128(transmute(u128)region)
-// }
-
-// air_to_sea_bitset :: #force_inline proc(region: Region_Bitset) -> Sea_Bitset {
-// 	return transmute(Sea_Bitset)(u128(transmute(u128)region) >> len(Land_ID))
-// }
 
 initialize_coastal_connections :: proc() {
 	for connection in COASTAL_CONNECTIONS {
@@ -60,7 +39,7 @@ initialize_coastal_connections :: proc() {
 				) or_continue
 				append(&l2s_2_away.mid_lands, mid_land)
 			}
-			mm.l2s_2away_via_land_bitset[src_land] += {dst_sea}
+			// mm.l2s_2away_via_land_bitset[src_land] += {dst_sea}
 			// append(&mm.l2s_2away_via_land[src_land], l2s_2_away)
 		}
 	}
@@ -125,7 +104,7 @@ initialize_region_connections :: proc() {
 			case 1:
 				fallthrough
 			case 2:
-				add_region(&mm.a2a_2away_via_air[region], dst_region)
+				// add_region(&mm.a2a_2away_via_air[region], dst_region)
 				add_region(&mm.regions_within_2_air_moves[region], dst_region)
 				fallthrough
 			case 3:

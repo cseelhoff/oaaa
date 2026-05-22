@@ -148,17 +148,17 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		for player in Nation_ID {
 			if player == gc.acting_nation do continue
 			fmt.print(mm.color[player])
-			for army in Idle_Army {
-				if gc.idle_armies[land][player][army] > 0 {
-					fmt.println(idle_army_names[army], ":", gc.idle_armies[land][player][army])
+			for army in Roster_Army {
+				if gc.roster_armies[land][player][army] > 0 {
+					fmt.println(roster_army_names[army], ":", gc.roster_armies[land][player][army])
 				}
 			}
-			for plane in Idle_Plane {
-				if gc.idle_land_planes[land][player][plane] > 0 {
+			for plane in Roster_Plane {
+				if gc.roster_land_planes[land][player][plane] > 0 {
 					fmt.println(
-						idle_plane_names[plane],
+						roster_plane_names[plane],
 						":",
-						gc.idle_land_planes[land][player][plane],
+						gc.roster_land_planes[land][player][plane],
 					)
 				}
 			}
@@ -188,16 +188,16 @@ print_game_state :: proc(gc: ^Game_Cache) {
 		for player in Nation_ID {
 			if player == gc.acting_nation do continue
 			fmt.print(mm.color[player])
-			for ship in Idle_Ship {
-				if gc.idle_ships[sea][player][ship] > 0 {
-					fmt.println(ship, ":", gc.idle_ships[sea][player][ship])
+			for ship in Roster_Ship {
+				if gc.roster_ships[sea][player][ship] > 0 {
+					fmt.println(ship, ":", gc.roster_ships[sea][player][ship])
 				}
 			}
-			if gc.idle_sea_planes[sea][player][.Fighter] > 0 {
+			if gc.roster_sea_planes[sea][player][.Fighter] > 0 {
 				fmt.println(
-					idle_plane_names[.Fighter],
+					roster_plane_names[.Fighter],
 					":",
-					gc.idle_sea_planes[sea][player][.Fighter],
+					gc.roster_sea_planes[sea][player][.Fighter],
 				)
 			}
 		}
@@ -242,14 +242,14 @@ game_state_to_string :: proc(gc: ^Game_Cache) -> cstring {
 		for player in Nation_ID {
 			if player == gc.acting_nation do continue
 			// strings.write_string(&sb, mm.color[player])
-			for army in Idle_Army {
-				if gc.idle_armies[land][player][army] > 0 {
-					fmt.sbprintf(&sb, "%v: %v\n", idle_army_names[army], gc.idle_armies[land][player][army])
+			for army in Roster_Army {
+				if gc.roster_armies[land][player][army] > 0 {
+					fmt.sbprintf(&sb, "%v: %v\n", roster_army_names[army], gc.roster_armies[land][player][army])
 				}
 			}
-			for plane in Idle_Plane {
-				if gc.idle_land_planes[land][player][plane] > 0 {
-					fmt.sbprintf(&sb, "%v: %v\n", idle_plane_names[plane], gc.idle_land_planes[land][player][plane])
+			for plane in Roster_Plane {
+				if gc.roster_land_planes[land][player][plane] > 0 {
+					fmt.sbprintf(&sb, "%v: %v\n", roster_plane_names[plane], gc.roster_land_planes[land][player][plane])
 				}
 			}
 		}
@@ -277,13 +277,13 @@ game_state_to_string :: proc(gc: ^Game_Cache) -> cstring {
 		for player in Nation_ID {
 			if player == gc.acting_nation do continue
 			// strings.write_string(&sb, mm.color[player])
-			for ship in Idle_Ship {
-				if gc.idle_ships[sea][player][ship] > 0 {
-					fmt.sbprintf(&sb, "%v: %v\n", ship, gc.idle_ships[sea][player][ship])
+			for ship in Roster_Ship {
+				if gc.roster_ships[sea][player][ship] > 0 {
+					fmt.sbprintf(&sb, "%v: %v\n", ship, gc.roster_ships[sea][player][ship])
 				}
 			}
-			if gc.idle_sea_planes[sea][player][.Fighter] > 0 {
-				fmt.sbprintf(&sb, "%v: %v\n", idle_plane_names[.Fighter], gc.idle_sea_planes[sea][player][.Fighter])
+			if gc.roster_sea_planes[sea][player][.Fighter] > 0 {
+				fmt.sbprintf(&sb, "%v: %v\n", roster_plane_names[.Fighter], gc.roster_sea_planes[sea][player][.Fighter])
 			}
 		}
 		strings.write_string(&sb, "\n")

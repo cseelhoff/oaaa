@@ -147,12 +147,12 @@ find_territories_needing_defense :: proc(gc: ^Game_Cache) -> []Territory_Defense
 		if gc.owner[territory] != gc.acting_nation do continue
 		
 		// Count our defenders
-		our_inf := gc.idle_armies[territory][gc.acting_nation][.Infantry]
-		our_art := gc.idle_armies[territory][gc.acting_nation][.Artillery]
-		our_tanks := gc.idle_armies[territory][gc.acting_nation][.Tank]
-		our_aa := gc.idle_armies[territory][gc.acting_nation][.AAGun]
-		our_fighters := gc.idle_land_planes[territory][gc.acting_nation][.Fighter]
-		our_bombers := gc.idle_land_planes[territory][gc.acting_nation][.Bomber]
+		our_inf := gc.roster_armies[territory][gc.acting_nation][.Infantry]
+		our_art := gc.roster_armies[territory][gc.acting_nation][.Artillery]
+		our_tanks := gc.roster_armies[territory][gc.acting_nation][.Tank]
+		our_aa := gc.roster_armies[territory][gc.acting_nation][.AAGun]
+		our_fighters := gc.roster_land_planes[territory][gc.acting_nation][.Fighter]
+		our_bombers := gc.roster_land_planes[territory][gc.acting_nation][.Bomber]
 		
 		// Calculate our defense power
 		defense_power := estimate_defense_power(gc, our_inf, our_art, our_tanks, our_aa, our_fighters, our_bombers)
@@ -389,17 +389,17 @@ try_buy_unit :: proc(gc: ^Game_Cache, action: Action_ID) -> bool {
 		// Add unit to factory location based on type
 		#partial switch action {
 		case .Buy_Infantry_Action:
-			gc.idle_armies[factory][gc.acting_nation][.Infantry] += 1
+			gc.roster_armies[factory][gc.acting_nation][.Infantry] += 1
 		case .Buy_Artillery_Action:
-			gc.idle_armies[factory][gc.acting_nation][.Artillery] += 1
+			gc.roster_armies[factory][gc.acting_nation][.Artillery] += 1
 		case .Buy_Tank_Action:
-			gc.idle_armies[factory][gc.acting_nation][.Tank] += 1
+			gc.roster_armies[factory][gc.acting_nation][.Tank] += 1
 		case .Buy_AAGun_Action:
-			gc.idle_armies[factory][gc.acting_nation][.AAGun] += 1
+			gc.roster_armies[factory][gc.acting_nation][.AAGun] += 1
 		case .Buy_Fighter_Action:
-			gc.idle_land_planes[factory][gc.acting_nation][.Fighter] += 1
+			gc.roster_land_planes[factory][gc.acting_nation][.Fighter] += 1
 		case .Buy_Bomber_Action:
-			gc.idle_land_planes[factory][gc.acting_nation][.Bomber] += 1
+			gc.roster_land_planes[factory][gc.acting_nation][.Bomber] += 1
 		case .Buy_Transport_Action, .Buy_Submarine_Action, .Buy_Destroyer_Action,
 		     .Buy_Carrier_Action, .Buy_Cruiser_Action, .Buy_Battleship_Action:
 			// Naval units - would need sea placement logic

@@ -1,6 +1,12 @@
 package oaaa
 
 import "base:intrinsics"
+import "core:math"
+
+Valid_Actions :: struct {
+	destinations_and_unit_count: Region_Bitset[4] // precomputed bitsets for each fraction action, indexed by how many units are at the source
+	finalized: bool,
+}
 
 // For a 1024-bit integer represented as 16 x i64 chunks
 Action_Bitset :: distinct [16]u64
@@ -131,6 +137,27 @@ add_airs_to_valid_actions :: proc(gc: ^Game_Cache, dst_airs: Region_Bitset, unit
 	}
 }
 
+// Returns the available fraction-action slots for a set of destination
+// air regions, given how many units are at the source.
+// Layout: [0]=All, [1]=Half, [2]=Quarter, [3]=Only_One.
+// Branchless: each slot i is `dst_airs` AND a mask that is all-ones when
+// unit_count > i, else all-zeros. Region_Bitset is `distinct [4]u64`, so
+// the AND folds into 4 scalar ops per slot (likely auto-vectorized).
+airs_action_tiers :: #force_inline proc(dst_airs: Region_Bitset, unit_count: u8) -> [4]Region_Bitset {
+	a := transmute([4]u64)dst_airs
+	ones := ~u64(0)
+	m0 := ones * u64(unit_count > 0)
+	m1 := ones * u64(unit_count > 1)
+	m2 := ones * u64(unit_count > 2)
+	m3 := ones * u64(unit_count > 3)
+	return {
+		transmute(Region_Bitset)[4]u64{a[0] & m0, a[1] & m0, a[2] & m0, a[3] & m0},
+		transmute(Region_Bitset)[4]u64{a[0] & m1, a[1] & m1, a[2] & m1, a[3] & m1},
+		transmute(Region_Bitset)[4]u64{a[0] & m2, a[1] & m2, a[2] & m2, a[3] & m2},
+		transmute(Region_Bitset)[4]u64{a[0] & m3, a[1] & m3, a[2] & m3, a[3] & m3},
+	}
+}
+
 add_region_to_valid_actions :: proc(gc: ^Game_Cache, dst_region: Region_ID, unit_count: u8) {
 	if unit_count >= 17 {
 		add_valid_action(gc, Action_ID(uint(dst_region)))
@@ -227,4 +254,29 @@ is_valid_actions_greater_than_one :: proc(gc: ^Game_Cache) -> (empty: bool) {
 		}
 	}
 	return total_count > 1
+}
+
+Move_Fraction :: enum u8 {
+	All,      // 100%
+	Half,     // ~50% (50.001% rounded up)
+	Quarter,  // ~25% (25.001% rounded up)
+	Only_One, // exactly 1
+}
+
+// Branchless mapping: given x available units, return how many to move
+// for the chosen fraction action. The Half / Quarter cases use a tiny
+// bias (0.00001) so that exact multiples round to the next bucket, e.g.
+// Half of 4 -> 3, Quarter of 4 -> 2, Half of 100 -> 51.
+fraction_move_count :: proc(action: Move_Fraction, x: int) -> int {
+	switch action {
+	case .All:
+		return x
+	case .Half:
+		return int(math.ceil(f64(x) * 0.50001))
+	case .Quarter:
+		return int(math.ceil(f64(x) * 0.25001))
+	case .Only_One:
+		return 1
+	}
+	return 0
 }

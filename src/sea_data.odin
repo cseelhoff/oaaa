@@ -319,8 +319,8 @@ COASTAL_CONNECTIONS := [?]Coastal_Connection {
 	{land = .Western_Canada, sea = .Sea_65},
 }
 
-starting_ships: [Sea_ID][Nation_ID][Idle_Ship]u8
-starting_sea_planes: [Sea_ID][Nation_ID][Idle_Plane]u8
+starting_ships: [Sea_ID][Nation_ID][Roster_Ship]u8
+starting_sea_planes: [Sea_ID][Nation_ID][Roster_Plane]u8
 
 @(init)
 init_starting_ships :: proc() {

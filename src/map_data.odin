@@ -85,7 +85,7 @@ mm: MapData = {
 		.Yakut_SSR = 1,
 		.Yunnan = 1,
 	},
-	orig_owner = {
+	original_owner = {
 		// Russian territories
 		.Evenki_National_Okrug = .Russia,
 		.Karelia_SSR = .Russia,

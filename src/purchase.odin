@@ -187,7 +187,7 @@ buy_sea_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 			} else {
 				ship := buy_active_ship[action]
 				gc.active_ships[dst_sea][ship] += 1
-				gc.idle_ships[dst_sea][gc.acting_nation][active_ship_to_idle[ship]] += 1
+				gc.roster_ships[dst_sea][gc.acting_nation][active_ship_to_roster[ship]] += 1
 				if ship == .Carrier_0_Moves {
 					gc.friendly_carriers_total[dst_sea] += 1
 					if gc.friendly_carriers_total[dst_sea] * 2 > gc.friendly_fighters_total[dst_sea] {
@@ -235,11 +235,11 @@ buy_land_units :: proc(gc: ^Game_Cache, land: Land_ID) -> (ok: bool) {
 		if action == .Buy_Fighter_Action || action == .Buy_Bomber_Action {
 			plane := buy_active_plane[action]
 			gc.active_land_planes[land][plane] += 1
-			gc.idle_land_planes[land][gc.acting_nation][active_plane_to_idle[plane]] += 1
+			gc.roster_land_planes[land][gc.acting_nation][active_plane_to_roster[plane]] += 1
 		} else {
 			army := buy_active_army[action]
 			gc.active_armies[land][army] += 1
-			gc.idle_armies[land][gc.acting_nation][active_army_to_idle[army]] += 1
+			gc.roster_armies[land][gc.acting_nation][active_army_to_roster[army]] += 1
 		}
 		gc.team_land_units[land][mm.team[gc.acting_nation]] += 1
 	}

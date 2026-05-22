@@ -32,7 +32,7 @@ initialize_player_data :: proc() {
 		mm.color[player] = mm.color[player]
 		for other_player in Nation_ID {
 			if mm.team[other_player] == mm.team[player] {
-				append(&mm.allies[player], other_player)
+				append(&mm.friends[player], other_player)
 			} else {
 				append(&mm.enemies[player], other_player)
 			}

@@ -224,8 +224,8 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 	// Convert idle armies to floats
 	for location in Land_ID {
 		for nation in Nation_ID {
-			for army in Idle_Army {
-				canon_board[idx] = f32(gs.idle_armies[location][nation][army])
+			for army in Roster_Army {
+				canon_board[idx] = f32(gs.roster_armies[location][nation][army])
 				idx += 1
 			}
 		}
@@ -234,8 +234,8 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 	// Convert idle land planes to floats
 	for location in Land_ID {
 		for nation in Nation_ID {
-			for plane in Idle_Plane {
-				canon_board[idx] = f32(gs.idle_land_planes[location][nation][plane])
+			for plane in Roster_Plane {
+				canon_board[idx] = f32(gs.roster_land_planes[location][nation][plane])
 				idx += 1
 			}
 		}
@@ -244,8 +244,8 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 	// Convert idle sea planes to floats
 	for location in Sea_ID {
 		for nation in Nation_ID {
-			for plane in Idle_Plane {
-				canon_board[idx] = f32(gs.idle_sea_planes[location][nation][plane])
+			for plane in Roster_Plane {
+				canon_board[idx] = f32(gs.roster_sea_planes[location][nation][plane])
 				idx += 1
 			}
 		}
@@ -254,8 +254,8 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 	// Convert idle ships to floats
 	for location in Sea_ID {
 		for nation in Nation_ID {
-			for ship in Idle_Ship {
-				canon_board[idx] = f32(gs.idle_ships[location][nation][ship])
+			for ship in Roster_Ship {
+				canon_board[idx] = f32(gs.roster_ships[location][nation][ship])
 				idx += 1
 			}
 		}

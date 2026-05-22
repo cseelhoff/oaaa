@@ -90,10 +90,10 @@ move_unmoved_bomber_to_land :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 		gc.active_land_planes[dst_land][bomber_after_moves[mm.air_distance[to_region(src_land)][to_region(dst_land)]]] +=
 		1
 	}
-	gc.idle_land_planes[dst_land][gc.acting_nation][.Bomber] += 1
+	gc.roster_land_planes[dst_land][gc.acting_nation][.Bomber] += 1
 	gc.team_land_units[dst_land][mm.team[gc.acting_nation]] += 1
 	gc.active_land_planes[src_land][.Bomber_Unmoved] -= 1
-	gc.idle_land_planes[src_land][gc.acting_nation][.Bomber] -= 1
+	gc.roster_land_planes[src_land][gc.acting_nation][.Bomber] -= 1
 	gc.team_land_units[src_land][mm.team[gc.acting_nation]] -= 1
 	return
 }
@@ -115,7 +115,7 @@ move_unmoved_bomber_to_sea :: proc(gc: ^Game_Cache, dst_action: Action_ID) {
 	1
 	add_my_bomber_to_sea(gc, dst_sea)
 	gc.active_land_planes[src_land][.Bomber_Unmoved] -= 1
-	gc.idle_land_planes[src_land][gc.acting_nation][.Bomber] -= 1
+	gc.roster_land_planes[src_land][gc.acting_nation][.Bomber] -= 1
 	gc.team_land_units[src_land][mm.team[gc.acting_nation]] -= 1
 }
 
@@ -180,10 +180,10 @@ move_bomber_from_land_to_land :: proc(
 	dst_land, unit_count := to_land_count(dst_action)
 	unit_count = min(unit_count, gc.active_land_planes[src_land][plane])
 	gc.active_land_planes[dst_land][.Bomber_0_Moves] += unit_count
-	gc.idle_land_planes[dst_land][gc.acting_nation][.Bomber] += unit_count
+	gc.roster_land_planes[dst_land][gc.acting_nation][.Bomber] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.acting_nation]] += unit_count
 	gc.active_land_planes[src_land][plane] -= unit_count
-	gc.idle_land_planes[src_land][gc.acting_nation][.Bomber] -= unit_count
+	gc.roster_land_planes[src_land][gc.acting_nation][.Bomber] -= unit_count
 	gc.team_land_units[src_land][mm.team[gc.acting_nation]] -= unit_count
 	return
 }
@@ -210,10 +210,10 @@ move_bomber_from_sea_to_land :: proc(
 	dst_land, unit_count := to_land_count(dst_action)
 	unit_count = min(unit_count, gc.active_sea_planes[src_sea][plane])
 	gc.active_land_planes[dst_land][.Bomber_0_Moves] += unit_count
-	gc.idle_land_planes[dst_land][gc.acting_nation][.Bomber] += unit_count
+	gc.roster_land_planes[dst_land][gc.acting_nation][.Bomber] += unit_count
 	gc.team_land_units[dst_land][mm.team[gc.acting_nation]] += unit_count
 	gc.active_sea_planes[src_sea][plane] -= unit_count
-	gc.idle_sea_planes[src_sea][gc.acting_nation][.Bomber] -= unit_count
+	gc.roster_sea_planes[src_sea][gc.acting_nation][.Bomber] -= unit_count
 	gc.team_sea_units[src_sea][mm.team[gc.acting_nation]] -= unit_count
 	gc.friendly_antifighter_ships_total[src_sea] -= unit_count
 	gc.friendly_sea_combatants_total[src_sea] -= unit_count
@@ -281,7 +281,7 @@ add_valid_landing_bomber_moves :: proc(
 }
 
 add_my_bomber_to_sea :: #force_inline proc(gc: ^Game_Cache, sea: Sea_ID) {
-	gc.idle_sea_planes[sea][gc.acting_nation][.Bomber] += 1
+	gc.roster_sea_planes[sea][gc.acting_nation][.Bomber] += 1
 	gc.team_sea_units[sea][mm.team[gc.acting_nation]] += 1
 	gc.friendly_antifighter_ships_total[sea] += 1
 	gc.friendly_sea_combatants_total[sea] += 1

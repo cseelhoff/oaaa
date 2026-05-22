@@ -199,8 +199,8 @@ factory_locations :: [?]Land_ID{
 }
 
 starting_money := [Nation_ID]u8{.Russia = 24, .Germany = 41, .United_Kingdom = 31, .Japan = 30, .USA = 42}
-starting_armies : [Land_ID][Nation_ID][Idle_Army]u8
-starting_land_planes : [Land_ID][Nation_ID][Idle_Plane]u8
+starting_armies : [Land_ID][Nation_ID][Roster_Army]u8
+starting_land_planes : [Land_ID][Nation_ID][Roster_Plane]u8
 
 @(init)
 init_starting_armies :: proc() {

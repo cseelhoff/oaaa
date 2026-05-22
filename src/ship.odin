@@ -3,7 +3,7 @@ package oaaa
 
 import "core:fmt"
 
-Idle_Ship :: enum {
+Roster_Ship :: enum {
 	Transport_Empty,
 	Transport_Infantry,
 	Transport_Artillery,
@@ -19,7 +19,7 @@ Idle_Ship :: enum {
 	Battleship_Damaged,
 }
 
-COST_IDLE_SHIP := [Idle_Ship]u8 {
+COST_ROSTER_SHIP := [Roster_Ship]u8 {
 	.Transport_Empty = 7,
 	.Transport_Infantry    = 7 + 3,
 	.Transport_Artillery    = 7 + 4,
@@ -113,7 +113,7 @@ Active_Ship :: enum {
 }
 bombardment_ships := []Active_Ship{.Battleship_0_Moves, .Battleship_Damaged_0_Moves, .Cruiser_0_Moves} //Battleships first, since they have higher attack damage
 
-active_ship_to_idle := [Active_Ship]Idle_Ship {
+active_ship_to_roster := [Active_Ship]Roster_Ship {
 	.Transport_Empty_Unmoved  = .Transport_Empty,
 	.Transport_Empty_2_Moves  = .Transport_Empty,
 	.Transport_Empty_1_Moves  = .Transport_Empty,
@@ -321,9 +321,9 @@ move_single_ship :: proc(
 	dst_sea, unit_count := to_sea_count(dst_action)
 	unit_count = min(unit_count, gc.active_ships[src_sea][src_unit])
 	gc.active_ships[dst_sea][dst_unit] += unit_count
-	gc.idle_ships[dst_sea][gc.acting_nation][active_ship_to_idle[dst_unit]] += unit_count
+	gc.roster_ships[dst_sea][gc.acting_nation][active_ship_to_roster[dst_unit]] += unit_count
 	gc.team_sea_units[dst_sea][mm.team[gc.acting_nation]] += unit_count
 	gc.active_ships[src_sea][src_unit] -= unit_count
-	gc.idle_ships[src_sea][gc.acting_nation][active_ship_to_idle[src_unit]] -= unit_count
+	gc.roster_ships[src_sea][gc.acting_nation][active_ship_to_roster[src_unit]] -= unit_count
 	gc.team_sea_units[src_sea][mm.team[gc.acting_nation]] -= unit_count
 }

@@ -95,10 +95,10 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 			gc.friendly_owner += {land}
 		}
 		for player in Nation_ID {
-			for army in gc.idle_armies[land][player] {
+			for army in gc.roster_armies[land][player] {
 				gc.team_land_units[land][mm.team[player]] += army
 			}
-			for plane in gc.idle_land_planes[land][player] {
+			for plane in gc.roster_land_planes[land][player] {
 				gc.team_land_units[land][mm.team[player]] += plane
 			}
 		}
@@ -110,10 +110,10 @@ load_cache_from_state :: proc(gc: ^Game_Cache, gs: ^Game_State) {
 	gc.team_sea_units = {}
 	for sea in Sea_ID {
 		for player in Nation_ID {
-			for ship in gc.idle_ships[sea][player] {
+			for ship in gc.roster_ships[sea][player] {
 				gc.team_sea_units[sea][mm.team[player]] += ship
 			}
-			for plane in gc.idle_sea_planes[sea][player] {
+			for plane in gc.roster_sea_planes[sea][player] {
 				gc.team_sea_units[sea][mm.team[player]] += plane
 			}
 		}
@@ -152,25 +152,25 @@ count_sea_unit_totals :: proc(gc: ^Game_Cache) {
 		gc.enemy_blockade_total[sea] = 0
 		gc.enemy_subvuln_ships_total[sea] = 0
 		for enemy in mm.enemies[gc.acting_nation] {
-			gc.enemy_fighters_total[sea] += gc.idle_sea_planes[sea][enemy][.Fighter]
-			gc.enemy_submarines_total[sea] += gc.idle_ships[sea][enemy][.Submarine]
-			gc.enemy_destroyers_total[sea] += gc.idle_ships[sea][enemy][.Destroyer]
+			gc.enemy_fighters_total[sea] += gc.roster_sea_planes[sea][enemy][.Fighter]
+			gc.enemy_submarines_total[sea] += gc.roster_ships[sea][enemy][.Submarine]
+			gc.enemy_destroyers_total[sea] += gc.roster_ships[sea][enemy][.Destroyer]
 			gc.enemy_blockade_total[sea] +=
-				gc.idle_ships[sea][enemy][.Carrier] +
-				gc.idle_ships[sea][enemy][.Cruiser] +
-				gc.idle_ships[sea][enemy][.Battleship] +
-				gc.idle_ships[sea][enemy][.Battleship_Damaged]
+				gc.roster_ships[sea][enemy][.Carrier] +
+				gc.roster_ships[sea][enemy][.Cruiser] +
+				gc.roster_ships[sea][enemy][.Battleship] +
+				gc.roster_ships[sea][enemy][.Battleship_Damaged]
 			gc.enemy_subvuln_ships_total[sea] +=
-				gc.idle_ships[sea][enemy][.Transport_Empty] +
-				gc.idle_ships[sea][enemy][.Transport_Infantry] +
-				gc.idle_ships[sea][enemy][.Transport_Artillery] +
-				gc.idle_ships[sea][enemy][.Transport_Tank] +
-				gc.idle_ships[sea][enemy][.Transport_Infantry_Artillery] +
-				gc.idle_ships[sea][enemy][.Transport_Infantry_Tank] +
-				gc.idle_ships[sea][enemy][.Carrier] +
-				gc.idle_ships[sea][enemy][.Cruiser] +
-				gc.idle_ships[sea][enemy][.Battleship] +
-				gc.idle_ships[sea][enemy][.Battleship_Damaged]
+				gc.roster_ships[sea][enemy][.Transport_Empty] +
+				gc.roster_ships[sea][enemy][.Transport_Infantry] +
+				gc.roster_ships[sea][enemy][.Transport_Artillery] +
+				gc.roster_ships[sea][enemy][.Transport_Tank] +
+				gc.roster_ships[sea][enemy][.Transport_Infantry_Artillery] +
+				gc.roster_ships[sea][enemy][.Transport_Infantry_Tank] +
+				gc.roster_ships[sea][enemy][.Carrier] +
+				gc.roster_ships[sea][enemy][.Cruiser] +
+				gc.roster_ships[sea][enemy][.Battleship] +
+				gc.roster_ships[sea][enemy][.Battleship_Damaged]
 		}
 		if gc.enemy_subvuln_ships_total[sea] + gc.enemy_fighters_total[sea] > 0{
 			add_region(&gc.region_has_enemies, to_region(sea))
@@ -182,31 +182,31 @@ count_sea_unit_totals :: proc(gc: ^Game_Cache) {
 		gc.friendly_antifighter_ships_total[sea] = 0
 		gc.friendly_sea_combatants_total[sea] = 0
 		gc.has_carrier_space = {}
-		for ally in mm.allies[gc.acting_nation] {
-			gc.friendly_fighters_total[sea] += gc.idle_sea_planes[sea][ally][.Fighter]
-			gc.friendly_carriers_total[sea] += gc.idle_ships[sea][ally][.Carrier]
-			gc.friendly_destroyers_total[sea] += gc.idle_ships[sea][ally][.Destroyer]
+		for ally in mm.friends[gc.acting_nation] {
+			gc.friendly_fighters_total[sea] += gc.roster_sea_planes[sea][ally][.Fighter]
+			gc.friendly_carriers_total[sea] += gc.roster_ships[sea][ally][.Carrier]
+			gc.friendly_destroyers_total[sea] += gc.roster_ships[sea][ally][.Destroyer]
 			gc.friendly_antifighter_ships_total[sea] +=
-				gc.idle_ships[sea][ally][.Cruiser] +
-				gc.idle_ships[sea][ally][.Battleship] +
-				gc.idle_ships[sea][ally][.Battleship_Damaged]
+				gc.roster_ships[sea][ally][.Cruiser] +
+				gc.roster_ships[sea][ally][.Battleship] +
+				gc.roster_ships[sea][ally][.Battleship_Damaged]
 			gc.friendly_sea_combatants_total[sea] +=
-				gc.idle_ships[sea][ally][.Submarine] +
-				gc.idle_ships[sea][ally][.Cruiser] +
-				gc.idle_ships[sea][ally][.Battleship] +
-				gc.idle_ships[sea][ally][.Battleship_Damaged] +
-				gc.idle_ships[sea][ally][.Destroyer]
+				gc.roster_ships[sea][ally][.Submarine] +
+				gc.roster_ships[sea][ally][.Cruiser] +
+				gc.roster_ships[sea][ally][.Battleship] +
+				gc.roster_ships[sea][ally][.Battleship_Damaged] +
+				gc.roster_ships[sea][ally][.Destroyer]
 		}
 		gc.friendly_antifighter_ships_total[sea] +=
 			gc.friendly_destroyers_total[sea] +
 			gc.friendly_fighters_total[sea] +
 			gc.friendly_carriers_total[sea] +
-			gc.idle_sea_planes[sea][gc.acting_nation][.Bomber]
+			gc.roster_sea_planes[sea][gc.acting_nation][.Bomber]
 		gc.friendly_sea_combatants_total[sea] +=
 			gc.friendly_destroyers_total[sea] +
 			gc.friendly_fighters_total[sea] +
 			gc.friendly_carriers_total[sea] +
-			gc.idle_sea_planes[sea][gc.acting_nation][.Bomber]
+			gc.roster_sea_planes[sea][gc.acting_nation][.Bomber]
 		if gc.friendly_carriers_total[sea] * 2 > gc.friendly_fighters_total[sea] {
 			gc.has_carrier_space += {sea}
 		}

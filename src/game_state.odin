@@ -23,7 +23,7 @@ Game_State :: struct {
        - Saves memory by not tracking inactive players
        - Indexed by [location][unit_state]
     
-    active_army_to_idle mapping:
+    active_army_to_roster mapping:
     - Converts between the two systems
     - Example: .Infantry_0_Moves -> .Infantry
     - Needed when:
@@ -49,10 +49,10 @@ Game_State :: struct {
 	active_ships:              [Sea_ID][Active_Ship]u8,
 	active_land_planes:        [Land_ID][Active_Plane]u8,
 	active_sea_planes:         [Sea_ID][Active_Plane]u8,
-	idle_armies:               [Land_ID][Nation_ID][Idle_Army]u8,
-	idle_land_planes:          [Land_ID][Nation_ID][Idle_Plane]u8,
-	idle_sea_planes:           [Sea_ID][Nation_ID][Idle_Plane]u8,
-	idle_ships:                [Sea_ID][Nation_ID][Idle_Ship]u8,
+	roster_armies:               [Land_ID][Nation_ID][Roster_Army]u8,
+	roster_land_planes:          [Land_ID][Nation_ID][Roster_Plane]u8,
+	roster_sea_planes:           [Sea_ID][Nation_ID][Roster_Plane]u8,
+	roster_ships:                [Sea_ID][Nation_ID][Roster_Ship]u8,
 	smallest_allowable_action: [Region_ID]Action_ID,
 	// skipped_buys:            [Region_ID]Purchase_Bitset,
 	owner:                     [Land_ID]Nation_ID,
@@ -79,20 +79,20 @@ load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
 		gs.factory_prod[land] = mm.value[land]
 	}
 	for land in Land_ID {
-		gs.owner[land] = mm.orig_owner[land]
+		gs.owner[land] = mm.original_owner[land]
 		for player in Nation_ID {
-			for army in Idle_Army {
-				gs.idle_armies[land][player][army] = starting_armies[land][player][army]
+			for army in Roster_Army {
+				gs.roster_armies[land][player][army] = starting_armies[land][player][army]
 				if player == gs.acting_nation {
-					gs.active_armies[land][idle_army_to_active[army]] =
+					gs.active_armies[land][roster_army_to_active[army]] =
 						starting_armies[land][player][army]
 				}
 			}
-			for plane in Idle_Plane {
-				gs.idle_land_planes[land][player][plane] =
+			for plane in Roster_Plane {
+				gs.roster_land_planes[land][player][plane] =
 					starting_land_planes[land][player][plane]
 				if player == gs.acting_nation {
-					gs.active_land_planes[land][idle_plane_to_active[plane]] =
+					gs.active_land_planes[land][roster_plane_to_active[plane]] =
 						starting_land_planes[land][player][plane]
 				}
 			}
@@ -103,17 +103,17 @@ load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
 	}
 	for sea in Sea_ID {
 		for player in Nation_ID {
-			for plane in Idle_Plane {
-				gs.idle_sea_planes[sea][player][plane] = starting_sea_planes[sea][player][plane]
+			for plane in Roster_Plane {
+				gs.roster_sea_planes[sea][player][plane] = starting_sea_planes[sea][player][plane]
 				if player == gs.acting_nation {
-					gs.active_sea_planes[sea][idle_plane_to_active[plane]] =
+					gs.active_sea_planes[sea][roster_plane_to_active[plane]] =
 						starting_sea_planes[sea][player][plane]
 				}
 			}
-			for ship in Idle_Ship {
-				gs.idle_ships[sea][player][ship] = starting_ships[sea][player][ship]
+			for ship in Roster_Ship {
+				gs.roster_ships[sea][player][ship] = starting_ships[sea][player][ship]
 				if player == gs.acting_nation {
-					gs.active_ships[sea][idle_ship_to_active[ship]] = starting_ships[sea][player][ship]
+					gs.active_ships[sea][roster_ship_to_active[ship]] = starting_ships[sea][player][ship]
 				}
 			}
 		}
@@ -121,17 +121,17 @@ load_default_game_state :: proc(gs: ^Game_State) -> (ok: bool) {
 	return true
 }
 
-idle_army_to_active: [Idle_Army]Active_Army = {
+roster_army_to_active: [Roster_Army]Active_Army = {
 	.Infantry   = .Infantry_1_Moves,
 	.Artillery  = .Artillery_1_Moves,
 	.Tank  = .Tank_2_Moves,
 	.AAGun = .AAGun_1_Moves,
 }
-idle_plane_to_active: [Idle_Plane]Active_Plane = {
+roster_plane_to_active: [Roster_Plane]Active_Plane = {
 	.Fighter = .Fighter_Unmoved,
 	.Bomber  = .Bomber_Unmoved,
 }
-idle_ship_to_active: [Idle_Ship]Active_Ship = {
+roster_ship_to_active: [Roster_Ship]Active_Ship = {
 	.Transport_Empty = .Transport_Empty_Unmoved,
 	.Transport_Infantry    = .Transport_Infantry_Unmoved,
 	.Transport_Artillery    = .Transport_Artillery_Unmoved,

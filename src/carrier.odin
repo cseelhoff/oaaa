@@ -5,9 +5,9 @@ CARRIER_MAX_FIGHTERS :: 2
 
 carry_friendly_fighters :: proc(gc: ^Game_Cache, src_sea: Sea_ID, dst_sea: Sea_ID) {
 	fighters_remaining: u8 = CARRIER_MAX_FIGHTERS
-	for player in mm.allies[gc.acting_nation] {
+	for player in mm.friends[gc.acting_nation] {
 		if player == gc.acting_nation do continue
-		fighters_to_move := gc.idle_sea_planes[src_sea][player][.Fighter]
+		fighters_to_move := gc.roster_sea_planes[src_sea][player][.Fighter]
 		if fighters_to_move == 0 do continue
 		fighters_to_move = min(fighters_to_move, fighters_remaining)
 		add_ally_fighters_to_sea(gc, dst_sea, player, fighters_to_move)
