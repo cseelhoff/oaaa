@@ -18,14 +18,14 @@ This is a **custom training stack** of roughly 2k LOC of Python on top of PyTorc
 
 ## 2. Workspace layout (assumed)
 
-The Odin engine lives in `~/todin`:
+The Odin engine lives in `~/oaaa`:
 
-- `~/todin/triplea/game-app/game-core/src/main/java/...` — original Java source of truth.
-- `~/todin/odin_flat/...` — Odin port.
-- `~/todin/triplea/conversion/odin_tests/...` — Odin test harness.
-- `~/todin/triplea/game-app/smoke-testing/src/test/java/` — Java parity-test harness.
+- `~/oaaa/triplea/game-app/game-core/src/main/java/...` — original Java source of truth.
+- `~/oaaa/odin_flat/...` — Odin port.
+- `~/oaaa/triplea/conversion/odin_tests/...` — Odin test harness.
+- `~/oaaa/triplea/game-app/smoke-testing/src/test/java/` — Java parity-test harness.
 
-This RL project lives in `~/todin/rl-agent/`. All paths in this document are relative to that directory unless prefixed with `~/todin/`.
+This RL project lives in `~/oaaa/rl-agent/`. All paths in this document are relative to that directory unless prefixed with `~/oaaa/`.
 
 **Java-fidelity rule**: when porting any Java behavior to Odin, read the Java first (see `/memories/java-fidelity-rule.md` in user memory). The same rule applies to any new engine functionality this RL project requires (e.g., `clone`, `apply`/`undo`, `proai_plan_for(state)`).
 
@@ -165,7 +165,7 @@ If the engine cannot easily support undo, prioritize fast clone first; revisit u
 ## 5. Python project layout
 
 ```
-~/todin/rl-agent/
+~/oaaa/rl-agent/
 ├── plan.md                          # this file
 ├── pyproject.toml                   # uv / hatch / poetry — your call
 ├── configs/
@@ -623,7 +623,7 @@ Before writing each component, the implementing agent should read:
 - **HGT**: Hu et al., 2020, *Heterogeneous Graph Transformer*.
 - **LightZero source**: `lzero/mcts/ptree/ptree_az.py`, `lzero/policy/sampled_alphazero.py` — read for PUCT / virtual loss / Dirichlet implementation details.
 - **OpenSpiel source**: `open_spiel/python/algorithms/mcts.py` — read for chance-node handling.
-- **TripleA ProAI source**: `~/todin/triplea/game-app/game-core/src/main/java/games/strategy/triplea/ai/pro/...` — read to understand what ProAI considers, which informs feature engineering and reward shaping.
+- **TripleA ProAI source**: `~/oaaa/triplea/game-app/game-core/src/main/java/games/strategy/triplea/ai/pro/...` — read to understand what ProAI considers, which informs feature engineering and reward shaping.
 
 ---
 

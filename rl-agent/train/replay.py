@@ -57,3 +57,38 @@ class Replay:
             return []
         n = min(batch_size, len(self._buf))
         return self._rng.sample(list(self._buf), n)
+
+    def sample_recent_mix(
+        self,
+        batch_size: int,
+        recent_window: int = 2000,
+        recent_fraction: float = 0.5,
+    ) -> list[Sample]:
+        """Sample a mix of recent + uniform-over-buffer.
+
+        Counters replay-buffer dilution: when the buffer is large (e.g.,
+        20k samples) and per-iter additions are small (e.g., 1k), uniform
+        sampling makes new self-play data <5% of any minibatch. Setting
+        ``recent_window=2000, recent_fraction=0.5`` guarantees half of every
+        minibatch comes from the freshest 2000 samples.
+
+        Falls back to plain uniform sampling when the buffer is smaller
+        than ``recent_window``.
+        """
+        if not self._buf:
+            return []
+        n = min(batch_size, len(self._buf))
+        if recent_fraction <= 0.0 or recent_window <= 0:
+            return self._rng.sample(list(self._buf), n)
+        n_recent = min(int(round(n * recent_fraction)), len(self._buf))
+        n_uniform = n - n_recent
+        all_buf = list(self._buf)
+        if recent_window >= len(all_buf):
+            recent_pool = all_buf
+        else:
+            recent_pool = all_buf[-recent_window:]
+        recent_pick = self._rng.sample(recent_pool, min(n_recent, len(recent_pool)))
+        uniform_pick = (
+            self._rng.sample(all_buf, n_uniform) if n_uniform > 0 else []
+        )
+        return recent_pick + uniform_pick
