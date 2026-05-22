@@ -319,69 +319,69 @@ COASTAL_CONNECTIONS := [?]Coastal_Connection {
 	{land = .Western_Canada, sea = .Sea_65},
 }
 
-starting_ships: [Sea_ID][Player_ID][Idle_Ship]u8
-starting_sea_planes: [Sea_ID][Player_ID][Idle_Plane]u8
+starting_ships: [Sea_ID][Nation_ID][Idle_Ship]u8
+starting_sea_planes: [Sea_ID][Nation_ID][Idle_Plane]u8
 
 @(init)
 init_starting_ships :: proc() {
 	// Russian ships
-	starting_ships[.Sea_4][.Rus][.SUB] = 1
+	starting_ships[.Sea_4][.Russia][.Submarine] = 1
 
 	// German ships
-	starting_ships[.Sea_5][.Ger][.TRANS_EMPTY] = 1
-	starting_ships[.Sea_5][.Ger][.SUB] = 2
-	starting_ships[.Sea_5][.Ger][.CRUISER] = 1
-	starting_ships[.Sea_9][.Ger][.SUB] = 2
-	starting_ships[.Sea_15][.Ger][.TRANS_EMPTY] = 1
-	starting_ships[.Sea_15][.Ger][.BATTLESHIP] = 1
+	starting_ships[.Sea_5][.Germany][.Transport_Empty] = 1
+	starting_ships[.Sea_5][.Germany][.Submarine] = 2
+	starting_ships[.Sea_5][.Germany][.Cruiser] = 1
+	starting_ships[.Sea_9][.Germany][.Submarine] = 2
+	starting_ships[.Sea_15][.Germany][.Transport_Empty] = 1
+	starting_ships[.Sea_15][.Germany][.Battleship] = 1
 
 	// British ships
-	starting_ships[.Sea_10][.Eng][.TRANS_EMPTY] = 1
-	starting_ships[.Sea_10][.Eng][.DESTROYER] = 1
-	starting_ships[.Sea_7][.Eng][.BATTLESHIP] = 1
-	starting_ships[.Sea_7][.Eng][.TRANS_EMPTY] = 1
-	starting_ships[.Sea_14][.Eng][.CRUISER] = 1
-	starting_ships[.Sea_17][.Eng][.DESTROYER] = 1
-	starting_ships[.Sea_35][.Eng][.CARRIER] = 1
-	starting_ships[.Sea_35][.Eng][.TRANS_EMPTY] = 1
-	starting_ships[.Sea_35][.Eng][.CRUISER] = 1
-	starting_ships[.Sea_39][.Eng][.TRANS_EMPTY] = 1
-	starting_ships[.Sea_39][.Eng][.SUB] = 1
-	starting_ships[.Sea_39][.Eng][.CRUISER] = 1
+	starting_ships[.Sea_10][.United_Kingdom][.Transport_Empty] = 1
+	starting_ships[.Sea_10][.United_Kingdom][.Destroyer] = 1
+	starting_ships[.Sea_7][.United_Kingdom][.Battleship] = 1
+	starting_ships[.Sea_7][.United_Kingdom][.Transport_Empty] = 1
+	starting_ships[.Sea_14][.United_Kingdom][.Cruiser] = 1
+	starting_ships[.Sea_17][.United_Kingdom][.Destroyer] = 1
+	starting_ships[.Sea_35][.United_Kingdom][.Carrier] = 1
+	starting_ships[.Sea_35][.United_Kingdom][.Transport_Empty] = 1
+	starting_ships[.Sea_35][.United_Kingdom][.Cruiser] = 1
+	starting_ships[.Sea_39][.United_Kingdom][.Transport_Empty] = 1
+	starting_ships[.Sea_39][.United_Kingdom][.Submarine] = 1
+	starting_ships[.Sea_39][.United_Kingdom][.Cruiser] = 1
 
 	// Japanese ships
-	starting_ships[.Sea_37][.Jap][.BATTLESHIP] = 1
-	starting_ships[.Sea_37][.Jap][.CARRIER] = 1
-	starting_ships[.Sea_61][.Jap][.TRANS_EMPTY] = 1
-	starting_ships[.Sea_61][.Jap][.DESTROYER] = 1
-	starting_ships[.Sea_60][.Jap][.TRANS_EMPTY] = 1
-	starting_ships[.Sea_60][.Jap][.BATTLESHIP] = 1
-	starting_ships[.Sea_60][.Jap][.DESTROYER] = 1
-	starting_ships[.Sea_50][.Jap][.CRUISER] = 1
-	starting_ships[.Sea_50][.Jap][.CARRIER] = 1
-	starting_ships[.Sea_44][.Jap][.SUB] = 1
+	starting_ships[.Sea_37][.Japan][.Battleship] = 1
+	starting_ships[.Sea_37][.Japan][.Carrier] = 1
+	starting_ships[.Sea_61][.Japan][.Transport_Empty] = 1
+	starting_ships[.Sea_61][.Japan][.Destroyer] = 1
+	starting_ships[.Sea_60][.Japan][.Transport_Empty] = 1
+	starting_ships[.Sea_60][.Japan][.Battleship] = 1
+	starting_ships[.Sea_60][.Japan][.Destroyer] = 1
+	starting_ships[.Sea_50][.Japan][.Cruiser] = 1
+	starting_ships[.Sea_50][.Japan][.Carrier] = 1
+	starting_ships[.Sea_44][.Japan][.Submarine] = 1
 
 	// American ships
-	starting_ships[.Sea_11][.USA][.TRANS_EMPTY] = 2
-	starting_ships[.Sea_19][.USA][.CRUISER] = 1
-	starting_ships[.Sea_11][.USA][.DESTROYER] = 1
-	starting_ships[.Sea_56][.USA][.BATTLESHIP] = 1
-	starting_ships[.Sea_56][.USA][.DESTROYER] = 1
-	starting_ships[.Sea_56][.USA][.TRANS_EMPTY] = 1
-	starting_ships[.Sea_53][.USA][.CARRIER] = 1
-	starting_ships[.Sea_53][.USA][.SUB] = 1
-	starting_ships[.Sea_53][.USA][.DESTROYER] = 1
+	starting_ships[.Sea_11][.USA][.Transport_Empty] = 2
+	starting_ships[.Sea_19][.USA][.Cruiser] = 1
+	starting_ships[.Sea_11][.USA][.Destroyer] = 1
+	starting_ships[.Sea_56][.USA][.Battleship] = 1
+	starting_ships[.Sea_56][.USA][.Destroyer] = 1
+	starting_ships[.Sea_56][.USA][.Transport_Empty] = 1
+	starting_ships[.Sea_53][.USA][.Carrier] = 1
+	starting_ships[.Sea_53][.USA][.Submarine] = 1
+	starting_ships[.Sea_53][.USA][.Destroyer] = 1
 }
 
 @(init)
 init_starting_sea_planes :: proc() {
 	// British sea-based planes
-	starting_sea_planes[.Sea_35][.Eng][.FIGHTER] = 1
+	starting_sea_planes[.Sea_35][.United_Kingdom][.Fighter] = 1
 
 	// Japanese sea-based planes
-	starting_sea_planes[.Sea_37][.Jap][.FIGHTER] = 2
-	starting_sea_planes[.Sea_50][.Jap][.FIGHTER] = 1
+	starting_sea_planes[.Sea_37][.Japan][.Fighter] = 2
+	starting_sea_planes[.Sea_50][.Japan][.Fighter] = 1
 
 	// American sea-based planes
-	starting_sea_planes[.Sea_53][.USA][.FIGHTER] = 1
+	starting_sea_planes[.Sea_53][.USA][.Fighter] = 1
 }

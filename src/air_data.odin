@@ -1,6 +1,6 @@
 package oaaa
 
-Air_ID :: distinct enum u8 {
+Region_ID :: distinct enum u8 {
     Alaska_Air,
     Algeria_Air,
     Anglo_Egyptian_Sudan_Air,

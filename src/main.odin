@@ -4,11 +4,11 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 
-is_human := [Player_ID]bool {
-	.Rus = false,
-	.Ger = false,
-	.Eng = false,
-	.Jap = false,
+is_human := [Nation_ID]bool {
+	.Russia = false,
+	.Germany = false,
+	.United_Kingdom = false,
+	.Japan = false,
 	.USA = false,
 }
 
@@ -40,10 +40,10 @@ start :: proc() {
 	if len(os.args) >= 2 {
 		load_path = os.args[1]
 		is_human = {
-			.Rus = true,
-			.Ger = true,
-			.Eng = true,
-			.Jap = true,
+			.Russia = true,
+			.Germany = true,
+			.United_Kingdom = true,
+			.Japan = true,
 			.USA = true,
 		}		
 		load_game_data(&game_state, load_path)

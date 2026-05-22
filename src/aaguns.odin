@@ -1,5 +1,4 @@
 package oaaa
-import sa "core:container/small_array"
 import "core:fmt"
 
 move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -18,8 +17,8 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
     - They can only move into friendly territory
     
     Movement States:
-    - Start as AAGUN_1_MOVES (ready to move)
-    - Change to AAGUN_0_MOVES (done moving)
+    - Start as AAGun_1_Moves (ready to move)
+    - Change to AAGun_0_Moves (done moving)
     - This prevents multiple moves per turn
     
     Monte Carlo Search Optimization:
@@ -34,22 +33,22 @@ move_aa_guns :: proc(gc: ^Game_Cache) -> (ok: bool) {
     redundant decision paths early.
     */
 	gc.clear_history_needed = false
-    gc.current_active_unit = .AAGUN_1_MOVES
+    gc.current_active_unit = .AAGun_1_Moves
 	for src_land in Land_ID {
-		if gc.active_armies[src_land][.AAGUN_1_MOVES] == 0 do continue
-		valid_army_destinations := mm.l2l_1away_via_land_bitset[src_land] & gc.friendly_owner// All adjacent lands
-        gc.current_territory = to_air(src_land)
-		for gc.active_armies[src_land][.AAGUN_1_MOVES] > 0 {
+		if gc.active_armies[src_land][.AAGun_1_Moves] == 0 do continue
+		valid_army_destinations := mm.lands_within_1_move_bitset[src_land] & gc.friendly_owner// All adjacent lands
+        gc.current_territory = to_region(src_land)
+		for gc.active_armies[src_land][.AAGun_1_Moves] > 0 {
             //todo: optimize. instead of resetting, check unit count and update smallest_allowable_action
             reset_valid_actions(gc)
             add_lands_to_valid_actions(
                 gc,
                 valid_army_destinations,
-                gc.active_armies[src_land][.AAGUN_1_MOVES],
+                gc.active_armies[src_land][.AAGun_1_Moves],
             )                
 			dst_action := get_action_input(gc) or_return
 			if skip_army(gc, dst_action) do continue
-			move_single_army_land(gc, dst_action, .AAGUN_0_MOVES)
+			move_single_army_land(gc, dst_action, .AAGun_0_Moves)
 		}
 	}
 	if gc.clear_history_needed do clear_move_history(gc)

@@ -120,7 +120,7 @@ get_next_state :: proc "c" (board: rawptr, player: i32, action: i32) -> (rawptr,
 	new_gs^ = gs^
 	action_id := (Action_ID)(action)
 	apply_action(new_gs, action_id)
-    player := mm.team[new_gs.cur_player] == .Allies ? 1:-1
+    player := mm.team[new_gs.acting_nation] == .Allies ? 1:-1
 	return new_gs, i32(player)
 }
 
@@ -152,7 +152,7 @@ get_game_ended :: proc "c" (board: rawptr, player: i32) -> f32 {
 	gs := (^Game_State)(board)
     score := evaluate_state(gs)
 	team := (1 - player) / 2 // player = -1 -> team = Axis, player = 1 -> team = Allies
-    if mm.team[gs.cur_player] == Team_ID(team) {
+    if mm.team[gs.acting_nation] == Team_ID(team) {
 		// if score > 0.99 {
 		// 	return 1
 		// } else if score < 0.01 {
@@ -223,9 +223,9 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 
 	// Convert idle armies to floats
 	for location in Land_ID {
-		for player in Player_ID {
+		for nation in Nation_ID {
 			for army in Idle_Army {
-				canon_board[idx] = f32(gs.idle_armies[location][player][army])
+				canon_board[idx] = f32(gs.idle_armies[location][nation][army])
 				idx += 1
 			}
 		}
@@ -233,9 +233,9 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 
 	// Convert idle land planes to floats
 	for location in Land_ID {
-		for player in Player_ID {
+		for nation in Nation_ID {
 			for plane in Idle_Plane {
-				canon_board[idx] = f32(gs.idle_land_planes[location][player][plane])
+				canon_board[idx] = f32(gs.idle_land_planes[location][nation][plane])
 				idx += 1
 			}
 		}
@@ -243,9 +243,9 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 
 	// Convert idle sea planes to floats
 	for location in Sea_ID {
-		for player in Player_ID {
+		for nation in Nation_ID {
 			for plane in Idle_Plane {
-				canon_board[idx] = f32(gs.idle_sea_planes[location][player][plane])
+				canon_board[idx] = f32(gs.idle_sea_planes[location][nation][plane])
 				idx += 1
 			}
 		}
@@ -253,16 +253,16 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 
 	// Convert idle ships to floats
 	for location in Sea_ID {
-		for player in Player_ID {
+		for nation in Nation_ID {
 			for ship in Idle_Ship {
-				canon_board[idx] = f32(gs.idle_ships[location][player][ship])
+				canon_board[idx] = f32(gs.idle_ships[location][nation][ship])
 				idx += 1
 			}
 		}
 	}
 
 	// Convert rejected_moves_from bitsets
-	for location in Air_ID {	
+	for location in Region_ID {	
 		canon_board[idx] = f32(gs.smallest_allowable_action[location])
 		idx += 1
 	}
@@ -273,15 +273,15 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 		idx += 1
 	}
 
-	// Convert player money
-	for player in Player_ID {
-		canon_board[idx] = f32(gs.money[player])
+	// Convert nation treasury
+	for nation in Nation_ID {
+		canon_board[idx] = f32(gs.treasury[nation])
 		idx += 1
 	}
 
-	// Convert max_bombards
+	// Convert max_bombardment_dice
 	for location in Land_ID {
-		canon_board[idx] = f32(gs.max_bombards[location])
+		canon_board[idx] = f32(gs.max_bombardment_dice[location])
 		idx += 1
 	}
 
@@ -309,24 +309,24 @@ board_ptr_to_f32_array :: proc "c" (board: rawptr, player: i32) -> [^]f32 {
 
 	// Convert combat state bitsets
 	for land in Land_ID {
-		canon_board[idx] = land in gs.more_land_combat_needed ? 1.0 : 0.0
+		canon_board[idx] = land in gs.more_land_battles_needed ? 1.0 : 0.0
 		idx += 1
 	}
 	for sea in Sea_ID {
-		canon_board[idx] = sea in gs.more_sea_combat_needed ? 1.0 : 0.0
+		canon_board[idx] = sea in gs.more_sea_battles_needed ? 1.0 : 0.0
 		idx += 1
 	}
 	for land in Land_ID {
-		canon_board[idx] = land in gs.land_combat_started ? 1.0 : 0.0
+		canon_board[idx] = land in gs.land_battle_started ? 1.0 : 0.0
 		idx += 1
 	}
 	for sea in Sea_ID {
-		canon_board[idx] = sea in gs.sea_combat_started ? 1.0 : 0.0
+		canon_board[idx] = sea in gs.sea_battle_started ? 1.0 : 0.0
 		idx += 1
 	}
 
 	// Convert current player
-	canon_board[idx] = f32(gs.cur_player)
+	canon_board[idx] = f32(gs.acting_nation)
 	idx += 1
 
 	// fmt.println(idx)

@@ -75,14 +75,14 @@ Pro_Sea_Territory :: struct {
 	enemy_cruisers: u8,
 	enemy_battleships: u8,
 	enemy_carriers: u8,
-	enemy_subs: u8,
+	enemy_submarines: u8,
 	enemy_transports: u8,
 }
 
 // Pro_Purchase_Option represents a unit type that can be purchased
 // Maps to TripleA's ProPurchaseOption class
 Pro_Purchase_Option :: struct {
-	action: Action_ID,  // Which buy action (BUY_INF_ACTION, etc.)
+	action: Action_ID,  // Which buy action (Buy_Infantry_Action, etc.)
 	cost: u8,
 	attack_power: f64,
 	defense_power: f64,
@@ -116,7 +116,7 @@ Pro_Purchase_Territory :: struct {
 // Maps to TripleA's ProData class
 Pro_Data :: struct {
 	gc: ^Game_Cache,
-	player: Player_ID,
+	player: Nation_ID,
 	
 	// Territory analysis
 	land_territories: [Land_ID]Pro_Territory,
@@ -138,8 +138,8 @@ Pro_Data :: struct {
 pro_data_init :: proc(gc: ^Game_Cache) -> Pro_Data {
 	pd := Pro_Data{
 		gc = gc,
-		player = gc.cur_player,
-		money_available = gc.money[gc.cur_player],
+		player = gc.acting_nation,
+		money_available = gc.treasury[gc.acting_nation],
 		win_percentage_threshold = 70.0,  // Default: need 70% win chance to attack
 	}
 	
@@ -154,7 +154,7 @@ pro_data_init :: proc(gc: ^Game_Cache) -> Pro_Data {
 // Check if our capital is threatened
 is_capital_threatened :: proc(gc: ^Game_Cache) -> bool {
 	// Find our capital
-	capital, ok := get_capital_territory(gc.cur_player).?
+	capital, ok := get_capital_territory(gc.acting_nation).?
 	if !ok do return false
 	
 	// Check if enemy units are nearby (simplified check)
@@ -167,13 +167,13 @@ is_capital_threatened :: proc(gc: ^Game_Cache) -> bool {
 }
 
 // Helper functions
-get_capital_territory :: proc(player: Player_ID) -> Maybe(Land_ID) {
+get_capital_territory :: proc(player: Nation_ID) -> Maybe(Land_ID) {
 	// Map player to their capital territory
 	#partial switch player {
-	case .Ger:  return Land_ID.Germany
-	case .Rus:  return Land_ID.Russia
-	case .Jap:  return Land_ID.Japan
-	case .Eng:  return Land_ID.United_Kingdom
+	case .Germany:  return Land_ID.Germany
+	case .Russia:  return Land_ID.Russia
+	case .Japan:  return Land_ID.Japan
+	case .United_Kingdom:  return Land_ID.United_Kingdom
 	case .USA:  return Land_ID.Eastern_United_States
 	}
 	return nil
@@ -181,11 +181,11 @@ get_capital_territory :: proc(player: Player_ID) -> Maybe(Land_ID) {
 
 count_friendly_units_in_territory :: proc(gc: ^Game_Cache, territory: Land_ID) -> int {
 	count := 0
-	count += int(gc.idle_armies[territory][gc.cur_player][.INF])
-	count += int(gc.idle_armies[territory][gc.cur_player][.ARTY])
-	count += int(gc.idle_armies[territory][gc.cur_player][.TANK])
-	count += int(gc.idle_armies[territory][gc.cur_player][.AAGUN])
-	count += int(gc.idle_land_planes[territory][gc.cur_player][.FIGHTER])
-	count += int(gc.idle_land_planes[territory][gc.cur_player][.BOMBER])
+	count += int(gc.idle_armies[territory][gc.acting_nation][.Infantry])
+	count += int(gc.idle_armies[territory][gc.acting_nation][.Artillery])
+	count += int(gc.idle_armies[territory][gc.acting_nation][.Tank])
+	count += int(gc.idle_armies[territory][gc.acting_nation][.AAGun])
+	count += int(gc.idle_land_planes[territory][gc.acting_nation][.Fighter])
+	count += int(gc.idle_land_planes[territory][gc.acting_nation][.Bomber])
 	return count
 }

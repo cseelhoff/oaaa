@@ -35,7 +35,6 @@ Placement Priority:
 
 import "core:fmt"
 import "core:slice"
-import sa "core:container/small_array"
 
 // Main place units phase entry point
 proai_place_units_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -112,8 +111,8 @@ find_placement_options :: proc(gc: ^Game_Cache) -> [dynamic]Placement_Option {
 	options := make([dynamic]Placement_Option)
 	
 	// For each factory owned by current player
-	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
-		if gc.owner[factory_loc] != gc.cur_player {
+	for factory_loc in gc.factory_locations[gc.acting_nation] {
+		if gc.owner[factory_loc] != gc.acting_nation {
 			continue
 		}
 		
@@ -126,7 +125,7 @@ find_placement_options :: proc(gc: ^Game_Cache) -> [dynamic]Placement_Option {
 		// Create placement option
 		enemy_threat := calculate_placement_threat(gc, factory_loc)
 		strategic_value := calculate_territory_value(gc, factory_loc)
-		is_capital := is_player_capital(gc, factory_loc, gc.cur_player)
+		is_capital := is_player_capital(gc, factory_loc, gc.acting_nation)
 		has_factory := true
 		
 		option := Placement_Option{
@@ -151,11 +150,11 @@ calculate_placement_threat :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
 	
 	// Count enemy units in adjacent territories
 	// Simplified - would use map graph for proper adjacency
-	for player in Player_ID {
-		if player == gc.cur_player {
+	for player in Nation_ID {
+		if player == gc.acting_nation {
 			continue
 		}
-		if mm.team[player] == mm.team[gc.cur_player] {
+		if mm.team[player] == mm.team[gc.acting_nation] {
 			continue
 		}
 		
@@ -178,10 +177,10 @@ calculate_placement_threat :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
 // Get threat value for army types in placement
 get_army_placement_threat :: proc(army_type: Idle_Army) -> f64 {
 	switch army_type {
-	case .INF: return 1.0
-	case .ARTY: return 2.0
-	case .TANK: return 3.0
-	case .AAGUN: return 0.5
+	case .Infantry: return 1.0
+	case .Artillery: return 2.0
+	case .Tank: return 3.0
+	case .AAGun: return 0.5
 	case: return 1.0
 	}
 }
@@ -189,8 +188,8 @@ get_army_placement_threat :: proc(army_type: Idle_Army) -> f64 {
 // Get threat value for plane types in placement
 get_plane_placement_threat :: proc(plane_type: Idle_Plane) -> f64 {
 	switch plane_type {
-	case .FIGHTER: return 3.0
-	case .BOMBER: return 4.0
+	case .Fighter: return 3.0
+	case .Bomber: return 4.0
 	case: return 2.0
 	}
 }
@@ -309,7 +308,7 @@ place_units_at_territory :: proc(gc: ^Game_Cache, territory: Land_ID, unit_count
 	// In full implementation, would:
 	// 1. Select unit types to place
 	// 2. Add to idle_armies arrays
-	// 3. Deduct from money
+	// 3. Deduct from treasury
 	// 4. Update builds_left
 	
 	return true

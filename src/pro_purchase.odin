@@ -24,11 +24,10 @@ Key simplifications for OAAA:
 
 import "core:fmt"
 import "core:math"
-import sa "core:container/small_array"
 
 // Main purchase function called from pro_turn.odin
 proai_purchase_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	if gc.money[gc.cur_player] == 0 {
+	if gc.treasury[gc.acting_nation] == 0 {
 		return true
 	}
 	
@@ -51,13 +50,13 @@ proai_purchase_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	// Step 3: Purchase offensive land units
 	purchase_land_units(gc, purchase_territories)
 	
-	// Step 4: Consider factory placement (if enough money)
+	// Step 4: Consider factory placement (if enough treasury)
 	consider_factory_purchase(gc)
 	
-	// Step 5: Purchase naval/air units if money remains
+	// Step 5: Purchase naval/air units if treasury remains
 	purchase_sea_and_air_units(gc, purchase_territories)
 	
-	// Step 6: Spend remaining money on most cost-effective units
+	// Step 6: Spend remaining treasury on most cost-effective units
 	spend_remaining_money(gc, purchase_territories)
 	
 	return true
@@ -67,7 +66,7 @@ proai_purchase_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
 // Factories can be damaged by strategic bombing, reducing production capacity
 // Pro AI prioritizes repairing high-production factories first
 repair_factories :: proc(gc: ^Game_Cache) {
-	if gc.money[gc.cur_player] == 0 do return
+	if gc.treasury[gc.acting_nation] == 0 do return
 	
 	// Define factory info struct
 	Factory_Info :: struct {
@@ -79,9 +78,9 @@ repair_factories :: proc(gc: ^Game_Cache) {
 	// Find all damaged factories we own
 	damaged_factories := make([dynamic]Factory_Info, context.temp_allocator)
 	
-	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for factory_loc in gc.factory_locations[gc.acting_nation] {
 		damage := gc.factory_dmg[factory_loc]
-		if damage > 0 && gc.owner[factory_loc] == gc.cur_player {
+		if damage > 0 && gc.owner[factory_loc] == gc.acting_nation {
 			production := gc.factory_prod[factory_loc]
 			append(&damaged_factories, Factory_Info{location = factory_loc, damage = damage, production = production})
 		}
@@ -95,18 +94,18 @@ repair_factories :: proc(gc: ^Game_Cache) {
 	
 	// Repair factories in priority order
 	for factory in damaged_factories {
-		if gc.money[gc.cur_player] == 0 do break
+		if gc.treasury[gc.acting_nation] == 0 do break
 		
 		// Calculate how much we can afford to repair
 		damage := factory.damage
-		money_available := gc.money[gc.cur_player]
+		money_available := gc.treasury[gc.acting_nation]
 		
 		// Repair as much as we can afford
 		repair_amount := min(damage, money_available)
 		
 		if repair_amount > 0 {
-			// Deduct money and reduce damage
-			gc.money[gc.cur_player] -= repair_amount
+			// Deduct treasury and reduce damage
+			gc.treasury[gc.acting_nation] -= repair_amount
 			gc.factory_dmg[factory.location] -= repair_amount
 			
 			// Note: In TripleA, repair costs are 1 IPC per damage point
@@ -119,9 +118,9 @@ repair_factories :: proc(gc: ^Game_Cache) {
 find_purchase_territories :: proc(gc: ^Game_Cache) -> []Land_ID {
 	territories := make([dynamic]Land_ID, context.temp_allocator)
 	
-	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for factory_loc in gc.factory_locations[gc.acting_nation] {
 		// Make sure we own this factory
-		if gc.owner[factory_loc] == gc.cur_player {
+		if gc.owner[factory_loc] == gc.acting_nation {
 			append(&territories, factory_loc)
 		}
 	}
@@ -145,15 +144,15 @@ find_territories_needing_defense :: proc(gc: ^Game_Cache) -> []Territory_Defense
 	
 	for territory in Land_ID {
 		// Only consider territories we own
-		if gc.owner[territory] != gc.cur_player do continue
+		if gc.owner[territory] != gc.acting_nation do continue
 		
 		// Count our defenders
-		our_inf := gc.idle_armies[territory][gc.cur_player][.INF]
-		our_art := gc.idle_armies[territory][gc.cur_player][.ARTY]
-		our_tanks := gc.idle_armies[territory][gc.cur_player][.TANK]
-		our_aa := gc.idle_armies[territory][gc.cur_player][.AAGUN]
-		our_fighters := gc.idle_land_planes[territory][gc.cur_player][.FIGHTER]
-		our_bombers := gc.idle_land_planes[territory][gc.cur_player][.BOMBER]
+		our_inf := gc.idle_armies[territory][gc.acting_nation][.Infantry]
+		our_art := gc.idle_armies[territory][gc.acting_nation][.Artillery]
+		our_tanks := gc.idle_armies[territory][gc.acting_nation][.Tank]
+		our_aa := gc.idle_armies[territory][gc.acting_nation][.AAGun]
+		our_fighters := gc.idle_land_planes[territory][gc.acting_nation][.Fighter]
+		our_bombers := gc.idle_land_planes[territory][gc.acting_nation][.Bomber]
 		
 		// Calculate our defense power
 		defense_power := estimate_defense_power(gc, our_inf, our_art, our_tanks, our_aa, our_fighters, our_bombers)
@@ -224,14 +223,14 @@ calculate_defense_value :: proc(
 
 // Check if this is our capital
 is_our_capital :: proc(gc: ^Game_Cache, territory: Land_ID) -> bool {
-	capital, ok := get_capital_territory(gc.cur_player).?
+	capital, ok := get_capital_territory(gc.acting_nation).?
 	if !ok do return false
 	return capital == territory
 }
 
 // Check if we have a factory at this territory
 has_factory_at :: proc(gc: ^Game_Cache, territory: Land_ID) -> bool {
-	for factory_loc in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for factory_loc in gc.factory_locations[gc.acting_nation] {
 		if factory_loc == territory do return true
 	}
 	return false
@@ -244,7 +243,7 @@ purchase_defenders :: proc(
 	factories: []Land_ID,
 ) {
 	if len(needs) == 0 do return
-	if gc.money[gc.cur_player] == 0 do return
+	if gc.treasury[gc.acting_nation] == 0 do return
 	
 	// Sort by defense value (highest first)
 	// For now, iterate through as-is (proper sorting would be done here)
@@ -261,14 +260,14 @@ purchase_defenders :: proc(
 		defense_gap := need.enemy_threat_power - need.current_defense_power
 		if defense_gap <= 0 do continue
 		
-		// Buy infantry until we close the gap or run out of money
+		// Buy infantry until we close the gap or run out of treasury
 		// Infantry: 3 IPCs, defense 2
 		inf_needed := int(defense_gap / 2.0) + 1
 		
 		for i := 0; i < inf_needed; i += 1 {
-			if gc.money[gc.cur_player] >= 3 {
+			if gc.treasury[gc.acting_nation] >= 3 {
 				// Purchase infantry
-				if try_buy_unit(gc, .BUY_INF_ACTION) {
+				if try_buy_unit(gc, .Buy_Infantry_Action) {
 					// Success - unit will be placed at factory location
 				} else {
 					break
@@ -290,47 +289,47 @@ find_nearest_factory :: proc(gc: ^Game_Cache, territory: Land_ID, factories: []L
 
 // Purchase offensive land units
 purchase_land_units :: proc(gc: ^Game_Cache, factories: []Land_ID) {
-	if gc.money[gc.cur_player] == 0 do return
+	if gc.treasury[gc.acting_nation] == 0 do return
 	if len(factories) == 0 do return
 	
 	// Pro AI offensive unit purchase strategy (from TripleA):
 	// - Mix of infantry, artillery, and tanks
-	// - Prefer tanks if we have money (high attack power, mobility)
+	// - Prefer tanks if we have treasury (high attack power, mobility)
 	// - Buy artillery to support infantry
 	// - Always buy some infantry (cheap, essential)
 	
-	money := int(gc.money[gc.cur_player])
+	treasury := int(gc.treasury[gc.acting_nation])
 	
 	// Strategy: 1 tank per 2 infantry, 1 artillery per 3 infantry
 	// This gives a balanced offensive force
 	
-	tanks_to_buy := money / 24  // Each "stack" = 2 inf (6) + 1 art (4) + 1 tank (6) = 16 IPCs
+	tanks_to_buy := treasury / 24  // Each "stack" = 2 inf (6) + 1 art (4) + 1 tank (6) = 16 IPCs
 	if tanks_to_buy > 0 {
 		// Buy tanks
-		for i := 0; i < tanks_to_buy && gc.money[gc.cur_player] >= 6; i += 1 {
-			try_buy_unit(gc, .BUY_TANK_ACTION)
+		for i := 0; i < tanks_to_buy && gc.treasury[gc.acting_nation] >= 6; i += 1 {
+			try_buy_unit(gc, .Buy_Tank_Action)
 		}
 	}
 	
 	// Buy artillery (support for infantry)
-	arty_to_buy := money / 12  // Artillery pairs well with inf
-	for i := 0; i < arty_to_buy && gc.money[gc.cur_player] >= 4; i += 1 {
-		try_buy_unit(gc, .BUY_ARTY_ACTION)
+	arty_to_buy := treasury / 12  // Artillery pairs well with inf
+	for i := 0; i < arty_to_buy && gc.treasury[gc.acting_nation] >= 4; i += 1 {
+		try_buy_unit(gc, .Buy_Artillery_Action)
 	}
 	
 	// Spend remaining on infantry
-	for gc.money[gc.cur_player] >= 3 {
-		if !try_buy_unit(gc, .BUY_INF_ACTION) do break
+	for gc.treasury[gc.acting_nation] >= 3 {
+		if !try_buy_unit(gc, .Buy_Infantry_Action) do break
 	}
 }
 
 // Consider purchasing a factory if economically viable
 consider_factory_purchase :: proc(gc: ^Game_Cache) {
 	// Need at least 15 IPCs for factory
-	if gc.money[gc.cur_player] < 15 do return
+	if gc.treasury[gc.acting_nation] < 15 do return
 	
 	// Only buy factory if we have good income
-	if gc.income[gc.cur_player] < 20 do return
+	if gc.income[gc.acting_nation] < 20 do return
 	
 	// Try to buy factory using existing function
 	// Note: buy_factory handles its own logic and user input
@@ -340,7 +339,7 @@ consider_factory_purchase :: proc(gc: ^Game_Cache) {
 
 // Purchase naval and air units
 purchase_sea_and_air_units :: proc(gc: ^Game_Cache, factories: []Land_ID) {
-	if gc.money[gc.cur_player] == 0 do return
+	if gc.treasury[gc.acting_nation] == 0 do return
 	
 	// Pro AI naval purchase strategy:
 	// - Buy transports if we need to move units overseas
@@ -350,24 +349,24 @@ purchase_sea_and_air_units :: proc(gc: ^Game_Cache, factories: []Land_ID) {
 	// Check if we need transports (simplified logic)
 	// Full implementation would check if enemies are only reachable by sea
 	
-	// Buy a fighter if we have money (good for both offense and defense)
-	if gc.money[gc.cur_player] >= 10 {
-		try_buy_unit(gc, .BUY_FIGHTER_ACTION)
+	// Buy a fighter if we have treasury (good for both offense and defense)
+	if gc.treasury[gc.acting_nation] >= 10 {
+		try_buy_unit(gc, .Buy_Fighter_Action)
 	}
 	
 	// Buy a transport if we have sea production capability
 	// (Simplified - would check for coastal factories)
-	if gc.money[gc.cur_player] >= 7 {
+	if gc.treasury[gc.acting_nation] >= 7 {
 		// Only buy if we have coastal access
 		// For now, skip this (would need map graph integration)
 	}
 }
 
-// Spend any remaining money on most cost-effective units
+// Spend any remaining treasury on most cost-effective units
 spend_remaining_money :: proc(gc: ^Game_Cache, factories: []Land_ID) {
-	// Keep buying infantry with remaining money
-	for gc.money[gc.cur_player] >= 3 {
-		if !try_buy_unit(gc, .BUY_INF_ACTION) do break
+	// Keep buying infantry with remaining treasury
+	for gc.treasury[gc.acting_nation] >= 3 {
+		if !try_buy_unit(gc, .Buy_Infantry_Action) do break
 	}
 }
 
@@ -375,34 +374,34 @@ spend_remaining_money :: proc(gc: ^Game_Cache, factories: []Land_ID) {
 try_buy_unit :: proc(gc: ^Game_Cache, action: Action_ID) -> bool {
 	// Check if we can afford it
 	cost := get_unit_cost(action)
-	if gc.money[gc.cur_player] < cost do return false
+	if gc.treasury[gc.acting_nation] < cost do return false
 	
-	// Deduct money
-	gc.money[gc.cur_player] -= cost
+	// Deduct treasury
+	gc.treasury[gc.acting_nation] -= cost
 	
 	// Add to purchase queue (will be placed in place phase)
 	// For now, directly add to first factory (simplified)
 	// Full implementation would track purchases separately and place later
 	
-	if len(gc.factory_locations[gc.cur_player].data) > 0 {
-		factory := gc.factory_locations[gc.cur_player].data[0]
+	if len(gc.factory_locations[gc.acting_nation]) > 0 {
+		factory := gc.factory_locations[gc.acting_nation][0]
 		
 		// Add unit to factory location based on type
 		#partial switch action {
-		case .BUY_INF_ACTION:
-			gc.idle_armies[factory][gc.cur_player][.INF] += 1
-		case .BUY_ARTY_ACTION:
-			gc.idle_armies[factory][gc.cur_player][.ARTY] += 1
-		case .BUY_TANK_ACTION:
-			gc.idle_armies[factory][gc.cur_player][.TANK] += 1
-		case .BUY_AAGUN_ACTION:
-			gc.idle_armies[factory][gc.cur_player][.AAGUN] += 1
-		case .BUY_FIGHTER_ACTION:
-			gc.idle_land_planes[factory][gc.cur_player][.FIGHTER] += 1
-		case .BUY_BOMBER_ACTION:
-			gc.idle_land_planes[factory][gc.cur_player][.BOMBER] += 1
-		case .BUY_TRANS_ACTION, .BUY_SUB_ACTION, .BUY_DESTROYER_ACTION,
-		     .BUY_CARRIER_ACTION, .BUY_CRUISER_ACTION, .BUY_BATTLESHIP_ACTION:
+		case .Buy_Infantry_Action:
+			gc.idle_armies[factory][gc.acting_nation][.Infantry] += 1
+		case .Buy_Artillery_Action:
+			gc.idle_armies[factory][gc.acting_nation][.Artillery] += 1
+		case .Buy_Tank_Action:
+			gc.idle_armies[factory][gc.acting_nation][.Tank] += 1
+		case .Buy_AAGun_Action:
+			gc.idle_armies[factory][gc.acting_nation][.AAGun] += 1
+		case .Buy_Fighter_Action:
+			gc.idle_land_planes[factory][gc.acting_nation][.Fighter] += 1
+		case .Buy_Bomber_Action:
+			gc.idle_land_planes[factory][gc.acting_nation][.Bomber] += 1
+		case .Buy_Transport_Action, .Buy_Submarine_Action, .Buy_Destroyer_Action,
+		     .Buy_Carrier_Action, .Buy_Cruiser_Action, .Buy_Battleship_Action:
 			// Naval units - would need sea placement logic
 			// For now, skip (simplified)
 			return false
@@ -415,18 +414,18 @@ try_buy_unit :: proc(gc: ^Game_Cache, action: Action_ID) -> bool {
 // Get cost of a unit
 get_unit_cost :: proc(action: Action_ID) -> u8 {
 	#partial switch action {
-	case .BUY_INF_ACTION: return 3
-	case .BUY_ARTY_ACTION: return 4
-	case .BUY_TANK_ACTION: return 6
-	case .BUY_AAGUN_ACTION: return 5
-	case .BUY_FIGHTER_ACTION: return 10
-	case .BUY_BOMBER_ACTION: return 12
-	case .BUY_TRANS_ACTION: return 7
-	case .BUY_SUB_ACTION: return 6
-	case .BUY_DESTROYER_ACTION: return 8
-	case .BUY_CARRIER_ACTION: return 14
-	case .BUY_CRUISER_ACTION: return 12
-	case .BUY_BATTLESHIP_ACTION: return 20
+	case .Buy_Infantry_Action: return 3
+	case .Buy_Artillery_Action: return 4
+	case .Buy_Tank_Action: return 6
+	case .Buy_AAGun_Action: return 5
+	case .Buy_Fighter_Action: return 10
+	case .Buy_Bomber_Action: return 12
+	case .Buy_Transport_Action: return 7
+	case .Buy_Submarine_Action: return 6
+	case .Buy_Destroyer_Action: return 8
+	case .Buy_Carrier_Action: return 14
+	case .Buy_Cruiser_Action: return 12
+	case .Buy_Battleship_Action: return 20
 	}
 	return 0
 }

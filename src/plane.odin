@@ -3,88 +3,88 @@ package oaaa
 MAX_PLANE_MOVES :: 6
 
 Idle_Plane :: enum {
-	FIGHTER,
-	BOMBER,
+	Fighter,
+	Bomber,
 }
 
-Idle_Plane_Names := [Idle_Plane]string {
-	Idle_Plane.FIGHTER = "FIGHTER",
-	Idle_Plane.BOMBER  = "BOMBER",
+idle_plane_names := [Idle_Plane]string {
+	Idle_Plane.Fighter = "Fighter",
+	Idle_Plane.Bomber  = "Bomber",
 }
 
 COST_IDLE_PLANE := [Idle_Plane]u8 {
-	Idle_Plane.FIGHTER = 10,
-	Idle_Plane.BOMBER  = 12,
+	Idle_Plane.Fighter = 10,
+	Idle_Plane.Bomber  = 12,
 }
 
-FIGHTER_ATTACK :: 3
-BOMBER_ATTACK :: 4
+FIGHTER_ATTACK_VALUE :: 3
+BOMBER_ATTACK_VALUE :: 4
 
-FIGHTER_DEFENSE :: 4
-BOMBER_DEFENSE :: 1
+FIGHTER_DEFENSE_VALUE :: 4
+BOMBER_DEFENSE_VALUE :: 1
 
 Active_Plane :: enum {
-	FIGHTER_UNMOVED, // distinct from 4_moves, for when ships placed under fighter
-	FIGHTER_4_MOVES,
-	FIGHTER_3_MOVES,
-	FIGHTER_2_MOVES,
-	FIGHTER_1_MOVES,
-	FIGHTER_0_MOVES,
-	BOMBER_UNMOVED,
-	BOMBER_5_MOVES,
-	BOMBER_4_MOVES,
-	BOMBER_3_MOVES,
-	BOMBER_2_MOVES,
-	BOMBER_1_MOVES,
-	BOMBER_0_MOVES,
+	Fighter_Unmoved, // distinct from 4_moves, for when ships placed under fighter
+	Fighter_4_Moves,
+	Fighter_3_Moves,
+	Fighter_2_Moves,
+	Fighter_1_Moves,
+	Fighter_0_Moves,
+	Bomber_Unmoved,
+	Bomber_5_Moves,
+	Bomber_4_Moves,
+	Bomber_3_Moves,
+	Bomber_2_Moves,
+	Bomber_1_Moves,
+	Bomber_0_Moves,
 }
 
-Active_Plane_To_Idle := [Active_Plane]Idle_Plane {
-	.FIGHTER_UNMOVED = .FIGHTER,
-	.FIGHTER_4_MOVES = .FIGHTER,
-	.FIGHTER_3_MOVES = .FIGHTER,
-	.FIGHTER_2_MOVES = .FIGHTER,
-	.FIGHTER_1_MOVES = .FIGHTER,
-	.FIGHTER_0_MOVES = .FIGHTER,
-	.BOMBER_UNMOVED  = .BOMBER,
-	.BOMBER_5_MOVES  = .BOMBER,
-	.BOMBER_4_MOVES  = .BOMBER,
-	.BOMBER_3_MOVES  = .BOMBER,
-	.BOMBER_2_MOVES  = .BOMBER,
-	.BOMBER_1_MOVES  = .BOMBER,
-	.BOMBER_0_MOVES  = .BOMBER,
+active_plane_to_idle := [Active_Plane]Idle_Plane {
+	.Fighter_Unmoved = .Fighter,
+	.Fighter_4_Moves = .Fighter,
+	.Fighter_3_Moves = .Fighter,
+	.Fighter_2_Moves = .Fighter,
+	.Fighter_1_Moves = .Fighter,
+	.Fighter_0_Moves = .Fighter,
+	.Bomber_Unmoved  = .Bomber,
+	.Bomber_5_Moves  = .Bomber,
+	.Bomber_4_Moves  = .Bomber,
+	.Bomber_3_Moves  = .Bomber,
+	.Bomber_2_Moves  = .Bomber,
+	.Bomber_1_Moves  = .Bomber,
+	.Bomber_0_Moves  = .Bomber,
 }
 
-Active_Plane_Names := [Active_Plane]string {
-	.FIGHTER_UNMOVED = "FIGHTER_UNMOVED",
-	.FIGHTER_4_MOVES = "FIGHTER_4_MOVES",
-	.FIGHTER_3_MOVES = "FIGHTER_3_MOVES",
-	.FIGHTER_2_MOVES = "FIGHTER_2_MOVES",
-	.FIGHTER_1_MOVES = "FIGHTER_1_MOVES",
-	.FIGHTER_0_MOVES = "FIGHTER_0_MOVES",
-	.BOMBER_UNMOVED  = "BOMBER_UNMOVED",
-	.BOMBER_5_MOVES  = "BOMBER_5_MOVES",
-	.BOMBER_4_MOVES  = "BOMBER_4_MOVES",
-	.BOMBER_3_MOVES  = "BOMBER_3_MOVES",
-	.BOMBER_2_MOVES  = "BOMBER_2_MOVES",
-	.BOMBER_1_MOVES  = "BOMBER_1_MOVES",
-	.BOMBER_0_MOVES  = "BOMBER_0_MOVES",
+active_plane_names := [Active_Plane]string {
+	.Fighter_Unmoved = "Fighter_Unmoved",
+	.Fighter_4_Moves = "Fighter_4_Moves",
+	.Fighter_3_Moves = "Fighter_3_Moves",
+	.Fighter_2_Moves = "Fighter_2_Moves",
+	.Fighter_1_Moves = "Fighter_1_Moves",
+	.Fighter_0_Moves = "Fighter_0_Moves",
+	.Bomber_Unmoved  = "Bomber_Unmoved",
+	.Bomber_5_Moves  = "Bomber_5_Moves",
+	.Bomber_4_Moves  = "Bomber_4_Moves",
+	.Bomber_3_Moves  = "Bomber_3_Moves",
+	.Bomber_2_Moves  = "Bomber_2_Moves",
+	.Bomber_1_Moves  = "Bomber_1_Moves",
+	.Bomber_0_Moves  = "Bomber_0_Moves",
 }
 
-Plane_After_Moves := [Active_Plane]Active_Plane {
-	.FIGHTER_UNMOVED = .FIGHTER_0_MOVES,
-	.FIGHTER_4_MOVES = .FIGHTER_0_MOVES,
-	.FIGHTER_3_MOVES = .FIGHTER_0_MOVES,
-	.FIGHTER_2_MOVES = .FIGHTER_0_MOVES,
-	.FIGHTER_1_MOVES = .FIGHTER_0_MOVES,
-	.FIGHTER_0_MOVES = .FIGHTER_0_MOVES,
-	.BOMBER_UNMOVED  = .BOMBER_0_MOVES,
-	.BOMBER_5_MOVES  = .BOMBER_0_MOVES,
-	.BOMBER_4_MOVES  = .BOMBER_0_MOVES,
-	.BOMBER_3_MOVES  = .BOMBER_0_MOVES,
-	.BOMBER_2_MOVES  = .BOMBER_0_MOVES,
-	.BOMBER_1_MOVES  = .BOMBER_0_MOVES,
-	.BOMBER_0_MOVES  = .BOMBER_0_MOVES,
+plane_after_moves := [Active_Plane]Active_Plane {
+	.Fighter_Unmoved = .Fighter_0_Moves,
+	.Fighter_4_Moves = .Fighter_0_Moves,
+	.Fighter_3_Moves = .Fighter_0_Moves,
+	.Fighter_2_Moves = .Fighter_0_Moves,
+	.Fighter_1_Moves = .Fighter_0_Moves,
+	.Fighter_0_Moves = .Fighter_0_Moves,
+	.Bomber_Unmoved  = .Bomber_0_Moves,
+	.Bomber_5_Moves  = .Bomber_0_Moves,
+	.Bomber_4_Moves  = .Bomber_0_Moves,
+	.Bomber_3_Moves  = .Bomber_0_Moves,
+	.Bomber_2_Moves  = .Bomber_0_Moves,
+	.Bomber_1_Moves  = .Bomber_0_Moves,
+	.Bomber_0_Moves  = .Bomber_0_Moves,
 }
 
-Unmoved_Planes := [?]Active_Plane{.FIGHTER_UNMOVED, .BOMBER_UNMOVED}
+unmoved_planes := [?]Active_Plane{.Fighter_Unmoved, .Bomber_Unmoved}

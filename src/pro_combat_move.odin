@@ -32,7 +32,6 @@ Algorithm Overview (from ProCombatMoveAi.java):
 import "core:fmt"
 import "core:math"
 import "core:slice"
-import sa "core:container/small_array"
 
 // Main combat move phase entry point
 proai_combat_move_phase :: proc(gc: ^Game_Cache) -> (ok: bool) {
@@ -142,7 +141,7 @@ find_attack_options :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) -> [dynamic]At
 	// Check all territories
 	for land_id in Land_ID {
 		// Skip friendly territories
-		if gc.owner[land_id] == gc.cur_player {
+		if gc.owner[land_id] == gc.acting_nation {
 			continue
 		}
 		
@@ -197,8 +196,8 @@ is_adjacent_to_friendly :: proc(gc: ^Game_Cache, territory: Land_ID) -> bool {
 add_defenders :: proc(option: ^Attack_Option, gc: ^Game_Cache, territory: Land_ID) {
 	// Count active armies at this location (for current player)
 	// For enemies, use idle_armies
-	for player in Player_ID {
-		if player == gc.cur_player {
+	for player in Nation_ID {
+		if player == gc.acting_nation {
 			continue
 		}
 		for army_type in Idle_Army {
@@ -214,8 +213,8 @@ add_defenders :: proc(option: ^Attack_Option, gc: ^Game_Cache, territory: Land_I
 	}
 	
 	// Count idle planes at this location (for enemies)
-	for player in Player_ID {
-		if player == gc.cur_player {
+	for player in Nation_ID {
+		if player == gc.acting_nation {
 			continue
 		}
 		for plane_type in Idle_Plane {
@@ -234,10 +233,10 @@ add_defenders :: proc(option: ^Attack_Option, gc: ^Game_Cache, territory: Land_I
 // Convert Idle_Army to Unit_Type
 idle_army_to_unit_type :: proc(army_type: Idle_Army) -> Unit_Type {
 	switch army_type {
-	case .INF: return .Infantry
-	case .ARTY: return .Artillery
-	case .TANK: return .Tank
-	case .AAGUN: return .AAGun
+	case .Infantry: return .Infantry
+	case .Artillery: return .Artillery
+	case .Tank: return .Tank
+	case .AAGun: return .AAGun
 	case: return .Infantry
 	}
 }
@@ -245,8 +244,8 @@ idle_army_to_unit_type :: proc(army_type: Idle_Army) -> Unit_Type {
 // Convert Idle_Plane to Unit_Type
 idle_plane_to_unit_type :: proc(plane_type: Idle_Plane) -> Unit_Type {
 	switch plane_type {
-	case .FIGHTER: return .Fighter
-	case .BOMBER: return .Bomber
+	case .Fighter: return .Fighter
+	case .Bomber: return .Bomber
 	case: return .Fighter
 	}
 }
@@ -318,7 +317,7 @@ determine_holdable_territories :: proc(options: ^[dynamic]Attack_Option, gc: ^Ga
 		// Assume we can't hold neutrals or water territories
 		// Check if neutral (not owned by any player)
 		is_neutral := true
-		for player in Player_ID {
+		for player in Nation_ID {
 			if gc.owner[option.territory] == player {
 				is_neutral = false
 				break
@@ -500,7 +499,7 @@ remove_exposed_transport_attacks :: proc(options: ^[dynamic]Attack_Option, gc: ^
 
 // Ensure capital can still be defended after attacks
 ensure_capital_defense :: proc(options: ^[dynamic]Attack_Option, gc: ^Game_Cache, pro_data: ^Pro_Data) {
-	capital_maybe := get_capital_territory(gc.cur_player)
+	capital_maybe := get_capital_territory(gc.acting_nation)
 	if capital_maybe == nil {
 		return
 	}

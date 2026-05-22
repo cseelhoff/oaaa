@@ -14,9 +14,9 @@ save_json :: proc(game_state: ^Game_State, path: string = "game_state.json") {
 
 	//fmt.printfln("%s", json_data)
 	fmt.printfln("Writing: %s", path)
-	success := os.write_entire_file(path, json_data)
-	if success != true {
-		fmt.eprintfln("Unable to write file: %v", success)
+	write_err := os.write_entire_file(path, json_data)
+	if write_err != nil {
+		fmt.eprintfln("Unable to write file: %v", write_err)
 		os.exit(1)
 	}
 
@@ -24,9 +24,9 @@ save_json :: proc(game_state: ^Game_State, path: string = "game_state.json") {
 }
 
 load_game_data :: proc(game_state: ^Game_State, path: string = "game_state.json") -> (ok: bool) {
-	data, read_ok := os.read_entire_file_from_filename(path)
+	data, read_err := os.read_entire_file(path, context.allocator)
 	defer delete(data)
-	if !read_ok {
+	if read_err != nil {
 		fmt.eprintln("Failed to load the file!")
 		return false
 	}

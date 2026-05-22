@@ -2,7 +2,8 @@
   description = "oaaa Odin development environment";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Pinned to a nixos-unstable rev with odin dev-2026-05 (supports [dynamic; N]T).
+    nixpkgs.url = "github:NixOS/nixpkgs/d233902339c02a9c334e7e593de68855ad26c4cb";
     flake-utils.url = "github:numtide/flake-utils";
   };
 

@@ -1,6 +1,5 @@
 package oaaa
 
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:math"
 import "core:os"
@@ -15,7 +14,7 @@ Key Components:
 
 2. State Evaluation:
    - Random playouts until decisive advantage
-   - Score based on money and military assets
+   - Score based on treasury and military assets
    - Perspective adjusted for current team
 
 3. Search Optimization:
@@ -36,9 +35,9 @@ MCTSNode :: struct {
 	value:       f64,
 	visits:      int,
 	action:      Action_ID,
-	src_air:     Air_ID,
+	src_region:     Region_ID,
 	unit:        Active_Unit,
-	cur_player:  Player_ID,
+	acting_nation:  Nation_ID,
 	is_terminal: bool,
 }
 
@@ -49,8 +48,8 @@ create_node :: proc(state: ^Game_State, action: Action_ID, parent: ^MCTSNode) ->
 	GLOBAL_NODE_COUNT += 1
 	// node.state = state^ //memcopy
 	// node.state.seed = 0
-	node.cur_player = state.cur_player
-	node.src_air = state.current_territory
+	node.acting_nation = state.acting_nation
+	node.src_region = state.current_territory
 	node.unit = state.current_active_unit
 	node.is_terminal = is_terminal_state(state)
 	node.action = action
@@ -129,7 +128,7 @@ mcts_search :: proc(initial_state: ^Game_State, iterations: int) -> ^MCTSNode {
 		for node != nil {
 			node.visits += 1
 			if node.parent != nil {
-				if mm.team[node.parent.cur_player] == .Allies { 	//test is Allies turn?
+				if mm.team[node.parent.acting_nation] == .Allies { 	//test is Allies turn?
 					node.value += result
 				} else {
 					node.value -= result
@@ -163,7 +162,7 @@ get_action_sequence_from_node :: proc(node: ^MCTSNode) -> [dynamic]Action_ID {
 // 	fmt.println(twenty_moves)
 // 	}
 // }
-action_sequence: sa.Small_Array(1000, Action_ID)
+action_sequence: [dynamic; 1000]Action_ID
 
 get_state_from_node :: proc(node: ^MCTSNode, new_gs: ^Game_State) {
 	// prepare a sequence of actions by examining the parent node of each node and replaying the action
@@ -174,17 +173,17 @@ get_state_from_node :: proc(node: ^MCTSNode, new_gs: ^Game_State) {
 	// defer delete(action_sequence)
 	// Walk up the tree from current node to root, collecting actions
 	current := node
-	sa.clear(&action_sequence)
+	clear(&action_sequence)
 	for current.parent != nil {
-		sa.push(&action_sequence, current.action)
+		append(&action_sequence, current.action)
 		current = current.parent
 	}
 	// append(&action_sequence, current.action)
 	// get_20_moves()
 
 	// Replay actions in reverse order to reconstruct the state
-	for i := sa.len(action_sequence) - 1; i >= 0; i -= 1 {
-		action := action_sequence.data[i]
+	for i := len(action_sequence) - 1; i >= 0; i -= 1 {
+		action := action_sequence[i]
 		apply_action(new_gs, action)
 	}
 	// new_gs.seed = 0
@@ -370,12 +369,12 @@ print_mcts_tree3 :: proc(node: ^MCTSNode, depth: int) {
 	if node == nil do return
 	// if node.parent != nil {
 	fmt.printf("%-6s %-32s  ", "Last:", truncate(node.action, 32))
-	// fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
+	// fmt.print(", Money:", node.state.treasury[node.parent.state.acting_nation])
 	fmt.printf("%-8s %10d  ", "Visits:", node.visits)
 	// fmt.printf("%-7s %-8.2f  ", "Value:", node.value)
 	fmt.printf("%-5s %-12.8f  ", "Avg:", node.value / f64(node.visits))
-	fmt.print(mm.color[node.cur_player])
-	fmt.printf("%-6s %-10s  ", "Next:", truncate(node.src_air, 10))
+	fmt.print(mm.color[node.acting_nation])
+	fmt.printf("%-6s %-10s  ", "Next:", truncate(node.src_region, 10))
 	fmt.printf("%s\n", truncate(node.unit, 16))
 	if depth > MAX_PRINT_DEPTH || len(node.children) == 0 do return
 
@@ -401,7 +400,7 @@ print_mcts_tree2 :: proc(node: ^MCTSNode, depth: uint) {
 		fmt.print("  ")
 	}
 	fmt.print("Action:", node.action)
-	// fmt.print(", Money:", node.state.money[node.parent.state.cur_player])
+	// fmt.print(", Money:", node.state.treasury[node.parent.state.acting_nation])
 	fmt.print(", Visits:", node.visits)
 	fmt.print(", Value:", node.value)
 	fmt.print(", Avg:", node.value / f64(node.visits))

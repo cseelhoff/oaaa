@@ -144,7 +144,7 @@ Clean up and prepare for next player:
 */
 proai_end_turn_phase :: proc(gc: ^Game_Cache) {
 	reset_units_fully(gc)
-	collect_money(gc)
+	collect_income(gc)
 	rotate_turns(gc)
 }
 

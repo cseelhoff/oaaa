@@ -16,7 +16,7 @@ One of the 5 active countries that take turns in the game, plus 1 **Phantom Nati
 | United Kingdom | `.United_Kingdom` | `.United_Kingdom` | Allies | yes | Eng, England, Britain, Great_Britain, British, British_Empire, UK |
 | Japan | `.Japan` | `.Japan` | Axis | yes | Jap, Imperial_Japan, Empire_of_Japan |
 | USA | `.USA` | `.Eastern_United_States` | Allies | yes | US, America, United_States, American, Americans |
-| Italy | `.Italy` | (none) | Axis | **no (Phantom)** | Ita, Italian, Italians, Kingdom_of_Italy |
+| Italy | `.Italy` | `.Italy` | Axis | **no (Phantom)** | Ita, Italian, Italians, Kingdom_of_Italy |
 
 USA is kept as an acronym (one capital block, parallel to `AAGun`); all other Nations spell out the country name. `Player_ID` is the legacy type name and is itself slated for rename (`Player_ID` → `Nation_ID`).
 _Avoid_: power, player, country, faction
@@ -119,7 +119,8 @@ The maximum number of Moves a Unit may make in a single Turn, fixed by its Unit 
 
 | Unit Type | Movement Allowance |
 |---|---|
-| Infantry, Artillery, AAGun, Factory | 1 (Factory: 0, immobile) |
+| Factory | 0, immobile |
+| Infantry, Artillery, AAGun, Factory | 1 |
 | Tank | 2 |
 | Fighter | 4 |
 | Bomber | 6 |

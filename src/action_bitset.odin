@@ -43,18 +43,18 @@ remove_valid_action :: proc(gc: ^Game_Cache, action: Action_ID) {
 	gc.valid_actions[arr_pos] &= ~(1 << remainder)
 }
 
-set_valid_actions :: proc(gc: ^Game_Cache, air_bitset: Air_Bitset, qty: u8) {
+set_valid_actions :: proc(gc: ^Game_Cache, region_bitset: Region_Bitset, qty: u8) {
 	gc.valid_actions = {}
-	get_airs(air_bitset, &air_positions)
-	for air in air_positions {
-		add_air_to_valid_actions(gc, air, qty)
+	get_regions(region_bitset, &region_positions)
+	for region in region_positions {
+		add_region_to_valid_actions(gc, region, qty)
 	}
 	//todo: use a bit shift instead for better performance
 }
 
-add_valid_actions_multi :: proc(gc: ^Game_Cache, air_bitset: Air_Bitset, unit_count: u8) {
-	for air in air_bitset {
-		add_valid_action(gc, Action_ID(air))
+add_valid_actions_multi :: proc(gc: ^Game_Cache, region_bitset: Region_Bitset, unit_count: u8) {
+	for region in region_bitset {
+		add_valid_action(gc, Action_ID(region))
 	}
 	//todo: use a bit shift instead for better performance
 }
@@ -75,18 +75,18 @@ add_lands_to_valid_actions :: proc(gc: ^Game_Cache, dst_lands: Land_Bitset, unit
 			add_valid_action(gc, Action_ID(uint(land)))
 		}
 		if unit_count >= 9 {
-			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID)))
+			add_valid_action(gc, Action_ID(uint(land) + len(Region_ID)))
 		}
 		if unit_count >= 5 {
-			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 2))
+			add_valid_action(gc, Action_ID(uint(land) + len(Region_ID) * 2))
 		}
 		if unit_count >= 3 {
-			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 3))
+			add_valid_action(gc, Action_ID(uint(land) + len(Region_ID) * 3))
 		}
 		if unit_count >= 2 {
-			add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 4))
+			add_valid_action(gc, Action_ID(uint(land) + len(Region_ID) * 4))
 		}
-		add_valid_action(gc, Action_ID(uint(land) + len(Air_ID) * 5))
+		add_valid_action(gc, Action_ID(uint(land) + len(Region_ID) * 5))
 	}
 }
 add_land_to_valid_actions :: proc(gc: ^Game_Cache, dst_land: Land_ID, unit_count: u8) {
@@ -95,59 +95,59 @@ add_land_to_valid_actions :: proc(gc: ^Game_Cache, dst_land: Land_ID, unit_count
 		add_valid_action(gc, Action_ID(uint(dst_land)))
 	}
 	if unit_count >= 9 {
-		add_valid_action(gc, Action_ID(uint(dst_land) + len(Air_ID)))
+		add_valid_action(gc, Action_ID(uint(dst_land) + len(Region_ID)))
 	}
 	if unit_count >= 5 {
-		add_valid_action(gc, Action_ID(uint(dst_land) + len(Air_ID) * 2))
+		add_valid_action(gc, Action_ID(uint(dst_land) + len(Region_ID) * 2))
 	}
 	if unit_count >= 3 {
-		add_valid_action(gc, Action_ID(uint(dst_land) + len(Air_ID) * 3))
+		add_valid_action(gc, Action_ID(uint(dst_land) + len(Region_ID) * 3))
 	}
 	if unit_count >= 2 {
-		add_valid_action(gc, Action_ID(uint(dst_land) + len(Air_ID) * 4))
+		add_valid_action(gc, Action_ID(uint(dst_land) + len(Region_ID) * 4))
 	}
-	add_valid_action(gc, Action_ID(uint(dst_land) + len(Air_ID) * 5))
+	add_valid_action(gc, Action_ID(uint(dst_land) + len(Region_ID) * 5))
 }
 
-add_airs_to_valid_actions :: proc(gc: ^Game_Cache, dst_airs: Air_Bitset, unit_count: u8) {
-	get_airs(dst_airs, &air_positions)
-	for air in air_positions {
+add_airs_to_valid_actions :: proc(gc: ^Game_Cache, dst_airs: Region_Bitset, unit_count: u8) {
+	get_regions(dst_airs, &region_positions)
+	for region in region_positions {
 		if unit_count >= 17 {
-			add_valid_action(gc, Action_ID(uint(air)))
+			add_valid_action(gc, Action_ID(uint(region)))
 		}
 		if unit_count >= 9 {
-			add_valid_action(gc, Action_ID(uint(air) + len(Air_ID)))
+			add_valid_action(gc, Action_ID(uint(region) + len(Region_ID)))
 		}
 		if unit_count >= 5 {
-			add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 2))
+			add_valid_action(gc, Action_ID(uint(region) + len(Region_ID) * 2))
 		}
 		if unit_count >= 3 {
-			add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 3))
+			add_valid_action(gc, Action_ID(uint(region) + len(Region_ID) * 3))
 		}
 		if unit_count >= 2 {
-			add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 4))
+			add_valid_action(gc, Action_ID(uint(region) + len(Region_ID) * 4))
 		}
-		add_valid_action(gc, Action_ID(uint(air) + len(Air_ID) * 5))
+		add_valid_action(gc, Action_ID(uint(region) + len(Region_ID) * 5))
 	}
 }
 
-add_air_to_valid_actions :: proc(gc: ^Game_Cache, dst_air: Air_ID, unit_count: u8) {
+add_region_to_valid_actions :: proc(gc: ^Game_Cache, dst_region: Region_ID, unit_count: u8) {
 	if unit_count >= 17 {
-		add_valid_action(gc, Action_ID(uint(dst_air)))
+		add_valid_action(gc, Action_ID(uint(dst_region)))
 	}
 	if unit_count >= 9 {
-		add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID)))
+		add_valid_action(gc, Action_ID(uint(dst_region) + len(Region_ID)))
 	}
 	if unit_count >= 5 {
-		add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID) * 2))
+		add_valid_action(gc, Action_ID(uint(dst_region) + len(Region_ID) * 2))
 	}
 	if unit_count >= 3 {
-		add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID) * 3))
+		add_valid_action(gc, Action_ID(uint(dst_region) + len(Region_ID) * 3))
 	}
 	if unit_count >= 2 {
-		add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID) * 4))
+		add_valid_action(gc, Action_ID(uint(dst_region) + len(Region_ID) * 4))
 	}
-	add_valid_action(gc, Action_ID(uint(dst_air) + len(Air_ID) * 5))
+	add_valid_action(gc, Action_ID(uint(dst_region) + len(Region_ID) * 5))
 }
 
 add_seas_to_valid_actions :: proc(gc: ^Game_Cache, dst_seas: Sea_Bitset, unit_count: u8) {
@@ -157,18 +157,18 @@ add_seas_to_valid_actions :: proc(gc: ^Game_Cache, dst_seas: Sea_Bitset, unit_co
 			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID)))
 		}
 		if unit_count >= 9 {
-			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID)))
+			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Region_ID)))
 		}
 		if unit_count >= 5 {
-			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID) * 2))
+			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Region_ID) * 2))
 		}
 		if unit_count >= 3 {
-			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID) * 3))
+			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Region_ID) * 3))
 		}
 		if unit_count >= 2 {
-			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID) * 4))
+			add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Region_ID) * 4))
 		}
-		add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Air_ID) * 5))
+		add_valid_action(gc, Action_ID(uint(sea) + len(Land_ID) + len(Region_ID) * 5))
 	}
 }
 
@@ -178,23 +178,23 @@ add_sea_to_valid_actions :: proc(gc: ^Game_Cache, dst_sea: Sea_ID, unit_count: u
 		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID)))
 	}
 	if unit_count >= 9 {
-		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID)))
+		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Region_ID)))
 	}
 	if unit_count >= 5 {
-		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID) * 2))
+		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Region_ID) * 2))
 	}
 	if unit_count >= 3 {
-		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID) * 3))
+		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Region_ID) * 3))
 	}
 	if unit_count >= 2 {
-		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID) * 4))
+		add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Region_ID) * 4))
 	}
-	add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Air_ID) * 5))
+	add_valid_action(gc, Action_ID(uint(dst_sea) + len(Land_ID) + len(Region_ID) * 5))
 }
 
-remove_skipped_actions :: proc(gc: ^Game_Cache, src_air: Air_ID) {
+remove_skipped_actions :: proc(gc: ^Game_Cache, src_region: Region_ID) {
 	//todo optimize with SIMD
-	a := u16(gc.smallest_allowable_action[src_air])
+	a := u16(gc.smallest_allowable_action[src_region])
 	b := a / 64
 	remainder := uint(a % 64)
 	for i in b ..< len(gc.valid_actions) {

@@ -1,5 +1,4 @@
 package oaaa
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:time"
 
@@ -25,7 +24,7 @@ when ODIN_DEBUG && false {
 				}
 			}
 
-			for player in Player_ID {
+			for player in Nation_ID {
 				for idle_ship in Idle_Ship {
 					ship := gc.idle_ships[sea][player][idle_ship]
 					if ship < 0 || ship > 200 {
@@ -38,8 +37,8 @@ when ODIN_DEBUG && false {
 					if planes < 0 || planes > 200 {
 						fmt.eprintln("Negative idle planes")
 					} else if planes > 0 &&
-					   idle_plane == .BOMBER &&
-					   mm.team[player] != mm.team[gc.cur_player] {
+					   idle_plane == .Bomber &&
+					   mm.team[player] != mm.team[gc.acting_nation] {
 						fmt.eprintln("Enemy bombers at sea")
 					}
 					team_idles[mm.team[player]] += planes
@@ -70,7 +69,7 @@ when ODIN_DEBUG && false {
 					fmt.eprintln("Negative active armies")
 				}
 			}
-			for player in Player_ID {
+			for player in Nation_ID {
 				for idle_army in Idle_Army {
 					army := gc.idle_armies[land][player][idle_army]
 					if army < 0 || army > 200 {
@@ -86,17 +85,17 @@ when ODIN_DEBUG && false {
 					}
 					team_idles[mm.team[player]] += plane
 
-					if player != gc.cur_player &&
+					if player != gc.acting_nation &&
 					   plane > 0 &&
-					   idle_plane == .BOMBER &&
+					   idle_plane == .Bomber &&
 					   mm.team[gc.owner[land]] != mm.team[player] {
 						print_game_state(gc)
 						fmt.eprintln("Enemy bombers at enemy land")
 					}
 
 					if team_idles[mm.team[player]] > 0 &&
-					   mm.team[gc.owner[land]] == mm.team[gc.cur_player] &&
-					   mm.team[player] != mm.team[gc.cur_player] {
+					   mm.team[gc.owner[land]] == mm.team[gc.acting_nation] &&
+					   mm.team[player] != mm.team[gc.acting_nation] {
 						fmt.eprintln("Enemy units on land")
 					}
 				}
@@ -152,7 +151,7 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	debug_checks(gc)
 	reset_units_fully(gc)
 	debug_checks(gc)
-	collect_money(gc)
+	collect_income(gc)
 	debug_checks(gc)
 	rotate_turns(gc)
 	debug_checks(gc)
@@ -162,8 +161,8 @@ play_full_turn :: proc(gc: ^Game_Cache) -> (ok: bool) {
 	return true
 }
 
-// update_move_history :: proc(gc: ^Game_Cache, src_air: Air_ID, action: Action_ID) {
-// 	gc.smallest_allowable_action[src_air] = action
+// update_move_history :: proc(gc: ^Game_Cache, src_region: Region_ID, action: Action_ID) {
+// 	gc.smallest_allowable_action[src_region] = action
 // 	gc.clear_history_needed = true
 // 	remove_actions_above(gc, action)
 // }
@@ -186,7 +185,7 @@ clear_move_history :: proc(gc: ^Game_Cache) {
 /*
 Factory Building Process
 1. Validation Phase:
-   - Checks player's money and territory ownership
+   - Checks player's treasury and territory ownership
    - Verifies no existing production or combat
    - Builds list of valid locations
 2. Purchase Phase:
@@ -200,25 +199,25 @@ Returns true when:
 - Purchase completed successfully
 */
 buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
-	if gc.money[gc.cur_player] < FACTORY_COST do return true
+	if gc.treasury[gc.acting_nation] < FACTORY_COST do return true
 	reset_valid_actions(gc)
-	gc.current_territory = to_air(mm.capital[gc.cur_player])
-	gc.current_active_unit = .FACTORY
+	gc.current_territory = to_region(mm.capital[gc.acting_nation])
+	gc.current_active_unit = .Factory
 	for land in Land_ID {
-		if gc.owner[land] != gc.cur_player ||
+		if gc.owner[land] != gc.acting_nation ||
 		   gc.factory_prod[land] > 0 ||
-		   land in (gc.more_land_combat_needed | gc.land_combat_started) {
+		   land in (gc.more_land_battles_needed | gc.land_battle_started) {
 			continue
 		}
 		add_valid_action(gc, to_action(land))
 	}
-	for gc.money[gc.cur_player] >= FACTORY_COST {
+	for gc.treasury[gc.acting_nation] >= FACTORY_COST {
 		factory_land_action := get_action_input(gc) or_return
 		if factory_land_action == .Skip_Action do return true
-		gc.money[gc.cur_player] -= FACTORY_COST
+		gc.treasury[gc.acting_nation] -= FACTORY_COST
 		factory_land := to_land(factory_land_action)
 		gc.factory_prod[factory_land] = mm.value[factory_land]
-		sa.push(&gc.factory_locations[gc.cur_player], factory_land)
+		append(&gc.factory_locations[gc.acting_nation], factory_land)
 	}
 	return true
 }
@@ -226,77 +225,77 @@ buy_factory :: proc(gc: ^Game_Cache) -> (ok: bool) {
 // Repairs all damaged battleships at turn start
 reset_units_fully :: proc(gc: ^Game_Cache) {
 	for sea in Sea_ID {
-		gc.active_ships[sea][.BATTLESHIP_0_MOVES] += gc.active_ships[sea][.BS_DAMAGED_0_MOVES]
-		gc.active_ships[sea][.BS_DAMAGED_0_MOVES] = 0
-		gc.active_ships[sea][.BATTLESHIP_BOMBARDED] += gc.active_ships[sea][.BS_DAMAGED_BOMBARDED]
-		gc.active_ships[sea][.BS_DAMAGED_BOMBARDED] = 0
-		gc.idle_ships[sea][gc.cur_player][.BATTLESHIP] +=
-			gc.idle_ships[sea][gc.cur_player][.BS_DAMAGED]
-		gc.idle_ships[sea][gc.cur_player][.BS_DAMAGED] = 0
+		gc.active_ships[sea][.Battleship_0_Moves] += gc.active_ships[sea][.Battleship_Damaged_0_Moves]
+		gc.active_ships[sea][.Battleship_Damaged_0_Moves] = 0
+		gc.active_ships[sea][.Battleship_Bombarded] += gc.active_ships[sea][.Battleship_Damaged_Bombarded]
+		gc.active_ships[sea][.Battleship_Damaged_Bombarded] = 0
+		gc.idle_ships[sea][gc.acting_nation][.Battleship] +=
+			gc.idle_ships[sea][gc.acting_nation][.Battleship_Damaged]
+		gc.idle_ships[sea][gc.acting_nation][.Battleship_Damaged] = 0
 	}
 }
 
-collect_money :: proc(gc: ^Game_Cache) {
-	if gc.owner[mm.capital[gc.cur_player]] == gc.cur_player {
-		gc.money[gc.cur_player] += gc.income[gc.cur_player]
+collect_income :: proc(gc: ^Game_Cache) {
+	if gc.owner[mm.capital[gc.acting_nation]] == gc.acting_nation {
+		gc.treasury[gc.acting_nation] += gc.income[gc.acting_nation]
 	}
 }
 
 rotate_turns :: proc(gc: ^Game_Cache) {
-	gc.cur_player = Player_ID((u8(gc.cur_player) + 1) % len(Player_ID))
-	gc.more_land_combat_needed = {}
-	gc.land_combat_started = {}
-	gc.more_sea_combat_needed = {}
-	gc.sea_combat_started = {}
+	gc.acting_nation = Nation_ID((u8(gc.acting_nation) + 1) % len(Nation_ID))
+	gc.more_land_battles_needed = {}
+	gc.land_battle_started = {}
+	gc.more_sea_battles_needed = {}
+	gc.sea_battle_started = {}
 	gc.friendly_owner = {}
-	gc.max_bombards = {}
+	gc.max_bombardment_dice = {}
 	gc.active_armies = {}
 	gc.active_land_planes = {}
 	gc.smallest_allowable_action = {}
 	gc.active_ships = {}
 	gc.active_sea_planes = {}
-	gc.air_has_enemies = {}
+	gc.region_has_enemies = {}
 
 	for land in Land_ID {
-		if gc.owner[land] == gc.cur_player {
+		if gc.owner[land] == gc.acting_nation {
 			gc.builds_left[land] = gc.factory_prod[land]
 		}
-		if mm.team[gc.owner[land]] == mm.team[gc.cur_player] {
+		if mm.team[gc.owner[land]] == mm.team[gc.acting_nation] {
 			gc.friendly_owner += {land}
 		}
-		// gc.skipped_buys[to_air(land)] = {}
-		idle_armies := &gc.idle_armies[land][gc.cur_player]
-		gc.active_armies[land][.INF_1_MOVES] = idle_armies[.INF]
-		gc.active_armies[land][.ARTY_1_MOVES] = idle_armies[.ARTY]
-		gc.active_armies[land][.TANK_2_MOVES] = idle_armies[.TANK]
-		gc.active_armies[land][.AAGUN_1_MOVES] = idle_armies[.AAGUN]
-		idle_planes := &gc.idle_land_planes[land][gc.cur_player]
-		gc.active_land_planes[land][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
-		gc.active_land_planes[land][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
-		if gc.team_land_units[land][mm.enemy_team[gc.cur_player]] > 0 {
+		// gc.skipped_buys[to_region(land)] = {}
+		idle_armies := &gc.idle_armies[land][gc.acting_nation]
+		gc.active_armies[land][.Infantry_1_Moves] = idle_armies[.Infantry]
+		gc.active_armies[land][.Artillery_1_Moves] = idle_armies[.Artillery]
+		gc.active_armies[land][.Tank_2_Moves] = idle_armies[.Tank]
+		gc.active_armies[land][.AAGun_1_Moves] = idle_armies[.AAGun]
+		idle_planes := &gc.idle_land_planes[land][gc.acting_nation]
+		gc.active_land_planes[land][.Fighter_Unmoved] = idle_planes[.Fighter]
+		gc.active_land_planes[land][.Bomber_Unmoved] = idle_planes[.Bomber]
+		if gc.team_land_units[land][mm.enemy_team[gc.acting_nation]] > 0 {
 			gc.has_enemy_units += {land}
-			add_air(&gc.air_has_enemies, to_air(land))
+			add_region(&gc.region_has_enemies, to_region(land))
 		}
 	}
 
 	for sea in Sea_ID {
-		idle_ships := &gc.idle_ships[sea][gc.cur_player]
-		gc.active_ships[sea][.TRANS_EMPTY_UNMOVED] = idle_ships[.TRANS_EMPTY]
-		gc.active_ships[sea][.TRANS_1I_UNMOVED] = idle_ships[.TRANS_1I]
-		gc.active_ships[sea][.TRANS_1A_UNMOVED] = idle_ships[.TRANS_1A]
-		gc.active_ships[sea][.TRANS_1T_UNMOVED] = idle_ships[.TRANS_1T]
-		gc.active_ships[sea][.TRANS_2I_2_MOVES] = idle_ships[.TRANS_2I]
-		gc.active_ships[sea][.TRANS_1I_1A_2_MOVES] = idle_ships[.TRANS_1I_1A]
-		gc.active_ships[sea][.TRANS_1I_1T_2_MOVES] = idle_ships[.TRANS_1I_1T]
-		gc.active_ships[sea][.SUB_2_MOVES] = idle_ships[.SUB]
-		gc.active_ships[sea][.DESTROYER_2_MOVES] = idle_ships[.DESTROYER]
-		gc.active_ships[sea][.CARRIER_2_MOVES] = idle_ships[.CARRIER]
-		gc.active_ships[sea][.CRUISER_2_MOVES] = idle_ships[.CRUISER]
-		gc.active_ships[sea][.BATTLESHIP_2_MOVES] = idle_ships[.BATTLESHIP]
-		gc.active_ships[sea][.BS_DAMAGED_2_MOVES] = idle_ships[.BS_DAMAGED]
-		idle_planes := &gc.idle_sea_planes[sea][gc.cur_player]
-		gc.active_sea_planes[sea][.FIGHTER_UNMOVED] = idle_planes[.FIGHTER]
-		gc.active_sea_planes[sea][.BOMBER_UNMOVED] = idle_planes[.BOMBER]
+		idle_ships := &gc.idle_ships[sea][gc.acting_nation]
+		gc.active_ships[sea][.Transport_Empty_Unmoved] = idle_ships[.Transport_Empty]
+		gc.active_ships[sea][.Transport_Infantry_Unmoved] = idle_ships[.Transport_Infantry]
+		gc.active_ships[sea][.Transport_Artillery_Unmoved] = idle_ships[.Transport_Artillery]
+		gc.active_ships[sea][.Transport_Tank_Unmoved] = idle_ships[.Transport_Tank]
+		gc.active_ships[sea][.Transport_Infantry_Infantry_2_Moves] = idle_ships[.Transport_Infantry_Infantry]
+		gc.active_ships[sea][.Transport_Infantry_Artillery_2_Moves] = idle_ships[.Transport_Infantry_Artillery]
+		gc.active_ships[sea][.Transport_Infantry_Tank_2_Moves] = idle_ships[.Transport_Infantry_Tank]
+		gc.active_ships[sea][.Submarine_2_Moves] = idle_ships[.Submarine]
+		gc.active_ships[sea][.Destroyer_2_Moves] = idle_ships[.Destroyer]
+		gc.active_ships[sea][.Carrier_2_Moves] = idle_ships[.Carrier]
+		gc.active_ships[sea][.Cruiser_2_Moves] = idle_ships[.Cruiser]
+		gc.active_ships[sea][.Battleship_2_Moves] = idle_ships[.Battleship]
+		gc.active_ships[sea][.Battleship_Damaged_2_Moves] = idle_ships[.Battleship_Damaged]
+		idle_planes := &gc.idle_sea_planes[sea][gc.acting_nation]
+		gc.active_sea_planes[sea][.Fighter_Unmoved] = idle_planes[.Fighter]
+		gc.active_sea_planes[sea][.Bomber_Unmoved] = idle_planes[.Bomber]
 	}
 	resfresh_cache(gc)
 	count_sea_unit_totals(gc)
@@ -316,15 +315,15 @@ is_terminal_state :: proc(game_state: ^Game_State) -> bool {
 
 evaluate_state :: proc(gs: ^Game_State) -> f64 {
 	// Evaluate the game state and return a score
-	allied_score := 1 // one helps prevent division by zero
+	friendly_score := 1 // one helps prevent division by zero
 	enemy_score := 1
-	for ally in sa.slice(&mm.allies[gs.cur_player]) {
-		allied_score += int(gs.money[ally])
+	for ally in mm.allies[gs.acting_nation] {
+		friendly_score += int(gs.treasury[ally])
 	}
-	for enemy in sa.slice(&mm.enemies[gs.cur_player]) {
-		enemy_score += int(gs.money[enemy])
+	for enemy in mm.enemies[gs.acting_nation] {
+		enemy_score += int(gs.treasury[enemy])
 	}
-	for player in Player_ID {
+	for player in Nation_ID {
 		mil_cost := 0
 		for land in Land_ID {
 			for army in Idle_Army {
@@ -350,13 +349,13 @@ evaluate_state :: proc(gs: ^Game_State) -> f64 {
 					int(gs.idle_sea_planes[sea][player][plane]) * int(COST_IDLE_PLANE[plane])
 			}
 		}
-		if mm.team[player] == mm.team[gs.cur_player] {
-			allied_score += mil_cost
+		if mm.team[player] == mm.team[gs.acting_nation] {
+			friendly_score += mil_cost
 		} else {
 			enemy_score += mil_cost
 		}
 	}
-	score: f64 = (f64(allied_score) / f64(enemy_score + allied_score)) * 2 - 1
+	score: f64 = (f64(friendly_score) / f64(enemy_score + friendly_score)) * 2 - 1
 	return score
 }
 
@@ -401,7 +400,7 @@ random_play_until_terminal :: proc(gs: ^Game_State) -> f64 {
 		score = evaluate_cache(&gc)
 	}
 	score = evaluate_cache(&gc)
-	if mm.team[gc.cur_player] == .Axis {
+	if mm.team[gc.acting_nation] == .Axis {
 		score = -score
 	}
 	return score
@@ -416,7 +415,7 @@ get_possible_actions :: proc(gs: ^Game_State) -> ^[dynamic]Action_ID {
 	//initialize_map_constants(&gc)
 	// gs_backup := gs^	
 	load_cache_from_state(&gc, gs)
-	gc.unlucky_teams = {mm.team[gc.cur_player]}
+	gc.unlucky_teams = {mm.team[gc.acting_nation]}
 	gc.answers_remaining = 0
 	gc.seed = 0
 	gc.valid_actions = {}
@@ -424,7 +423,7 @@ get_possible_actions :: proc(gs: ^Game_State) -> ^[dynamic]Action_ID {
 	for {
 		play_full_turn(&gc) or_break
 	}
-	// if gc.cur_player == .USA && gc.money[gc.cur_player] == 11 && gc.active_land_planes[.Berlin][.FIGHTER_2_MOVES] == 1 {
+	// if gc.acting_nation == .USA && gc.treasury[gc.acting_nation] == 11 && gc.active_land_planes[.Berlin][.Fighter_2_Moves] == 1 {
 	// 	print_game_state(&gc)
 	// 	for action in gc.valid_actions {
 	// 		fmt.print(action, ", ")
@@ -441,7 +440,7 @@ apply_action :: proc(gs: ^Game_State, action: Action_ID) {
 	gc: Game_Cache
 	//initialize_map_constants(&gc)
 	load_cache_from_state(&gc, gs)
-	gc.unlucky_teams = {mm.team[gc.cur_player]}
+	gc.unlucky_teams = {mm.team[gc.acting_nation]}
 	gc.answers_remaining = 1
 	gc.seed = 0
 	gc.selected_action = action

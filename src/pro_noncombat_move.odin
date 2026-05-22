@@ -21,7 +21,7 @@ Algorithm Overview (from ProNonCombatMoveAi.java):
 3. Determine max enemy attackers and if territories can be held
 4. Prioritize territories to defend
 5. Move units to defend territories
-6. Move units to best value territories (sea, land, air)
+6. Move units to best value territories (sea, land, region)
 7. Move infrastructure units (AA guns, factories if mobile)
 8. Execute non-combat moves
 */
@@ -96,7 +96,7 @@ find_noncombat_defense_targets :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) -> 
 	
 	// Check all friendly territories
 	for land_id in Land_ID {
-		if gc.owner[land_id] != gc.cur_player {
+		if gc.owner[land_id] != gc.acting_nation {
 			continue
 		}
 		
@@ -116,7 +116,7 @@ find_noncombat_defense_targets :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) -> 
 		
 		// Calculate strategic value
 		territory_value := calculate_territory_value(gc, land_id)
-		is_capital := is_player_capital(gc, land_id, gc.cur_player)
+		is_capital := is_player_capital(gc, land_id, gc.acting_nation)
 		has_factory := gc.factory_prod[land_id] > 0
 		
 		strategic_value := territory_value
@@ -149,11 +149,11 @@ calculate_enemy_threat :: proc(gc: ^Game_Cache, territory: Land_ID, pro_data: ^P
 	
 	// Count enemy units in adjacent territories
 	// Simplified - would use map graph for proper adjacency
-	for player in Player_ID {
-		if player == gc.cur_player {
+	for player in Nation_ID {
+		if player == gc.acting_nation {
 			continue
 		}
-		if mm.team[player] == mm.team[gc.cur_player] {
+		if mm.team[player] == mm.team[gc.acting_nation] {
 			continue
 		}
 		
@@ -176,10 +176,10 @@ calculate_enemy_threat :: proc(gc: ^Game_Cache, territory: Land_ID, pro_data: ^P
 // Get threat value for army types
 get_army_threat_value :: proc(army_type: Idle_Army) -> f64 {
 	switch army_type {
-	case .INF: return 1.0
-	case .ARTY: return 2.0
-	case .TANK: return 3.0
-	case .AAGUN: return 0.5
+	case .Infantry: return 1.0
+	case .Artillery: return 2.0
+	case .Tank: return 3.0
+	case .AAGun: return 0.5
 	case: return 1.0
 	}
 }
@@ -187,8 +187,8 @@ get_army_threat_value :: proc(army_type: Idle_Army) -> f64 {
 // Get threat value for plane types
 get_plane_threat_value :: proc(plane_type: Idle_Plane) -> f64 {
 	switch plane_type {
-	case .FIGHTER: return 3.0
-	case .BOMBER: return 4.0
+	case .Fighter: return 3.0
+	case .Bomber: return 4.0
 	case: return 2.0
 	}
 }
@@ -199,12 +199,12 @@ calculate_current_defense :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
 	
 	// Count friendly units
 	for army_type in Idle_Army {
-		count := gc.idle_armies[territory][gc.cur_player][army_type]
+		count := gc.idle_armies[territory][gc.acting_nation][army_type]
 		defense += f64(count) * get_army_defense_value(army_type)
 	}
 	
 	for plane_type in Idle_Plane {
-		count := gc.idle_land_planes[territory][gc.cur_player][plane_type]
+		count := gc.idle_land_planes[territory][gc.acting_nation][plane_type]
 		defense += f64(count) * get_plane_defense_value(plane_type)
 	}
 	
@@ -214,10 +214,10 @@ calculate_current_defense :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
 // Get defense value for army types
 get_army_defense_value :: proc(army_type: Idle_Army) -> f64 {
 	switch army_type {
-	case .INF: return 2.0
-	case .ARTY: return 2.0
-	case .TANK: return 3.0
-	case .AAGUN: return 0.5
+	case .Infantry: return 2.0
+	case .Artillery: return 2.0
+	case .Tank: return 3.0
+	case .AAGun: return 0.5
 	case: return 1.0
 	}
 }
@@ -225,14 +225,14 @@ get_army_defense_value :: proc(army_type: Idle_Army) -> f64 {
 // Get defense value for plane types
 get_plane_defense_value :: proc(plane_type: Idle_Plane) -> f64 {
 	switch plane_type {
-	case .FIGHTER: return 4.0
-	case .BOMBER: return 1.0
+	case .Fighter: return 4.0
+	case .Bomber: return 1.0
 	case: return 2.0
 	}
 }
 
 // Check if territory is a player's capital
-is_player_capital :: proc(gc: ^Game_Cache, territory: Land_ID, player: Player_ID) -> bool {
+is_player_capital :: proc(gc: ^Game_Cache, territory: Land_ID, player: Nation_ID) -> bool {
 	capital_maybe := get_capital_territory(player)
 	if capital_maybe == nil {
 		return false
@@ -314,14 +314,14 @@ land_fighters_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	}
 	
 	// Find all fighters that need landing
-	// Simplified - would track which fighters are in air and need landing
+	// Simplified - would track which fighters are in region and need landing
 	
 	// For each fighter, find safest landing spot
-	// Priority: Friendly territories > Carriers > Allied territories
+	// Priority: Friendly territories > Carriers > Friendly territories
 	
 	// Placeholder - use existing landing logic
 	// In full implementation, this would:
-	// 1. Identify all fighters in the air
+	// 1. Identify all fighters in the region
 	// 2. Find valid landing territories (friendly land, carriers)
 	// 3. Choose safest landing spot
 	// 4. Execute landing moves
@@ -341,7 +341,7 @@ land_bombers_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	
 	// Placeholder - use existing landing logic
 	// In full implementation, this would:
-	// 1. Identify all bombers in the air
+	// 1. Identify all bombers in the region
 	// 2. Find valid landing territories
 	// 3. Choose landing spot that provides good offensive reach for next turn
 	// 4. Execute landing moves
@@ -369,7 +369,7 @@ move_sea_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 		// Check if we have ships here
 		has_ships := false
 		for ship_type in Idle_Ship {
-			if gc.idle_ships[sea_id][gc.cur_player][ship_type] > 0 {
+			if gc.idle_ships[sea_id][gc.acting_nation][ship_type] > 0 {
 				has_ships = true
 				break
 			}
@@ -403,14 +403,14 @@ move_land_units_noncombat :: proc(gc: ^Game_Cache, pro_data: ^Pro_Data) {
 	
 	// Placeholder - simplified implementation
 	for land_id in Land_ID {
-		if gc.owner[land_id] != gc.cur_player {
+		if gc.owner[land_id] != gc.acting_nation {
 			continue
 		}
 		
 		// Check if we have idle units here
 		has_units := false
 		for army_type in Idle_Army {
-			if gc.idle_armies[land_id][gc.cur_player][army_type] > 0 {
+			if gc.idle_armies[land_id][gc.acting_nation][army_type] > 0 {
 				has_units = true
 				break
 			}

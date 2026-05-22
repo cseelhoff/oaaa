@@ -18,7 +18,6 @@ Key functions:
 
 import "core:fmt"
 import "core:math"
-import sa "core:container/small_array"
 
 // Territory value calculation - how important is this territory?
 // Based on IPC value, strategic position, and tactical importance
@@ -31,7 +30,7 @@ calculate_territory_value :: proc(gc: ^Game_Cache, territory: Land_ID) -> f64 {
 	
 	// Bonus value: Factories are highly valuable
 	has_factory := false
-	for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
+	for land in gc.factory_locations[gc.acting_nation] {
 		if land == territory {
 			has_factory = true
 			break
@@ -203,7 +202,7 @@ is_attack_worthwhile :: proc(
 }
 
 // Count enemy units in adjacent territories (threat assessment)
-count_adjacent_enemy_units :: proc(gc: ^Game_Cache, territory: Land_ID, player: Player_ID) -> int {
+count_adjacent_enemy_units :: proc(gc: ^Game_Cache, territory: Land_ID, player: Nation_ID) -> int {
 	// TODO: Implement by checking neighbors in map_graph
 	// For now, return 0 (will be implemented when integrating with map_graph.odin)
 	return 0
@@ -216,11 +215,11 @@ find_best_factory_location :: proc(gc: ^Game_Cache) -> Maybe(Land_ID) {
 	
 	for territory in Land_ID {
 		// Can only build factory if we own it and don't have one
-		if gc.owner[territory] != gc.cur_player do continue
+		if gc.owner[territory] != gc.acting_nation do continue
 		
 		// Check if already has factory
 		has_factory := false
-		for land in sa.slice(&gc.factory_locations[gc.cur_player]) {
+		for land in gc.factory_locations[gc.acting_nation] {
 			if land == territory {
 				has_factory = true
 				break
